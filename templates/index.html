@@ -1504,7 +1504,8 @@
       <!-- ── Unified result panel ── -->
       <div id="intel-result" style="display:none">
         <style>
-          /* Hide all clutter — keep only essential company info */
+          /* Intel functional tab system */
+          #intel-tabs-wrapper { display: none; }
           #intel-tab-bar, #intel-tab-about, #intel-tab-finance, #intel-tab-history,
           #intel-tab-campaigns, #intel-tab-intel, #intel-tab-research, #intel-tab-social,
           #brand-news-section, #brand-ask-section, #brand-fin-section, #brand-stats-grid,
@@ -1514,6 +1515,11 @@
           #intel-research-docs-card, #intel-compare-panel, #brand-standing-card {
             display: none !important;
           }
+          .intel-func-tab { display: none; }
+          .intel-func-tab.active { display: block; }
+          .intel-func-tab-btn { padding: 10px 16px; border: none; background: transparent; cursor: pointer; font-weight: 700; font-size: 13px; border-bottom: 3px solid transparent; color: #64748b; transition: all .2s; }
+          .intel-func-tab-btn.active { color: #ec4899; border-bottom-color: #ec4899; }
+          .intel-func-tabs { display: flex; gap: 0; border-bottom: 1px solid #e2e8f0; margin-bottom: 24px; }
         </style>
 
         <!-- Header card: Sleek Dark Theme -->
@@ -1588,6 +1594,60 @@
                 <div style="font-size:22px;font-weight:950;color:#1e293b;letter-spacing:-0.5px" data-metric="market_cap">—</div>
               </div>
             </div>
+          </div>
+
+          <!-- ── Functional Tabs Interface ── -->
+          <div class="intel-func-tabs">
+            <button class="intel-func-tab-btn active" onclick="switchIntelFuncTab('company')">Company</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('details')">Details</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('strategy')">Strategy</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('social')">Social</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('campaigns')">Campaigns</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('competitors')">Competitors</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('reports')">Reports</button>
+          </div>
+
+          <!-- Company Tab -->
+          <div id="intel-func-company" class="intel-func-tab active" style="display:block">
+            <div id="intel-company-overview"></div>
+          </div>
+
+          <!-- Details Tab (Metrics + Graph) -->
+          <div id="intel-func-details" class="intel-func-tab" style="display:none">
+            <div id="intel-financials-graph" style="background:linear-gradient(135deg,rgba(241,245,250,.97),rgba(241,245,250,.95));border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:24px;margin-bottom:24px;min-height:400px"></div>
+          </div>
+
+          <!-- Strategy Tab (Agent) -->
+          <div id="intel-func-strategy" class="intel-func-tab" style="display:none">
+            <div id="intel-strategy-loading" style="text-align:center;padding:40px;color:#64748b">
+              <div class="spinner mx-auto mb-3" style="border-top-color:#ec4899;width:28px;height:28px"></div>
+              Analyzing strategy & competitive position...
+            </div>
+            <div id="intel-strategy-result" style="display:none;background:linear-gradient(135deg,rgba(241,245,250,.97),rgba(241,245,250,.95));border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:24px;line-height:1.8;color:#475569;font-size:14px"></div>
+          </div>
+
+          <!-- Social Tab -->
+          <div id="intel-func-social" class="intel-func-tab" style="display:none">
+            <div id="intel-social-content" style="color:#64748b;text-align:center;padding:40px">Loading...</div>
+          </div>
+
+          <!-- Campaigns Tab -->
+          <div id="intel-func-campaigns" class="intel-func-tab" style="display:none">
+            <div id="intel-campaigns-content" style="color:#64748b;text-align:center;padding:40px">Loading...</div>
+          </div>
+
+          <!-- Competitors Tab -->
+          <div id="intel-func-competitors" class="intel-func-tab" style="display:none">
+            <div id="intel-competitors-content" style="color:#64748b;text-align:center;padding:40px">Loading...</div>
+          </div>
+
+          <!-- Reports Tab (Edgar) -->
+          <div id="intel-func-reports" class="intel-func-tab" style="display:none">
+            <div id="intel-reports-loading" style="text-align:center;padding:40px;color:#64748b">
+              <div class="spinner mx-auto mb-3" style="border-top-color:#0ea5e9;width:28px;height:28px"></div>
+              Fetching SEC filings...
+            </div>
+            <div id="intel-reports-content" style="display:none"></div>
           </div>
 
           <!-- About Section -->
@@ -25134,6 +25194,104 @@ window.spotifyAddTrack = window.spotifyLike;
       _receiptsCurrentDate.setMonth(_receiptsCurrentDate.getMonth() + 3);
     }
     _receiptsAnalysisLoad();
+  };
+
+  // ── Intel Functional Tabs ──────────────────────────────────────────────
+  window.switchIntelFuncTab = function(tab) {
+    // Hide all tabs
+    document.querySelectorAll('.intel-func-tab').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.intel-func-tab-btn').forEach(b => b.classList.remove('active'));
+
+    // Show selected tab
+    const tabEl = document.getElementById('intel-func-' + tab);
+    if (tabEl) tabEl.style.display = 'block';
+
+    // Highlight active button
+    event.target.classList.add('active');
+
+    // Load tab content on first view
+    if (tab === 'strategy') {
+      loadIntelStrategy();
+    } else if (tab === 'reports') {
+      loadIntelReports();
+    } else if (tab === 'details') {
+      loadIntelDetails();
+    }
+  };
+
+  // Load strategy from Groq agent
+  window.loadIntelStrategy = function() {
+    const company = document.getElementById('brand-name-el')?.textContent || '';
+    if (!company || document.getElementById('intel-strategy-result').style.display === 'block') return;
+
+    const prompt = `Analyze ${company}: What is their core competitive advantage? What are they best at? Key strategic direction? (2-3 paragraphs, concise)`;
+
+    fetch('/api/intel/research', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({query: prompt, company: company})
+    })
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('intel-strategy-loading').style.display = 'none';
+      document.getElementById('intel-strategy-result').style.display = 'block';
+      document.getElementById('intel-strategy-result').textContent = d.analysis || d.response || 'No analysis available';
+    })
+    .catch(e => {
+      document.getElementById('intel-strategy-loading').textContent = 'Error loading analysis';
+      console.error(e);
+    });
+  };
+
+  // Load Edgar reports
+  window.loadIntelReports = function() {
+    const company = document.getElementById('brand-name-el')?.textContent || '';
+    if (!company || document.getElementById('intel-reports-content').style.display === 'block') return;
+
+    fetch(`/api/intel/deep-dive?q=${encodeURIComponent(company)}`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('intel-reports-loading').style.display = 'none';
+      document.getElementById('intel-reports-content').style.display = 'block';
+
+      let html = '<div style="font-size:13px;color:#475569;line-height:1.8">';
+      if (d.filings && d.filings.length) {
+        html += '<div style="margin-bottom:20px"><strong>SEC Filings (10-K, 10-Q, 8-K):</strong></div>';
+        d.filings.forEach(f => {
+          html += `<div style="padding:12px;background:#f8f9fd;border-radius:8px;margin-bottom:8px;border-left:3px solid #0ea5e9">
+            <div style="font-weight:700;color:#1e293b">${f.form} (${f.date || 'N/A'})</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px">${f.link ? '<a href="' + f.link + '" target="_blank">View on SEC.gov</a>' : 'Link unavailable'}</div>
+          </div>`;
+        });
+      }
+      if (d.revenue_trend) {
+        html += '<div style="margin-top:20px;padding:16px;background:#f8f9fd;border-radius:8px">' + d.revenue_trend + '</div>';
+      }
+      html += '</div>';
+      document.getElementById('intel-reports-content').innerHTML = html;
+    })
+    .catch(e => {
+      document.getElementById('intel-reports-loading').textContent = 'Error loading reports';
+      console.error(e);
+    });
+  };
+
+  // Load details (financials graph)
+  window.loadIntelDetails = function() {
+    const company = document.getElementById('brand-name-el')?.textContent || '';
+    if (!company || document.getElementById('intel-financials-graph').getAttribute('data-loaded')) return;
+
+    fetch(`/api/intel/deep-dive?q=${encodeURIComponent(company)}`)
+    .then(r => r.json())
+    .then(d => {
+      let html = '<div style="font-weight:900;font-size:15px;color:#1e293b;margin-bottom:16px">Financial Overview</div>';
+      if (d.revenue_trend || d.summary) {
+        html += '<div style="font-size:14px;color:#475569;line-height:1.8;">' + (d.summary || d.revenue_trend || 'No financial data available') + '</div>';
+      }
+      document.getElementById('intel-financials-graph').innerHTML = html;
+      document.getElementById('intel-financials-graph').setAttribute('data-loaded', 'true');
+    })
+    .catch(e => console.error(e));
   };
 
   // Check onboarding on app load
