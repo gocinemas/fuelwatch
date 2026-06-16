@@ -2967,10 +2967,11 @@ def api_brand_spin():
 @app.route("/api/brand")
 def api_brand():
     name = request.args.get("name", "").strip()
+    refresh = request.args.get("refresh", "").lower() == "true"
     if not name or len(name) < 2:
         return jsonify({"error": "Brand name required"}), 400
     analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
-    data = fetch_brand_data(name)
+    data = fetch_brand_data(name, force_refresh=refresh)
     if data.get("timeline") or data.get("competitors"):
         _save_brand_profile(data)
     return jsonify(data)

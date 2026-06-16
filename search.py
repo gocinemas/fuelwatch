@@ -1361,7 +1361,7 @@ def _fetch_brand_financials(brand: str) -> dict:
     return {}
 
 
-def fetch_brand_data(brand: str) -> dict:
+def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
     original = brand.strip()
     canonical = original
 
@@ -1455,19 +1455,21 @@ def fetch_brand_data(brand: str) -> dict:
 
     cache_key = brand.strip().lower() + "|brandv29"
 
-    # L1: in-memory
-    cached = _BRAND_CACHE.get(cache_key)
-    if cached and time.time() - cached["ts"] < _BRAND_TTL:
-        data = dict(cached["data"])
-        data["suggested_name"] = suggested
-        return data
+    # L1: in-memory (skip if force_refresh)
+    if not force_refresh:
+        cached = _BRAND_CACHE.get(cache_key)
+        if cached and time.time() - cached["ts"] < _BRAND_TTL:
+            data = dict(cached["data"])
+            data["suggested_name"] = suggested
+            return data
 
     # Stampede protection: if another thread is already fetching, wait for it
     with _BRAND_LOCK:
         # Re-check after acquiring lock — another thread may have just finished
-        cached = _BRAND_CACHE.get(cache_key)
-        if cached and time.time() - cached["ts"] < _BRAND_TTL:
-            return cached["data"]
+        if not force_refresh:
+            cached = _BRAND_CACHE.get(cache_key)
+            if cached and time.time() - cached["ts"] < _BRAND_TTL:
+                return cached["data"]
         if cache_key in _BRAND_INFLIGHT:
             ev = _BRAND_INFLIGHT[cache_key]
         else:
@@ -1481,23 +1483,24 @@ def fetch_brand_data(brand: str) -> dict:
         return cached["data"] if cached else {}
 
     try:
-        # L1.5: brand_profiles — permanent store, survives cache version bumps
+        # L1.5: brand_profiles — permanent store, survives cache version bumps (skip if force_refresh)
         # Searched by any user → available to all users instantly
-        try:
-            from supabase import create_client as _sbcc
-            _sb2 = _sbcc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
-            _bp_rows = _sb2.table("brand_profiles").select("raw_data,last_enriched_at").ilike("name", brand.strip()).limit(1).execute().data
-            if _bp_rows and _bp_rows[0].get("raw_data"):
-                _bp = _bp_rows[0]["raw_data"]
-                if _bp.get("timeline") or _bp.get("competitors"):
-                    print(f"[brand_profiles] hit: {brand}")
-                    _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": _bp}
-                    return {**_bp, "suggested_name": suggested}
-        except Exception as _bpe:
-            print(f"[brand_profiles] read failed: {_bpe}")
+        if not force_refresh:
+            try:
+                from supabase import create_client as _sbcc
+                _sb2 = _sbcc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+                _bp_rows = _sb2.table("brand_profiles").select("raw_data,last_enriched_at").ilike("name", brand.strip()).limit(1).execute().data
+                if _bp_rows and _bp_rows[0].get("raw_data"):
+                    _bp = _bp_rows[0]["raw_data"]
+                    if _bp.get("timeline") or _bp.get("competitors"):
+                        print(f"[brand_profiles] hit: {brand}")
+                        _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": _bp}
+                        return {**_bp, "suggested_name": suggested}
+            except Exception as _bpe:
+                print(f"[brand_profiles] read failed: {_bpe}")
 
-        # L2: Supabase persistent cache — skip if AI data is absent
-        sb_data = _sb_cache_get("brand:" + cache_key)
+        # L2: Supabase persistent cache — skip if AI data is absent or force_refresh
+        sb_data = _sb_cache_get("brand:" + cache_key) if not force_refresh else None
         if sb_data and (sb_data.get("timeline") or sb_data.get("competitors")):
             # Apply non-brand suppression to cached data too — catches stale entries
             # written before this check was added (e.g. Lynx wildcat cached under v24)
