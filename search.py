@@ -1130,6 +1130,102 @@ def _fetch_international_financials(brand: str, ticker: str, country: str) -> di
         # Try generic international fetch for all other countries
         return _fetch_international_financials_generic(brand, ticker, country)
 
+def _detect_brand_category(description: str, industry: str = "") -> str:
+    """Detect brand category from description and industry field."""
+    combined = (description + " " + industry).lower()
+
+    categories = {
+        "beverage": ["drink", "beverage", "coffee", "tea", "juice", "soda", "cola", "water", "coconut water"],
+        "automotive": ["vehicle", "car", "automobile", "electric vehicle", "ev", "motor", "truck", "suv"],
+        "technology": ["software", "hardware", "computer", "phone", "smartphone", "tech", "device", "electronics", "semiconductor"],
+        "retail": ["retail", "store", "retail chain", "retailer", "e-commerce", "online retail"],
+        "fashion": ["apparel", "clothing", "fashion", "footwear", "shoes", "sneakers", "sportswear"],
+        "food": ["food", "snack", "candy", "confectionery", "bakery", "restaurant", "quick service"],
+        "energy": ["oil", "gas", "petroleum", "energy", "power", "fuel"],
+        "finance": ["bank", "financial", "investment", "insurance", "credit"],
+        "healthcare": ["pharmaceutical", "medicine", "drug", "health", "medical", "hospital"],
+    }
+
+    for category, keywords in categories.items():
+        if any(kw in combined for kw in keywords):
+            return category
+
+    return ""
+
+def _get_brand_ranking(brand_name: str, category: str, market_cap: str = "") -> dict:
+    """Estimate brand ranking based on category and known brands."""
+    # Hardcoded ranking for major brands by category
+    rankings = {
+        "beverage": {
+            "Coca-Cola": {"rank": 1, "of": 50},
+            "PepsiCo": {"rank": 2, "of": 50},
+            "Monster Beverage": {"rank": 3, "of": 50},
+            "Red Bull": {"rank": 4, "of": 50},
+            "Danone": {"rank": 5, "of": 50},
+            "Vita Coco": {"rank": 8, "of": 50},  # Estimated
+            "Zico": {"rank": 12, "of": 50},
+        },
+        "automotive": {
+            "Tesla": {"rank": 2, "of": 30},
+            "Ford": {"rank": 1, "of": 30},
+            "General Motors": {"rank": 3, "of": 30},
+            "Volkswagen": {"rank": 4, "of": 30},
+            "BMW": {"rank": 5, "of": 30},
+        },
+        "technology": {
+            "Apple": {"rank": 1, "of": 100},
+            "Microsoft": {"rank": 2, "of": 100},
+            "Google": {"rank": 3, "of": 100},
+            "Samsung": {"rank": 4, "of": 100},
+            "Intel": {"rank": 5, "of": 100},
+        },
+        "fashion": {
+            "Nike": {"rank": 1, "of": 100},
+            "Adidas": {"rank": 2, "of": 100},
+            "Puma": {"rank": 3, "of": 100},
+            "Skechers": {"rank": 4, "of": 100},
+            "New Balance": {"rank": 5, "of": 100},
+        },
+    }
+
+    if category in rankings and brand_name in rankings[category]:
+        return rankings[category][brand_name]
+
+    return {}
+
+def _get_category_competitors(category: str, brand_name: str) -> list:
+    """Get relevant competitors for a brand category."""
+    competitors_by_category = {
+        "beverage": {
+            "Coca-Cola": ["PepsiCo", "Monster Beverage", "Red Bull", "Danone", "Nestlé"],
+            "Vita Coco": ["Zico", "C2O", "Cavi", "Harmless Harvest", "Tropicana"],
+            "default": ["Coca-Cola", "PepsiCo", "Monster Beverage", "Red Bull", "Danone"]
+        },
+        "automotive": {
+            "Tesla": ["Ford", "GM", "Volkswagen", "BMW", "Lucid"],
+            "default": ["Tesla", "Ford", "GM", "Volkswagen", "BMW"]
+        },
+        "technology": {
+            "Apple": ["Samsung", "Microsoft", "Google", "Meta", "Intel"],
+            "default": ["Apple", "Microsoft", "Google", "Samsung", "Intel"]
+        },
+        "fashion": {
+            "Nike": ["Adidas", "Puma", "Skechers", "New Balance", "Asics"],
+            "default": ["Nike", "Adidas", "Puma", "Skechers", "Under Armour"]
+        },
+        "food": {
+            "Nestlé": ["Unilever", "PepsiCo", "Kraft Heinz", "Mondelēz", "General Mills"],
+            "default": ["Nestlé", "Unilever", "PepsiCo", "Kraft Heinz", "Mondelēz"]
+        },
+        "energy": {
+            "Shell": ["ExxonMobil", "Chevron", "TotalEnergies", "BP", "Equinor"],
+            "default": ["Shell", "ExxonMobil", "Chevron", "BP", "TotalEnergies"]
+        },
+    }
+
+    category_data = competitors_by_category.get(category, {})
+    return category_data.get(brand_name, category_data.get("default", []))
+
 def _fetch_brand_financials(brand: str) -> dict:
     """Fetch financials: Try SEC Edgar first (US companies), fall back to yfinance."""
     ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
@@ -1505,6 +1601,14 @@ def fetch_brand_data(brand: str) -> dict:
             v = wiki.get(wiki_key, "")
             return v if v else ai_facts.get(wiki_key, "")
 
+        # Smart competitor fallback: if AI didn't find competitors, use category-based suggestions
+        competitors_from_ai = ai.get("competitors", [])
+        if not competitors_from_ai:
+            category = _detect_brand_category(wiki.get("description", "") + " " + _val("industry"))
+            if category:
+                competitors_from_ai = [{"name": c, "description": f"Competitor in {category}"} for c in _get_category_competitors(category, brand)]
+                print(f"[competitors] {brand} ({category}): using smart fallback")
+
         result = {
             "name":         brand,
             "suggested_name": suggested,
@@ -1522,14 +1626,14 @@ def fetch_brand_data(brand: str) -> dict:
             "did_you_know": ai.get("did_you_know", ""),
             "timeline":     ai.get("timeline", []),
             "campaigns":    ai.get("campaigns", []),
-            "competitors":  ai.get("competitors", []),
+            "competitors":  competitors_from_ai,
             "ads":          ads,
             "financials":   financials,
             "news":         news,
             "trustpilot":   trustpilot,
         }
         # Only cache if AI data came back — never lock in empty timeline/rivals
-        ai_ok = bool(result["timeline"] or result["competitors"])
+        ai_ok = bool(result["timeline"] or competitors_from_ai)
         if ai_ok:
             _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
             _sb_cache_set("brand:" + cache_key, result)
