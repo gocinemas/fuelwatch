@@ -1547,13 +1547,8 @@
           </div>
         </div>
 
-        <!-- Quick Search Examples -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 0">
-          <button onclick="document.getElementById('intel-input').value='Apple';searchIntel()" style="font-size:12px;padding:8px 14px;border-radius:16px;border:1px solid #e2e8f0;background:#fff;color:#334155;cursor:pointer;transition:all .2s;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.05)">Apple</button>
-          <button onclick="document.getElementById('intel-input').value='Nike';searchIntel()" style="font-size:12px;padding:8px 14px;border-radius:16px;border:1px solid #e2e8f0;background:#fff;color:#334155;cursor:pointer;transition:all .2s;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.05)">Nike</button>
-          <button onclick="document.getElementById('intel-input').value='Shell';searchIntel()" style="font-size:12px;padding:8px 14px;border-radius:16px;border:1px solid #e2e8f0;background:#fff;color:#334155;cursor:pointer;transition:all .2s;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.05)">Shell</button>
-          <button onclick="document.getElementById('intel-input').value='Tesla';searchIntel()" style="font-size:12px;padding:8px 14px;border-radius:16px;border:1px solid #e2e8f0;background:#fff;color:#334155;cursor:pointer;transition:all .2s;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.05)">Tesla</button>
-        </div>
+        <!-- Quick Search: Recent Brands or Examples -->
+        <div id="intel-quicksearch-container" style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 0"></div>
       </div>
 
       <!-- Hidden landing div (JS compat) -->
@@ -9471,6 +9466,29 @@ function _hcAdd() {
     if (fi) { fi.value = q; finderSearch(q); }
   };
 
+  // Populate quick search with recent Intel searches (or examples if none)
+  function _intelPopulateQuickSearch() {
+    const container = document.getElementById("intel-quicksearch-container");
+    if (!container) return;
+
+    // Get recent Intel searches from localStorage
+    const recentKey = "miru_intel_brand";
+    const recent = JSON.parse(localStorage.getItem(recentKey) || "[]").slice(0, 4); // Top 4 recent
+
+    // Default examples if no recent searches
+    const defaults = ["Apple", "Nike", "Shell", "Tesla"];
+    const brands = recent.length > 0 ? recent : defaults;
+    const isRecent = recent.length > 0;
+
+    container.innerHTML = brands.map(brand => `
+      <button onclick="document.getElementById('intel-input').value='${brand.replace(/'/g,"\\'")}';searchIntel()"
+        style="font-size:12px;padding:8px 14px;border-radius:16px;border:1px solid #e2e8f0;background:#fff;color:#334155;cursor:pointer;transition:all .2s;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.05);${isRecent ? 'background:#f0fdf4;border-color:#bbf7d0;color:#166534' : ''}"
+        title="${isRecent ? '⏱ Recent search' : 'Example'}">
+        ${brand}
+      </button>`).join("");
+  }
+  _intelPopulateQuickSearch();
+
   window._realSearchIntel = async function() {
     // intel-input is the canonical value (set by typing via oninput sync AND by recent-item clicks).
     // _visQ (brand-q/company-q) can be stale after a recent-item click, so always prefer intel-input.
@@ -9506,6 +9524,7 @@ function _hcAdd() {
     var _iKey = "miru_intel_" + (_intelSearchMode || "brand");
     _saveRecent(_iKey, raw);
     _renderRecent(_iKey, "intel-recent", "intel-input", "searchIntel()");
+    _intelPopulateQuickSearch(); // Update home page quick search buttons
 
     // sync to compat hidden inputs so renderCompany / _renderBrand still work
     document.getElementById("company-input").value = raw;
