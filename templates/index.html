@@ -14916,7 +14916,13 @@ function bookToggleScanner(){
       ? document.getElementById("book-error-lib")
       : document.getElementById("book-error");
     if(errorEl){
-      errorEl.textContent = "Camera not available — " + err;
+      var msg = "Camera not available";
+      if(err && err.toString().toLowerCase().includes("notallowed")) {
+        msg = "Camera permission denied — tap Settings to allow camera access";
+      } else if(err && err.toString().toLowerCase().includes("notfound")) {
+        msg = "No camera found on this device";
+      }
+      errorEl.textContent = msg;
       errorEl.style.display = "block";
     }
   });
