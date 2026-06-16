@@ -25314,6 +25314,11 @@ window.spotifyAddTrack = window.spotifyLike;
             <div style="font-size:18px;font-weight:900;color:#1e293b">+${fin.growth_5yr}%</div>
           </div>
         `;
+        // Add source attribution below
+        const sourceEl = document.createElement('div');
+        sourceEl.style.cssText = 'font-size:11px;color:#64748b;margin-top:8px;padding:8px;background:#f1f5f9;border-radius:6px';
+        sourceEl.textContent = `Source: ${fin.source} (${fin.country})`;
+        document.getElementById('brand-financials-section').appendChild(sourceEl);
         document.getElementById('brand-financials-section').style.display = 'block';
       }
 
