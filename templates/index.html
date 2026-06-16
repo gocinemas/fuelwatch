@@ -1427,6 +1427,7 @@
               <div style="font-size:15px;color:#475569;line-height:1.7;margin-bottom:16px" id="brand-description">—</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <a id="brand-wiki-link" href="" target="_blank" style="font-size:13px;color:#0ea5e9;font-weight:700;text-decoration:none;padding:6px 12px;background:#ecf9ff;border-radius:8px;transition:all .2s">📖 Learn on Wikipedia</a>
+                <button id="brand-refresh-btn" onclick="refreshBrand()" style="display:none;font-size:13px;color:#d97706;font-weight:700;border:none;padding:6px 12px;background:#fef3c7;border-radius:8px;cursor:pointer;transition:all .2s">🔄 Refresh data</button>
                 <span style="font-size:13px;color:#64748b;padding:6px 12px;background:#f1f5f9;border-radius:8px;font-weight:600" id="brand-source">Source: Wikipedia</span>
               </div>
             </div>
@@ -25230,9 +25231,13 @@ window.spotifyAddTrack = window.spotifyLike;
   };
 
   // ── Brand Intelligence Search ─────────────────────────────────────────
-  window.searchBrand = async function() {
+  window._currentBrandQuery = '';
+
+  window.searchBrand = async function(forceRefresh = false) {
     const q = document.getElementById('intel-brand-input').value.trim();
     if (!q) return;
+
+    window._currentBrandQuery = q;
 
     // Show loading
     document.getElementById('brand-loading').style.display = 'block';
@@ -25240,7 +25245,8 @@ window.spotifyAddTrack = window.spotifyLike;
     document.getElementById('brand-error').style.display = 'none';
 
     try {
-      const response = await fetch(`/api/brands/search?q=${encodeURIComponent(q)}`);
+      const url = `/api/brands/search?q=${encodeURIComponent(q)}${forceRefresh ? '&refresh=true' : ''}`;
+      const response = await fetch(url);
       const data = await response.json();
 
       document.getElementById('brand-loading').style.display = 'none';
@@ -25256,13 +25262,20 @@ window.spotifyAddTrack = window.spotifyLike;
       document.getElementById('brand-name').textContent = brand.name;
       document.getElementById('brand-description').textContent = brand.description || 'No description available';
       document.getElementById('brand-skus-count').textContent = data.skus_count;
-      document.getElementById('brand-source').textContent = `Source: ${brand.source === 'cache' ? 'Cached' : brand.source === 'wikipedia' ? 'Wikipedia' : 'Google Knowledge Graph'}`;
+      document.getElementById('brand-source').textContent = `Source: ${brand.source === 'cache' ? 'Cached' : brand.source === 'wikipedia' ? 'Wikipedia' : brand.source === 'wikidata' ? 'Wikidata' : 'Google Knowledge Graph'}`;
 
       if (brand.wikipedia_url) {
         document.getElementById('brand-wiki-link').href = brand.wikipedia_url;
         document.getElementById('brand-wiki-link').style.display = 'inline-block';
       } else {
         document.getElementById('brand-wiki-link').style.display = 'none';
+      }
+
+      // Show refresh button if cached and no description
+      if (brand.source === 'cache' && !brand.description) {
+        document.getElementById('brand-refresh-btn').style.display = 'inline-block';
+      } else {
+        document.getElementById('brand-refresh-btn').style.display = 'none';
       }
 
       document.getElementById('brand-results').style.display = 'block';
@@ -25272,6 +25285,11 @@ window.spotifyAddTrack = window.spotifyLike;
       document.getElementById('brand-error').style.display = 'block';
       console.error(e);
     }
+  };
+
+  window.refreshBrand = async function() {
+    // Call searchBrand with force refresh
+    await searchBrand(true);
   };
 
   // ── Intel Functional Tabs ──────────────────────────────────────────────
