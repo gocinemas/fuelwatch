@@ -1453,7 +1453,7 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv29"
+    cache_key = brand.strip().lower() + "|brandv30"
 
     # L1: in-memory (skip if force_refresh)
     if not force_refresh:
