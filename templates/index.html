@@ -1376,51 +1376,63 @@
 
       {% if intel_mode %}
       <!-- ════════════════════════════════════════════════════════════════════
-           INTEL.HUMANAGENCY.CO — Completely Fresh Design (June 2026)
+           INTEL.HUMANAGENCY.CO — Phase 1: Brand Intelligence
            ════════════════════════════════════════════════════════════════════ -->
 
-      <!-- Hero Section — Dark Sleek Modern Design (Full Width) -->
+      <!-- Hero Section — Dark Modern (Full Width) -->
       <div style="margin:-20px -20px 40px -20px;background:linear-gradient(135deg,#1a1d2e 0%,#16192b 100%);border-radius:0;padding:48px 60px;position:relative;overflow:hidden;border:none;border-bottom:1px solid rgba(255,255,255,.05)">
-        <!-- Decorative accent elements -->
         <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(236,72,153,.08),transparent);border-radius:50%;pointer-events:none"></div>
-        <div style="position:absolute;bottom:-40px;left:10%;width:250px;height:250px;background:radial-gradient(circle,rgba(14,165,233,.06),transparent);border-radius:50%;pointer-events:none"></div>
         <div style="position:relative;z-index:1">
-          <!-- Eye-catching badge -->
-          <div style="display:inline-block;font-size:11px;color:#22d3ee;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:18px;padding:6px 12px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);border-radius:20px">🔍 Company Intelligence</div>
-
-          <!-- Bold Title -->
-          <div style="font-size:64px;font-weight:950;letter-spacing:-2.4px;margin-bottom:12px;color:#fff">Intel</div>
-
-          <!-- Descriptive Subtitle -->
-          <div style="font-size:18px;color:#cbd5e1;font-weight:500;margin-bottom:6px;max-width:500px;line-height:1.5">Deep dive into any brand or public company</div>
-          <div style="font-size:14px;color:#94a3b8;font-weight:400;margin-bottom:32px;line-height:1.6;max-width:550px">Financials, strategy, news, and competitive intelligence — all in one place</div>
-
-          <!-- Mode Toggle Buttons -->
-          <div style="display:flex;gap:12px">
-            <button id="intel-mode-btn-brand" onclick="setIntelMode('brand')" style="padding:13px 26px;border-radius:10px;border:1.5px solid rgba(241,245,250,.2);background:rgba(241,245,250,.05);color:#cbd5e1;font-size:13px;font-weight:700;cursor:pointer;transition:all .3s;backdrop-filter:blur(10px)">🏷️ Brands</button>
-            <button id="intel-mode-btn-company" onclick="setIntelMode('company')" style="padding:13px 26px;border-radius:10px;border:none;background:linear-gradient(135deg,#ec4899 0%,#f43f5e 100%);color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:all .3s;box-shadow:0 8px 24px rgba(236,72,153,.35);font-weight:800">🏢 Companies</button>
-          </div>
+          <div style="font-size:64px;font-weight:950;letter-spacing:-2.4px;margin-bottom:12px;color:#fff">Brand Intel</div>
+          <div style="font-size:18px;color:#cbd5e1;font-weight:500;margin-bottom:32px;max-width:600px">Type a brand name to see history, category, products, competitors, and financials</div>
         </div>
       </div>
 
-      <!-- Search Interface — Sleek & Modern (Full Width) -->
+      <!-- Brand Search Interface — Simple & Focused (Full Width) -->
       <div id="intel-search-box" style="margin:-20px -20px 40px -20px;padding:40px 60px;background:#fafbfc">
-        <!-- Main Search Card -->
-        <div style="background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(255,255,255,.96));border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.12);transition:all .3s;margin-bottom:20px;backdrop-filter:blur(20px);max-width:100%">
-          <div style="display:flex;gap:12px;align-items:center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.2" style="flex-shrink:0">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <input id="intel-input" type="text" placeholder="Apple • Shell • Tesla • Microsoft…"
-              style="flex:1;border:none;background:transparent;font-size:15px;outline:none;color:#1e293b;font-weight:500;padding:10px 8px;letter-spacing:0.2px"
-              onkeydown="if(event.key==='Enter') searchIntel()"
+        <!-- Search Card -->
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 4px 16px rgba(0,0,0,.08);margin-bottom:24px">
+          <div style="display:flex;gap:12px">
+            <input id="intel-brand-input" type="text" placeholder="e.g. Apple, Nike, Coca-Cola, Tesla…"
+              style="flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;font-size:15px;color:#1e293b;outline:none;transition:all .2s"
+              onkeydown="if(event.key==='Enter') searchBrand()"
               autocomplete="off">
-            <button onclick="searchIntel()" style="background:linear-gradient(135deg,#ec4899,#f43f5e);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:14px;font-weight:800;cursor:pointer;transition:all .3s;box-shadow:0 4px 16px rgba(236,72,153,.4);white-space:nowrap">Search</button>
+            <button onclick="searchBrand()" style="background:#ec4899;color:#fff;border:none;border-radius:10px;padding:12px 32px;font-size:14px;font-weight:800;cursor:pointer;transition:all .2s;box-shadow:0 4px 12px rgba(236,72,153,.3)">Search Brand</button>
           </div>
         </div>
 
-        <!-- Quick Search Pills -->
+        <!-- Loading State -->
+        <div id="brand-loading" style="display:none;text-align:center;padding:40px;color:#64748b">
+          <div class="spinner mx-auto mb-3" style="border-top-color:#ec4899;width:28px;height:28px"></div>
+          Searching brand database...
+        </div>
+
+        <!-- Results Card -->
+        <div id="brand-results" style="display:none">
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:28px;box-shadow:0 4px 16px rgba(0,0,0,.08)">
+            <div style="display:flex;gap:20px;margin-bottom:24px">
+              <div style="flex:1">
+                <div style="font-size:28px;font-weight:950;color:#1e293b;margin-bottom:8px" id="brand-name">—</div>
+                <div style="font-size:14px;color:#64748b;line-height:1.6;margin-bottom:12px" id="brand-description">—</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <a id="brand-wiki-link" href="" target="_blank" style="font-size:12px;color:#0ea5e9;font-weight:700;text-decoration:none;padding:4px 8px;background:#ecf9ff;border-radius:6px">📖 Wikipedia</a>
+                  <span style="font-size:12px;color:#64748b;padding:4px 8px;background:#f1f5f9;border-radius:6px" id="brand-source">Source: Wikipedia</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Products Count -->
+            <div style="padding:16px;background:#f8fafc;border-radius:10px;border-left:3px solid #ec4899;margin-bottom:16px">
+              <div style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:4px">Products Found</div>
+              <div style="font-size:20px;font-weight:900;color:#1e293b" id="brand-skus-count">0</div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="brand-error" style="display:none;padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;color:#b91c1c;font-size:13px"></div>
+          </div>
+        </div>
+
+        <!-- Quick Search Examples -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 0">
           <button onclick="document.getElementById('intel-input').value='Apple';searchIntel()" style="font-size:12px;padding:8px 14px;border-radius:16px;border:1px solid #e2e8f0;background:#fff;color:#334155;cursor:pointer;transition:all .2s;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.05)">Apple</button>
           <button onclick="document.getElementById('intel-input').value='Nike';searchIntel()" style="font-size:12px;padding:8px 14px;border-radius:16px;border:1px solid #e2e8f0;background:#fff;color:#334155;cursor:pointer;transition:all .2s;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.05)">Nike</button>
@@ -25194,6 +25206,51 @@ window.spotifyAddTrack = window.spotifyLike;
       _receiptsCurrentDate.setMonth(_receiptsCurrentDate.getMonth() + 3);
     }
     _receiptsAnalysisLoad();
+  };
+
+  // ── Brand Intelligence Search ─────────────────────────────────────────
+  window.searchBrand = async function() {
+    const q = document.getElementById('intel-brand-input').value.trim();
+    if (!q) return;
+
+    // Show loading
+    document.getElementById('brand-loading').style.display = 'block';
+    document.getElementById('brand-results').style.display = 'none';
+    document.getElementById('brand-error').style.display = 'none';
+
+    try {
+      const response = await fetch(`/api/brands/search?q=${encodeURIComponent(q)}`);
+      const data = await response.json();
+
+      document.getElementById('brand-loading').style.display = 'none';
+
+      if (!data.ok) {
+        document.getElementById('brand-error').textContent = data.error || 'Brand not found';
+        document.getElementById('brand-error').style.display = 'block';
+        return;
+      }
+
+      // Display results
+      const brand = data.brand;
+      document.getElementById('brand-name').textContent = brand.name;
+      document.getElementById('brand-description').textContent = brand.description || 'No description available';
+      document.getElementById('brand-skus-count').textContent = data.skus_count;
+      document.getElementById('brand-source').textContent = `Source: ${brand.source === 'cache' ? 'Cached' : brand.source === 'wikipedia' ? 'Wikipedia' : 'Google Knowledge Graph'}`;
+
+      if (brand.wikipedia_url) {
+        document.getElementById('brand-wiki-link').href = brand.wikipedia_url;
+        document.getElementById('brand-wiki-link').style.display = 'inline-block';
+      } else {
+        document.getElementById('brand-wiki-link').style.display = 'none';
+      }
+
+      document.getElementById('brand-results').style.display = 'block';
+    } catch (e) {
+      document.getElementById('brand-loading').style.display = 'none';
+      document.getElementById('brand-error').textContent = 'Error searching: ' + e.message;
+      document.getElementById('brand-error').style.display = 'block';
+      console.error(e);
+    }
   };
 
   // ── Intel Functional Tabs ──────────────────────────────────────────────
