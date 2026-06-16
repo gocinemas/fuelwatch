@@ -1957,6 +1957,16 @@ def _fetch_wikipedia(company: str) -> dict:
     # so we get the right infobox even when the query was a redirect or disambiguation.
     wiki_title = result.get("_wiki_title", company)
     employees = hq = industry = founded = revenue = ""
+    # Initialize defaults before try block (in case of exception)
+    employees = ""
+    hq = ""
+    industry = ""
+    key_people = []
+    brands = []
+    founded = ""
+    revenue = ""
+    domain = ""
+
     try:
         r2 = requests.get("https://en.wikipedia.org/w/api.php", params={
             "action": "query", "titles": wiki_title, "prop": "revisions",
