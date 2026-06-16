@@ -53,6 +53,54 @@ def fetch_brand_from_wikipedia(brand_name):
 
     return None
 
+def fetch_brand_from_wikidata(brand_name):
+    """Fallback: Fetch brand info from Wikidata (structured Wikipedia)"""
+    try:
+        headers = {
+            "User-Agent": "MiruIntel/1.0 (brand intelligence; +https://miru.humanagency.co)"
+        }
+        # Search for the brand in Wikidata
+        params = {
+            "action": "wbsearchentities",
+            "search": brand_name,
+            "language": "en",
+            "format": "json",
+            "type": "item"
+        }
+        r = requests.get("https://www.wikidata.org/w/api.php", params=params, headers=headers, timeout=5)
+        data = r.json()
+
+        search_results = data.get("search", [])
+        if search_results:
+            entity_id = search_results[0].get("id")
+            # Get detailed entity info
+            entity_params = {
+                "action": "wbgetentities",
+                "ids": entity_id,
+                "format": "json",
+                "props": "labels|descriptions"
+            }
+            entity_r = requests.get("https://www.wikidata.org/w/api.php", params=entity_params, headers=headers, timeout=5)
+            entity_data = entity_r.json()
+
+            entities = entity_data.get("entities", {})
+            if entities:
+                entity = list(entities.values())[0]
+                description = entity.get("descriptions", {}).get("en", {}).get("value", "")
+                label = entity.get("labels", {}).get("en", {}).get("value", brand_name)
+
+                if description:
+                    return {
+                        "source": "wikidata",
+                        "description": description,
+                        "label": label,
+                        "wikidata_id": entity_id
+                    }
+    except Exception as e:
+        print(f"[Wikidata] Error fetching {brand_name}: {e}")
+
+    return None
+
 def fetch_brand_from_google_kg(brand_name, api_key):
     """Fallback: Fetch brand info from Google Knowledge Graph"""
     try:
@@ -180,22 +228,42 @@ def search_and_store_brand(brand_name, google_kg_api_key=None):
     # Step 1: Try Wikipedia first
     wiki_data = fetch_brand_from_wikipedia(brand_name)
 
-    # Step 2: Fall back to Google KG if Wikipedia fails
+    # Step 2: Fall back to Wikidata if Wikipedia fails
+    wikidata = None
+    if not wiki_data:
+        wikidata = fetch_brand_from_wikidata(brand_name)
+
+    # Step 3: Fall back to Google KG if both Wikipedia and Wikidata fail
     kg_data = None
-    if not wiki_data and google_kg_api_key:
+    if not wiki_data and not wikidata and google_kg_api_key:
         kg_data = fetch_brand_from_google_kg(brand_name, google_kg_api_key)
 
     # Step 3: Fetch SKUs
     skus = fetch_brand_skus(brand_name)
 
     # Step 4: Prepare brand record
+    description = ""
+    source = None
+    wikipedia_url = None
+
+    if wiki_data:
+        description = wiki_data.get("description")
+        source = "wikipedia"
+        wikipedia_url = wiki_data.get("wikipedia_url")
+    elif wikidata:
+        description = wikidata.get("description")
+        source = "wikidata"
+    elif kg_data:
+        description = kg_data.get("description")
+        source = "google_knowledge_graph"
+
     brand_record = {
         "name": brand_name,
-        "description": wiki_data.get("description") if wiki_data else kg_data.get("description") if kg_data else "",
-        "wikipedia_url": wiki_data.get("wikipedia_url") if wiki_data else None,
+        "description": description,
+        "wikipedia_url": wikipedia_url,
         "knowledge_graph_data": kg_data if kg_data else None,
         "skus": skus,
-        "source": "wikipedia" if wiki_data else "google_knowledge_graph" if kg_data else None
+        "source": source
     }
 
     # Step 5: Store in Supabase
