@@ -25267,6 +25267,38 @@ window.spotifyAddTrack = window.spotifyLike;
   // ── Brand Intelligence Search ─────────────────────────────────────────
   window._currentBrandQuery = '';
 
+  // Auto-detect category from brand description
+  window._detectCategory = function(description, brandName) {
+    const text = (description + ' ' + brandName).toLowerCase();
+
+    // Athletic/Fashion
+    if (/athletic|shoe|apparel|sneaker|fashion|sportswear|activewear|footwear|jersey/.test(text)) {
+      return 'athletic_wear';
+    }
+    // Beverages
+    if (/beverage|drink|water|cola|juice|soda|energy drink|coffee|tea|alcohol/.test(text)) {
+      return 'beverages';
+    }
+    // Automotive/EV
+    if (/automobile|automotive|vehicle|car|electric vehicle|ev|motor|tesla|ford|gm|volkswagen/.test(text)) {
+      return 'automotive';
+    }
+    // Consumer Electronics/Tech
+    if (/technology|electronics|computer|smartphone|phone|laptop|semiconductor|chip|software/.test(text)) {
+      return 'consumer_electronics';
+    }
+    // Food/CPG
+    if (/food|snack|chocolate|candy|grocery|consumer goods|cpg|packaged|dairy/.test(text)) {
+      return 'food_cpg';
+    }
+    // Personal Care
+    if (/cosmetic|beauty|skincare|haircare|personal care|toiletry|fragrance/.test(text)) {
+      return 'personal_care';
+    }
+
+    return null; // No category detected
+  };
+
   window.searchBrand = async function(forceRefresh = false) {
     const q = document.getElementById('intel-brand-input').value.trim();
     if (!q) return;
@@ -25279,7 +25311,8 @@ window.spotifyAddTrack = window.spotifyLike;
     document.getElementById('brand-error').style.display = 'none';
 
     try {
-      const url = `/api/brands/search?q=${encodeURIComponent(q)}${forceRefresh ? '&refresh=true' : ''}`;
+      // First fetch without category to get description, then detect and re-fetch if needed
+      let url = `/api/brands/search?q=${encodeURIComponent(q)}${forceRefresh ? '&refresh=true' : ''}`;
       const response = await fetch(url);
       const data = await response.json();
 
@@ -25289,6 +25322,23 @@ window.spotifyAddTrack = window.spotifyLike;
         document.getElementById('brand-error').textContent = data.error || 'Brand not found';
         document.getElementById('brand-error').style.display = 'block';
         return;
+      }
+
+      // Auto-detect category from description
+      const detectedCategory = _detectCategory(data.brand.description, q);
+
+      // If we detected a category and don't have marketing intelligence yet, re-fetch with category
+      if (detectedCategory && !data.brand.marketing_intelligence) {
+        document.getElementById('brand-loading').style.display = 'block';
+        const categoryUrl = `/api/brands/search?q=${encodeURIComponent(q)}&category=${detectedCategory}${forceRefresh ? '&refresh=true' : ''}`;
+        const categoryResponse = await fetch(categoryUrl);
+        const categoryData = await categoryResponse.json();
+
+        if (categoryData.ok) {
+          // Use the enhanced data with marketing intelligence
+          data.brand = categoryData.brand;
+        }
+        document.getElementById('brand-loading').style.display = 'none';
       }
 
       // Display results
