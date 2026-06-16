@@ -1152,53 +1152,44 @@ def _detect_brand_category(description: str, industry: str = "") -> str:
 
     return ""
 
-def _get_brand_ranking(brand_name: str, category: str, market_cap: str = "") -> dict:
-    """Estimate brand ranking based on category and known brands."""
-    # Hardcoded ranking for major brands by category
-    rankings = {
-        "beverage": {
-            "Coca-Cola": {"rank": 1, "of": 50},
-            "PepsiCo": {"rank": 2, "of": 50},
-            "Monster Beverage": {"rank": 3, "of": 50},
-            "Red Bull": {"rank": 4, "of": 50},
-            "Danone": {"rank": 5, "of": 50},
-            "Vita Coco": {"rank": 8, "of": 50},
-            "Oatly": {"rank": 12, "of": 50},
-            "Zico": {"rank": 12, "of": 50},
-        },
-        "automotive": {
-            "Tesla": {"rank": 2, "of": 30},
-            "Ford": {"rank": 1, "of": 30},
-            "General Motors": {"rank": 3, "of": 30},
-            "Volkswagen": {"rank": 4, "of": 30},
-            "BMW": {"rank": 5, "of": 30},
-        },
-        "technology": {
-            "Apple": {"rank": 1, "of": 100},
-            "Microsoft": {"rank": 2, "of": 100},
-            "Google": {"rank": 3, "of": 100},
-            "Samsung": {"rank": 4, "of": 100},
-            "Intel": {"rank": 5, "of": 100},
-            "Dyson": {"rank": 8, "of": 100},
-        },
-        "fashion": {
-            "Nike": {"rank": 1, "of": 100},
-            "Adidas": {"rank": 2, "of": 100},
-            "Puma": {"rank": 3, "of": 100},
-            "Skechers": {"rank": 4, "of": 100},
-            "New Balance": {"rank": 5, "of": 100},
-            "Allbirds": {"rank": 15, "of": 100},
-        },
-        "food": {
-            "Nestlé": {"rank": 1, "of": 50},
-            "Impossible Foods": {"rank": 8, "of": 50},
-        },
-    }
+def _get_brand_ranking(brand_name: str, category: str, market_cap: float = None) -> dict:
+    """Calculate brand ranking based on market cap data.
 
-    if category in rankings and brand_name in rankings[category]:
-        return rankings[category][brand_name]
+    Uses financial data to rank brands dynamically instead of hardcoded lists.
+    Returns rank and total number of brands in category.
+    """
+    if not market_cap or market_cap <= 0:
+        return {}  # No financial data available
 
-    return {}
+    try:
+        # Estimate category size based on total market cap in category
+        category_benchmarks = {
+            "beverage": {"total_market_cap": 800_000_000_000, "total_brands": 50},  # ~$800B
+            "automotive": {"total_market_cap": 2_500_000_000_000, "total_brands": 30},  # ~$2.5T
+            "technology": {"total_market_cap": 15_000_000_000_000, "total_brands": 100},  # ~$15T
+            "fashion": {"total_market_cap": 400_000_000_000, "total_brands": 100},  # ~$400B
+            "food": {"total_market_cap": 1_200_000_000_000, "total_brands": 50},  # ~$1.2T
+        }
+
+        if category not in category_benchmarks:
+            return {}
+
+        benchmark = category_benchmarks[category]
+        total_brands = benchmark["total_brands"]
+        total_market_cap = benchmark["total_market_cap"]
+
+        # Calculate percentile: what % of market cap does this brand represent?
+        percentile = (market_cap / total_market_cap) * 100
+
+        # Convert percentile to rank (top brands = lower numbers)
+        # Top 1% = rank 1, next 2% = rank 2, etc.
+        rank = max(1, int((100 - percentile) / (100 / total_brands)) + 1)
+        rank = min(rank, total_brands)  # Cap at total brands
+
+        return {"rank": rank, "of": total_brands}
+    except Exception as e:
+        print(f"[ranking] calculation error: {e}")
+        return {}
 
 def _get_category_competitors(category: str, brand_name: str) -> list:
     """Get relevant competitors for a brand category."""
@@ -1621,7 +1612,14 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
 
         ranking = ai.get("ranking")
         if not ranking and category:
-            ranking = _get_brand_ranking(brand, category)
+            # Try to get market cap for dynamic ranking
+            market_cap = None
+            if financials and isinstance(financials, dict):
+                # Extract market cap from financials if available
+                if "market_cap" in financials:
+                    market_cap = financials.get("market_cap")
+
+            ranking = _get_brand_ranking(brand, category, market_cap)
             if ranking:
                 print(f"[ranking] {brand} ({category}): rank {ranking.get('rank')}/{ranking.get('of')}")
 
