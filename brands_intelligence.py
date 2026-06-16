@@ -187,26 +187,28 @@ def get_brand_from_supabase(brand_name):
 
     return None
 
-def search_and_store_brand(brand_name, google_kg_api_key=None):
+def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=False):
     """
     Complete brand search flow:
-    1. Check if brand exists in Supabase (cache)
+    1. Check if brand exists in Supabase (cache) — skip if force_refresh=True
     2. Try Wikipedia → Get basic info, history
-    3. Fall back to Google Knowledge Graph
-    4. Fetch SKUs from UPCItemDB
-    5. Store in Supabase
+    3. Fall back to Wikidata → Structured data
+    4. Fall back to Google Knowledge Graph
+    5. Fetch SKUs from UPCItemDB
+    6. Store in Supabase
     """
 
-    # Check cache first
-    cached_brand = get_brand_from_supabase(brand_name)
-    if cached_brand:
-        return {
-            "name": cached_brand.get("name"),
-            "description": cached_brand.get("description"),
-            "wikipedia_url": cached_brand.get("wikipedia_url"),
-            "skus": [],  # TODO: fetch linked SKUs
-            "source": "cache"
-        }
+    # Check cache first (unless force_refresh is True)
+    if not force_refresh:
+        cached_brand = get_brand_from_supabase(brand_name)
+        if cached_brand:
+            return {
+                "name": cached_brand.get("name"),
+                "description": cached_brand.get("description"),
+                "wikipedia_url": cached_brand.get("wikipedia_url"),
+                "skus": [],  # TODO: fetch linked SKUs
+                "source": "cache"
+            }
 
     # Step 1: Try Wikipedia first
     wiki_data = fetch_brand_from_wikipedia(brand_name)

@@ -7367,17 +7367,20 @@ def api_brands_search():
     Search for brand info using Wikipedia + Google Knowledge Graph
     Data stored in Supabase for caching
     Returns: brand name, description, SKUs, source (cache/wikipedia/google_kg)
+    Query params: q=brandname, refresh=true (optional, to bypass cache)
     """
     from brands_intelligence import search_and_store_brand
 
     q = request.args.get("q", "").strip()
+    refresh = request.args.get("refresh", "false").lower() == "true"
+
     if not q or len(q) < 2:
         return jsonify({"error": "Brand name required (min 2 chars)"}), 400
 
     try:
         # Fetch from Wikipedia + Google KG + UPCItemDB (with Supabase caching)
         google_kg_api_key = os.environ.get("GOOGLE_KG_API_KEY")
-        brand_data = search_and_store_brand(q, google_kg_api_key)
+        brand_data = search_and_store_brand(q, google_kg_api_key, force_refresh=refresh)
 
         return jsonify({
             "ok": True,
