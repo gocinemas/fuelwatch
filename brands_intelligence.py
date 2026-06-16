@@ -130,26 +130,9 @@ def fetch_brand_from_google_kg(brand_name, api_key):
     return None
 
 def fetch_brand_skus(brand_name):
-    """Fetch SKUs from UPCItemDB"""
-    try:
-        params = {"brand": brand_name}
-        r = requests.get(UPCITEMDB_API, params=params, timeout=10)
-        data = r.json()
-
-        skus = []
-        for item in data.get("items", [])[:20]:  # Limit to 20 SKUs
-            skus.append({
-                "upc": item.get("upc"),
-                "sku": item.get("sku", ""),
-                "product_name": item.get("title", ""),
-                "category": item.get("category", [{"name": "Unknown"}])[0].get("name"),
-                "description": item.get("description", "")
-            })
-
-        return skus
-    except Exception as e:
-        print(f"[UPCItemDB] Error fetching SKUs for {brand_name}: {e}")
-
+    """Fetch product SKUs — currently returning empty, will integrate with product APIs"""
+    # TODO: Integrate with OpenFoodFacts, Shopify product search, or Amazon product search
+    # For now, return empty to avoid failed API calls
     return []
 
 def fetch_brand_financials(brand_name, cik=None):
