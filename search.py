@@ -1162,7 +1162,7 @@ def _get_brand_ranking(brand_name: str, category: str, market_cap: str = "") -> 
             "Monster Beverage": {"rank": 3, "of": 50},
             "Red Bull": {"rank": 4, "of": 50},
             "Danone": {"rank": 5, "of": 50},
-            "Vita Coco": {"rank": 8, "of": 50},  # Estimated
+            "Vita Coco": {"rank": 8, "of": 50},
             "Zico": {"rank": 12, "of": 50},
         },
         "automotive": {
@@ -1178,6 +1178,7 @@ def _get_brand_ranking(brand_name: str, category: str, market_cap: str = "") -> 
             "Google": {"rank": 3, "of": 100},
             "Samsung": {"rank": 4, "of": 100},
             "Intel": {"rank": 5, "of": 100},
+            "Dyson": {"rank": 8, "of": 100},
         },
         "fashion": {
             "Nike": {"rank": 1, "of": 100},
@@ -1185,6 +1186,12 @@ def _get_brand_ranking(brand_name: str, category: str, market_cap: str = "") -> 
             "Puma": {"rank": 3, "of": 100},
             "Skechers": {"rank": 4, "of": 100},
             "New Balance": {"rank": 5, "of": 100},
+            "Allbirds": {"rank": 15, "of": 100},
+        },
+        "food": {
+            "Nestlé": {"rank": 1, "of": 50},
+            "Oatly": {"rank": 12, "of": 50},
+            "Impossible Foods": {"rank": 8, "of": 50},
         },
     }
 
