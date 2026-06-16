@@ -1601,13 +1601,19 @@ def fetch_brand_data(brand: str) -> dict:
             v = wiki.get(wiki_key, "")
             return v if v else ai_facts.get(wiki_key, "")
 
-        # Smart competitor fallback: if AI didn't find competitors, use category-based suggestions
+        # Smart competitor & ranking fallback
+        category = _detect_brand_category(wiki.get("description", "") + " " + _val("industry"))
+
         competitors_from_ai = ai.get("competitors", [])
-        if not competitors_from_ai:
-            category = _detect_brand_category(wiki.get("description", "") + " " + _val("industry"))
-            if category:
-                competitors_from_ai = [{"name": c, "description": f"Competitor in {category}"} for c in _get_category_competitors(category, brand)]
-                print(f"[competitors] {brand} ({category}): using smart fallback")
+        if not competitors_from_ai and category:
+            competitors_from_ai = [{"name": c, "description": f"Competitor in {category}"} for c in _get_category_competitors(category, brand)]
+            print(f"[competitors] {brand} ({category}): using smart fallback")
+
+        ranking = ai.get("ranking")
+        if not ranking and category:
+            ranking = _get_brand_ranking(brand, category)
+            if ranking:
+                print(f"[ranking] {brand} ({category}): rank {ranking.get('rank')}/{ranking.get('of')}")
 
         result = {
             "name":         brand,
@@ -1627,6 +1633,7 @@ def fetch_brand_data(brand: str) -> dict:
             "timeline":     ai.get("timeline", []),
             "campaigns":    ai.get("campaigns", []),
             "competitors":  competitors_from_ai,
+            "ranking":      ranking,
             "ads":          ads,
             "financials":   financials,
             "news":         news,
