@@ -1450,9 +1450,23 @@
               <div id="brand-competitors-list" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
 
-            <!-- Next Steps -->
-            <div style="padding:16px;background:#f0fdf4;border-left:4px solid #22c55e;border-radius:10px;font-size:13px;color:#166534">
-              <strong>Coming soon:</strong> History, category ranking, competitors, financial data
+            <!-- Financials -->
+            <div id="brand-financials-section" style="display:none;margin-bottom:20px">
+              <div style="font-size:13px;color:#334155;font-weight:700;margin-bottom:12px">💰 Financials</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="brand-financials-grid"></div>
+            </div>
+
+            <!-- Social Campaigns -->
+            <div id="brand-social-section" style="display:none;margin-bottom:20px">
+              <div style="font-size:13px;color:#334155;font-weight:700;margin-bottom:12px">📱 Social Ad Spend</div>
+              <div id="brand-social-list"></div>
+              <div style="padding:10px;background:#f1f5f9;border-radius:8px;margin-top:8px;font-size:12px;color:#64748b" id="brand-social-total"></div>
+            </div>
+
+            <!-- Products -->
+            <div id="brand-products-section" style="display:none;margin-bottom:20px">
+              <div style="font-size:13px;color:#334155;font-weight:700;margin-bottom:12px">📦 Top Products</div>
+              <div id="brand-products-list"></div>
             </div>
 
             <!-- Error Message -->
@@ -25276,6 +25290,71 @@ window.spotifyAddTrack = window.spotifyLike;
         document.getElementById('brand-rank').innerHTML = `#${rank.rank} in<br><span style="font-size:12px;color:#64748b">${rank.category}</span>`;
       } else {
         document.getElementById('brand-rank').textContent = 'No ranking';
+      }
+
+      // Display financials
+      if (brand.financials) {
+        const fin = brand.financials;
+        const grid = document.getElementById('brand-financials-grid');
+        grid.innerHTML = `
+          <div style="padding:12px;background:#fef3c7;border-radius:8px;border:1px solid #fcd34d">
+            <div style="font-size:11px;color:#92400e;font-weight:700">Revenue</div>
+            <div style="font-size:18px;font-weight:900;color:#1e293b">$${fin.revenue_billions}B</div>
+          </div>
+          <div style="padding:12px;background:#dcfce7;border-radius:8px;border:1px solid #bbf7d0">
+            <div style="font-size:11px;color:#166534;font-weight:700">Net Profit</div>
+            <div style="font-size:18px;font-weight:900;color:#1e293b">$${fin.profit_billions}B</div>
+          </div>
+          <div style="padding:12px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">
+            <div style="font-size:11px;color:#0c4a6e;font-weight:700">Employees</div>
+            <div style="font-size:18px;font-weight:900;color:#1e293b">${(fin.employees/1000).toFixed(0)}K</div>
+          </div>
+          <div style="padding:12px;background:#f3e8ff;border-radius:8px;border:1px solid #e9d5ff">
+            <div style="font-size:11px;color:#6b21a8;font-weight:700">5Y Growth</div>
+            <div style="font-size:18px;font-weight:900;color:#1e293b">+${fin.growth_5yr}%</div>
+          </div>
+        `;
+        document.getElementById('brand-financials-section').style.display = 'block';
+      }
+
+      // Display social campaigns
+      if (brand.social && brand.social.platforms) {
+        const social = brand.social;
+        const list = document.getElementById('brand-social-list');
+        list.innerHTML = '';
+        social.platforms.forEach(p => {
+          const item = document.createElement('div');
+          item.style.cssText = 'display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:6px;font-size:12px';
+          item.innerHTML = `
+            <span style="font-weight:600;color:#1e293b">${p.platform}</span>
+            <span style="color:#64748b">$${p.spend_millions}M/yr</span>
+          `;
+          list.appendChild(item);
+        });
+        document.getElementById('brand-social-total').textContent = `Total Annual Ad Spend: $${social.total_ad_spend}M | Campaign: ${social.primary_campaign}`;
+        document.getElementById('brand-social-section').style.display = 'block';
+      }
+
+      // Display products
+      if (brand.products && brand.products.length > 0) {
+        const list = document.getElementById('brand-products-list');
+        list.innerHTML = '';
+        brand.products.forEach(p => {
+          const item = document.createElement('div');
+          item.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:6px;font-size:12px';
+          item.innerHTML = `
+            <div>
+              <div style="font-weight:600;color:#1e293b">${p.name}</div>
+              <div style="font-size:11px;color:#64748b">${p.category}</div>
+            </div>
+            <div style="text-align:right;color:#0369a1;font-weight:600">
+              $${p.price.toLocaleString()}<br>
+              <span style="font-size:10px;color:#64748b">${(p.units_sold/1000000).toFixed(1)}M sold</span>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+        document.getElementById('brand-products-section').style.display = 'block';
       }
 
       // Display competitors if available
