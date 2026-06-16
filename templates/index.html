@@ -1506,6 +1506,42 @@
               <div id="brand-products-list"></div>
             </div>
 
+            <!-- Trends (Historical Data) -->
+            <div id="brand-trends-section" style="display:none;margin-bottom:20px">
+              <div style="font-size:13px;color:#334155;font-weight:700;margin-bottom:12px">📈 Market Trends (Last 4 Weeks)</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div style="padding:12px;background:#f0f9ff;border-radius:8px;border-left:3px solid #0ea5e9">
+                  <div style="font-size:11px;color:#0c4a6e;font-weight:700">Revenue Trend</div>
+                  <div style="font-size:16px;font-weight:900;color:#1e293b;margin-top:4px" id="trend-revenue">+5% 📈</div>
+                </div>
+                <div style="padding:12px;background:#f0fdf4;border-radius:8px;border-left:3px solid #22c55e">
+                  <div style="font-size:11px;color:#166534;font-weight:700">Rank Trend</div>
+                  <div style="font-size:16px;font-weight:900;color:#1e293b;margin-top:4px" id="trend-rank">Stable 📊</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Competitor Comparison -->
+            <div id="brand-competitor-comparison-section" style="display:none;margin-bottom:20px">
+              <div style="font-size:13px;color:#334155;font-weight:700;margin-bottom:12px">🏆 Competitor Snapshot</div>
+              <div id="competitor-comparison-grid" style="display:flex;flex-direction:column;gap:8px">
+                <div style="padding:10px;background:#f1f5f9;border-radius:8px;font-size:12px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px">
+                  <strong>Competitor</strong>
+                  <strong>Market Cap</strong>
+                  <strong>vs Brand</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Alerts -->
+            <div id="brand-alerts-section" style="display:none;margin-bottom:20px;padding:12px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px">
+              <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:8px">🚨 Notable Changes</div>
+              <div id="alerts-list" style="font-size:12px;color:#78350f;line-height:1.6">
+                <div>• Competitor pricing down 8% week-over-week</div>
+                <div>• Your market share up in key category</div>
+              </div>
+            </div>
+
             <!-- Error Message -->
             <div id="brand-error" style="display:none;padding:16px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;color:#b91c1c;font-size:13px;font-weight:600"></div>
           </div>
