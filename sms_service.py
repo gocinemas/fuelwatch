@@ -8509,10 +8509,11 @@ def _v2_fetch_calendar(from_number: str) -> list:
             date_label  = raw[:10] if raw else ""
             if raw and "T" in raw:
                 try:
-                    _s    = _cdt.fromisoformat(raw.replace("Z", "+00:00"))
-                    _s_uk = _s + _ctd(hours=1)   # BST offset (approx)
-                    start_label = _s_uk.strftime("%-I:%M%p").lower().replace(":00am", "am").replace(":00pm", "pm")
-                    date_label  = _s_uk.date().isoformat()
+                    _s = _cdt.fromisoformat(raw.replace("Z", "+00:00"))
+                    # Google Calendar events in dateTime format are already in the user's local timezone
+                    # Don't add extra offset — just format the time as-is
+                    start_label = _s.strftime("%-I:%M%p").lower().replace(":00am", "am").replace(":00pm", "pm")
+                    date_label = _s.date().isoformat()
                 except Exception:
                     pass
             location = (ev.get("location") or "").strip()
