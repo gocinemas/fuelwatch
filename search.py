@@ -1868,8 +1868,7 @@ def _fetch_wikipedia(company: str) -> dict:
         text = ((res.get("description") or "") + " " + (res.get("extract") or "")[:200]).lower()
         return any(sig in text for sig in _NON_COMPANY)
 
-    # Step 1: For single-word queries, try (brand) first to disambiguate
-    # This catches cases like "Innocent" → "Innocence" (wrong) vs "Innocent (brand)"
+    # Step 1: Smart disambiguation - try multiple variants
     parts = company.split()
     result = None
 
@@ -1878,6 +1877,8 @@ def _fetch_wikipedia(company: str) -> dict:
         result = _summary(parts[0] + " (brand)")
         if not result:
             result = _summary(parts[0] + " (company)")
+        if not result:
+            result = _summary(parts[0] + " Drinks")  # e.g., "Innocent" → "Innocent Drinks"
         if not result:
             result = _summary(company)
     else:
