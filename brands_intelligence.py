@@ -135,6 +135,22 @@ def fetch_brand_skus(brand_name):
     # For now, return empty to avoid failed API calls
     return []
 
+def fetch_brand_ranking(brand_name):
+    """Get brand's market ranking and category"""
+    rankings = {
+        "tesla": {"category": "Electric Vehicles", "rank": 2, "rank_of": 50, "market_cap": 850.0},
+        "nike": {"category": "Athletic Apparel", "rank": 1, "rank_of": 100, "market_cap": 180.0},
+        "apple": {"category": "Technology", "rank": 1, "rank_of": 500, "market_cap": 3200.0},
+        "coca-cola": {"category": "Beverages", "rank": 1, "rank_of": 200, "market_cap": 280.0},
+        "adidas": {"category": "Athletic Apparel", "rank": 2, "rank_of": 100, "market_cap": 64.0},
+        "samsung": {"category": "Electronics", "rank": 2, "rank_of": 300, "market_cap": 420.0},
+        "volkswagen": {"category": "Automotive", "rank": 3, "rank_of": 150, "market_cap": 85.0},
+        "bmw": {"category": "Luxury Automotive", "rank": 2, "rank_of": 80, "market_cap": 63.0},
+    }
+
+    key = brand_name.lower()
+    return rankings.get(key, None)
+
 def fetch_brand_competitors(brand_name):
     """Fetch competitor brands for a given brand"""
     # Hardcoded competitor data by brand/category
@@ -263,6 +279,9 @@ def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=Fal
     # Step 3b: Fetch competitors
     competitors = fetch_brand_competitors(brand_name)
 
+    # Step 3c: Fetch market ranking
+    ranking = fetch_brand_ranking(brand_name)
+
     # Step 4: Prepare brand record
     description = ""
     source = None
@@ -286,6 +305,7 @@ def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=Fal
         "knowledge_graph_data": kg_data if kg_data else None,
         "skus": skus,
         "competitors": competitors,
+        "ranking": ranking,
         "source": source
     }
 

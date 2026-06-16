@@ -1439,8 +1439,8 @@
                 <div style="font-size:28px;font-weight:950;color:#1e293b" id="brand-competitors-count">0</div>
               </div>
               <div style="padding:18px;background:linear-gradient(135deg,#f0f9ff,#fff);border:1.5px solid #93c5fd;border-radius:12px">
-                <div style="font-size:11px;color:#0369a1;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">📍 Status</div>
-                <div style="font-size:16px;font-weight:900;color:#1e293b">Found ✓</div>
+                <div style="font-size:11px;color:#0369a1;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">🏅 Market Rank</div>
+                <div style="font-size:16px;font-weight:900;color:#1e293b" id="brand-rank">—</div>
               </div>
             </div>
 
@@ -25269,6 +25269,14 @@ window.spotifyAddTrack = window.spotifyLike;
       document.getElementById('brand-description').textContent = brand.description || 'No description available';
       document.getElementById('brand-competitors-count').textContent = data.competitors_count;
       document.getElementById('brand-source').textContent = `Source: ${brand.source === 'cache' ? 'Cached' : brand.source === 'wikipedia' ? 'Wikipedia' : brand.source === 'wikidata' ? 'Wikidata' : 'Google Knowledge Graph'}`;
+
+      // Display ranking
+      if (brand.ranking) {
+        const rank = brand.ranking;
+        document.getElementById('brand-rank').innerHTML = `#${rank.rank} in<br><span style="font-size:12px;color:#64748b">${rank.category}</span>`;
+      } else {
+        document.getElementById('brand-rank').textContent = 'No ranking';
+      }
 
       // Display competitors if available
       if (brand.competitors && brand.competitors.length > 0) {
