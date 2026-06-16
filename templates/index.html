@@ -25172,6 +25172,12 @@ window.spotifyAddTrack = window.spotifyLike;
   let _onboardingCurrentStep = 1;
 
   async function _onboardingCheckStatus() {
+    // Don't show onboarding on Intel or AI pages — Miru only
+    if (_INTEL_MODE || _AI_MODE) {
+      document.getElementById("onboarding-modal").style.display = "none";
+      return;
+    }
+
     const token = _miruPhone() || localStorage.getItem("miru_saves_token") || "";
     if (!token) return; // Not logged in yet
 
