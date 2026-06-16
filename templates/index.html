@@ -1419,12 +1419,26 @@
         </div>
 
         <!-- Results Card -->
-        <div id="brand-results" style="display:none;max-width:700px">
+        <div id="brand-results" style="display:none;max-width:750px">
           <div style="background:#fff;border:2px solid #e0e7ff;border-radius:20px;padding:36px;box-shadow:0 8px 24px rgba(0,0,0,.08)">
+            <!-- Strategic Theme (HEADLINE) -->
+            <div id="brand-strategy-section" style="display:none;margin-bottom:32px;padding:20px;background:linear-gradient(135deg,#fef3c7,#fef9e7);border-left:4px solid #f59e0b;border-radius:12px">
+              <div style="font-size:12px;color:#92400e;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🧠 Strategic Theme</div>
+              <div style="font-size:18px;font-weight:900;color:#1e293b;margin-bottom:12px;line-height:1.4" id="brand-theme-title">—</div>
+              <div style="font-size:13px;color:#78350f;line-height:1.6" id="brand-theme-insight">—</div>
+            </div>
+
+            <!-- Consumer Trend -->
+            <div id="brand-trend-section" style="display:none;margin-bottom:32px;padding:20px;background:linear-gradient(135deg,#dbeafe,#ecf9ff);border-left:4px solid #0ea5e9;border-radius:12px">
+              <div style="font-size:12px;color:#0c4a6e;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📈 Consumer Trend</div>
+              <div style="font-size:16px;font-weight:900;color:#1e293b;margin-bottom:8px" id="brand-trend-name">—</div>
+              <div style="font-size:13px;color:#0c4a6e;line-height:1.6" id="brand-trend-desc">—</div>
+            </div>
+
             <!-- Brand Header -->
             <div style="margin-bottom:28px;padding-bottom:24px;border-bottom:2px solid #f1f5f9">
-              <div style="font-size:36px;font-weight:950;color:#1e293b;margin-bottom:10px;letter-spacing:-0.8px" id="brand-name">—</div>
-              <div style="font-size:15px;color:#475569;line-height:1.7;margin-bottom:16px" id="brand-description">—</div>
+              <div style="font-size:28px;font-weight:950;color:#1e293b;margin-bottom:10px;letter-spacing:-0.8px" id="brand-name">—</div>
+              <div style="font-size:14px;color:#475569;line-height:1.6;margin-bottom:16px" id="brand-description">—</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <a id="brand-wiki-link" href="" target="_blank" style="font-size:13px;color:#0ea5e9;font-weight:700;text-decoration:none;padding:6px 12px;background:#ecf9ff;border-radius:8px;transition:all .2s">📖 Learn on Wikipedia</a>
                 <button id="brand-refresh-btn" onclick="refreshBrand()" style="display:none;font-size:13px;color:#d97706;font-weight:700;border:none;padding:6px 12px;background:#fef3c7;border-radius:8px;cursor:pointer;transition:all .2s">🔄 Refresh data</button>
@@ -25283,6 +25297,22 @@ window.spotifyAddTrack = window.spotifyLike;
       document.getElementById('brand-description').textContent = brand.description || 'No description available';
       document.getElementById('brand-competitors-count').textContent = data.competitors_count;
       document.getElementById('brand-source').textContent = `Source: ${brand.source === 'cache' ? 'Cached' : brand.source === 'wikipedia' ? 'Wikipedia' : brand.source === 'wikidata' ? 'Wikidata' : 'Google Knowledge Graph'}`;
+
+      // Display strategic theme (TOP PRIORITY)
+      if (brand.marketing_intelligence && brand.marketing_intelligence.strategic_theme) {
+        const theme = brand.marketing_intelligence.strategic_theme;
+        document.getElementById('brand-theme-title').textContent = theme.theme;
+        document.getElementById('brand-theme-insight').textContent = theme.insight;
+        document.getElementById('brand-strategy-section').style.display = 'block';
+      }
+
+      // Display consumer trend
+      if (brand.marketing_intelligence && brand.marketing_intelligence.consumer_trend) {
+        const trend = brand.marketing_intelligence.consumer_trend;
+        document.getElementById('brand-trend-name').textContent = trend.trend;
+        document.getElementById('brand-trend-desc').textContent = trend.description;
+        document.getElementById('brand-trend-section').style.display = 'block';
+      }
 
       // Display ranking
       if (brand.ranking) {
