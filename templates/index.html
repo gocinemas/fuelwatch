@@ -12592,6 +12592,11 @@ function _hcAdd() {
 
     // Competitors — each with Clearbit logo
     const comps = d.competitors || [];
+    // Update competitor count display
+    const compCountEl = document.getElementById("brand-competitors-count");
+    if (compCountEl) compCountEl.textContent = comps.length;
+
+    // Update competitors list
     document.getElementById("brand-competitors-el").innerHTML = comps.length
       ? comps.map((c, i) => {
           const cSlug = (c.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -12609,6 +12614,10 @@ function _hcAdd() {
           </div>`;
         }).join("")
       : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:20px 0">No competitor data available.</div>`;
+
+    // Show/hide competitors section
+    const compSectionEl = document.getElementById("brand-competitors-section");
+    if (compSectionEl) compSectionEl.style.display = comps.length ? "block" : "none";
 
     // News — Phase 1 already showed fresh news; only update if Phase 2 has its own.
     // Never hide: if Phase 2 cache has no news, keep whatever Phase 1 rendered.
