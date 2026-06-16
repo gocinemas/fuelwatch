@@ -1868,23 +1868,29 @@ def _fetch_wikipedia(company: str) -> dict:
         text = ((res.get("description") or "") + " " + (res.get("extract") or "")[:200]).lower()
         return any(sig in text for sig in _NON_COMPANY)
 
-    # Step 1: try direct title match — but reject clearly non-company articles
-    result = _summary(company)
+    # Step 1: For single-word queries, try (brand) first to disambiguate
+    # This catches cases like "Innocent" → "Innocence" (wrong) vs "Innocent (brand)"
+    parts = company.split()
+    result = None
+
+    if len(parts) == 1:
+        # Single word: try (brand) → (company) → direct
+        result = _summary(parts[0] + " (brand)")
+        if not result:
+            result = _summary(parts[0] + " (company)")
+        if not result:
+            result = _summary(company)
+    else:
+        # Multi-word: try direct → product-qualified → brand
+        result = _summary(company)
+        if not result:
+            result = _summary(parts[0] + " (" + parts[1].lower() + ")")
+        if not result:
+            result = _summary(parts[0] + " (brand)")
+
+    # Reject clearly non-company articles
     if result and _is_non_company(result):
         result = {}
-
-    # Step 1b: for product-qualified queries like "Lynx deodorant", try
-    # "Lynx (deodorant)", then "Lynx (brand)" — Wikipedia uses parenthetical disambiguation.
-    # Also runs for single-word queries when Step 1 was rejected as non-company.
-    if not result:
-        parts = company.split()
-        base = parts[0]
-        if len(parts) >= 2:
-            result = _summary(base + " (" + parts[1].lower() + ")")
-        if not result:
-            result = _summary(base + " (brand)")
-        if not result:
-            result = _summary(base + " (company)")
 
     # Step 2: if that fails, search Wikipedia for the best matching article
     if not result:
