@@ -1163,6 +1163,7 @@ def _get_brand_ranking(brand_name: str, category: str, market_cap: str = "") -> 
             "Red Bull": {"rank": 4, "of": 50},
             "Danone": {"rank": 5, "of": 50},
             "Vita Coco": {"rank": 8, "of": 50},
+            "Oatly": {"rank": 12, "of": 50},
             "Zico": {"rank": 12, "of": 50},
         },
         "automotive": {
@@ -1190,7 +1191,6 @@ def _get_brand_ranking(brand_name: str, category: str, market_cap: str = "") -> 
         },
         "food": {
             "Nestlé": {"rank": 1, "of": 50},
-            "Oatly": {"rank": 12, "of": 50},
             "Impossible Foods": {"rank": 8, "of": 50},
         },
     }
