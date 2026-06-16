@@ -13747,7 +13747,7 @@ function _hcAdd() {
       📷 Scan ISBN barcode
     </button>
     <div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden">
-      <div id="book-scan-reader"></div>
+      <div id="book-scan-reader-search"></div>
       <button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
     </div>
     <input id="book-scan-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="bookScanFromFile(this)">
@@ -13779,7 +13779,7 @@ function _hcAdd() {
       📷 Scan ISBN barcode
     </button>
     <div id="book-scan-wrap-lib" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden">
-      <div id="book-scan-reader"></div>
+      <div id="book-scan-reader-lib"></div>
       <button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
     </div>
     <div id="book-error-lib" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:13px;color:#b91c1c;margin-bottom:10px"></div>
@@ -14859,14 +14859,18 @@ function bookToggleScanner(){
   var btn  = document.getElementById("book-scan-btn");
   var btnLib = document.getElementById("book-scan-btn-lib");
 
-  wrap.style.display = "block";
-  if(wrapLib) wrapLib.style.display = "block";
-  btn.textContent = "⏹ Stop scanner";
-  if(btnLib) btnLib.textContent = "⏹ Stop scanner";
-  document.getElementById("book-error").style.display = "none";
-  if(document.getElementById("book-error-lib")) document.getElementById("book-error-lib").style.display = "none";
+  // Detect which tab is active
+  var isLibrary = wrapLib && wrapLib.parentElement && getComputedStyle(wrapLib.parentElement).display !== "none";
+  var readerId = isLibrary ? "book-scan-reader-lib" : "book-scan-reader-search";
+  var activeWrap = isLibrary ? wrapLib : wrap;
+  var activeBtn = isLibrary ? btnLib : btn;
+  var errorEl = isLibrary ? document.getElementById("book-error-lib") : document.getElementById("book-error");
 
-  _bkScanner = new Html5Qrcode("book-scan-reader");
+  activeWrap.style.display = "block";
+  activeBtn.textContent = "⏹ Stop scanner";
+  if(errorEl) errorEl.style.display = "none";
+
+  _bkScanner = new Html5Qrcode(readerId);
   _bkScanner.start(
     {facingMode:"environment"},
     {
@@ -14889,11 +14893,12 @@ function bookToggleScanner(){
     function(){}
   ).catch(function(err){
     bookStopScanner();
-    document.getElementById("book-error").textContent = "Camera not available — " + err;
-    document.getElementById("book-error").style.display = "block";
-    if(document.getElementById("book-error-lib")){
-      document.getElementById("book-error-lib").textContent = "Camera not available — " + err;
-      document.getElementById("book-error-lib").style.display = "block";
+    var errorEl = document.getElementById("book-error-lib") && document.getElementById("book-scan-wrap-lib").style.display !== "none"
+      ? document.getElementById("book-error-lib")
+      : document.getElementById("book-error");
+    if(errorEl){
+      errorEl.textContent = "Camera not available — " + err;
+      errorEl.style.display = "block";
     }
   });
 }
