@@ -18,6 +18,9 @@ SEC_EDGAR_API = "https://data.sec.gov/api/xbrl"
 def fetch_brand_from_wikipedia(brand_name):
     """Fetch brand info from Wikipedia"""
     try:
+        headers = {
+            "User-Agent": "MiruIntel/1.0 (brand intelligence; +https://miru.humanagency.co)"
+        }
         params = {
             "action": "query",
             "format": "json",
@@ -27,7 +30,7 @@ def fetch_brand_from_wikipedia(brand_name):
             "redirects": 1,
             "exintro": True
         }
-        r = requests.get(WIKIPEDIA_API, params=params, timeout=5)
+        r = requests.get(WIKIPEDIA_API, params=params, headers=headers, timeout=5)
         data = r.json()
         pages = data.get("query", {}).get("pages", {})
 
