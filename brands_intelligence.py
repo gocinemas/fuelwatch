@@ -440,16 +440,31 @@ def fetch_brand_competitors(brand_name):
 def store_brand_in_supabase(brand_data):
     """Store brand data in Supabase"""
     try:
-        # Insert or update brand
-        result = lib._sb().table("brands").upsert({
-            "name": brand_data.get("name"),
-            "description": brand_data.get("description"),
-            "wikipedia_url": brand_data.get("wikipedia_url"),
-            "knowledge_graph_data": brand_data.get("knowledge_graph_data"),
-            "source": brand_data.get("source")
-        }).execute()
+        brand_name = brand_data.get("name")
 
-        brand_id = result.data[0].get("id") if result.data else None
+        # Try to check if brand already exists
+        existing = lib._sb().table("brands").select("id").ilike("name", brand_name).limit(1).execute()
+        brand_id = None
+
+        if existing.data:
+            # Brand exists - update it
+            brand_id = existing.data[0].get("id")
+            lib._sb().table("brands").update({
+                "description": brand_data.get("description"),
+                "wikipedia_url": brand_data.get("wikipedia_url"),
+                "knowledge_graph_data": brand_data.get("knowledge_graph_data"),
+                "source": brand_data.get("source")
+            }).eq("id", brand_id).execute()
+        else:
+            # Brand doesn't exist - insert it
+            result = lib._sb().table("brands").insert({
+                "name": brand_name,
+                "description": brand_data.get("description"),
+                "wikipedia_url": brand_data.get("wikipedia_url"),
+                "knowledge_graph_data": brand_data.get("knowledge_graph_data"),
+                "source": brand_data.get("source")
+            }).execute()
+            brand_id = result.data[0].get("id") if result.data else None
 
         # Store SKUs
         if brand_id and brand_data.get("skus"):
@@ -464,7 +479,7 @@ def store_brand_in_supabase(brand_data):
                 except Exception as e:
                     print(f"[SKU] Error storing SKU: {e}")
 
-        return brand_id, result.data[0] if result.data else None
+        return brand_id, {"id": brand_id} if brand_id else None
     except Exception as e:
         print(f"[Supabase] Error storing brand: {e}")
         return None, None
