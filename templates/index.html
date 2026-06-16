@@ -9676,45 +9676,68 @@ function _hcAdd() {
   }
 
   function renderCompany(d) {
-    document.getElementById("company-results").classList.remove("hidden");
-    _coCurrentName = d.name || document.getElementById("company-input").value.trim();
-    document.getElementById("co-share-name").textContent = _coCurrentName;
+    try {
+      // Show results container
+      var resultsContainer = document.getElementById("company-results");
+      if (resultsContainer) resultsContainer.classList.remove("hidden");
 
-    // Hide ALL old content
-    document.querySelectorAll("[id^='intel-tab-']").forEach(el => el.style.display = "none");
-    document.querySelectorAll("[id^='co-']").forEach(el => { if (el.id !== "co-share-name" && el.id !== "co-bookmark-btn") el.style.display = "none"; });
-    document.querySelectorAll("[id^='brand-']").forEach(el => { if (!el.id.includes("logo-el-fresh") && !el.id.includes("name-el-fresh")) el.style.display = "none"; });
+      _coCurrentName = d.name || document.getElementById("company-input").value.trim();
+      var shareNameEl = document.getElementById("co-share-name");
+      if (shareNameEl) shareNameEl.textContent = _coCurrentName;
 
-    // Show fresh intel-detailed view
-    document.getElementById("intel-search-box").style.display = "none";
-    document.getElementById("intel-detailed").style.display = "block";
+      // Hide ALL old content
+      document.querySelectorAll("[id^='intel-tab-']").forEach(el => el.style.display = "none");
+      document.querySelectorAll("[id^='co-']").forEach(el => {
+        if (el.id !== "co-share-name" && el.id !== "co-bookmark-btn") el.style.display = "none";
+      });
+      document.querySelectorAll("[id^='brand-']").forEach(el => {
+        if (!el.id.includes("logo-el-fresh") && !el.id.includes("name-el-fresh")) el.style.display = "none";
+      });
 
-    // Set company name and description
-    document.getElementById("intel-result-name").textContent = _coCurrentName;
-    const w = d.wiki || {};
-    if (w.description) {
-      document.getElementById("intel-result-tagline").textContent = w.description;
-    }
+      // Show fresh intel-detailed view
+      var searchBox = document.getElementById("intel-search-box");
+      if (searchBox) searchBox.style.display = "none";
 
-    // Set company logo
-    const logoUrl = d.domain ? `https://logo.clearbit.com/${d.domain}` : `https://logo.clearbit.com/${(_coCurrentName||"").toLowerCase().replace(/[^a-z0-9]/g,"")}.com`;
-    const logoEl = document.getElementById("brand-logo-el-fresh");
-    if (logoEl) {
-      logoEl.src = logoUrl;
-      logoEl.style.display = "block";
-      logoEl.onerror = function() { this.style.display = "none"; };
-    }
+      var detailedDiv = document.getElementById("intel-detailed");
+      if (detailedDiv) detailedDiv.style.display = "block";
 
-    // Fetch and display metrics
-    _updateIntelMetrics(_coCurrentName);
+      // Set company name and description
+      var resultNameEl = document.getElementById("intel-result-name");
+      if (resultNameEl) resultNameEl.textContent = _coCurrentName;
 
-    // Wikipedia overview
-    if (w.extract) {
-      document.getElementById("intel-overview-text").textContent = w.extract;
-      document.getElementById("intel-wiki-link-fresh").href = w.wiki_url || "";
-      document.getElementById("intel-overview-wrap").style.display = "block";
-    } else {
-      document.getElementById("intel-overview-wrap").style.display = "none";
+      const w = d.wiki || {};
+      var resultTaglineEl = document.getElementById("intel-result-tagline");
+      if (resultTaglineEl && w.description) {
+        resultTaglineEl.textContent = w.description;
+      }
+
+      // Set company logo
+      const logoUrl = d.domain ? `https://logo.clearbit.com/${d.domain}` : `https://logo.clearbit.com/${(_coCurrentName||"").toLowerCase().replace(/[^a-z0-9]/g,"")}.com`;
+      const logoEl = document.getElementById("brand-logo-el-fresh");
+      if (logoEl) {
+        logoEl.src = logoUrl;
+        logoEl.style.display = "block";
+        logoEl.onerror = function() { this.style.display = "none"; };
+      }
+
+      // Fetch and display metrics
+      _updateIntelMetrics(_coCurrentName);
+
+      // Wikipedia overview
+      var overviewWrap = document.getElementById("intel-overview-wrap");
+      if (w.extract && overviewWrap) {
+        var overviewText = document.getElementById("intel-overview-text");
+        if (overviewText) overviewText.textContent = w.extract;
+
+        var wikiLink = document.getElementById("intel-wiki-link-fresh");
+        if (wikiLink) wikiLink.href = w.wiki_url || "";
+
+        overviewWrap.style.display = "block";
+      } else if (overviewWrap) {
+        overviewWrap.style.display = "none";
+      }
+    } catch(e) {
+      console.error("[renderCompany] Error:", e);
     }
 
     // Key Facts — single line separated by · with inline brands
