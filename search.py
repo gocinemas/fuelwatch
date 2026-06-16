@@ -967,12 +967,13 @@ def _fetch_wiki_images(wiki_title: str) -> list:
 
 
 def _fetch_brand_financials(brand: str) -> dict:
-    """Fetch market cap, revenue, net income, margins via yfinance."""
+    """Fetch financials: Try SEC Edgar first (US companies), fall back to yfinance."""
     ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
     hdrs = {"User-Agent": ua, "Accept": "application/json"}
 
-    # Resolve ticker via Yahoo Finance search
+    # Step 1: Get ticker from Yahoo Finance, then try to find CIK
     ticker = ""
+    cik = ""
     currency = "USD"
     try:
         sr = requests.get(
@@ -989,7 +990,24 @@ def _fetch_brand_financials(brand: str) -> dict:
     except Exception:
         pass
 
-    if not ticker:
+    # Try to find CIK from ticker using SEC Edgar company tickers API
+    if ticker:
+        try:
+            # SEC provides a company tickers JSON file
+            sr = requests.get(
+                "https://www.sec.gov/files/company_tickers.json",
+                timeout=10, headers=hdrs,
+            )
+            tickers_data = sr.json()
+            # tickers_data is {id: {cik_str, ticker, title}}
+            for entry in tickers_data.values():
+                if entry.get("ticker", "").upper() == ticker.upper():
+                    cik = str(entry.get("cik_str", "")).lstrip("0") or ""
+                    break
+        except Exception:
+            pass
+
+    if not ticker and not cik:
         return {}
 
     def _fmt(v):
@@ -1013,22 +1031,65 @@ def _fetch_brand_financials(brand: str) -> dict:
         except Exception:
             return ""
 
-    try:
-        import yfinance as yf
-        info = yf.Ticker(ticker).info
-        return {
-            "ticker":         ticker,
-            "market_cap":     _fmt(info.get("marketCap")),
-            "total_revenue":  _fmt(info.get("totalRevenue")),
-            "net_income":     _fmt(info.get("netIncomeToCommon")),
-            "profit_margin":  _pct(info.get("profitMargins")),
-            "gross_margin":   _pct(info.get("grossMargins")),
-            "revenue_growth": _pct(info.get("revenueGrowth")),
-            "ebitda":         _fmt(info.get("ebitda")),
-        }
-    except Exception as e:
-        print(f"[brand_financials] {e}")
-        return {"ticker": ticker}
+    # Step 2: Try SEC Edgar first (for US public companies)
+    if cik:
+        try:
+            # Fetch company facts from SEC Edgar
+            url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik.zfill(10)}.json"
+            resp = requests.get(url, timeout=10, headers=hdrs)
+            if resp.status_code == 200:
+                data = resp.json()
+                facts = data.get("facts", {}).get("us-gaap", {})
+
+                # Extract latest Revenue and Net Income
+                revenue_data = facts.get("Revenues", {})
+                net_income_data = facts.get("NetIncomeLoss", {})
+
+                revenue_billions = None
+                profit_billions = None
+
+                if revenue_data.get("units") == "USD" and revenue_data.get("filings"):
+                    latest_rev = revenue_data["filings"][-1]
+                    if "value" in latest_rev:
+                        revenue_billions = round(latest_rev["value"] / 1_000_000_000, 1)
+
+                if net_income_data.get("units") == "USD" and net_income_data.get("filings"):
+                    latest_inc = net_income_data["filings"][-1]
+                    if "value" in latest_inc:
+                        profit_billions = round(latest_inc["value"] / 1_000_000_000, 1)
+
+                if revenue_billions or profit_billions:
+                    result = {"ticker": ticker or "", "source": "SEC Edgar"}
+                    if revenue_billions:
+                        result["total_revenue"] = f"${revenue_billions}B"
+                    if profit_billions:
+                        result["net_income"] = f"${profit_billions}B"
+                    print(f"[edgar] {brand}: revenue=${revenue_billions}B profit=${profit_billions}B")
+                    return result
+        except Exception as e:
+            print(f"[edgar] Error fetching {brand} (CIK {cik}): {e}")
+
+    # Step 3: Fall back to yfinance
+    if ticker:
+        try:
+            import yfinance as yf
+            info = yf.Ticker(ticker).info
+            return {
+                "ticker":         ticker,
+                "market_cap":     _fmt(info.get("marketCap")),
+                "total_revenue":  _fmt(info.get("totalRevenue")),
+                "net_income":     _fmt(info.get("netIncomeToCommon")),
+                "profit_margin":  _pct(info.get("profitMargins")),
+                "gross_margin":   _pct(info.get("grossMargins")),
+                "revenue_growth": _pct(info.get("revenueGrowth")),
+                "ebitda":         _fmt(info.get("ebitda")),
+                "source":         "Yahoo Finance"
+            }
+        except Exception as e:
+            print(f"[yfinance] {e}")
+            return {"ticker": ticker, "source": "Lookup only"}
+
+    return {}
 
 
 def fetch_brand_data(brand: str) -> dict:
