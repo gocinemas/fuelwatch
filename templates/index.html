@@ -12619,6 +12619,17 @@ function _hcAdd() {
     const compSectionEl = document.getElementById("brand-competitors-section");
     if (compSectionEl) compSectionEl.style.display = comps.length ? "block" : "none";
 
+    // Update market ranking display
+    const rank = d.ranking;
+    const rankEl = document.getElementById("brand-rank");
+    if (rankEl) {
+      if (rank && rank.rank && rank.of) {
+        rankEl.innerHTML = `#${rank.rank} of ${rank.of}`;
+      } else {
+        rankEl.textContent = "No ranking";
+      }
+    }
+
     // News — Phase 1 already showed fresh news; only update if Phase 2 has its own.
     // Never hide: if Phase 2 cache has no news, keep whatever Phase 1 rendered.
     const news = d.news || [];
