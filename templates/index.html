@@ -25327,14 +25327,15 @@ window.spotifyAddTrack = window.spotifyLike;
       // Auto-detect category from description
       const detectedCategory = _detectCategory(data.brand.description, q);
 
-      // If we detected a category and don't have marketing intelligence yet, re-fetch with category
+      // If we detected a category and don't have marketing intelligence yet, re-fetch with category (FORCE REFRESH)
       if (detectedCategory && !data.brand.marketing_intelligence) {
         document.getElementById('brand-loading').style.display = 'block';
-        const categoryUrl = `/api/brands/search?q=${encodeURIComponent(q)}&category=${detectedCategory}${forceRefresh ? '&refresh=true' : ''}`;
+        // Force refresh to bypass cache and get intelligence
+        const categoryUrl = `/api/brands/search?q=${encodeURIComponent(q)}&category=${detectedCategory}&refresh=true`;
         const categoryResponse = await fetch(categoryUrl);
         const categoryData = await categoryResponse.json();
 
-        if (categoryData.ok) {
+        if (categoryData.ok && categoryData.brand.marketing_intelligence) {
           // Use the enhanced data with marketing intelligence
           data.brand = categoryData.brand;
         }
