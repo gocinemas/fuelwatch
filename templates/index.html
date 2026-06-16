@@ -1366,24 +1366,41 @@
     <div id="screen-company" class="screen pt-5">
 
       {% if intel_mode %}
-      <!-- intel.humanagency.co header — 2026 modern design -->
-      <div style="background:linear-gradient(135deg,#4f46e5 0%,#6d28d9 100%);border-radius:20px;padding:32px 28px;margin-bottom:24px;color:#fff">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
-            <div style="font-size:42px;font-weight:900;letter-spacing:-1px;margin-bottom:8px">Intel</div>
-            <div style="font-size:16px;color:rgba(255,255,255,.9);font-weight:500">Real-time brand &amp; company intelligence</div>
-            <div style="font-size:13px;color:rgba(255,255,255,.7);margin-top:6px">Search millions of companies · Compare competitors · Track AI focus</div>
+      <!-- ════════════════════════════════════════════════════════════════════
+           INTEL.HUMANAGENCY.CO — Completely Fresh Design (June 2026)
+           ════════════════════════════════════════════════════════════════════ -->
+
+      <!-- Hero Header -->
+      <div style="margin-bottom:32px">
+        <div style="font-size:48px;font-weight:900;letter-spacing:-2px;color:var(--text);margin-bottom:8px">Intel</div>
+        <div style="font-size:16px;color:var(--muted);font-weight:500;margin-bottom:20px">Real-time intelligence on brands and companies</div>
+
+        <!-- Mode Pills -->
+        <div style="display:flex;gap:6px;margin-bottom:24px">
+          <button id="intel-mode-btn-brand" onclick="setIntelMode('brand')" style="padding:10px 18px;border-radius:20px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--surface);border:1.5px solid var(--border);color:var(--text)">🏷️ Brands</button>
+          <button id="intel-mode-btn-company" onclick="setIntelMode('company')" style="padding:10px 18px;border-radius:20px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--surface);border:1.5px solid var(--border);color:var(--text)">🏢 Companies</button>
+        </div>
+
+        <!-- Search Box -->
+        <div id="intel-search-box" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px">
+          <div style="display:flex;gap:8px">
+            <input id="intel-input" type="text" placeholder="Search a brand or company…"
+              style="flex:1;border:none;background:transparent;font-size:15px;outline:none;color:var(--text)"
+              onkeydown="if(event.key==='Enter') searchIntel()"
+              autocomplete="off">
+            <button onclick="searchIntel()" style="background:#4f46e5;color:#fff;border:none;border-radius:12px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s">Search</button>
           </div>
-          <div style="font-size:48px;opacity:.3">🔍</div>
+        </div>
+
+        <!-- Quick search examples -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="document.getElementById('intel-input').value='Apple';searchIntel()" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;font-weight:600">Apple</button>
+          <button onclick="document.getElementById('intel-input').value='Nike';searchIntel()" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;font-weight:600">Nike</button>
+          <button onclick="document.getElementById('intel-input').value='Shell';searchIntel()" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;font-weight:600">Shell</button>
+          <button onclick="document.getElementById('intel-input').value='Tesla';searchIntel()" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;font-weight:600">Tesla</button>
         </div>
       </div>
 
-      <!-- Modern mode/function tabs -->
-      <div id="intel-mode-bar" style="display:flex;gap:8px;margin-bottom:24px;overflow-x:auto;padding-bottom:4px">
-        <button id="intel-mode-btn-brand"   onclick="setIntelMode('brand')"   style="padding:10px 16px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--surface);border:1.5px solid var(--border);color:var(--text);white-space:nowrap" title="Explore brand stories, campaigns, identity">🏷️ Brands</button>
-        <button id="intel-mode-btn-company" onclick="setIntelMode('company')" style="padding:10px 16px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--surface);border:1.5px solid var(--border);color:var(--text);white-space:nowrap" title="Deep dive: financials, strategy, hiring">🏢 Companies</button>
-        <button id="intel-mode-btn-watch"   onclick="showScreen('ai-watch')"  style="padding:10px 16px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--surface);border:1.5px solid var(--border);color:var(--text);white-space:nowrap" title="Track AI breakthroughs & market shifts">🔭 AI Watch</button>
-      </div>
       <!-- Hidden landing div (JS compat) -->
       <div id="intel-landing" style="display:none"></div>
       {% else %}
@@ -1414,80 +1431,10 @@
       </div>
       {% endif %}
 
-      {% if intel_mode %}
-      <!-- ── Brand panel (intel.humanagency.co, brand mode) ── -->
-      <div id="brand-search-row" style="display:none">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-            <div>
-              <div style="font-size:20px;font-weight:700;color:var(--text)">🏷️ Search Brands</div>
-              <div style="font-size:13px;color:var(--muted);margin-top:4px">Stories · campaigns · identity · competitors</div>
-            </div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <input id="brand-q" type="text" placeholder="e.g., Nike, Coca-Cola, Virgin, Sky…"
-              style="flex:1;border:2px solid var(--border);border-radius:12px;padding:12px 16px;font-size:15px;background:var(--bg);color:var(--text);outline:none;transition:all .2s"
-              oninput="document.getElementById('intel-input').value=this.value"
-              onkeydown="if(event.key==='Enter'){document.getElementById('intel-input').value=this.value;searchIntel()}"
-              onfocus="this.style.borderColor='#4f46e5';this.style.boxShadow='0 0 0 3px rgba(79,70,229,.1)'"
-              onblur="this.style.borderColor='var(--border)';this.style.boxShadow=''"
-              autocomplete="off">
-            <button onclick="_intelScan()" title="Scan brand from photo"
-              style="background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:12px 16px;font-size:18px;cursor:pointer;flex-shrink:0;transition:all .2s" onhover="this.style.background='#4f46e5'">📷</button>
-            <input id="intel-scan-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="_intelScanFile(this)">
-            <button onclick="document.getElementById('intel-input').value=document.getElementById('brand-q').value;searchIntel()"
-              style="background:#4f46e5;color:#fff;font-size:14px;font-weight:700;padding:12px 28px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap;transition:all .2s">Search</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Company panel (intel.humanagency.co, company mode) ── -->
-      <div id="company-search-row" style="display:none">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-            <div>
-              <div style="font-size:20px;font-weight:700;color:var(--text)">🏢 Search Companies</div>
-              <div style="font-size:13px;color:var(--muted);margin-top:4px">Financials · strategy · AI focus · hiring trends</div>
-            </div>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <input id="company-q" type="text" placeholder="e.g., Tesco, HSBC, Unilever, Shell…"
-              style="flex:1;border:2px solid var(--border);border-radius:12px;padding:12px 16px;font-size:15px;background:var(--bg);color:var(--text);outline:none;transition:all .2s"
-              oninput="document.getElementById('intel-input').value=this.value"
-              onkeydown="if(event.key==='Enter'){document.getElementById('intel-input').value=this.value;searchIntel()}"
-              onfocus="this.style.borderColor='#4f46e5';this.style.boxShadow='0 0 0 3px rgba(79,70,229,.1)'"
-              onblur="this.style.borderColor='var(--border)';this.style.boxShadow=''"
-              autocomplete="off">
-            <button onclick="document.getElementById('intel-input').value=document.getElementById('company-q').value;searchIntel()"
-              style="background:#4f46e5;color:#fff;font-size:14px;font-weight:700;padding:12px 28px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap;transition:all .2s">Search</button>
-          </div>
-          <button onclick="setIntelCompareMode()" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;transition:all .2s">📊 Or compare 2-3 companies →</button>
-        </div>
-      </div>
-
-      <!-- ── Compare Mode panel (intel.humanagency.co, compare mode) ── -->
-      <div id="compare-search-row" style="display:none">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px">
-          <div style="margin-bottom:16px">
-            <div style="font-size:20px;font-weight:700;color:var(--text)">📊 Compare Companies</div>
-            <div style="font-size:13px;color:var(--muted);margin-top:4px">Side-by-side analysis · financials · strategy · hiring</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
-            <input id="comp-a-input" type="text" placeholder="Company A (e.g., Apple)" style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:all .2s" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='var(--border)'">
-            <input id="comp-b-input" type="text" placeholder="Company B (e.g., Microsoft)" style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:all .2s" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='var(--border)'">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input id="comp-use-c" type="checkbox"><span>Add 3rd company</span></label>
-            <div id="comp-c-wrap" style="display:none"><input id="comp-c-input" type="text" placeholder="Company C" style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:all .2s" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='var(--border)'"></div>
-          </div>
-          <button onclick="_compareLoadTopLevel()" style="width:100%;padding:12px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px">Compare →</button>
-          <button onclick="setIntelMode('company')" style="width:100%;margin-top:8px;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-size:13px">← Back to Search</button>
-        </div>
-        <!-- Compare results -->
-        <div id="compare-results-top" style="display:none"></div>
-        <div id="compare-error-top" style="display:none;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px;color:#991b1b;font-size:12px;margin-bottom:14px"></div>
-      </div>
-
-      <!-- Hidden compat input (synced from brand-q/company-q; also set by recent-item clicks) -->
-      <input id="intel-input" type="hidden">
+      <!-- Hidden compat containers -->
+      <input id="brand-q" type="hidden">
+      <input id="company-q" type="hidden">
+      <input id="intel-input-hidden" type="hidden">
       {% else %}
       <!-- Single search input (miru.humanagency.co) — cleaner design -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px">
@@ -1506,12 +1453,6 @@
         </div>
       </div>
       {% endif %}
-      <div id="intel-recent" style="margin-bottom:8px"></div>
-      <!-- Pinned brands/companies -->
-      <div id="intel-pins-section" style="display:none;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">📌 Pinned</div>
-        <div id="intel-pins-list" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
-      </div>
       <!-- Local-service redirect nudge (shown when query looks like a local service) -->
       <div id="intel-local-nudge" style="display:none;background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#92400e">
         Looks like you're searching for a local service.
@@ -1580,60 +1521,64 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════════════════
-             INTEL DETAILED VIEW — Clean, minimal 2026 design
+             FRESH INTEL RESULTS — Modern, beautiful presentation
              ═══════════════════════════════════════════════════════════ -->
         <div id="intel-detailed" style="display:none">
-          <!-- Company Header -->
-          <div style="margin-bottom:20px">
-            <div style="font-size:28px;font-weight:900;color:var(--text);letter-spacing:-0.5px" id="intel-result-name">—</div>
-            <div id="intel-result-tagline" style="font-size:14px;color:var(--muted);margin-top:4px"></div>
+
+          <!-- Back Button -->
+          <button onclick="document.getElementById('intel-detailed').style.display='none';document.getElementById('intel-search-box').style.display='block'" style="font-size:13px;color:var(--muted);background:transparent;border:none;cursor:pointer;margin-bottom:20px;font-weight:600">← Back</button>
+
+          <!-- Company Header Card -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;margin-bottom:20px">
+            <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px">
+              <img id="brand-logo-el-fresh" src="" alt="" style="width:60px;height:60px;border-radius:12px;object-fit:contain;background:var(--bg);padding:8px;flex-shrink:0;border:1px solid var(--border)" onerror="this.style.display='none'">
+              <div style="flex:1">
+                <div style="font-size:32px;font-weight:900;letter-spacing:-1px;color:var(--text);margin-bottom:4px" id="intel-result-name">—</div>
+                <div style="font-size:14px;color:var(--muted);margin-bottom:2px" id="intel-result-tagline"></div>
+                <a id="intel-wiki-link-fresh" href="" target="_blank" style="font-size:12px;color:#4f46e5;font-weight:600;text-decoration:none">Wikipedia ↗</a>
+              </div>
+            </div>
+
+            <!-- Key Metrics (2x3 Grid) -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+              <div style="padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Founded</div>
+                <div style="font-size:16px;font-weight:900;color:var(--text)" data-metric="founded">—</div>
+              </div>
+              <div style="padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Industry</div>
+                <div style="font-size:16px;font-weight:900;color:var(--text)" data-metric="industry">—</div>
+              </div>
+              <div style="padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">HQ</div>
+                <div style="font-size:16px;font-weight:900;color:var(--text)" data-metric="hq">—</div>
+              </div>
+              <div style="padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Revenue</div>
+                <div style="font-size:16px;font-weight:900;color:var(--text)" data-metric="revenue">—</div>
+              </div>
+              <div style="padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Employees</div>
+                <div style="font-size:16px;font-weight:900;color:var(--text)" data-metric="employees">—</div>
+              </div>
+              <div style="padding:12px;background:var(--bg);border-radius:12px;border:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Market Cap</div>
+                <div style="font-size:16px;font-weight:900;color:var(--text)" data-metric="market_cap">—</div>
+              </div>
+            </div>
           </div>
 
-          <!-- Key Metrics Grid -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:24px">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
-              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">HQ</div>
-              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="hq">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
-              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Founded</div>
-              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="founded">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
-              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Industry</div>
-              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="industry">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
-              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Revenue</div>
-              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="revenue">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
-              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Employees</div>
-              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="employees">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
-              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Market Cap</div>
-              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="market_cap">—</div>
-            </div>
+          <!-- About Section -->
+          <div id="intel-overview-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;margin-bottom:20px">
+            <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px">About</div>
+            <div id="intel-overview-text" style="font-size:14px;color:var(--text);line-height:1.6"></div>
           </div>
 
-          <!-- Overview Section -->
-          <div id="intel-overview-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
-            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">About</div>
-            <div id="intel-overview-text" style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:12px"></div>
-            <a id="intel-wiki-link" href="" target="_blank" style="font-size:12px;color:#4f46e5;text-decoration:none;font-weight:600">Read more on Wikipedia →</a>
+          <!-- Tabs for Company/Brand details (rendered by existing renderCompany/renderBrand) -->
+          <div id="intel-tabs-container" style="display:none">
+            <!-- Existing tabs will populate here -->
           </div>
 
-          <!-- Jobs Section (if available) -->
-          <div id="intel-jobs-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
-            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🔗 Open Positions</div>
-            <div id="intel-jobs-list" style="display:flex;flex-direction:column;gap:10px"></div>
-          </div>
-
-          <!-- Search Again -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;text-align:center;margin-bottom:20px">
-            <button onclick="document.getElementById('intel-input').value='';document.getElementById('intel-input').focus();document.getElementById('intel-detailed').style.display='none'" style="font-size:13px;font-weight:600;color:var(--text);background:transparent;border:none;cursor:pointer;text-decoration:underline">← Search another company</button>
-          </div>
         </div>
 
         <!-- Hidden compat elements renderCompany needs -->
@@ -9752,22 +9697,30 @@ function _hcAdd() {
     document.getElementById("company-results").classList.remove("hidden");
     _coCurrentName = d.name || document.getElementById("company-input").value.trim();
     document.getElementById("co-share-name").textContent = _coCurrentName;
+
     // Hide ALL old content
     document.querySelectorAll("[id^='intel-tab-']").forEach(el => el.style.display = "none");
-    document.querySelectorAll("[id^='co-']").forEach(el => el.style.display = "none");
-    document.querySelectorAll("[id^='brand-']").forEach(el => el.style.display = "none");
+    document.querySelectorAll("[id^='co-']").forEach(el => { if (el.id !== "co-share-name" && el.id !== "co-bookmark-btn") el.style.display = "none"; });
+    document.querySelectorAll("[id^='brand-']").forEach(el => { if (!el.id.includes("logo-el-fresh") && !el.id.includes("name-el-fresh")) el.style.display = "none"; });
 
-    // Show clean intel-detailed view
-    const detailedDiv = document.getElementById("intel-detailed");
-    if (detailedDiv) {
-      detailedDiv.style.display = "block";
-    }
+    // Show fresh intel-detailed view
+    document.getElementById("intel-search-box").style.display = "none";
+    document.getElementById("intel-detailed").style.display = "block";
 
-    // Set company name and tagline
+    // Set company name and description
     document.getElementById("intel-result-name").textContent = _coCurrentName;
     const w = d.wiki || {};
     if (w.description) {
       document.getElementById("intel-result-tagline").textContent = w.description;
+    }
+
+    // Set company logo
+    const logoUrl = d.domain ? `https://logo.clearbit.com/${d.domain}` : `https://logo.clearbit.com/${(_coCurrentName||"").toLowerCase().replace(/[^a-z0-9]/g,"")}.com`;
+    const logoEl = document.getElementById("brand-logo-el-fresh");
+    if (logoEl) {
+      logoEl.src = logoUrl;
+      logoEl.style.display = "block";
+      logoEl.onerror = function() { this.style.display = "none"; };
     }
 
     // Fetch and display metrics
@@ -9776,7 +9729,7 @@ function _hcAdd() {
     // Wikipedia overview
     if (w.extract) {
       document.getElementById("intel-overview-text").textContent = w.extract;
-      document.getElementById("intel-wiki-link").href = w.wiki_url || "";
+      document.getElementById("intel-wiki-link-fresh").href = w.wiki_url || "";
       document.getElementById("intel-overview-wrap").style.display = "block";
     } else {
       document.getElementById("intel-overview-wrap").style.display = "none";
