@@ -8518,7 +8518,7 @@ function _hcAdd() {
 
   window.switchIntelMode = function() {}; // no-op kept for any lingering callers
 
-  var _intelSearchMode = {% if intel_mode %}"brand"{% else %}null{% endif %};
+  var _intelSearchMode = {% if intel_mode %}"company"{% else %}null{% endif %};
 
   window.setIntelMode = function(mode) {
     _intelSearchMode = mode;
