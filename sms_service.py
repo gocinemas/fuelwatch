@@ -10125,28 +10125,22 @@ def api_home_brief():
         if fuel_pc:
             futures["fuel"]    = pool.submit(_v2_fetch_fuel, fuel_pc)
             futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
-        # Trains fetched in pool — but ONLY during commute hours (7-8:30am, weekdays)
-        # Check if it's morning commute time (7am-8:30am) on weekday
-        _is_commute_time = 7 <= now.hour < 8 or (now.hour == 8 and now.minute < 30)
-        _is_weekday = now.weekday() < 5
-        if _is_commute_time and _is_weekday:
-            # During commute hours: use location profile commute (from My Area)
-            _tf, _tt = None, None
-            _loc_work = _loc_profile.get("work") or {}
-            _loc_school = _loc_profile.get("school_run") or {}
-            # Prefer school run if set, otherwise use work
-            # Location profile stores: {"name": "...", "lat": ..., "lng": ..., "station": "STN", ...}
-            if _loc_school and (_loc_school.get("station") or _loc_school.get("name")):
-                _tf = "Home"
-                _tt = _loc_school.get("station") or _loc_school.get("name", "School")
-            elif _loc_work and (_loc_work.get("station") or _loc_work.get("name")):
-                _tf = "Home"
-                _tt = _loc_work.get("station") or _loc_work.get("name", "Work")
-            # Fetch trains if commute is configured
-            if _tf and _tt:
-                futures["trains"] = pool.submit(_v2_fetch_trains, _tf, _tt)
-                futures["trains_home"] = pool.submit(_v2_fetch_trains, _tt, _tf)
-        # Outside commute hours: show nothing (don't fetch saved prefs)
+        # Trains: ALWAYS fetch from My Area location profile commute (school_run or work)
+        # This shows trains all day, not just 7-8:30am
+        _tf, _tt = None, None
+        _loc_work = _loc_profile.get("work") or {}
+        _loc_school = _loc_profile.get("school_run") or {}
+        # Prefer school run if set, otherwise use work
+        if _loc_school and (_loc_school.get("station") or _loc_school.get("name")):
+            _tf = "Home"
+            _tt = _loc_school.get("station") or _loc_school.get("name", "School")
+        elif _loc_work and (_loc_work.get("station") or _loc_work.get("name")):
+            _tf = "Home"
+            _tt = _loc_work.get("station") or _loc_work.get("name", "Work")
+        # Fetch trains if commute is configured (no time restriction)
+        if _tf and _tt:
+            futures["trains"] = pool.submit(_v2_fetch_trains, _tf, _tt)
+            futures["trains_home"] = pool.submit(_v2_fetch_trains, _tt, _tf)
         if from_number:
             futures["school"]          = pool.submit(_v2_fetch_school, from_number)
             futures["spend"]           = pool.submit(_v2_fetch_spend, from_number)
