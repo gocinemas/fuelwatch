@@ -25512,7 +25512,7 @@ window.spotifyAddTrack = window.spotifyLike;
       const brand = data.brand;
       document.getElementById('brand-name').textContent = brand.name;
       document.getElementById('brand-description').textContent = brand.description || 'No description available';
-      document.getElementById('brand-competitors-count').textContent = data.competitors_count;
+      document.getElementById('brand-competitors-count').textContent = (brand.competitors && brand.competitors.length) || 0;
       document.getElementById('brand-source').textContent = `Source: ${brand.source === 'cache' ? 'Cached' : brand.source === 'wikipedia' ? 'Wikipedia' : brand.source === 'wikidata' ? 'Wikidata' : 'Google Knowledge Graph'}`;
 
       // Display strategic theme (TOP PRIORITY)
