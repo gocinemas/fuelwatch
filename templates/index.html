@@ -1580,155 +1580,59 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════════════════
-             NEW INTEL DETAILED VIEW — Beautiful UX with metrics, charts, timelines
+             INTEL DETAILED VIEW — Clean, minimal 2026 design
              ═══════════════════════════════════════════════════════════ -->
         <div id="intel-detailed" style="display:block">
-          <!-- KEY METRICS DASHBOARD -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">
-            <!-- HQ Card -->
-            <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fcd34d;border-radius:16px;padding:16px">
-              <div style="font-size:11px;font-weight:700;color:#9a6800;text-transform:uppercase;letter-spacing:0.5px">HQ</div>
-              <div style="font-size:18px;font-weight:700;color:#78350f;margin:8px 0" data-metric="hq">—</div>
+          <!-- Company Header -->
+          <div style="margin-bottom:20px">
+            <div style="font-size:28px;font-weight:900;color:var(--text);letter-spacing:-0.5px" id="intel-result-name">—</div>
+            <div id="intel-result-tagline" style="font-size:14px;color:var(--muted);margin-top:4px"></div>
+          </div>
+
+          <!-- Key Metrics Grid -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:24px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">HQ</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="hq">—</div>
             </div>
-            <!-- Founded Card -->
-            <div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);border:1px solid #93c5fd;border-radius:16px;padding:16px">
-              <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px">Founded</div>
-              <div style="font-size:18px;font-weight:700;color:#1e3a8a;margin:8px 0" data-metric="founded">—</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Founded</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="founded">—</div>
             </div>
-            <!-- Industry Card -->
-            <div style="background:linear-gradient(135deg,#ddd6fe,#c4b5fd);border:1px solid #a78bfa;border-radius:16px;padding:16px">
-              <div style="font-size:11px;font-weight:700;color:#5b21b6;text-transform:uppercase;letter-spacing:0.5px">Industry</div>
-              <div style="font-size:18px;font-weight:700;color:#4c1d95;margin:8px 0" data-metric="industry">—</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Industry</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="industry">—</div>
             </div>
-            <!-- Revenue Card -->
-            <div style="background:linear-gradient(135deg,#eef2ff,#f5f3ff);border:1px solid #e0e7ff;border-radius:16px;padding:16px">
-              <div style="font-size:11px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:0.5px">Revenue</div>
-              <div style="font-size:18px;font-weight:700;color:#1e1b4b;margin:8px 0" data-metric="revenue">—</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Revenue</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="revenue">—</div>
             </div>
-            <!-- Employees Card -->
-            <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:16px;padding:16px">
-              <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.5px">Employees</div>
-              <div style="font-size:18px;font-weight:700;color:#1e3a1f;margin:8px 0" data-metric="employees">—</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Employees</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="employees">—</div>
             </div>
-            <!-- Market Cap Card -->
-            <div style="background:linear-gradient(135deg,#fdf2f8,#fce7f3);border:1px solid #fbcfe8;border-radius:16px;padding:16px">
-              <div style="font-size:11px;font-weight:700;color:#be123c;text-transform:uppercase;letter-spacing:0.5px">Market Cap</div>
-              <div style="font-size:18px;font-weight:700;color:#500724;margin:8px 0" data-metric="market_cap">—</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px">Market Cap</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)" data-metric="market_cap">—</div>
             </div>
           </div>
 
-          <!-- GROWTH CHART SECTION -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <div style="font-size:14px;font-weight:700;color:var(--text)">📈 Revenue Trend (5Y)</div>
-              <button onclick="_toggleIntelChartView()" style="font-size:11px;font-weight:600;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:4px 10px;cursor:pointer;border:none;background:transparent;color:#7c3aed">📊 Table View</button>
-            </div>
-            <!-- Simple SVG chart placeholder -->
-            <svg id="intel-revenue-chart" width="100%" height="200" style="margin-bottom:8px">
-              <polyline points="20,180 80,140 140,120 200,100 260,80 320,60" style="fill:none;stroke:#4f46e5;stroke-width:3;stroke-linecap:round"/>
-              <circle cx="20" cy="180" r="5" fill="#4f46e5"/>
-              <circle cx="80" cy="140" r="5" fill="#4f46e5"/>
-              <circle cx="140" cy="120" r="5" fill="#4f46e5"/>
-              <circle cx="200" cy="100" r="5" fill="#4f46e5"/>
-              <circle cx="260" cy="80" r="5" fill="#4f46e5"/>
-              <circle cx="320" cy="60" r="5" fill="#4f46e5"/>
-              <text x="10" y="195" font-size="12" fill="var(--muted)">2021</text>
-              <text x="300" y="195" font-size="12" fill="var(--muted)">2026</text>
-            </svg>
-            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-size:11px;text-align:center;color:var(--muted)">
-              <div>2021: $29.7B</div>
-              <div>2022: $31.6B</div>
-              <div>2023: $32.8B</div>
-              <div>2024: $34.2B</div>
-              <div>2025: $35.2B</div>
-            </div>
+          <!-- Overview Section -->
+          <div id="intel-overview-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">About</div>
+            <div id="intel-overview-text" style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:12px"></div>
+            <a id="intel-wiki-link" href="" target="_blank" style="font-size:12px;color:#4f46e5;text-decoration:none;font-weight:600">Read more on Wikipedia →</a>
           </div>
 
-          <!-- LEADERSHIP TIMELINE -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
-            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">👥 Leadership Team</div>
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border-radius:12px">
-                <div style="width:48px;height:48px;border-radius:50%;background:#7c3aed;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px">GP</div>
-                <div style="flex:1">
-                  <div style="font-weight:700;color:var(--text)">Greg Peters</div>
-                  <div style="font-size:12px;color:var(--muted)">CEO • Since 2020</div>
-                </div>
-                <div style="font-size:11px;color:#059669;background:#f0fdf4;padding:4px 8px;border-radius:6px;font-weight:600">6 years</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border-radius:12px">
-                <div style="width:48px;height:48px;border-radius:50%;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px">SN</div>
-                <div style="flex:1">
-                  <div style="font-weight:700;color:var(--text)">Spence Neumann</div>
-                  <div style="font-size:12px;color:var(--muted)">CFO • Since 2017</div>
-                </div>
-                <div style="font-size:11px;color:#059669;background:#f0fdf4;padding:4px 8px;border-radius:6px;font-weight:600">9 years</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border-radius:12px">
-                <div style="width:48px;height:48px;border-radius:50%;background:#0f766e;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px">TR</div>
-                <div style="flex:1">
-                  <div style="font-weight:700;color:var(--text)">Ted Sarandos</div>
-                  <div style="font-size:12px;color:var(--muted)">Co-CEO • Since 2007</div>
-                </div>
-                <div style="font-size:11px;color:#059669;background:#f0fdf4;padding:4px 8px;border-radius:6px;font-weight:600">19 years</div>
-              </div>
-            </div>
+          <!-- Jobs Section (if available) -->
+          <div id="intel-jobs-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🔗 Open Positions</div>
+            <div id="intel-jobs-list" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
 
-          <!-- NEWS & SENTIMENT -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
-            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">📰 Recent News (30 days)</div>
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <div style="display:flex;gap:10px;padding:10px;background:var(--bg);border-radius:12px;border-left:4px solid #10b981">
-                <div style="font-size:20px">🟢</div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-weight:600;color:var(--text)">Netflix Expands Asian Content</div>
-                  <div style="font-size:12px;color:var(--muted)">3 days ago • TechCrunch</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:10px;padding:10px;background:var(--bg);border-radius:12px;border-left:4px solid #f59e0b">
-                <div style="font-size:20px">🟡</div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-weight:600;color:var(--text)">Password Sharing Enforcement</div>
-                  <div style="font-size:12px;color:var(--muted)">1 week ago • Variety</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:10px;padding:10px;background:var(--bg);border-radius:12px;border-left:4px solid #ef4444">
-                <div style="font-size:20px">🔴</div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-weight:600;color:var(--text)">Subscriber Growth Misses Target</div>
-                  <div style="font-size:12px;color:var(--muted)">2 weeks ago • Reuters</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- COMPETITORS -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <div style="font-size:14px;font-weight:700;color:var(--text)">⚖️ Competitors</div>
-              <button onclick="_toggleIntelCompetitorView()" style="font-size:11px;font-weight:600;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:4px 10px;cursor:pointer;border:none;background:transparent;color:#7c3aed">📋 Details</button>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
-              <div style="text-align:center;padding:12px;background:var(--bg);border-radius:12px">
-                <div style="font-size:24px;margin-bottom:6px">🎬</div>
-                <div style="font-weight:700;color:var(--text);margin-bottom:8px">Netflix</div>
-                <div style="font-size:12px;color:var(--muted)">230M subscribers</div>
-                <div style="font-size:14px;font-weight:700;color:#4f46e5;margin-top:6px">$35.2B</div>
-              </div>
-              <div style="text-align:center;padding:12px;background:var(--bg);border-radius:12px;opacity:0.7">
-                <div style="font-size:24px;margin-bottom:6px">🏰</div>
-                <div style="font-weight:700;color:var(--text);margin-bottom:8px">Disney+</div>
-                <div style="font-size:12px;color:var(--muted)">150M subscribers</div>
-                <div style="font-size:14px;font-weight:700;color:#7c3aed;margin-top:6px">$18.5B</div>
-              </div>
-              <div style="text-align:center;padding:12px;background:var(--bg);border-radius:12px;opacity:0.7">
-                <div style="font-size:24px;margin-bottom:6px">🛍️</div>
-                <div style="font-weight:700;color:var(--text);margin-bottom:8px">Amazon Prime</div>
-                <div style="font-size:12px;color:var(--muted)">200M subscribers</div>
-                <div style="font-size:14px;font-weight:700;color:#7c3aed;margin-top:6px">$25B</div>
-              </div>
-            </div>
+          <!-- Search Again -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;text-align:center;margin-bottom:20px">
+            <button onclick="document.getElementById('intel-input').value='';document.getElementById('intel-input').focus();document.getElementById('intel-detailed').style.display='none'" style="font-size:13px;font-weight:600;color:var(--text);background:transparent;border:none;cursor:pointer;text-decoration:underline">← Search another company</button>
           </div>
         </div>
 
@@ -9848,25 +9752,34 @@ function _hcAdd() {
     document.getElementById("company-results").classList.remove("hidden");
     _coCurrentName = d.name || document.getElementById("company-input").value.trim();
     document.getElementById("co-share-name").textContent = _coCurrentName;
-    // Hide ALL old content, show ONLY intel-detailed metrics
+    // Hide ALL old content
     document.querySelectorAll("[id^='intel-tab-']").forEach(el => el.style.display = "none");
     document.querySelectorAll("[id^='co-']").forEach(el => el.style.display = "none");
     document.querySelectorAll("[id^='brand-']").forEach(el => el.style.display = "none");
+
+    // Show clean intel-detailed view
     const detailedDiv = document.getElementById("intel-detailed");
     if (detailedDiv) {
       detailedDiv.style.display = "block";
-      // Hide old hardcoded sections within intel-detailed
-      detailedDiv.querySelectorAll("[id*='revenue-chart'], [id*='leadership'], [id*='news'], [id*='competitors']").forEach(el => el.parentElement && (el.parentElement.style.display = "none"));
     }
+
+    // Set company name and tagline
+    document.getElementById("intel-result-name").textContent = _coCurrentName;
+    const w = d.wiki || {};
+    if (w.description) {
+      document.getElementById("intel-result-tagline").textContent = w.description;
+    }
+
+    // Fetch and display metrics
     _updateIntelMetrics(_coCurrentName);
 
     // Wikipedia overview
-    const w = d.wiki || {};
     if (w.extract) {
-      let html = `<p class="mb-2">${w.extract}</p>`;
-      if (w.wiki_url) html += `<a href="${w.wiki_url}" target="_blank" class="text-xs text-indigo-500 underline">Read more on Wikipedia →</a>`;
-      document.getElementById("co-overview-body").innerHTML = html;
-      document.getElementById("co-overview").classList.remove("hidden");
+      document.getElementById("intel-overview-text").textContent = w.extract;
+      document.getElementById("intel-wiki-link").href = w.wiki_url || "";
+      document.getElementById("intel-overview-wrap").style.display = "block";
+    } else {
+      document.getElementById("intel-overview-wrap").style.display = "none";
     }
 
     // Key Facts — single line separated by · with inline brands
