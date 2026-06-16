@@ -9293,12 +9293,16 @@ function _hcAdd() {
     const tabAbout = document.getElementById("intel-tab-about");
     if (tabAbout) tabAbout.style.display = "";
 
-    // reset brand header
+    // reset brand header (if using old layout)
     const logoEl = document.getElementById("brand-logo-el");
-    logoEl.style.display = "none";
-    document.getElementById("brand-name-el").textContent = raw;
-    document.getElementById("brand-desc-el").textContent = "";
-    
+    if (logoEl) logoEl.style.display = "none";
+
+    const brandNameEl = document.getElementById("brand-name-el");
+    if (brandNameEl) brandNameEl.textContent = raw;
+
+    const brandDescEl = document.getElementById("brand-desc-el");
+    if (brandDescEl) brandDescEl.textContent = "";
+
     const _sg = document.getElementById("brand-stats-grid");
     if (_sg) _sg.style.display = "none";
 
@@ -9370,15 +9374,23 @@ function _hcAdd() {
       if (brData && !brErr) {
         try { _renderBrand(brData); } catch(e) { console.warn("_renderBrand error", e); }
         const logoUrl = brData.domain ? `https://logo.clearbit.com/${brData.domain}` : `https://logo.clearbit.com/${(brData.name||"").toLowerCase().replace(/[^a-z0-9]/g,"")}.com`;
-        logoEl.src = logoUrl;
-        logoEl.style.display = "";
-        logoEl.onerror = function() { this.style.display = "none"; };
-        if (brData.name) document.getElementById("brand-name-el").textContent = brData.name;
-        if (brData.description) document.getElementById("brand-desc-el").textContent = brData.description;
+        const oldLogoEl = document.getElementById("brand-logo-el");
+        if (oldLogoEl) {
+          oldLogoEl.src = logoUrl;
+          oldLogoEl.style.display = "";
+          oldLogoEl.onerror = function() { this.style.display = "none"; };
+        }
+        const oldNameEl = document.getElementById("brand-name-el");
+        if (oldNameEl && brData.name) oldNameEl.textContent = brData.name;
+
+        const oldDescEl = document.getElementById("brand-desc-el");
+        if (oldDescEl && brData.description) oldDescEl.textContent = brData.description;
+
         const _sEl = document.getElementById("brand-slogan-el");
         if (_sEl && brData.slogan) { _sEl.textContent = `"${brData.slogan}"`; _sEl.style.display = ""; }
       } else if (coData && coData.name) {
-        document.getElementById("brand-name-el").textContent = coData.name;
+        const oldNameEl = document.getElementById("brand-name-el");
+        if (oldNameEl) oldNameEl.textContent = coData.name;
       }
 
       // Fetch Pinpoint collection for this brand/company
