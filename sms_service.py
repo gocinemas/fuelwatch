@@ -7386,6 +7386,7 @@ def api_brands_search():
             "ok": True,
             "brand": brand_data,
             "skus_count": len(brand_data.get("skus", [])),
+            "competitors_count": len(brand_data.get("competitors", [])),
             "source": brand_data.get("source")
         })
     except Exception as e:

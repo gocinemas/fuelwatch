@@ -135,6 +135,40 @@ def fetch_brand_skus(brand_name):
     # For now, return empty to avoid failed API calls
     return []
 
+def fetch_brand_competitors(brand_name):
+    """Fetch competitor brands for a given brand"""
+    # Hardcoded competitor data by brand/category
+    # TODO: Replace with dynamic market data from Crunchbase or similar
+    competitors_map = {
+        "tesla": [
+            {"name": "Ford", "market_cap": 37.5, "market_share": 12.5},
+            {"name": "General Motors", "market_cap": 40.2, "market_share": 14.2},
+            {"name": "Volkswagen", "market_cap": 85.3, "market_share": 18.5},
+            {"name": "BMW", "market_cap": 63.4, "market_share": 8.2},
+            {"name": "Lucid Motors", "market_cap": 2.1, "market_share": 0.3},
+        ],
+        "nike": [
+            {"name": "Adidas", "market_cap": 64.2, "market_share": 16.5},
+            {"name": "Puma", "market_cap": 18.5, "market_share": 5.2},
+            {"name": "Skechers", "market_cap": 8.3, "market_share": 2.1},
+            {"name": "New Balance", "market_cap": 5.0, "market_share": 1.8},
+        ],
+        "coca-cola": [
+            {"name": "PepsiCo", "market_cap": 238.5, "market_share": 25.2},
+            {"name": "Keurig Dr Pepper", "market_cap": 35.2, "market_share": 8.5},
+            {"name": "Monster Beverage", "market_cap": 54.3, "market_share": 6.2},
+        ],
+        "apple": [
+            {"name": "Microsoft", "market_cap": 3450.0, "market_share": 15.2},
+            {"name": "Samsung", "market_cap": 420.0, "market_share": 18.5},
+            {"name": "Google", "market_cap": 2100.0, "market_share": 12.3},
+            {"name": "Meta", "market_cap": 650.0, "market_share": 5.2},
+        ],
+    }
+
+    key = brand_name.lower()
+    return competitors_map.get(key, [])
+
 def fetch_brand_financials(brand_name, cik=None):
     """Fetch financials from SEC Edgar for public companies"""
     # For now, return mock data
@@ -226,6 +260,9 @@ def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=Fal
     # Step 3: Fetch SKUs
     skus = fetch_brand_skus(brand_name)
 
+    # Step 3b: Fetch competitors
+    competitors = fetch_brand_competitors(brand_name)
+
     # Step 4: Prepare brand record
     description = ""
     source = None
@@ -248,6 +285,7 @@ def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=Fal
         "wikipedia_url": wikipedia_url,
         "knowledge_graph_data": kg_data if kg_data else None,
         "skus": skus,
+        "competitors": competitors,
         "source": source
     }
 
