@@ -46,6 +46,15 @@
     } catch(e) {}
   })();
   </script>
+  <!-- Stub functions to prevent "undefined" errors on buttons before real functions load -->
+  <script>
+    window.setIntelMode = function(mode) {
+      if (typeof window._realSetIntelMode === 'function') window._realSetIntelMode(mode);
+    };
+    window.searchIntel = function() {
+      if (typeof window._realSearchIntel === 'function') window._realSearchIntel();
+    };
+  </script>
   <style>
     :root {
       --bg:      #f8f7f5;
@@ -8520,7 +8529,7 @@ function _hcAdd() {
 
   var _intelSearchMode = {% if intel_mode %}"company"{% else %}null{% endif %};
 
-  window.setIntelMode = function(mode) {
+  window._realSetIntelMode = function(mode) {
     _intelSearchMode = mode;
     // Hide landing, show the mode-specific panel
     var landing = document.getElementById("intel-landing");
@@ -9231,7 +9240,7 @@ function _hcAdd() {
     if (fi) { fi.value = q; finderSearch(q); }
   };
 
-  window.searchIntel = async function() {
+  window._realSearchIntel = async function() {
     // intel-input is the canonical value (set by typing via oninput sync AND by recent-item clicks).
     // _visQ (brand-q/company-q) can be stale after a recent-item click, so always prefer intel-input.
     var raw;
