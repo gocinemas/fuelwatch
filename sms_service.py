@@ -2994,6 +2994,23 @@ def api_brand():
     return jsonify(data)
 
 
+@app.route("/api/company/intelligence", methods=["GET"])
+def api_company_intelligence():
+    """Fetch real company intelligence: founded, founder, HQ, industry, leadership."""
+    name = request.args.get("name", "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        from company_intelligence import fetch_company_intelligence
+        data = fetch_company_intelligence(name)
+        if not data:
+            return jsonify({"error": "Company not found", "name": name}), 404
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/bookmark", methods=["POST"])
 def bookmark_brand():
     """Explicitly bookmark/track a brand to save to database."""
