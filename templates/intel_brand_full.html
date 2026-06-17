@@ -318,6 +318,14 @@
             <button onclick="searchBrand()">Search</button>
         </div>
 
+        <div id="recentSearches" class="recent-searches" style="display: none; background: white; padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <span>RECENT SEARCHES</span>
+                <button onclick="clearRecentSearches()" style="border: none; background: none; color: #94a3b8; font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: 4px;">Clear</button>
+            </div>
+            <div id="recentList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+        </div>
+
         <div id="loading" class="loading">
             <div class="spinner"></div>
             <p>Analyzing brand intelligence...</p>
@@ -391,8 +399,59 @@
     </div>
 
     <script>
+        const RECENT_SEARCHES_KEY = 'brand_intelligence_recent';
+        const MAX_RECENT = 10;
+
+        function addToRecentSearches(brandName) {
+            let recent = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+            recent = recent.filter(b => b.toLowerCase() !== brandName.toLowerCase());
+            recent.unshift(brandName);
+            recent = recent.slice(0, MAX_RECENT);
+            localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent));
+            displayRecentSearches();
+        }
+
+        function displayRecentSearches() {
+            const recent = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+            const container = document.getElementById('recentList');
+            const section = document.getElementById('recentSearches');
+
+            if (recent.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            container.innerHTML = recent.map(brand => `
+                <button onclick="loadRecentBrand('${brand}')" style="
+                    background: #f1f5f9;
+                    border: 1px solid #e2e8f0;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    font-size: 13px;
+                    color: #475569;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                " onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+                    ${brand}
+                </button>
+            `).join('');
+        }
+
+        function loadRecentBrand(brandName) {
+            document.getElementById('searchInput').value = brandName;
+            searchBrand();
+        }
+
+        function clearRecentSearches() {
+            localStorage.removeItem(RECENT_SEARCHES_KEY);
+            displayRecentSearches();
+        }
+
         // Auto-load brand from URL parameter on page load
         window.addEventListener('DOMContentLoaded', () => {
+            displayRecentSearches();
+
             const params = new URLSearchParams(window.location.search);
             const brandName = params.get('name');
             if (brandName) {
@@ -412,6 +471,7 @@
             if (!name) return;
 
             showLoading();
+            addToRecentSearches(name);
 
             try {
                 const response = await fetch(`/api/brand/full?name=${encodeURIComponent(name)}`);
