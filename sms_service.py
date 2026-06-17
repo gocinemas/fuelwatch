@@ -1150,6 +1150,14 @@ def sms_reply():
     return str(resp)
 
 
+@app.route("/brand/full")
+def brand_full_intelligence():
+    """Complete Brand Intelligence page"""
+    resp = make_response(render_template("intel_brand_full.html"))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+    return resp
+
+
 @app.route("/")
 @app.route("/brand")
 @app.route("/company")
@@ -3296,6 +3304,41 @@ def api_brand_add_sku_by_country():
         }).execute()
         return jsonify({"success": True, "sku": result.data[0] if result.data else {}}), 201
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/full", methods=["GET"])
+def api_brand_full_intelligence():
+    """
+    COMPLETE Brand Intelligence Report
+
+    Returns comprehensive brand analysis including:
+    - Brand fundamentals (history, origin, tagline)
+    - Financials (revenue, market cap, growth)
+    - Product ecosystem (bestsellers, SKUs by country)
+    - Competitive landscape (competitors ranked, SKU comparison)
+    - White space (market gaps, growth adjacencies)
+    - Brand presence (social media investment, campaigns)
+    - Real-time intelligence (news, podcasts, AI strategy)
+
+    Query params:
+    - name: Brand name (required)
+    """
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        from brand_intelligence_engine import get_brand_full_intelligence
+
+        data = get_brand_full_intelligence(name)
+
+        if data.get("error"):
+            return jsonify(data), 404
+
+        return jsonify(data)
+    except Exception as e:
+        app.logger.error(f"[brand/full] Error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 

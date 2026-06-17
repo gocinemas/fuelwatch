@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Intelligence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 30px 0;
+            margin-bottom: 40px;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .search-box {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 12px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .search-box button {
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .search-box button:hover {
+            background: #2563eb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .brand-view {
+            display: none;
+        }
+
+        .brand-view.show {
+            display: block;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 16px;
+            margin-bottom: 40px;
+        }
+
+        .hero-content {
+            max-width: 800px;
+        }
+
+        .brand-name {
+            font-size: 42px;
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+
+        .brand-tagline {
+            font-size: 18px;
+            opacity: 0.95;
+            margin-bottom: 8px;
+        }
+
+        .brand-meta {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #1e293b;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f0f4f8, #e8f1f9);
+            border: 2px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #0369a1;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 900;
+            color: #1e293b;
+        }
+
+        .list-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .list-item-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .list-item-meta {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .competitive-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .competitor-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .competitor-name {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .competitor-metric {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .opportunity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .opportunity-high {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .opportunity-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .news-item {
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .news-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .news-meta {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .ai-focus {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .completeness-bar {
+            background: #e2e8f0;
+            border-radius: 8px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .completeness-fill {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        .empty {
+            text-align: center;
+            color: #64748b;
+            padding: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 24px;
+            }
+
+            .brand-name {
+                font-size: 28px;
+            }
+
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 20px;">🎯 Brand Intelligence</h1>
+            <p style="color: #64748b;">Complete brand analysis: fundamentals, financials, products, competitors, market opportunity, presence, and real-time insights.</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search any brand (e.g., Nike, Apple, Coca-Cola)..." autocomplete="off">
+            <button onclick="searchBrand()">Search</button>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Analyzing brand intelligence...</p>
+        </div>
+
+        <div id="brandView" class="brand-view">
+            <!-- HERO SECTION -->
+            <div class="hero">
+                <div class="hero-content">
+                    <div class="brand-name" id="heroName">—</div>
+                    <div class="brand-tagline" id="heroTagline">—</div>
+                    <div class="brand-meta" id="heroMeta">—</div>
+                </div>
+            </div>
+
+            <!-- SECTION 1: FUNDAMENTALS -->
+            <div class="section">
+                <div class="section-title">📖 Brand Fundamentals</div>
+                <div id="fundamentalsContent"></div>
+            </div>
+
+            <!-- SECTION 2: FINANCIALS -->
+            <div class="section">
+                <div class="section-title">💰 Financial Profile</div>
+                <div class="grid-2" id="financialsContent"></div>
+            </div>
+
+            <!-- SECTION 3: PRODUCTS -->
+            <div class="section">
+                <div class="section-title">📦 Product Ecosystem</div>
+                <div id="productsContent"></div>
+            </div>
+
+            <!-- SECTION 4: COMPETITORS -->
+            <div class="section">
+                <div class="section-title">🏆 Competitive Landscape</div>
+                <div id="competitorsContent"></div>
+            </div>
+
+            <!-- SECTION 5: WHITE SPACE -->
+            <div class="section">
+                <div class="section-title">⚡ Market Opportunities</div>
+                <div id="whiteSpaceContent"></div>
+            </div>
+
+            <!-- SECTION 6: BRAND PRESENCE -->
+            <div class="section">
+                <div class="section-title">📱 Brand Presence & Investment</div>
+                <div id="presenceContent"></div>
+            </div>
+
+            <!-- SECTION 7: REAL-TIME INTELLIGENCE -->
+            <div class="section">
+                <div class="section-title">🔍 Real-Time Intelligence</div>
+                <div id="intelligenceContent"></div>
+            </div>
+
+            <!-- COMPLETENESS -->
+            <div class="section">
+                <div class="section-title">📊 Data Completeness</div>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div id="completenessValue" style="font-size: 32px; font-weight: 900; color: #3b82f6;">—%</div>
+                    <div style="flex: 1; margin-left: 20px;">
+                        <div class="completeness-bar">
+                            <div class="completeness-fill" id="completenessBar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('searchInput').focus();
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchBrand();
+        });
+
+        async function searchBrand() {
+            const name = document.getElementById('searchInput').value.trim();
+            if (!name) return;
+
+            showLoading();
+
+            try {
+                const response = await fetch(`/api/brand/full?name=${encodeURIComponent(name)}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    hideLoading();
+                    return;
+                }
+
+                displayBrandIntelligence(data);
+                showBrandView();
+            } catch (e) {
+                console.error(e);
+                hideLoading();
+            }
+        }
+
+        function displayBrandIntelligence(data) {
+            const b = data.brand || {};
+            const f = data.financials || {};
+            const p = data.products || {};
+            const c = data.competitors || {};
+            const w = data.white_space || {};
+            const br = data.brand_presence || {};
+            const i = data.intelligence || {};
+            const m = data.metadata || {};
+
+            // Hero
+            document.getElementById('heroName').textContent = b.name || '—';
+            document.getElementById('heroTagline').textContent = b.tagline || '—';
+            document.getElementById('heroMeta').textContent = b.origin?.city && b.founded ?
+                `Founded ${b.founded} in ${b.origin.city}, ${b.origin.country}` : '—';
+
+            // Fundamentals
+            document.getElementById('fundamentalsContent').innerHTML = `
+                <div style="display: grid; gap: 16px;">
+                    <div class="list-item">
+                        <div class="list-item-title">Description</div>
+                        <div class="list-item-meta">${b.description || '—'}</div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="list-item">
+                            <div class="list-item-title">Founded</div>
+                            <div class="list-item-meta">${b.founded || '—'}</div>
+                        </div>
+                        <div class="list-item">
+                            <div class="list-item-title">Headquarters</div>
+                            <div class="list-item-meta">${b.headquarters || '—'}</div>
+                        </div>
+                    </div>
+                    <div class="list-item">
+                        <div class="list-item-title">Website</div>
+                        <div class="list-item-meta"><a href="https://${b.website}" target="_blank" style="color: #3b82f6;">${b.website || '—'}</a></div>
+                    </div>
+                </div>
+            `;
+
+            // Financials
+            document.getElementById('financialsContent').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">Revenue</div>
+                    <div class="stat-value">${f.revenue || '—'}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Market Cap</div>
+                    <div class="stat-value">${f.market_cap || '—'}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Profit Margin</div>
+                    <div class="stat-value">${f.profit_margin || '—'}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Growth Rate</div>
+                    <div class="stat-value">${f.growth_rate || '—'}</div>
+                </div>
+            `;
+
+            // Products
+            const bestseller = p.global_bestseller || {};
+            let productsHtml = `
+                <div style="margin-bottom: 24px; padding: 20px; background: linear-gradient(135deg, #fef08a, #fef3c7); border-radius: 12px;">
+                    <div style="font-size: 12px; color: #92400e; font-weight: 700; margin-bottom: 8px;">🏆 GLOBAL BESTSELLER</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 12px;">${bestseller.name || '—'}</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <div><span style="color: #64748b;">Category:</span> ${bestseller.category || '—'}</div>
+                        <div><span style="color: #64748b;">Price:</span> ${bestseller.price || '—'}</div>
+                        <div><span style="color: #64748b;">Sales:</span> ${bestseller.monthly_sales || '—'}</div>
+                    </div>
+                </div>
+            `;
+
+            const byCountry = p.by_country || {};
+            for (const [country, skus] of Object.entries(byCountry)) {
+                productsHtml += `
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 700; color: #0369a1; margin-bottom: 8px;">${country}</div>
+                        ${skus.map(sku => `
+                            <div class="list-item" style="margin-bottom: 8px;">
+                                <div class="list-item-title">#${sku.position} ${sku.name}</div>
+                                <div class="list-item-meta">${sku.category} • ${sku.price} • ${sku.sales_monthly}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            document.getElementById('productsContent').innerHTML = productsHtml;
+
+            // Competitors
+            let competitorsHtml = `<div class="competitive-grid">`;
+            (c.direct_competitors || []).forEach(comp => {
+                competitorsHtml += `
+                    <div class="competitor-card">
+                        <div class="competitor-name">#${comp.market_position} ${comp.name}</div>
+                        <div class="competitor-metric">Market Share: ${comp.market_share}</div>
+                        ${comp.vs_brand ? `<div class="competitor-metric">vs Brand: ${comp.vs_brand}</div>` : ''}
+                        <div style="font-size: 12px; color: #64748b; margin-top: 8px;">
+                            ${(c.competing_skus?.[comp.name] || []).map(sku => `<div>• ${sku.sku} (${sku.price})</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            competitorsHtml += `</div>`;
+            document.getElementById('competitorsContent').innerHTML = competitorsHtml;
+
+            // White Space
+            let whiteSpaceHtml = '';
+            (w.market_gaps || []).forEach(gap => {
+                whiteSpaceHtml += `
+                    <div class="list-item">
+                        <div class="list-item-title">${gap.gap}</div>
+                        <div class="list-item-meta">${gap.description}</div>
+                        <div style="margin-top: 8px;">
+                            <span style="color: #64748b;">Market Size:</span> ${gap.market_size}
+                            <span class="opportunity-badge opportunity-${gap.opportunity_score > 8 ? 'high' : 'medium'}">
+                                Opportunity: ${gap.opportunity_score}/10
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (w.growth_adjacencies?.length > 0) {
+                whiteSpaceHtml += `<div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                    <div style="font-weight: 700; margin-bottom: 12px;">Growth Adjacencies</div>`;
+                w.growth_adjacencies.forEach(adj => {
+                    whiteSpaceHtml += `
+                        <div class="list-item">
+                            <div class="list-item-title">${adj.adjacency}</div>
+                            <div class="list-item-meta">Fit Score: ${adj.fit_score}/10</div>
+                        </div>
+                    `;
+                });
+                whiteSpaceHtml += `</div>`;
+            }
+
+            document.getElementById('whiteSpaceContent').innerHTML = whiteSpaceHtml || '<div class="empty">No market gap data</div>';
+
+            // Brand Presence
+            let presenceHtml = '<div class="grid-2">';
+            for (const [platform, data] of Object.entries(br.by_platform || {})) {
+                presenceHtml += `
+                    <div class="list-item">
+                        <div class="list-item-title">${platform}</div>
+                        <div class="list-item-meta">Followers: ${data.followers}</div>
+                        <div class="list-item-meta">Engagement: ${data.engagement_rate}</div>
+                        <div class="list-item-meta">Ad Spend: ${data.monthly_ad_spend}</div>
+                    </div>
+                `;
+            }
+            presenceHtml += '</div>';
+            document.getElementById('presenceContent').innerHTML = presenceHtml || '<div class="empty">No social media data</div>';
+
+            // Intelligence
+            let intHtml = '';
+            if (i.latest_news?.length > 0) {
+                intHtml += '<div style="margin-bottom: 20px;"><div style="font-weight: 700; margin-bottom: 12px;">Latest News</div>';
+                i.latest_news.forEach(n => {
+                    intHtml += `
+                        <div class="news-item">
+                            <div class="news-title">${n.title}</div>
+                            <div class="news-meta">${n.source} • ${new Date(n.published_date).toLocaleDateString()}</div>
+                        </div>
+                    `;
+                });
+                intHtml += '</div>';
+            }
+
+            if (i.ai_strategy?.length > 0) {
+                intHtml += '<div style="margin-bottom: 20px;"><div style="font-weight: 700; margin-bottom: 12px;">AI Strategy Focus</div>';
+                i.ai_strategy.forEach(ai => {
+                    intHtml += `<div class="ai-focus">🤖 ${ai.focus}</div>`;
+                });
+                intHtml += '</div>';
+            }
+
+            document.getElementById('intelligenceContent').innerHTML = intHtml || '<div class="empty">No intelligence data</div>';
+
+            // Completeness
+            const comp = m.data_completeness || 0;
+            document.getElementById('completenessValue').textContent = comp + '%';
+            document.getElementById('completenessBar').style.width = comp + '%';
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('brandView').classList.remove('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        function showBrandView() {
+            hideLoading();
+            document.getElementById('brandView').classList.add('show');
+        }
+    </script>
+</body>
+</html>
