@@ -16832,39 +16832,33 @@ let _savesAll = [];
           }
           _briefAskShow();
 
-          // Commute card — show traffic 7:00-8:30 AM weekdays only
-          if (d.context && d.context.traffic && d.context.traffic.legs) {
-            var now = new Date();
-            var hour = now.getHours();
-            var min = now.getMinutes();
-            // Display My Commutes card with live traffic
-            var commuteCard = document.getElementById("commute-card");
-            if (commuteCard) {
-              (async function() {
-                const commutes = await _commuteLoad();
-                if (!commutes.length) return;
-                const pc = _miruPostcode ? _miruPostcode() : "";
-                if (!pc) return;
-                const commuteLines = [];
-                for (const c of commutes) {
-                  try {
-                    const r = await fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`);
-                    const tdata = await r.json();
-                    if (tdata.duration_min !== undefined) {
-                      commuteLines.push(c.label + " " + tdata.traffic_emoji + " " + tdata.duration_min + " min");
-                    } else {
-                      commuteLines.push(c.label);
-                    }
-                  } catch (e) {
+          // Display My Commutes card with live traffic
+          var commuteCard = document.getElementById("commute-card");
+          if (commuteCard) {
+            (async function() {
+              const commutes = await _commuteLoad();
+              if (!commutes.length) return;
+              const pc = _miruPostcode ? _miruPostcode() : "";
+              if (!pc) return;
+              const commuteLines = [];
+              for (const c of commutes) {
+                try {
+                  const r = await fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`);
+                  const tdata = await r.json();
+                  if (tdata.duration_min !== undefined) {
+                    commuteLines.push(c.label + " " + tdata.traffic_emoji + " " + tdata.duration_min + " min");
+                  } else {
                     commuteLines.push(c.label);
                   }
+                } catch (e) {
+                  commuteLines.push(c.label);
                 }
-                if (commuteLines.length > 0) {
-                  document.getElementById("commute-card-body").innerHTML = commuteLines.join("<br>");
-                  commuteCard.style.display = "block";
-                }
-              })();
-            }
+              }
+              if (commuteLines.length > 0) {
+                document.getElementById("commute-card-body").innerHTML = commuteLines.join("<br>");
+                commuteCard.style.display = "block";
+              }
+            })();
           }
 
           // "Checked: ..." status line + brief card footer
