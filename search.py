@@ -2095,12 +2095,12 @@ def _fetch_wikipedia(company: str) -> dict:
         domain = ""
 
     # Run agentic analysis
-    category_agent = _agent_identify_category(brand, result.get("description", ""), {"industry": industry})
+    category_agent = _agent_identify_category(company, result.get("description", ""), {"industry": industry})
     category = category_agent.get("category", "")
-    trend_agent = _agent_market_trends(brand, category)
-    direction_agent = _agent_market_direction(brand, category, trend_agent.get("trend_name", ""))
-    competitive_agent = _agent_competitive_set(brand, category)
-    positioning_agent = _agent_brand_positioning(brand, category, trend_agent, direction_agent)
+    trend_agent = _agent_market_trends(company, category)
+    direction_agent = _agent_market_direction(company, category, trend_agent.get("trend_name", ""))
+    competitive_agent = _agent_competitive_set(company, category)
+    positioning_agent = _agent_brand_positioning(company, category, trend_agent, direction_agent)
 
     return {**result,
             "employees": employees, "revenue": revenue,
