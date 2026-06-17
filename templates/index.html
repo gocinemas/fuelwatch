@@ -12522,6 +12522,47 @@ function _hcAdd() {
       else _sloganEl.style.display = "none";
     }
 
+    // Agent Analysis Display
+    const _el = (id) => document.getElementById(id);
+    if (d.category_analysis) {
+      const cat = d.category_analysis;
+      if (_el('brand-category-name')) _el('brand-category-name').textContent = cat.category || '—';
+      if (_el('brand-subcategories')) {
+        _el('brand-subcategories').innerHTML = (cat.subcategories || []).map(s => `<div>• ${s}</div>`).join('');
+      }
+      if (_el('brand-category-source')) _el('brand-category-source').textContent = `Source: ${cat.source || 'Analysis'}`;
+      if (_el('brand-category-section')) _el('brand-category-section').style.display = 'block';
+    }
+    if (d.market_trend) {
+      const trend = d.market_trend;
+      if (_el('brand-trend-title')) _el('brand-trend-title').textContent = trend.trend_name || '—';
+      if (_el('brand-trend-description')) _el('brand-trend-description').textContent = trend.description || '—';
+      if (_el('brand-trend-drivers')) {
+        _el('brand-trend-drivers').innerHTML = (trend.drivers || []).map(d => `<div>✓ ${d}</div>`).join('');
+      }
+      if (_el('brand-trend-source')) _el('brand-trend-source').textContent = `Source: ${trend.source || 'Analysis'}`;
+      if (_el('brand-market-trend-section')) _el('brand-market-trend-section').style.display = 'block';
+    }
+    if (d.market_direction) {
+      const dir = d.market_direction;
+      if (_el('brand-direction-title')) _el('brand-direction-title').textContent = dir.direction || '—';
+      if (_el('brand-direction-growth')) _el('brand-direction-growth').textContent = `Growth: ${dir.growth_rate || '—'}`;
+      if (_el('brand-opportunities')) {
+        _el('brand-opportunities').innerHTML = (dir.opportunities || []).map(o => `<div>• ${o}</div>`).join('');
+      }
+      if (_el('brand-threats')) {
+        _el('brand-threats').innerHTML = (dir.threats || []).map(t => `<div>• ${t}</div>`).join('');
+      }
+      if (_el('brand-direction-source')) _el('brand-direction-source').textContent = `Source: ${dir.source || 'Analysis'}`;
+      if (_el('brand-direction-section')) _el('brand-direction-section').style.display = 'block';
+    }
+    if (d.strategic_positioning) {
+      const sp = d.strategic_positioning;
+      if (_el('brand-strategic-theme')) _el('brand-strategic-theme').textContent = sp.strategic_theme || '—';
+      if (_el('brand-community-sentiment')) _el('brand-community-sentiment').textContent = sp.alignment || '—';
+      if (_el('brand-positioning-section')) _el('brand-positioning-section').style.display = 'block';
+    }
+
     // Stats grid — only render boxes that have real values
     const _statFields = [
       ["Founded",      d.founded],
