@@ -26,7 +26,13 @@ def get_brand_full_intelligence(brand_name: str) -> dict:
 
     try:
         import library as lib
+        from brand_data_fetcher import fetch_and_populate_brand
         sb = lib._sb()
+
+        # If brand not in DB, fetch and populate it
+        profile = sb.table("brand_profile").select("*").eq("name", brand_name).execute().data
+        if not profile:
+            fetch_and_populate_brand(brand_name)
 
         # Fetch all brand data in parallel
         profile = sb.table("brand_profile").select("*").eq("name", brand_name).execute().data
