@@ -1379,33 +1379,61 @@
            INTEL.HUMANAGENCY.CO — Phase 1: Brand Intelligence
            ════════════════════════════════════════════════════════════════════ -->
 
-      <!-- Hero — Dark Minimal -->
-      <div style="margin:-20px -20px 40px -20px;background:#111318;padding:48px 40px;border-bottom:1px solid #2a2d35">
+      <!-- Hero — Bright Clean -->
+      <div style="margin:-20px -20px 40px -20px;background:linear-gradient(135deg,#ffffff 0%,#f8fafc 100%);padding:64px 40px;border-bottom:1px solid #e2e8f0">
         <div style="max-width:900px">
-          <div style="font-size:12px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:16px;text-transform:uppercase">Intelligence</div>
-          <h1 style="font-size:48px;font-weight:700;color:#fff;margin:0 0 12px 0;font-family:system-ui,-apple-system,sans-serif">Brand Research</h1>
-          <p style="font-size:15px;color:#b0b8c1;margin:0;max-width:600px">Real data from Wikipedia, Reddit, and news. No guesses.</p>
+          <div style="font-size:12px;color:#64748b;font-weight:700;letter-spacing:1.5px;margin-bottom:16px;text-transform:uppercase">🧠 Intelligence</div>
+          <h1 style="font-size:52px;font-weight:800;color:#1e293b;margin:0 0 12px 0;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;letter-spacing:-1px">Brand Intelligence</h1>
+          <p style="font-size:16px;color:#64748b;margin:0;max-width:650px;line-height:1.6">Analyze brands in seconds. Real data from Wikipedia, Reddit, and news. Zero guesses.</p>
         </div>
       </div>
 
-      <!-- Search — Dark Minimal -->
-      <div id="intel-search-box" style="margin:-20px -20px 40px -20px;padding:40px;background:#111318">
+      <!-- Search — Bright Clean -->
+      <div id="intel-search-box" style="margin:-20px -20px 40px -20px;padding:48px 40px;background:#ffffff;border-bottom:1px solid #e2e8f0">
         <div style="max-width:900px">
           <!-- Search Input -->
-          <div style="display:flex;gap:8px;margin-bottom:32px">
+          <div style="display:flex;gap:12px;margin-bottom:32px">
             <input id="intel-brand-input" type="text" placeholder="Search a brand…"
-              style="flex:1;background:#1a1d25;border:1px solid #2a2d35;color:#fff;padding:12px 16px;border-radius:8px;font-size:14px;outline:none;transition:all .2s;font-family:system-ui,-apple-system,sans-serif"
+              style="flex:1;background:#f8fafc;border:2px solid #e2e8f0;color:#1e293b;padding:13px 16px;border-radius:10px;font-size:15px;outline:none;transition:all .2s;font-family:system-ui,-apple-system,sans-serif"
               onkeydown="if(event.key==='Enter') searchBrand()"
+              onfocus="this.style.borderColor='#0ea5e9'"
+              onblur="this.style.borderColor='#e2e8f0'"
               autocomplete="off">
-            <button onclick="searchBrand()" style="background:#fff;color:#111318;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap">Search</button>
-            <button onclick="alert('Coming soon')" style="background:#1a1d25;color:#b0b8c1;border:1px solid #2a2d35;padding:12px 20px;border-radius:8px;font-size:14px;cursor:pointer;transition:all .2s">📱 Scan</button>
+            <button onclick="searchBrand()" style="background:#0ea5e9;color:#fff;border:none;padding:13px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;box-shadow:0 4px 12px rgba(14,165,233,.15)">Search</button>
           </div>
         </div>
 
-        <!-- Loading State -->
-        <div id="brand-loading" style="display:none;text-align:center;padding:40px;color:#64748b">
-          <div class="spinner mx-auto mb-3" style="border-top-color:#ec4899;width:28px;height:28px"></div>
-          Searching brand database...
+        <!-- Loading State with Step-by-Step Progress -->
+        <div id="brand-loading" style="display:none;max-width:900px;padding:40px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:12px">
+          <div style="font-size:14px;color:#0c4a6e;font-weight:700;margin-bottom:24px">Analyzing brand...</div>
+
+          <!-- Progress Steps -->
+          <div id="intel-progress-steps" style="display:flex;flex-direction:column;gap:12px">
+            <div class="intel-step intel-step-active" style="display:flex;align-items:center;gap:12px">
+              <div style="width:24px;height:24px;border-radius:50%;background:#0ea5e9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">✓</div>
+              <span style="color:#0c4a6e;font-size:13px;font-weight:600">Searching database</span>
+            </div>
+            <div class="intel-step" data-step="category" style="display:flex;align-items:center;gap:12px;opacity:0.5">
+              <div style="width:24px;height:24px;border-radius:50%;background:#cbd5e1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">2</div>
+              <span style="color:#64748b;font-size:13px;font-weight:600">Identifying market category</span>
+            </div>
+            <div class="intel-step" data-step="trends" style="display:flex;align-items:center;gap:12px;opacity:0.5">
+              <div style="width:24px;height-height:24px;border-radius:50%;background:#cbd5e1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">3</div>
+              <span style="color:#64748b;font-size:13px;font-weight:600">Analyzing market trends</span>
+            </div>
+            <div class="intel-step" data-step="direction" style="display:flex;align-items:center;gap:12px;opacity:0.5">
+              <div style="width:24px;height:24px;border-radius:50%;background:#cbd5e1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">4</div>
+              <span style="color:#64748b;font-size:13px;font-weight:600">Detecting opportunities & threats</span>
+            </div>
+            <div class="intel-step" data-step="competitors" style="display:flex;align-items:center;gap:12px;opacity:0.5">
+              <div style="width:24px;height:24px;border-radius:50%;background:#cbd5e1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">5</div>
+              <span style="color:#64748b;font-size:13px;font-weight:600">Mapping competitive landscape</span>
+            </div>
+            <div class="intel-step" data-step="positioning" style="display:flex;align-items:center;gap:12px;opacity:0.5">
+              <div style="width:24px;height:24px;border-radius:50%;background:#cbd5e1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">6</div>
+              <span style="color:#64748b;font-size:13px;font-weight:600">Strategic positioning analysis</span>
+            </div>
+          </div>
         </div>
 
         <!-- Why Intel Section (Moat Explainer) -->
@@ -1431,60 +1459,53 @@
           </div>
         </div>
 
-        <!-- Results — Dark Minimal -->
-        <div id="brand-results" style="display:none;max-width:900px">
+        <!-- Results — Bright Clean -->
+        <div id="brand-results" style="display:none;max-width:900px;padding:40px;background:#ffffff;border-radius:12px">
           <!-- Brand Header -->
-          <div style="margin-bottom:40px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
-            <h2 style="font-size:36px;font-weight:700;color:#fff;margin:0 0 8px 0" id="brand-name">—</h2>
-            <p style="font-size:14px;color:#b0b8c1;margin:0" id="brand-description">—</p>
-            <div style="display:flex;gap:12px;margin-top:16px">
-              <a id="brand-wiki-link" href="" target="_blank" style="font-size:13px;color:#fff;text-decoration:none;padding:8px 12px;background:#1a1d25;border:1px solid #2a2d35;border-radius:6px;transition:all .2s">Learn on Wikipedia</a>
-              <button id="brand-refresh-btn" onclick="refreshBrand()" style="font-size:13px;color:#fff;border:none;padding:8px 12px;background:#1a1d25;border:1px solid #2a2d35;border-radius:6px;cursor:pointer;transition:all .2s">🔄 Refresh</button>
-              <span style="font-size:12px;color:#8b92a0;padding:8px 12px" id="brand-source">Source: Wikipedia</span>
+          <div style="margin-bottom:40px;padding-bottom:32px;border-bottom:2px solid #e2e8f0">
+            <h2 style="font-size:42px;font-weight:800;color:#1e293b;margin:0 0 12px 0;letter-spacing:-1px" id="brand-name">—</h2>
+            <p style="font-size:15px;color:#64748b;margin:0;line-height:1.6;max-width:700px" id="brand-description">—</p>
+            <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+              <a id="brand-wiki-link" href="" target="_blank" style="font-size:13px;color:#0ea5e9;font-weight:700;text-decoration:none;padding:8px 14px;background:#ecf9ff;border-radius:8px;transition:all .2s;border:1px solid #cffafe">📖 Wikipedia</a>
+              <button id="brand-refresh-btn" onclick="refreshBrand()" style="font-size:13px;color:#ca8a04;font-weight:700;border:none;padding:8px 14px;background:#fef9e7;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid #fef08a">🔄 Refresh</button>
             </div>
           </div>
 
-          <!-- Category Analysis Agent — Dark Minimal -->
-          <div id="brand-category-section" style="display:none;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
-            <div style="font-size:11px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Market Category</div>
-            <h3 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 12px 0" id="brand-category-name">—</h3>
-            <div id="brand-subcategories" style="font-size:13px;color:#b0b8c1;margin-bottom:12px;line-height:1.6"></div>
-            <div style="font-size:12px;color:#8b92a0" id="brand-category-source">Source: —</div>
+          <!-- Category Analysis Agent — Bright -->
+          <div id="brand-category-section" style="display:none;margin-bottom:32px;padding:24px;background:linear-gradient(135deg,#ecf9ff,#f0f9ff);border:1.5px solid #bfdbfe;border-radius:12px">
+            <div style="font-size:12px;color:#0369a1;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">🎯 Market Category</div>
+            <h3 style="font-size:28px;font-weight:800;color:#1e293b;margin:0 0 12px 0" id="brand-category-name">—</h3>
+            <div id="brand-subcategories" style="font-size:14px;color:#0c4a6e;margin-bottom:12px;line-height:1.6;font-weight:500"></div>
           </div>
 
-          <!-- Market Trend Agent — Dark Minimal -->
-          <div id="brand-market-trend-section" style="display:none;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
-            <div style="font-size:11px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Market Trend</div>
-            <h3 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 12px 0" id="brand-trend-title">—</h3>
-            <p style="font-size:13px;color:#b0b8c1;margin:0 0 12px 0;line-height:1.6" id="brand-trend-description">—</p>
-            <div id="brand-trend-drivers" style="font-size:13px;color:#b0b8c1;margin-bottom:12px;line-height:1.6"></div>
-            <div style="font-size:12px;color:#8b92a0" id="brand-trend-source">Source: —</div>
+          <!-- Market Trend Agent — Bright -->
+          <div id="brand-market-trend-section" style="display:none;margin-bottom:32px;padding:24px;background:linear-gradient(135deg,#f0fdf4,#f5fdf9);border:1.5px solid #86efac;border-radius:12px">
+            <div style="font-size:12px;color:#15803d;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">📈 Market Trend</div>
+            <h3 style="font-size:28px;font-weight:800;color:#1e293b;margin:0 0 12px 0" id="brand-trend-title">—</h3>
+            <p style="font-size:14px;color:#166534;margin:0 0 12px 0;line-height:1.6" id="brand-trend-description">—</p>
+            <div id="brand-trend-drivers" style="font-size:14px;color:#166534;margin-bottom:8px;line-height:1.8;font-weight:500"></div>
           </div>
 
-            <!-- Market Direction Agent — Dark Minimal -->
-            <div id="brand-direction-section" style="display:none;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
-              <div style="font-size:11px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Market Direction</div>
-              <h3 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 8px 0" id="brand-direction-title">—</h3>
-              <p style="font-size:13px;color:#b0b8c1;margin:0 0 16px 0" id="brand-direction-growth">Growth: —</p>
-
-              <div style="margin-bottom:20px">
-                <div style="font-size:12px;color:#8b92a0;font-weight:600;margin-bottom:8px;text-transform:uppercase">Opportunities</div>
-                <div id="brand-opportunities" style="font-size:13px;color:#b0b8c1;line-height:1.8"></div>
-              </div>
+            <!-- Market Direction Agent — Bright -->
+            <div id="brand-direction-section" style="display:none;margin-bottom:32px;padding:24px;background:linear-gradient(135deg,#fef3c7,#fffbeb);border:1.5px solid #fcd34d;border-radius:12px">
+              <div style="font-size:12px;color:#b45309;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">🧭 Market Direction</div>
+              <h3 style="font-size:28px;font-weight:800;color:#1e293b;margin:0 0 12px 0" id="brand-direction-title">—</h3>
 
               <div style="margin-bottom:16px">
-                <div style="font-size:12px;color:#8b92a0;font-weight:600;margin-bottom:8px;text-transform:uppercase">Threats</div>
-                <div id="brand-threats" style="font-size:13px;color:#b0b8c1;line-height:1.8"></div>
+                <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:8px;text-transform:uppercase">✓ Opportunities</div>
+                <div id="brand-opportunities" style="font-size:14px;color:#78350f;line-height:1.8"></div>
               </div>
 
-              <div style="font-size:12px;color:#8b92a0" id="brand-direction-source">Source: —</div>
+              <div style="margin-bottom:12px">
+                <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:8px;text-transform:uppercase">⚠ Threats</div>
+                <div id="brand-threats" style="font-size:14px;color:#78350f;line-height:1.8"></div>
+              </div>
             </div>
 
-            <!-- Competitive Landscape Agent — Dark Minimal -->
-            <div id="brand-competitive-section" style="display:none;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
-              <div style="font-size:11px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Competitive Landscape</div>
-              <div id="brand-competitors-grid" style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px"></div>
-              <div style="font-size:12px;color:#8b92a0" id="brand-competitive-source">Source: —</div>
+            <!-- Competitive Landscape Agent — Bright -->
+            <div id="brand-competitive-section" style="display:none;margin-bottom:32px;padding:24px;background:linear-gradient(135deg,#fee2e2,#fef2f2);border:1.5px solid #fca5a5;border-radius:12px">
+              <div style="font-size:12px;color:#991b1b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">🏆 Competitive Landscape</div>
+              <div id="brand-competitors-grid" style="display:flex;flex-direction:column;gap:12px;margin-bottom:8px"></div>
             </div>
 
             <!-- Brand Header -->
@@ -25564,16 +25585,49 @@ window.spotifyAddTrack = window.spotifyLike;
     return null; // No category detected
   };
 
+  // Helper to advance progress steps
+  function _advanceIntelStep(stepName) {
+    const steps = document.querySelectorAll('.intel-step');
+    const stepMap = { 'category': 1, 'trends': 2, 'direction': 3, 'competitors': 4, 'positioning': 5 };
+    const stepIndex = stepMap[stepName];
+
+    if (stepIndex && steps[stepIndex]) {
+      steps[stepIndex].style.opacity = '1';
+      const icon = steps[stepIndex].querySelector('div:first-child');
+      if (icon) {
+        icon.style.background = '#0ea5e9';
+        icon.textContent = (stepIndex + 1);
+      }
+    }
+  }
+
   window.searchBrand = async function(forceRefresh = false) {
     const q = document.getElementById('intel-brand-input').value.trim();
     if (!q) return;
 
     window._currentBrandQuery = q;
 
-    // Show loading
+    // Show loading with progress
     document.getElementById('brand-loading').style.display = 'block';
     document.getElementById('brand-results').style.display = 'none';
     document.getElementById('brand-error').style.display = 'none';
+
+    // Reset progress steps
+    document.querySelectorAll('.intel-step').forEach((step, i) => {
+      step.style.opacity = i === 0 ? '1' : '0.5';
+      const icon = step.querySelector('div:first-child');
+      if (icon) {
+        icon.style.background = i === 0 ? '#0ea5e9' : '#cbd5e1';
+        icon.textContent = i === 0 ? '✓' : (i + 1);
+      }
+    });
+
+    // Animate progress steps
+    setTimeout(() => _advanceIntelStep('category'), 600);
+    setTimeout(() => _advanceIntelStep('trends'), 1200);
+    setTimeout(() => _advanceIntelStep('direction'), 1800);
+    setTimeout(() => _advanceIntelStep('competitors'), 2400);
+    setTimeout(() => _advanceIntelStep('positioning'), 3000);
 
     try {
       // Check if category was passed via URL
@@ -25666,15 +25720,13 @@ window.spotifyAddTrack = window.spotifyLike;
         const comps = brand.competitive_landscape.competitors;
         if (el('brand-competitors-grid')) {
           el('brand-competitors-grid').innerHTML = comps.map(c => `
-            <div style="padding:10px;background:#1a1d25;border:1px solid #2a2d35;border-radius:8px">
-              <div style="font-weight:600;color:#fff;font-size:13px">${c.name}</div>
-              <div style="font-size:12px;color:#b0b8c1">${c.category || 'Competitor'}</div>
-              <div style="font-size:11px;color:#8b92a0;margin-top:4px">Overlap: ${c.overlap || 'Medium'}</div>
+            <div style="padding:14px;background:#fff9e6;border:1px solid #fde68a;border-radius:10px">
+              <div style="font-weight:700;color:#92400e;font-size:14px">${c.name}</div>
+              <div style="font-size:13px;color:#b45309;margin-top:4px">${c.description || 'Direct competitor'}</div>
             </div>
           `).join('');
         }
         if (el('brand-competitive-section')) el('brand-competitive-section').style.display = 'block';
-        if (el('brand-competitive-source')) el('brand-competitive-source').textContent = `Source: ${brand.competitive_landscape.source || 'Analysis'}`;
       }
 
       // Show results
