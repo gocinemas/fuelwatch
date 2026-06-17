@@ -398,16 +398,35 @@
             const sp = data.strategic_positioning || {};
             document.getElementById('brandTheme').textContent = sp.strategic_theme || data.slogan || '—';
 
-            // Market cap from company intelligence or revenue
+            // Market cap from company intelligence, revenue, or extract
             const compIntel = data.company_intelligence || {};
-            const marketCapVal = compIntel.market_cap || data.revenue || '—';
+            let marketCapVal = compIntel.market_cap || data.revenue || '—';
+            // Try to extract from description if available
+            if (marketCapVal === '—' && data.extract) {
+                const capMatch = data.extract.match(/\$[\d.]+\s*(billion|million|trillion)/i);
+                if (capMatch) marketCapVal = capMatch[0];
+            }
             document.getElementById('brandMarketCap').textContent = marketCapVal;
 
-            // Competitors - try multiple sources
-            const comps = (data.competitive_landscape?.competitors) ||
-                         (data.competitors?.competitors) ||
-                         (data.company_intelligence?.competitors?.competitors) ||
-                         [];
+            // Competitors - handle different response structures
+            let comps = [];
+            if (data.competitive_landscape?.competitors) {
+                comps = Array.isArray(data.competitive_landscape.competitors) ?
+                    data.competitive_landscape.competitors :
+                    [data.competitive_landscape.competitors];
+            } else if (data.competitors?.competitors) {
+                comps = Array.isArray(data.competitors.competitors) ?
+                    data.competitors.competitors :
+                    [data.competitors.competitors];
+            } else if (data.company_intelligence?.competitors?.competitors) {
+                comps = Array.isArray(data.company_intelligence.competitors.competitors) ?
+                    data.company_intelligence.competitors.competitors :
+                    [data.company_intelligence.competitors.competitors];
+            }
+
+            // Ensure we're working with strings
+            comps = comps.filter(c => c).map(c => typeof c === 'string' ? c : (c.name || c.competitor_name || JSON.stringify(c)));
+
             document.getElementById('competitorsList').innerHTML = comps.length ?
                 comps.slice(0, 4).map(c => `
                     <div class="list-item">
