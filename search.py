@@ -1613,6 +1613,7 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             "market_direction": wiki.get("market_direction", {}),
             "competitive_landscape": wiki.get("competitive_landscape", {}),
             "strategic_positioning": wiki.get("strategic_positioning", {}),
+            "_agent_fields_included": True,  # DEBUG MARKER
         }
         # Only cache if AI data came back — never lock in empty timeline/rivals
         ai_ok = bool(result["timeline"] or competitors_from_ai)
