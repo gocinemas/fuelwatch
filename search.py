@@ -1958,10 +1958,34 @@ def _fetch_wikipedia(company: str) -> dict:
                 if query_words and not query_words.issubset(tw):
                     continue
                 result = _summary(hit["title"])
-                if result:
+                if result and not _is_non_company(result):
                     break
+                result = None  # Keep searching if this was non-company
         except Exception:
             pass
+
+    # Step 2b: if still no result, try adding common product/company keywords
+    if not result:
+        product_hints = ["brand", "company", "limited", "inc", "ltd", "plc", "drinks", "beverage", "food", "cosmetics"]
+        for hint in product_hints:
+            try:
+                search_term = f"{company} {hint}"
+                sr = requests.get(
+                    "https://en.wikipedia.org/w/api.php",
+                    params={"action": "query", "list": "search", "srsearch": search_term,
+                            "srlimit": 3, "format": "json"},
+                    timeout=6, headers=ua,
+                )
+                hits = sr.json().get("query", {}).get("search", [])
+                for hit in hits:
+                    result = _summary(hit["title"])
+                    if result and not _is_non_company(result):
+                        print(f"[brand_wiki] found via hint: {company} + {hint} → {hit['title']}")
+                        break
+                if result:
+                    break
+            except Exception:
+                pass
 
     if not result:
         return {}
