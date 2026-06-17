@@ -12565,12 +12565,16 @@ function _hcAdd() {
       if (_el('brand-positioning-section')) _el('brand-positioning-section').style.display = 'block';
     }
 
-    // Stats grid — only render boxes that have real values
+    // Stats grid — merge company intelligence with brand data
+    const ci = d.company_intelligence || {};
+    const hqDisplay = (ci.hq && ci.hq.city) ? `${ci.hq.city}, ${ci.hq.country || ''}` : d.hq;
+    const industryDisplay = ci.industry || d.industry;
     const _statFields = [
       ["Founded",      d.founded],
-      ["Headquarters", d.hq],
+      ["Headquarters", hqDisplay],
       ["Revenue",      _fmtMoney(d.revenue)],
-      ["Industry",     d.industry],
+      ["Industry",     industryDisplay],
+      ["Ticker",       ci.ticker],
       ["Employees",    d.employees],
     ].filter(([, v]) => v && String(v).trim());
     const _sg = document.getElementById("brand-stats-grid");
