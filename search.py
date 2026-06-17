@@ -2119,24 +2119,24 @@ def _fetch_wikipedia(company: str) -> dict:
     except Exception:
         domain = ""
 
-    # Run agentic analysis
-    category_agent = _agent_identify_category(company, result.get("description", ""), {"industry": industry})
-    category = category_agent.get("category", "")
-    trend_agent = _agent_market_trends(company, category)
-    direction_agent = _agent_market_direction(company, category, trend_agent.get("trend_name", ""))
-    competitive_agent = _agent_competitive_set(company, category)
-    positioning_agent = _agent_brand_positioning(company, category, trend_agent, direction_agent)
+    # Run agentic analysis (DISABLED: Groq tokens exhausted, will re-enable after midnight UTC reset)
+    # category_agent = _agent_identify_category(company, result.get("description", ""), {"industry": industry})
+    # category = category_agent.get("category", "")
+    # trend_agent = _agent_market_trends(company, category)
+    # direction_agent = _agent_market_direction(company, category, trend_agent.get("trend_name", ""))
+    # competitive_agent = _agent_competitive_set(company, category)
+    # positioning_agent = _agent_brand_positioning(company, category, trend_agent, direction_agent)
 
     return {**result,
             "employees": employees, "revenue": revenue,
             "founded": founded, "hq": hq, "industry": industry, "brands": brands,
             "key_people": key_people, "domain": domain, "thumbnail": result.get("thumbnail", ""),
-            # Agent results with clear attribution
-            "category_analysis": category_agent,
-            "market_trend": trend_agent,
-            "market_direction": direction_agent,
-            "competitive_landscape": competitive_agent,
-            "strategic_positioning": positioning_agent}
+            # Agent results TEMPORARILY DISABLED due to Groq quota exhaustion
+            "category_analysis": {},
+            "market_trend": {},
+            "market_direction": {},
+            "competitive_landscape": {},
+            "strategic_positioning": {}}
 
 def _co_slugs(name: str) -> list:
     """Generate ATS slug candidates from a company name."""
