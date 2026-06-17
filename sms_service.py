@@ -1160,6 +1160,12 @@ def brand_full_intelligence():
 
 @app.route("/")
 @app.route("/brand")
+@app.route("/brand/")
+def brand_redirect():
+    if "intel.humanagency.co" in request.host:
+        return redirect("/brand/full")
+    return render_template("intel_brand.html")
+
 @app.route("/company")
 def index():
     if "space." in request.host:
@@ -1167,9 +1173,7 @@ def index():
     # New Intel standalone page (clean, no Miru entanglement)
     if "intel.humanagency.co" in request.host:
         path = request.path.lower()
-        if path == "/brand" or path == "/brand/":
-            template = "intel_brand.html"
-        elif path == "/company" or path == "/company/":
+        if path == "/company" or path == "/company/":
             template = "intel_company.html"
         else:
             template = "intel_standalone.html"
