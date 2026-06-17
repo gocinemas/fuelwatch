@@ -1400,6 +1400,10 @@ def api_commute_save():
     phone     = (body.get("phone") or "").strip()
     label     = (body.get("label") or "").strip()
     dest      = (body.get("dest") or "").strip()
+    days      = (body.get("days") or "weekday").strip()  # weekday/weekend/all
+    show_home = body.get("show_home", True)  # boolean
+    time_start = (body.get("time_start") or "07:00").strip()  # HH:MM
+    time_end = (body.get("time_end") or "08:30").strip()  # HH:MM
     if not device_id and not phone:
         return jsonify({"error": "device_id or phone required"}), 400
     if not dest:
@@ -1412,6 +1416,10 @@ def api_commute_save():
             "phone":     phone or None,
             "label":     label,
             "dest":      dest,
+            "days":      days,
+            "show_home": show_home,
+            "time_start": time_start,
+            "time_end": time_end,
         }).execute().data[0]
         # If phone now known, also claim any earlier device_id-only records
         if phone and device_id:
