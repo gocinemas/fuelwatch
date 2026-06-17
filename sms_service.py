@@ -2993,6 +2993,28 @@ def api_brand():
     return jsonify(data)
 
 
+@app.route("/api/brand/clear-cache", methods=["POST"])
+def clear_brand_cache():
+    """Clear cache for a brand. Use ?name=Nike to clear Nike's cache."""
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+
+    cache_key = name.strip().lower() + "|brandv30"
+
+    # Clear in-memory cache
+    if cache_key in _BRAND_CACHE:
+        del _BRAND_CACHE[cache_key]
+
+    # Clear Supabase cache
+    try:
+        lib._sb().table("ai_cache").delete().eq("key", "brand:" + cache_key).execute()
+    except Exception as e:
+        pass
+
+    return jsonify({"cleared": name, "cache_key": cache_key})
+
+
 @app.route("/api/brand/deep-research")
 def api_brand_deep_research():
     """Phase 2: Deep research on company strategy, recent moves, EDGAR filings"""
