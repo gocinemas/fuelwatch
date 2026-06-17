@@ -247,15 +247,9 @@ def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) 
 def _groq_parse_events(subject: str, body: str, school_name: str, year_group: str,
                        sent_date: str = "") -> list[dict]:
     """
-    Ask Groq to extract events/reminders from an email.
-    TEMPORARILY DISABLED: Groq tokens exhausted (free tier limit 500K/day)
-    Will re-enable after midnight UTC when tokens reset.
-    Returns empty list for now.
+    Extract events/reminders from school emails using Claude.
+    Returns list of: {event_title, event_type, event_date, description, action_needed, deadline}
     """
-    print(f"[school] groq parse disabled (token quota exhausted, resets after midnight UTC)")
-    return []
-
-    # Original code below (disabled until tokens reset):
     # Use the email's actual send date for relative date resolution
     try:
         ref = date.fromisoformat(sent_date) if sent_date else date.today()
@@ -311,40 +305,43 @@ Rules:
 If nothing relevant, return [].
 JSON array:"""
 
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if not groq_key:
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not anthropic_key:
         return []
 
-    # Truncate body aggressively to reduce Groq token usage (stay under 6000 TPM free tier limit)
+    # Truncate body to reduce token usage
     body_truncated = body[:4000] if len(body) > 4000 else body
     prompt = prompt.replace(body, body_truncated)
 
     for attempt in range(3):
         try:
             r = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "Authorization": f"Bearer {anthropic_key}",
+                    "Content-Type": "application/json",
+                    "anthropic-version": "2023-06-01"
+                },
                 json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user",   "content": prompt},
-                    ],
+                    "model": "claude-3-5-sonnet-20241022",
                     "max_tokens": 2000,
-                    "temperature": 0.1,
+                    "system": system,
+                    "messages": [
+                        {"role": "user", "content": prompt},
+                    ],
                 },
                 timeout=30,
             )
             rj = r.json()
-            if "choices" not in rj:
+            if "content" not in rj:
                 err_msg = rj.get("error", {}).get("message", str(rj))
-                print(f"[school] groq no choices (attempt {attempt+1}): {err_msg}")
-                if "rate" in err_msg.lower() and attempt < 2:
+                print(f"[school] claude parse error (attempt {attempt+1}): {err_msg}")
+                if "overloaded" in err_msg.lower() and attempt < 2:
                     import time as _time
                     _time.sleep(10 * (attempt + 1))
                     continue
                 return []
-            raw = rj["choices"][0]["message"]["content"].strip()
+            raw = rj["content"][0]["text"].strip()
             raw = re.sub(r"^```[a-z]*\n?", "", raw)
             raw = re.sub(r"\n?```$", "", raw)
             events = json.loads(raw)
@@ -352,7 +349,7 @@ JSON array:"""
                 return events
             return []
         except Exception as e:
-            print(f"[school] groq parse error (attempt {attempt+1}): {e}")
+            print(f"[school] claude parse error (attempt {attempt+1}): {e}")
             if attempt < 2:
                 import time as _time
                 _time.sleep(5)
