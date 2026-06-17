@@ -479,14 +479,16 @@
 
                 if (data.error) {
                     hideLoading();
+                    alert(`Error: ${data.error}`);
                     return;
                 }
 
                 displayBrandIntelligence(data);
                 showBrandView();
             } catch (e) {
-                console.error(e);
+                console.error('Search error:', e);
                 hideLoading();
+                alert(`Failed to fetch brand data: ${e.message}`);
             }
         }
 

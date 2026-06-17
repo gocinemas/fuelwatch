@@ -77,8 +77,11 @@ def get_brand_full_intelligence(brand_name: str) -> dict:
         return result
 
     except Exception as e:
-        print(f"[brand_intelligence] Error fetching brand data for {brand_name}: {e}")
-        return {"error": str(e), "name": brand_name}
+        import traceback
+        error_msg = f"[brand_intelligence] Error fetching brand data for {brand_name}: {e}"
+        print(error_msg)
+        print(traceback.format_exc())
+        return {"error": str(e), "name": brand_name, "debug": traceback.format_exc()}
 
 
 def _format_brand_fundamentals(profile_data):
