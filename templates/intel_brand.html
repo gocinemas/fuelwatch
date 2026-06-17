@@ -374,24 +374,26 @@
             document.getElementById('brandName').textContent = data.name || '—';
             document.getElementById('brandDesc').textContent = data.description || '—';
 
-            // Map actual API fields to display
-            document.getElementById('brandCategory').textContent = data.industry || '—';
+            // Category from category_analysis
+            const cat = data.category_analysis || {};
+            document.getElementById('brandCategory').textContent = cat.category || data.industry || '—';
 
-            // Market trend from data or fallback
+            // Market trend
             const trend = data.market_trend || {};
-            document.getElementById('brandTrend').textContent = trend.trend_name || 'Growing';
+            document.getElementById('brandTrend').textContent = trend.trend_name || '—';
 
-            // Strategic theme or slogan
-            document.getElementById('brandTheme').textContent = data.slogan || 'Market Leader';
+            // Strategic theme from strategic_positioning
+            const sp = data.strategic_positioning || {};
+            document.getElementById('brandTheme').textContent = sp.strategic_theme || data.slogan || '—';
 
             // Market cap from company intelligence or revenue
             const compIntel = data.company_intelligence || {};
             const marketCapVal = compIntel.market_cap || data.revenue || '—';
             document.getElementById('brandMarketCap').textContent = marketCapVal;
 
-            // Competitors from brand data, company intelligence, or tracked
-            const comps = (data.competitors?.competitors) ||
-                         (data.competitive_landscape?.competitors) ||
+            // Competitors - try multiple sources
+            const comps = (data.competitive_landscape?.competitors) ||
+                         (data.competitors?.competitors) ||
                          (data.company_intelligence?.competitors?.competitors) ||
                          [];
             document.getElementById('competitorsList').innerHTML = comps.length ?
