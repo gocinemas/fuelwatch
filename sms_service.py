@@ -1154,6 +1154,14 @@ def sms_reply():
 def index():
     if "space." in request.host:
         return render_template("space.html")
+    # New Intel standalone page (clean, no Miru entanglement)
+    if "intel.humanagency.co" in request.host:
+        resp = make_response(render_template("intel_standalone.html"))
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+    # Legacy Intel mode (for /intelagent route)
     intel_mode = "intel." in request.host or request.args.get("intel") == "1" or request.args.get("screen") == "intel"
     resp = make_response(render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=intel_mode))
     # Force no-cache at all levels to bypass edge caching
