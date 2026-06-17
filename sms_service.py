@@ -1151,12 +1151,21 @@ def sms_reply():
 
 
 @app.route("/")
+@app.route("/brand")
+@app.route("/company")
 def index():
     if "space." in request.host:
         return render_template("space.html")
     # New Intel standalone page (clean, no Miru entanglement)
     if "intel.humanagency.co" in request.host:
-        resp = make_response(render_template("intel_standalone.html"))
+        path = request.path.lower()
+        if path == "/brand" or path == "/brand/":
+            template = "intel_brand.html"
+        elif path == "/company" or path == "/company/":
+            template = "intel_company.html"
+        else:
+            template = "intel_standalone.html"
+        resp = make_response(render_template(template))
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
         resp.headers["Pragma"] = "no-cache"
         resp.headers["Expires"] = "0"
