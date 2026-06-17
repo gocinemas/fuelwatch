@@ -770,11 +770,9 @@ def _is_valid_canonical(s: str) -> bool:
 
 
 def _fetch_brand_ai(brand: str, extract: str) -> dict:
-    """Ask Groq for brand story, tagline, timeline, campaigns (last 5 years), and competitors."""
-    import json
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if not groq_key:
-        return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
+    """Ask Groq for brand story, tagline, timeline, campaigns (last 5 years), and competitors.
+    DISABLED: Groq token waste. Intel phase 2 (Deep Research) handles this better."""
+    return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
     context_hint = f' (user searched: "{extract}")' if extract and extract.lower() != brand.lower() else ""
     current_year = 2025
     prompt = (
