@@ -25631,45 +25631,22 @@ window.spotifyAddTrack = window.spotifyLike;
       // Check if category was passed via URL
       let urlCategory = window._currentCategory;
 
-      // First fetch without category to get description, then detect and re-fetch if needed
-      let url = `/api/brands/search?q=${encodeURIComponent(q)}${forceRefresh ? '&refresh=true' : ''}`;
-
-      // If URL has category, use it directly
-      if (urlCategory) {
-        url += `&category=${urlCategory}&refresh=true`;
-      }
+      // Fetch brand data from /api/brand endpoint
+      let url = `/api/brand?name=${encodeURIComponent(q)}${forceRefresh ? '&refresh=true' : ''}`;
 
       const response = await fetch(url);
       const data = await response.json();
 
       document.getElementById('brand-loading').style.display = 'none';
 
-      if (!data.ok) {
+      if (data.error) {
         document.getElementById('brand-error').textContent = data.error || 'Brand not found';
         document.getElementById('brand-error').style.display = 'block';
         return;
       }
 
-      // Auto-detect category from description (if not already set from URL)
-      let detectedCategory = urlCategory || _detectCategory(data.brand.description, q);
-
-      // If we detected a category and don't have marketing intelligence yet, re-fetch with category (FORCE REFRESH)
-      if (detectedCategory && !data.brand.marketing_intelligence) {
-        document.getElementById('brand-loading').style.display = 'block';
-        // Force refresh to bypass cache and get intelligence
-        const categoryUrl = `/api/brands/search?q=${encodeURIComponent(q)}&category=${detectedCategory}&refresh=true`;
-        const categoryResponse = await fetch(categoryUrl);
-        const categoryData = await categoryResponse.json();
-
-        if (categoryData.ok && categoryData.brand.marketing_intelligence) {
-          // Use the enhanced data with marketing intelligence
-          data.brand = categoryData.brand;
-        }
-        document.getElementById('brand-loading').style.display = 'none';
-      }
-
       // Display results (NEW AGENT STRUCTURE)
-      const brand = data.brand;
+      const brand = data;
       const el = (id) => document.getElementById(id);
       if (el('brand-name')) el('brand-name').textContent = brand.name || '—';
       if (el('brand-description')) el('brand-description').textContent = brand.description || '—';
@@ -25725,6 +25702,14 @@ window.spotifyAddTrack = window.spotifyLike;
           `).join('');
         }
         if (el('brand-competitive-section')) el('brand-competitive-section').style.display = 'block';
+      }
+
+      // Display Strategic Positioning Agent
+      if (brand.strategic_positioning) {
+        const sp = brand.strategic_positioning;
+        if (el('brand-strategic-theme')) el('brand-strategic-theme').textContent = sp.strategic_theme || '—';
+        if (el('brand-community-sentiment')) el('brand-community-sentiment').textContent = sp.alignment || '—';
+        if (el('brand-positioning-section')) el('brand-positioning-section').style.display = 'block';
       }
 
       // Show results
