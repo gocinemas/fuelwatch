@@ -3022,6 +3022,63 @@ def api_company_intelligence():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/brand/skus", methods=["GET"])
+def api_brand_skus():
+    """Fetch tracked SKUs for a company."""
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        import library as lib
+        sb = lib._sb()
+        result = sb.table("company_skus").select("*").eq("company_name", name).order("created_at", desc=True).execute().data
+        return jsonify({"company": name, "skus": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/skus", methods=["POST"])
+def api_brand_add_sku():
+    """Add/track a new SKU for a company."""
+    data = request.get_json() or {}
+    company_name = data.get("company_name", "").strip()
+    sku_name = data.get("sku_name", "").strip()
+    category = data.get("category", "").strip()
+    price = data.get("price", "")
+
+    if not company_name or not sku_name:
+        return jsonify({"error": "company_name and sku_name required"}), 400
+
+    try:
+        import library as lib
+        from datetime import datetime
+        sb = lib._sb()
+        result = sb.table("company_skus").insert({
+            "company_name": company_name,
+            "sku_name": sku_name,
+            "category": category,
+            "price": price,
+            "created_at": datetime.now().isoformat(),
+            "last_checked": datetime.now().isoformat()
+        }).execute()
+        return jsonify({"success": True, "sku": result.data[0] if result.data else {}}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/skus/<int:sku_id>", methods=["DELETE"])
+def api_brand_delete_sku(sku_id):
+    """Remove a tracked SKU."""
+    try:
+        import library as lib
+        sb = lib._sb()
+        sb.table("company_skus").delete().eq("id", sku_id).execute()
+        return jsonify({"success": True, "deleted_id": sku_id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/bookmark", methods=["POST"])
 def bookmark_brand():
     """Explicitly bookmark/track a brand to save to database."""
