@@ -10177,18 +10177,22 @@ def api_home_brief():
         if fuel_pc:
             futures["fuel"]    = pool.submit(_v2_fetch_fuel, fuel_pc)
             futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
-        # Trains: ALWAYS fetch from My Area location profile commute (school_run or work)
+        # Trains: fetch from location profile (school_run or work), fallback to preferences
         # This shows trains all day, not just 7-8:30am
         _tf, _tt = None, None
         _loc_work = _loc_profile.get("work") or {}
         _loc_school = _loc_profile.get("school_run") or {}
-        # Prefer school run if set, otherwise use work
+        # Prefer school run if set, otherwise use work, otherwise use preferences
         if _loc_school and (_loc_school.get("station") or _loc_school.get("name")):
             _tf = "Home"
             _tt = _loc_school.get("station") or _loc_school.get("name", "School")
         elif _loc_work and (_loc_work.get("station") or _loc_work.get("name")):
             _tf = "Home"
             _tt = _loc_work.get("station") or _loc_work.get("name", "Work")
+        elif prefs.get("train_from") and prefs.get("train_to"):
+            # Fallback to saved train preferences if location profile not configured
+            _tf = prefs.get("train_from")
+            _tt = prefs.get("train_to")
         # Fetch trains if commute is configured (no time restriction)
         if _tf and _tt:
             futures["trains"] = pool.submit(_v2_fetch_trains, _tf, _tt)
