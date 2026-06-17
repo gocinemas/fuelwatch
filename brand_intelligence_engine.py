@@ -242,11 +242,18 @@ def _format_brand_presence(social_data):
             "monthly_ad_spend": s.get("estimated_monthly_ad_spend")
         }
 
+    # Safe engagement calculation
+    try:
+        engagement_rates = [float(s.get('engagement_rate') or 0) for s in social_data]
+        avg_engagement = sum(engagement_rates) / len(engagement_rates) if engagement_rates else 0
+    except (TypeError, ValueError):
+        avg_engagement = 0
+
     return {
         "by_platform": by_platform,
         "investment_overview": {
             "total_platforms": len(social_data),
-            "avg_engagement": f"{sum(s.get('engagement_rate', 0) for s in social_data) / len(social_data):.1f}%" if social_data else "—",
+            "avg_engagement": f"{avg_engagement:.1f}%" if avg_engagement > 0 else "—",
             "investment_intensity": "HIGH" if any("M" in (s.get("estimated_monthly_ad_spend") or "") for s in social_data) else "MEDIUM"
         }
     }
