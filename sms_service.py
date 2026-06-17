@@ -198,7 +198,7 @@ _fuel_search_cache: dict = {}  # key → (result_dict, ts)
 _FUEL_SEARCH_TTL = 300
 
 def get_stations():
-    now = time.time()
+    now = \_time.time()
     if not _station_cache["data"] or (now - _station_cache["loaded_at"]) > CACHE_TTL:
         stations = fetch_all_stations()
         stations.sort(key=lambda s: s["lat"])          # sort by lat for bisect slicing
@@ -301,7 +301,7 @@ def get_weather(lat: float, lon: float) -> str:
     """Fetch current weather from Open-Meteo (free, no API key). Cached 10min."""
     key = (round(lat, 2), round(lon, 2))
     cached = _weather_cache.get(key)
-    if cached and (time.time() - cached["ts"]) < 600:
+    if cached and (\_time.time() - cached["ts"]) < 600:
         return cached["v"]
     try:
         url = (
@@ -317,7 +317,7 @@ def get_weather(lat: float, lon: float) -> str:
         wind    = round(c["windspeed_10m"])
         desc    = WEATHER_CODES.get(code, "")
         result  = f"{temp}°C {desc}, Wind {wind}km/h"
-        _weather_cache[key] = {"ts": time.time(), "v": result}
+        _weather_cache[key] = {"ts": \_time.time(), "v": result}
         return result
     except Exception:
         return ""
@@ -364,7 +364,7 @@ _tube_cache: dict = {}
 def get_tube_status(line: str = None) -> str:
     key = line or "all"
     cached = _tube_cache.get(key)
-    if cached and (time.time() - cached["ts"]) < 120:
+    if cached and (\_time.time() - cached["ts"]) < 120:
         return cached["v"]
     try:
         if line:
@@ -393,7 +393,7 @@ def get_tube_status(line: str = None) -> str:
             lines_out.append(line_str)
 
     result = "🚇 *Tube Status*\n" + "\n".join(lines_out)
-    _tube_cache[key] = {"v": result, "ts": time.time()}
+    _tube_cache[key] = {"v": result, "ts": \_time.time()}
     return result
 
 
@@ -2610,7 +2610,7 @@ _NITTER = [
 def api_tweets():
     import xml.etree.ElementTree as ET
 
-    if _tweets_cache["data"] and (time.time() - _tweets_cache["ts"]) < 1800:
+    if _tweets_cache["data"] and (\_time.time() - _tweets_cache["ts"]) < 1800:
         resp = jsonify(_tweets_cache["data"])
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
@@ -2631,7 +2631,7 @@ def api_tweets():
                 tweets.append({"text": text, "link": link, "date": date})
             if tweets:
                 _tweets_cache["data"] = tweets
-                _tweets_cache["ts"] = time.time()
+                _tweets_cache["ts"] = \_time.time()
                 resp = jsonify(tweets)
                 resp.headers["Access-Control-Allow-Origin"] = "*"
                 return resp
@@ -2719,7 +2719,7 @@ def api_search():
     cached = _fuel_search_cache.get(cache_key)
     if cached:
         payload, ts = cached
-        if time.time() - ts < _FUEL_SEARCH_TTL:
+        if \_time.time() - ts < _FUEL_SEARCH_TTL:
             return jsonify(payload)
 
     radius_km = radius * 1.60934
@@ -2735,7 +2735,7 @@ def api_search():
         "rightmove_url": rightmove_url,
         "timestamp": datetime.now().isoformat(),
     }
-    _fuel_search_cache[cache_key] = (payload, time.time())
+    _fuel_search_cache[cache_key] = (payload, \_time.time())
     return jsonify(payload)
 
 
@@ -3326,7 +3326,7 @@ def _fetch_dc_ballot(ballot_paper_id: str) -> list:
     if cache_key in _DC_RESULTS_CACHE:
         cached, ts, has_real = _DC_RESULTS_CACHE[cache_key]
         ttl = _DC_RESULTS_TTL_FINAL if has_real else _DC_RESULTS_TTL_PENDING
-        if time.time() - ts < ttl:
+        if \_time.time() - ts < ttl:
             return cached
     try:
         r = requests.get(
@@ -3349,7 +3349,7 @@ def _fetch_dc_ballot(ballot_paper_id: str) -> list:
         results.sort(key=lambda x: -(x["votes"] or 0))
         has_real = any(r["votes"] is not None or r["elected"] for r in results)
         if results:
-            _DC_RESULTS_CACHE[cache_key] = (results, time.time(), has_real)
+            _DC_RESULTS_CACHE[cache_key] = (results, \_time.time(), has_real)
         return results
     except Exception as e:
         print(f"[dc_ballot] {e}")
@@ -3363,7 +3363,7 @@ def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> 
     if cache_key in _DC_RESULTS_CACHE:
         cached, ts, has_real = _DC_RESULTS_CACHE[cache_key]
         ttl = _DC_RESULTS_TTL_FINAL if has_real else _DC_RESULTS_TTL_PENDING
-        if _time.time() - ts < ttl:
+        if _\_time.time() - ts < ttl:
             return cached
     try:
         from difflib import SequenceMatcher
@@ -3390,7 +3390,7 @@ def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> 
             return []
         results = _fetch_dc_ballot(best)
         if results:
-            _DC_RESULTS_CACHE[cache_key] = (results, _time.time(), any(r["votes"] is not None or r["elected"] for r in results))
+            _DC_RESULTS_CACHE[cache_key] = (results, _\_time.time(), any(r["votes"] is not None or r["elected"] for r in results))
         return results
     except Exception as e:
         print(f"[dc_results] {e}")
@@ -3738,7 +3738,7 @@ def _fetch_national_wikipedia() -> dict | None:
     import re, time
     from datetime import datetime, timezone
 
-    now = time.time()
+    now = \_time.time()
     if _NAT_CACHE["data"] and now - _NAT_CACHE["ts"] < _NAT_TTL:
         return _NAT_CACHE["data"]
 
@@ -3875,7 +3875,7 @@ def api_elections_council_view():
     ballots = None
     if cache_list_key in _DC_BALLOT_LIST_CACHE:
         cached_ballots, cached_ts = _DC_BALLOT_LIST_CACHE[cache_list_key]
-        if _time.time() - cached_ts < 1800:
+        if _\_time.time() - cached_ts < 1800:
             ballots = cached_ballots
     if ballots is None:
         try:
@@ -3887,7 +3887,7 @@ def api_elections_council_view():
             if r.status_code != 200:
                 return jsonify({"error": f"DC API returned {r.status_code} for '{council_slug}'. The council may not have elections on {election_date}."}), 502
             ballots = r.json().get("ballots", [])
-            _DC_BALLOT_LIST_CACHE[cache_list_key] = (ballots, _time.time())
+            _DC_BALLOT_LIST_CACHE[cache_list_key] = (ballots, _\_time.time())
         except Exception as e:
             return jsonify({"error": str(e)}), 502
 
@@ -3904,7 +3904,7 @@ def api_elections_council_view():
         cache_key = f"dcb:{ballot_paper_id}"
         if cache_key in _DC_RESULTS_CACHE:
             cached, ts, _ = _DC_RESULTS_CACHE[cache_key]
-            if _time.time() - ts < 3600:
+            if _\_time.time() - ts < 3600:
                 return ballot_paper_id, cached
         url = ballot_url_map.get(ballot_paper_id) or f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/"
         for attempt in range(3):
@@ -3930,7 +3930,7 @@ def api_elections_council_view():
                 has_real = any(rc["votes"] is not None or rc["elected"] for rc in results)
                 payload = {"results": results, "ward": ward_label, "declared": has_real}
                 if results:
-                    _DC_RESULTS_CACHE[cache_key] = (payload, _time.time(), has_real)
+                    _DC_RESULTS_CACHE[cache_key] = (payload, _\_time.time(), has_real)
                 return ballot_paper_id, payload
             except Exception:
                 return ballot_paper_id, None
@@ -4767,7 +4767,7 @@ def api_elections():
         return jsonify({"error": "Postcode required"}), 400
 
     cached = _elections_response_cache.get(postcode)
-    if cached and time.time() - cached[1] < _ELECTIONS_RESPONSE_TTL:
+    if cached and \_time.time() - cached[1] < _ELECTIONS_RESPONSE_TTL:
         return jsonify(cached[0])
 
     try:
@@ -4922,7 +4922,7 @@ def api_elections():
                                    f"https://wheredoivote.co.uk/postcode/{postcode}/",
             "found": bool(candidates),
         }
-        _elections_response_cache[postcode] = (payload, time.time())
+        _elections_response_cache[postcode] = (payload, \_time.time())
         return jsonify(payload)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -5406,7 +5406,7 @@ def api_your_area():
         return jsonify({"error": "Postcode required"}), 400
     cache_key = f"your-area:{postcode}"
     hit = _your_area_cache.get(cache_key)
-    if hit and time.time() - hit["ts"] < _YOUR_AREA_TTL:
+    if hit and \_time.time() - hit["ts"] < _YOUR_AREA_TTL:
         return jsonify(hit["data"])
     try:
         lat, lon = _latlon_for_postcode(postcode)
@@ -5448,7 +5448,7 @@ def api_your_area():
             "post_offices": post_offices,
         }
         if council_name and any([gps, pharmacies, post_offices]):
-            _your_area_cache[cache_key] = {"data": result, "ts": time.time()}
+            _your_area_cache[cache_key] = {"data": result, "ts": \_time.time()}
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -5483,7 +5483,7 @@ def api_environment():
         pass
 
     hit = _env_cache.get(_cache_key)
-    if hit and time.time() - hit["ts"] < _ENV_TTL:
+    if hit and \_time.time() - hit["ts"] < _ENV_TTL:
         return jsonify(hit["data"])
 
     try:
@@ -5608,7 +5608,7 @@ def api_environment():
             "lat":        lat,
             "lon":        lon,
         }
-        _env_cache[_cache_key] = {"data": result, "ts": time.time()}
+        _env_cache[_cache_key] = {"data": result, "ts": \_time.time()}
         # Persist to Supabase so next user gets it instantly
         try:
             lib._sb().table("env_cache").upsert({"postcode": _cache_key, "data": result}).execute()
@@ -5652,7 +5652,7 @@ def api_area_famous():
         return jsonify({"famous": ""})
     key = area.lower()
     cached = _FAMOUS_CACHE.get(key)
-    if cached and time.time() - cached[1] < _FAMOUS_TTL:
+    if cached and \_time.time() - cached[1] < _FAMOUS_TTL:
         return jsonify({"famous": cached[0]})
     try:
         r = requests.post(
@@ -5670,7 +5670,7 @@ def api_area_famous():
         # Strip any preamble the model added
         if "·" in text:
             text = " · ".join(p.strip().strip(".,") for p in text.split("·") if p.strip())
-        _FAMOUS_CACHE[key] = (text, time.time())
+        _FAMOUS_CACHE[key] = (text, \_time.time())
         return jsonify({"famous": text})
     except Exception:
         return jsonify({"famous": ""})
@@ -5683,7 +5683,7 @@ def api_area_summary():
         return jsonify({"error": "Postcode required"}), 400
 
     hit = _summary_cache.get(postcode + "_v5")
-    if hit and time.time() - hit["ts"] < _SUMMARY_TTL:
+    if hit and \_time.time() - hit["ts"] < _SUMMARY_TTL:
         return jsonify(hit["data"])
     try:
         row = lib._sb().table("area_summary_cache").select("summary").eq("postcode", postcode + "_v5").maybe_single().execute()
@@ -5778,7 +5778,7 @@ def api_area_summary():
         )
         summary = r.json()["choices"][0]["message"]["content"].strip()
         result = {"summary": summary, "facts": facts}
-        _summary_cache[postcode + "_v5"] = {"data": result, "ts": time.time()}
+        _summary_cache[postcode + "_v5"] = {"data": result, "ts": \_time.time()}
         try:
             lib._sb().table("area_summary_cache").upsert({"postcode": postcode + "_v5", "summary": summary}).execute()
         except Exception:
@@ -5797,7 +5797,7 @@ def api_services():
     try:
         cache_key = f"services:{postcode}"
         hit = _services_cache.get(cache_key)
-        if hit and time.time() - hit["ts"] < _SERVICES_TTL and not debug:
+        if hit and \_time.time() - hit["ts"] < _SERVICES_TTL and not debug:
             return jsonify(hit["data"])
         lat, lon = _latlon_for_postcode(postcode)
         if lat is None:
@@ -5823,7 +5823,7 @@ def api_services():
             police    = f_p.result()
         result = {"hospitals": hospitals, "police": police}
         if hospitals:  # only cache if we got results
-            _services_cache[cache_key] = {"data": result, "ts": time.time()}
+            _services_cache[cache_key] = {"data": result, "ts": \_time.time()}
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -5838,7 +5838,7 @@ def api_shops():
     try:
         cache_key = f"shops:{postcode}"
         hit = _services_cache.get(cache_key)
-        if hit and time.time() - hit["ts"] < _SERVICES_TTL and not debug:
+        if hit and \_time.time() - hit["ts"] < _SERVICES_TTL and not debug:
             return jsonify(hit["data"])
         lat, lon = _latlon_for_postcode(postcode)
         if lat is None:
@@ -5883,7 +5883,7 @@ relation["shop"="supermarket"](around:5000,{lat},{lon});
         result = {"supermarkets": supermarkets, "off_licences": off_licences,
                   "convenience": convenience}
         if supermarkets or off_licences or convenience:
-            _services_cache[cache_key] = {"data": result, "ts": time.time()}
+            _services_cache[cache_key] = {"data": result, "ts": \_time.time()}
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -7309,10 +7309,10 @@ def api_intel_news():
     keywords  = _AI_WATCH_KEYWORDS.get(vertical, [])
 
     cached = _ai_news_cache.get(vertical)
-    if cached and _time.time() - cached["ts"] < 3600:
+    if cached and _\_time.time() - cached["ts"] < 3600:
         return jsonify({"items": cached["items"], "vertical": vertical})
 
-    seven_days_ago = _time.time() - 7 * 86400
+    seven_days_ago = _\_time.time() - 7 * 86400
     items = []
 
     for source_name, feed_url in _AI_NEWS_FEEDS:
@@ -7331,7 +7331,7 @@ def api_intel_news():
                     ts = dt.timestamp()
                     date_str = dt.strftime("%-d %b")
                 except Exception:
-                    ts = _time.time(); date_str = "Recent"
+                    ts = _\_time.time(); date_str = "Recent"
 
                 if ts < seven_days_ago:
                     continue
@@ -7357,7 +7357,7 @@ def api_intel_news():
     items.sort(key=lambda x: x.pop("_ts", 0), reverse=True)
     items = items[:12]
 
-    _ai_news_cache[vertical] = {"ts": _time.time(), "items": items}
+    _ai_news_cache[vertical] = {"ts": _\_time.time(), "items": items}
     return jsonify({"items": items, "vertical": vertical})
 
 
@@ -10088,8 +10088,9 @@ def api_home_brief():
 
     # Send current hour to frontend so it uses server time instead of browser time
     _response_time_hour = _cur_hour
+    import time as _time
     cached = _v2_brief_cache.get(from_number or postcode)
-    cache_hit = (not force_refresh) and cached and time.time() - cached["ts"] < 900
+    cache_hit = (not force_refresh) and cached and _\_time.time() - cached["ts"] < 900
 
     # Load prefs + loc_profile + active_trip in parallel with a 5s hard cap.
     # postgrest-py has a 120s default — without this, one hung Supabase call
@@ -10280,10 +10281,10 @@ def api_home_brief():
     bank_holiday_tomorrow = False
     bank_holiday_monday   = False
     try:
-        if not _bh_cached or time.time() - _bh_cached.get("ts", 0) > 86400:
+        if not _bh_cached or \_time.time() - _bh_cached.get("ts", 0) > 86400:
             _bh_r = requests.get("https://www.gov.uk/bank-holidays.json", timeout=5)
             _bh_dates = {e["date"] for e in _bh_r.json().get("england-and-wales", {}).get("events", [])}
-            _v2_brief_cache[_bh_cache_key] = {"ts": time.time(), "dates": _bh_dates}
+            _v2_brief_cache[_bh_cache_key] = {"ts": \_time.time(), "dates": _bh_dates}
         else:
             _bh_dates = _bh_cached.get("dates", set())
         _today_s    = now.date().isoformat()
@@ -11296,7 +11297,7 @@ def api_home_brief():
         _location_for_smart = None
         if from_number and hasattr(api_home_ask, "_location_cache"):
             cached = api_home_ask._location_cache.get(from_number)
-            if cached and time.time() - cached["timestamp"] < 1800:  # 30 min TTL
+            if cached and \_time.time() - cached["timestamp"] < 1800:  # 30 min TTL
                 _location_for_smart = cached["location"]
                 app.logger.debug(f"[brief] Using stored location: {_location_for_smart}")
 
@@ -11606,7 +11607,7 @@ def api_home_ask():
 
             api_home_ask._location_cache[from_number] = {
                 "location": detected_location,
-                "timestamp": time.time(),
+                "timestamp": \_time.time(),
             }
             app.logger.info(f"[location] Stored for {from_number}: {detected_location}")
     except Exception as e:
@@ -11951,7 +11952,7 @@ def api_home_ask():
                                         api_home_ask._location_cache = {}
                                     api_home_ask._location_cache[from_number] = {
                                         "location": detected_location,
-                                        "timestamp": time.time(),
+                                        "timestamp": \_time.time(),
                                     }
                                     # Show simple confirmation: "You are at Costa [Edit]"
                                     answer += f"\n\n📍 You are at {detected_location} [edit location]"
@@ -12706,7 +12707,7 @@ def api_morning_brief():
                 else:
                     _mb_bh_r = requests.get("https://www.gov.uk/bank-holidays.json", timeout=5)
                     _mb_bh_dates = {e["date"] for e in _mb_bh_r.json().get("england-and-wales", {}).get("events", [])}
-                    _v2_brief_cache["uk_bank_holidays"] = {"ts": time.time(), "dates": _mb_bh_dates}
+                    _v2_brief_cache["uk_bank_holidays"] = {"ts": \_time.time(), "dates": _mb_bh_dates}
                 _mb_is_holiday = today.isoformat() in _mb_bh_dates
             except Exception:
                 pass
@@ -13129,7 +13130,7 @@ _LOCAL_INFO_TTL = 1800  # 30 min
 def api_myarea_local_info():
     postcode = request.args.get("postcode", "").replace(" ", "").upper()
     cached = _LOCAL_INFO_CACHE.get(postcode)
-    if cached and time.time() - cached["_ts"] < _LOCAL_INFO_TTL:
+    if cached and \_time.time() - cached["_ts"] < _LOCAL_INFO_TTL:
         return jsonify({k: v for k, v in cached.items() if k != "_ts"})
 
     result = _resolve_postcode(postcode)
@@ -13190,7 +13191,7 @@ def api_myarea_local_info():
         weather, crime, petrol = fw.result(), fc.result(), fp.result()
 
     payload = {"weather": weather, "crime": crime, "petrol": petrol}
-    _cache_guard(_LOCAL_INFO_CACHE); _LOCAL_INFO_CACHE[postcode] = {**payload, "_ts": time.time()}
+    _cache_guard(_LOCAL_INFO_CACHE); _LOCAL_INFO_CACHE[postcode] = {**payload, "_ts": \_time.time()}
     return jsonify(payload)
 
 
@@ -13218,7 +13219,7 @@ def api_mot():
     if cache_hit and not force:
         cached_data = cache_hit["data"]
         ttl = _MOT_CACHE_TTL_TAX if (cached_data.get("tax_days_left") or 1) <= 0 else _MOT_CACHE_TTL
-        if time.time() - cache_hit["ts"] < ttl:
+        if \_time.time() - cache_hit["ts"] < ttl:
             return jsonify(cached_data)
     ves_key = os.environ.get("DVLA_VES_API_KEY", "")
     if not ves_key:
@@ -13291,7 +13292,7 @@ def api_mot():
             "tax_due":       v.get("taxDueDate", ""),
             "tax_days_left": _days(v.get("taxDueDate")),
         }
-        _MOT_CACHE[reg] = {"data": data, "ts": time.time()}
+        _MOT_CACHE[reg] = {"data": data, "ts": \_time.time()}
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -14360,7 +14361,7 @@ def _groq_place_summary(name: str, category: str, address: str,
     """Use Groq to write a place description and summarise reviews. Cached 24h."""
     cache_key = f"{name.lower().strip()}|{category}"
     cached = _PLACE_SUMMARY_CACHE.get(cache_key)
-    if cached and time.time() - cached["ts"] < _PLACE_SUMMARY_TTL:
+    if cached and \_time.time() - cached["ts"] < _PLACE_SUMMARY_TTL:
         return cached["data"]
 
     groq_key = os.environ.get("GROQ_API_KEY", "")
@@ -14389,7 +14390,7 @@ def _groq_place_summary(name: str, category: str, address: str,
             m = re.search(r'\{.*\}', content, re.DOTALL)
             if m:
                 result = json.loads(m.group(0))
-                _cache_guard(_PLACE_SUMMARY_CACHE); _PLACE_SUMMARY_CACHE[cache_key] = {"ts": time.time(), "data": result}
+                _cache_guard(_PLACE_SUMMARY_CACHE); _PLACE_SUMMARY_CACHE[cache_key] = {"ts": \_time.time(), "data": result}
                 return result
     except Exception:
         pass
@@ -15005,14 +15006,14 @@ def api_places():
         osm_id    = request.args.get("osm_id", "")
         cache_key = f"places:{lat:.4f},{lon:.4f}:{osm_id}"
         cached = _PLACES_CACHE.get(cache_key)
-        if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+        if cached and (\_time.time() - cached[0]) < _PLACES_CACHE_TTL:
             return jsonify(cached[1])
     else:
         if not q:
             return jsonify({"error": "Enter a place name or postcode"}), 400
         cache_key = f"places:{q.lower()}"
         cached = _PLACES_CACHE.get(cache_key)
-        if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+        if cached and (\_time.time() - cached[0]) < _PLACES_CACHE_TTL:
             return jsonify(cached[1])
         geo = _geocode_place(q)
         if not geo or geo[0] is None:
@@ -15047,7 +15048,7 @@ def api_places():
         return jsonify({"error": "No local services found nearby. Try a different location."}), 404
 
     result = {"location": display, "lat": lat, "lon": lon, "count": len(all_places), "places": all_places}
-    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (time.time(), result)
+    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (\_time.time(), result)
     return jsonify(result)
 
 
@@ -15150,7 +15151,7 @@ def api_kids_activities():
         return jsonify({"error": "Invalid coordinates"}), 400
     cache_key = f"kids1:{lat:.4f},{lon:.4f}"
     cached = _PLACES_CACHE.get(cache_key)
-    if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+    if cached and (\_time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=3) as ex:
@@ -15161,7 +15162,7 @@ def api_kids_activities():
         events     = events_f.result()
         events_url = url_f.result()
     result = {"venues": venues, "events": events, "events_url": events_url}
-    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (time.time(), result)
+    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (\_time.time(), result)
     return jsonify(result)
 
 
@@ -15400,7 +15401,7 @@ def api_finder():
         return jsonify({"error": "Invalid coordinates"}), 400
     cache_key = f"finder7:{lat:.4f},{lon:.4f}"
     cached = _PLACES_CACHE.get(cache_key)
-    if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+    if cached and (\_time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=4) as ex:
@@ -15447,7 +15448,7 @@ def api_finder():
             ],
         },
     }
-    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (time.time(), result)
+    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (\_time.time(), result)
     return jsonify(result)
 
 
@@ -15489,7 +15490,7 @@ def api_finder_search():
 
     cache_key = f"fsearch2:{lat:.3f},{lon:.3f}:{q.lower()[:50]}"
     cached = _PLACES_CACHE.get(cache_key)
-    if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+    if cached and (\_time.time() - cached[0]) < _PLACES_CACHE_TTL:
         data = cached[1]
         if open_now_filter:
             data = {**data, "results": [p for p in data["results"] if p.get("open_now") is True]}
@@ -15543,7 +15544,7 @@ def api_finder_search():
             break
 
     result = {"results": top, "checkatrade_url": checkatrade_url, "query": q}
-    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (time.time(), result)
+    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (\_time.time(), result)
     if open_now_filter:
         result = {**result, "results": [p for p in top if p.get("open_now") is True]}
     return jsonify(result)
@@ -15913,7 +15914,7 @@ def api_user_location():
     if not from_number:
         return jsonify({"ok": False}), 404
     lat, lon = float(lat), float(lon)
-    _USER_LAST_LOCATION[from_number] = {"lat": lat, "lon": lon, "ts": time.time()}
+    _USER_LAST_LOCATION[from_number] = {"lat": lat, "lon": lon, "ts": \_time.time()}
 
     # Reverse-geocode to a readable location string
     def _patch_recent():
@@ -15932,7 +15933,7 @@ def api_user_location():
                 return
 
             # Find saves from the last 15 minutes for this user that have no 📍
-            cutoff = (time.time() - 900)
+            cutoff = (\_time.time() - 900)
             import datetime as _dt
             cutoff_iso = _dt.datetime.utcfromtimestamp(cutoff).isoformat()
             rows = lib._sb().table("wa_saves") \
@@ -16341,7 +16342,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
 
         # ── Reverse-geocode stored location for context ──────────────────────────
         _loc_context = ""
-        if _loc and (time.time() - _loc.get("ts", 0)) < 7200:
+        if _loc and (\_time.time() - _loc.get("ts", 0)) < 7200:
             try:
                 _gm_key = os.environ.get("GOOGLE_PLACES_KEY", "") or os.environ.get("GOOGLE_MAPS_KEY", "")
                 if _gm_key:
@@ -16714,10 +16715,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         # ── Multi-photo menu: append pages to the existing session save ──────────
         if img_type == "menu" and menu_text:
             session = _MENU_SESSION.get(fn)
-            if session and time.time() < session.get("expires", 0):
+            if session and \_time.time() < session.get("expires", 0):
                 page_num = session["page_count"] + 1
                 _MENU_SESSION[fn]["page_count"] = page_num
-                _MENU_SESSION[fn]["expires"] = time.time() + 900
+                _MENU_SESSION[fn]["expires"] = \_time.time() + 900
                 try:
                     existing = lib._sb().table("wa_saves").select("summary").eq("id", session["save_id"]).execute().data
                     existing_summary = (existing[0]["summary"] if existing else "") or ""
@@ -16943,7 +16944,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
 
         # ── Reverse-geocode stored GPS to UK postcode ────────────────────────────
         gps_location = ""
-        if _loc and (time.time() - _loc.get("ts", 0)) < 7200:
+        if _loc and (\_time.time() - _loc.get("ts", 0)) < 7200:
             try:
                 _rg = requests.get(
                     "https://api.postcodes.io/postcodes",
@@ -17041,7 +17042,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
 
         # Start a menu session so subsequent menu photos get appended
         if img_type == "menu" and sid:
-            _MENU_SESSION[fn] = {"save_id": sid, "expires": time.time() + 900, "page_count": 1}
+            _MENU_SESSION[fn] = {"save_id": sid, "expires": \_time.time() + 900, "page_count": 1}
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
         if img_type == "receipt" and receipt_data:
@@ -17167,7 +17168,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if img_type == "menu":
             msg += f"\n\n📸 *Got page 1!* Send more menu photos and I'll stitch them together into one clipping.\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}"
         elif img_type == "wine":
-            _WINE_RATING_STATE[fn] = {"save_id": sid, "wine_name": title.replace("🍷 ", ""), "expires": time.time() + 3600}
+            _WINE_RATING_STATE[fn] = {"save_id": sid, "wine_name": title.replace("🍷 ", ""), "expires": \_time.time() + 3600}
             msg += f"\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}"
             msg += f"\n\n⭐ *Rate it?* Reply with score + notes, e.g.\n*4 Great with pasta, slightly dry*"
         else:
@@ -17901,7 +17902,7 @@ def _wa_save_url(from_number: str, url: str) -> str:
     # Seed pending triage immediately (title = url for now)
     _PENDING_TRIAGE[from_number] = {
         "id": save_id, "title": url, "url": url,
-        "expires": time.time() + 3600,
+        "expires": \_time.time() + 3600,
     }
 
     # 2. Background: fetch → summarise → update DB → proactive WA reply
@@ -17975,7 +17976,7 @@ def _wa_save_url(from_number: str, url: str) -> str:
         # Refresh pending triage with real title
         _PENDING_TRIAGE[fn] = {
             "id": sid, "title": title, "url": u,
-            "expires": time.time() + 3600,
+            "expires": \_time.time() + 3600,
         }
 
         # Send proactive summary message
@@ -17994,7 +17995,7 @@ def _wa_save_url(from_number: str, url: str) -> str:
 def _wa_triage_respond(from_number: str, cmd: str) -> str:
     """Handle READ / SKIP / REMIND reply."""
     pending = _PENDING_TRIAGE.get(from_number)
-    if not pending or time.time() > pending.get("expires", 0):
+    if not pending or \_time.time() > pending.get("expires", 0):
         return "No recent save to update. Send a URL to save something first."
 
     save_id = pending.get("id")
@@ -19290,7 +19291,7 @@ def _wa_food_find(body: str, from_number: str):
     if lat is None:
         # Use recently shared live location if available (within 2 hours)
         _loc = _USER_LAST_LOCATION.get(from_number)
-        if _loc and (time.time() - _loc.get("ts", 0)) < 7200:
+        if _loc and (\_time.time() - _loc.get("ts", 0)) < 7200:
             lat, lon = _loc["lat"], _loc["lon"]
             pc_fmt = "your location"
 
@@ -20108,7 +20109,7 @@ def _whatsapp_reply_inner():
         try:
             _loc_lat, _loc_lon = float(_lat), float(_lon)
             _USER_LAST_LOCATION[from_number] = {
-                "lat": _loc_lat, "lon": _loc_lon, "ts": time.time()
+                "lat": _loc_lat, "lon": _loc_lon, "ts": \_time.time()
             }
             # If there's a pending food intent, serve it immediately with live location
             _pending = _get_wa_pending_intent(from_number)
@@ -20669,7 +20670,7 @@ def _whatsapp_reply_inner():
             item = items[idx]
             _PENDING_TRIAGE[from_number] = {
                 "id": item["id"], "title": item["title"], "url": item["url"],
-                "expires": time.time() + 3600,
+                "expires": \_time.time() + 3600,
             }
             reply = _wa_triage_respond(from_number, cmd)
         else:
@@ -20686,7 +20687,7 @@ def _whatsapp_reply_inner():
 
     # ── Wine rating reply: "4 Great with pasta" or "3.5 too tannic" ─────────────
     _wine_state = _WINE_RATING_STATE.get(from_number)
-    if _wine_state and time.time() < _wine_state.get("expires", 0):
+    if _wine_state and \_time.time() < _wine_state.get("expires", 0):
         import re as _wre
         _wm = _wre.match(r'^([1-5](?:[.,]\d)?)\s*(.*)', body.strip(), _wre.DOTALL)
         if _wm:
@@ -21558,11 +21559,11 @@ def _whatsapp_reply_inner():
         if places_q:
             cache_key = f"places_wa:{places_q.lower()}:{service_filter.lower()}"
             cached = _WA_CACHE.get(cache_key)
-            if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
+            if cached and (\_time.time() - cached[0]) < _WA_CACHE_TTL:
                 resp.message(cached[1])
                 return str(resp)
             reply = whatsapp_places_format(places_q, service_filter=service_filter)
-            _WA_CACHE[cache_key] = (time.time(), reply)
+            _WA_CACHE[cache_key] = (\_time.time(), reply)
             resp.message(reply)
             return str(resp)
         else:
@@ -21578,11 +21579,11 @@ def _whatsapp_reply_inner():
         if mp_postcode:
             cache_key = f"mp:{mp_postcode}"
             cached = _WA_CACHE.get(cache_key)
-            if cached and (time.time() - cached[0]) < 3600:
+            if cached and (\_time.time() - cached[0]) < 3600:
                 resp.message(cached[1])
                 return str(resp)
             reply = _wa_mp_lookup(mp_postcode)
-            _WA_CACHE[cache_key] = (time.time(), reply)
+            _WA_CACHE[cache_key] = (\_time.time(), reply)
             resp.message(reply)
             return str(resp)
         else:
@@ -21595,11 +21596,11 @@ def _whatsapp_reply_inner():
         if cllr_postcode:
             cache_key = f"councillor:{cllr_postcode}"
             cached = _WA_CACHE.get(cache_key)
-            if cached and (time.time() - cached[0]) < 3600:
+            if cached and (\_time.time() - cached[0]) < 3600:
                 resp.message(cached[1])
                 return str(resp)
             reply = _wa_councillor_lookup(cllr_postcode)
-            _WA_CACHE[cache_key] = (time.time(), reply)
+            _WA_CACHE[cache_key] = (\_time.time(), reply)
             resp.message(reply)
             return str(resp)
         else:
@@ -21613,11 +21614,11 @@ def _whatsapp_reply_inner():
         if res_postcode:
             cache_key = f"results:{res_postcode}"
             cached = _WA_CACHE.get(cache_key)
-            if cached and (time.time() - cached[0]) < 300:  # 5-min cache for results
+            if cached and (\_time.time() - cached[0]) < 300:  # 5-min cache for results
                 resp.message(cached[1])
                 return str(resp)
             reply = whatsapp_results_format(res_postcode)
-            _WA_CACHE[cache_key] = (time.time(), reply)
+            _WA_CACHE[cache_key] = (\_time.time(), reply)
             resp.message(reply)
             return str(resp)
         else:
@@ -21631,11 +21632,11 @@ def _whatsapp_reply_inner():
         if elec_postcode:
             cache_key = f"results:{elec_postcode}"
             cached = _WA_CACHE.get(cache_key)
-            if cached and (time.time() - cached[0]) < 300:
+            if cached and (\_time.time() - cached[0]) < 300:
                 resp.message(cached[1])
                 return str(resp)
             reply = whatsapp_results_format(elec_postcode)
-            _WA_CACHE[cache_key] = (time.time(), reply)
+            _WA_CACHE[cache_key] = (\_time.time(), reply)
             resp.message(reply)
             return str(resp)
         else:
@@ -22109,11 +22110,11 @@ def _whatsapp_reply_inner():
         _, loc_postcode = _split_product_postcode(body)
         cache_key = f"product:{product_name.lower().strip()}:{loc_postcode or ''}"
         cached = _WA_CACHE.get(cache_key)
-        if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
+        if cached and (\_time.time() - cached[0]) < _WA_CACHE_TTL:
             resp.message(cached[1])
             return str(resp)
         reply = whatsapp_product_format(product_name.strip(), loc_postcode)
-        _WA_CACHE[cache_key] = (time.time(), reply)
+        _WA_CACHE[cache_key] = (\_time.time(), reply)
         resp.message(reply)
         return str(resp)
 
@@ -22124,13 +22125,13 @@ def _whatsapp_reply_inner():
 
     cache_key = f"fuel:{postcode}:{fuel}:{radius}:{retailer or ''}"
     cached = _WA_CACHE.get(cache_key)
-    if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
+    if cached and (\_time.time() - cached[0]) < _WA_CACHE_TTL:
         print(f"WhatsApp cache hit for {cache_key}")
         resp.message(cached[1])
         return str(resp)
 
     reply = whatsapp_search_and_format(postcode, fuel, radius, retailer)
-    _WA_CACHE[cache_key] = (time.time(), reply)
+    _WA_CACHE[cache_key] = (\_time.time(), reply)
     resp.message(reply)
     return str(resp)
 
@@ -22583,7 +22584,7 @@ def wa_digest():
 
     for from_number, saves in by_user.items():
         # Rate limit: skip if sent within the last 20 hours (persisted in Supabase)
-        now = _time.time()
+        now = _\_time.time()
         last = _digest_last_sent_get(from_number)
         if now - last < _DIGEST_MIN_GAP_HOURS * 3600:
             skipped += 1
@@ -24187,7 +24188,7 @@ _school_token_alert_sent: dict = {}  # from_number → last alert timestamp
 def _school_gmail_token_alert(from_number: str, profiles: list):
     """Send a WhatsApp alert when Gmail token is revoked. Rate-limited to once per 24h."""
     import time
-    now = time.time()
+    now = \_time.time()
     last = _school_token_alert_sent.get(from_number, 0)
     if now - last < 86400:
         return
@@ -24785,7 +24786,7 @@ def api_wa_saves_enrich():
             pin = request.headers.get("X-Library-PIN", "")
             fn = _resolve_user_token(pin)
         loc = fn and _USER_LAST_LOCATION.get(fn)
-        if loc and (time.time() - loc.get("ts", 0)) < 7200:
+        if loc and (\_time.time() - loc.get("ts", 0)) < 7200:
             lat, lon = loc["lat"], loc["lon"]
     try:
         info = _lookup_venue(venue_name, lat=lat, lon=lon)
@@ -25476,7 +25477,7 @@ def api_book_intel():
 
     cache_key = f"bookintel:{title.lower()}"
     cached = _BRAND_CACHE.get(cache_key)
-    if cached and time.time() - cached["ts"] < 86400:
+    if cached and \_time.time() - cached["ts"] < 86400:
         return jsonify(cached["data"])
 
     result = {"title": title, "found": False}
@@ -25548,7 +25549,7 @@ def api_book_intel():
             print(f"[book/intel] groq error: {_e}")
 
     if result.get("found"):
-        _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
+        _BRAND_CACHE[cache_key] = {"ts": \_time.time(), "data": result}
     return jsonify(result)
 
 
@@ -25919,7 +25920,7 @@ def api_books_scan_note():
         image_url = ""
         try:
             ext = mime.split("/")[-1].replace("jpeg", "jpg")
-            path = f"book-scans/{int(time.time() * 1000)}.{ext}"
+            path = f"book-scans/{int(\_time.time() * 1000)}.{ext}"
             lib._sb().storage.from_("saves-images").upload(
                 path, img_bytes, {"content-type": mime, "upsert": "true"}
             )
@@ -26038,7 +26039,7 @@ _SPOTIFY_PLAYLISTS = {
 
 def _get_spotify_app_token() -> str:
     global _spotify_app_token, _spotify_app_token_expires
-    if _spotify_app_token and time.time() < _spotify_app_token_expires:
+    if _spotify_app_token and \_time.time() < _spotify_app_token_expires:
         return _spotify_app_token
     cid = os.environ.get("SPOTIFY_CLIENT_ID", "")
     secret = os.environ.get("SPOTIFY_CLIENT_SECRET", "")
@@ -26055,7 +26056,7 @@ def _get_spotify_app_token() -> str:
     r.raise_for_status()
     d = r.json()
     _spotify_app_token = d["access_token"]
-    _spotify_app_token_expires = time.time() + d.get("expires_in", 3600) - 60
+    _spotify_app_token_expires = \_time.time() + d.get("expires_in", 3600) - 60
     return _spotify_app_token
 
 
@@ -26838,7 +26839,7 @@ _RTT_DEPARTURES_TTL = 30
 
 def _get_rtt_token() -> str:
     """Return a cached RTT access token, refreshing only when expired (4-min TTL)."""
-    if _rtt_access["token"] and time.time() < _rtt_access["exp"]:
+    if _rtt_access["token"] and \_time.time() < _rtt_access["exp"]:
         return _rtt_access["token"]
     rtt_token = os.environ.get("RTT_TOKEN", "")
     if not rtt_token:
@@ -26854,7 +26855,7 @@ def _get_rtt_token() -> str:
     if "token" not in tr_data:
         raise RuntimeError(f"Token exchange failed: {tr_data}")
     _rtt_access["token"] = tr_data["token"]
-    _rtt_access["exp"]   = time.time() + 240  # 4 minutes
+    _rtt_access["exp"]   = \_time.time() + 240  # 4 minutes
     return _rtt_access["token"]
 
 
@@ -26875,7 +26876,7 @@ def api_train_departures():
     # 30-second departures cache — include filters in key
     cache_key = (crs, calling_at, origin_crs)
     cached = _rtt_departures_cache.get(cache_key)
-    if cached and time.time() - cached[1] < _RTT_DEPARTURES_TTL:
+    if cached and \_time.time() - cached[1] < _RTT_DEPARTURES_TTL:
         return jsonify(cached[0])
 
     try:
@@ -27020,7 +27021,7 @@ def api_train_departures():
             })
         station_name = (data.get("location") or {}).get("description", crs)
         payload = {"station": station_name, "trains": trains}
-        _rtt_departures_cache[cache_key] = (payload, time.time())
+        _rtt_departures_cache[cache_key] = (payload, \_time.time())
         return jsonify(payload)
     except Exception as e:
         print(f"[train/departures] error: {e}")
@@ -27350,7 +27351,7 @@ def api_space_iss():
 @app.route("/api/space/launches")
 def api_space_launches():
     ck = "launches"
-    if ck in _SPACE_CACHE and time.time() - _SPACE_CACHE[ck][1] < 1800:
+    if ck in _SPACE_CACHE and \_time.time() - _SPACE_CACHE[ck][1] < 1800:
         return jsonify(_SPACE_CACHE[ck][0])
     try:
         r = requests.get(
@@ -27393,7 +27394,7 @@ def api_space_launches():
                 "image":       l.get("image") or "",
             })
         out = {"launches": launches}
-        _SPACE_CACHE[ck] = (out, time.time())
+        _SPACE_CACHE[ck] = (out, \_time.time())
         return jsonify(out)
     except Exception as e:
         return jsonify({"error": str(e)}), 502
@@ -27401,7 +27402,7 @@ def api_space_launches():
 @app.route("/api/space/apod")
 def api_space_apod():
     ck = "apod"
-    if ck in _SPACE_CACHE and time.time() - _SPACE_CACHE[ck][1] < 3600:
+    if ck in _SPACE_CACHE and \_time.time() - _SPACE_CACHE[ck][1] < 3600:
         return jsonify(_SPACE_CACHE[ck][0])
     try:
         r = requests.get(
@@ -27419,7 +27420,7 @@ def api_space_apod():
             "date":        d.get("date", ""),
             "copyright":   d.get("copyright", ""),
         }
-        _SPACE_CACHE[ck] = (out, time.time())
+        _SPACE_CACHE[ck] = (out, \_time.time())
         return jsonify(out)
     except Exception as e:
         return jsonify({"error": str(e)}), 502
@@ -27427,7 +27428,7 @@ def api_space_apod():
 @app.route("/api/space/news")
 def api_space_news():
     ck = "news"
-    if ck in _SPACE_CACHE and time.time() - _SPACE_CACHE[ck][1] < 1800:
+    if ck in _SPACE_CACHE and \_time.time() - _SPACE_CACHE[ck][1] < 1800:
         return jsonify(_SPACE_CACHE[ck][0])
     import xml.etree.ElementTree as ET
     feeds = [
@@ -27457,7 +27458,7 @@ def api_space_news():
         except Exception as ex:
             print(f"[space news {source}] {ex}")
     out = {"items": items[:12]}
-    _SPACE_CACHE[ck] = (out, time.time())
+    _SPACE_CACHE[ck] = (out, \_time.time())
     return jsonify(out)
 
 
@@ -27503,7 +27504,7 @@ def api_space_planets():
 @app.route("/api/space/artemis")
 def api_space_artemis():
     ck = "artemis"
-    if ck in _SPACE_CACHE and time.time() - _SPACE_CACHE[ck][1] < 3600:
+    if ck in _SPACE_CACHE and \_time.time() - _SPACE_CACHE[ck][1] < 3600:
         return jsonify(_SPACE_CACHE[ck][0])
     try:
         r = requests.get(
@@ -27525,7 +27526,7 @@ def api_space_artemis():
                 "thumb": thumb,
             })
         out = {"photos": photos}
-        _SPACE_CACHE[ck] = (out, time.time())
+        _SPACE_CACHE[ck] = (out, \_time.time())
         return jsonify(out)
     except Exception as e:
         return jsonify({"error": str(e), "photos": []})
