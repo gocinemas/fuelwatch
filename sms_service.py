@@ -2987,7 +2987,18 @@ def api_brand():
     # Log searches (excluding health checks above)
     analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
 
+    # Fetch brand analysis (existing)
     data = fetch_brand_data(name, force_refresh=refresh)
+
+    # Fetch company intelligence (new Layer 1)
+    try:
+        from company_intelligence import fetch_company_intelligence
+        company_data = fetch_company_intelligence(name)
+        if company_data:
+            data["company_intelligence"] = company_data
+    except:
+        pass
+
     # REMOVED: auto-save to database. Only save when user explicitly bookmarks/tracks.
     # if data.get("timeline") or data.get("competitors"):
     #     _save_brand_profile(data)
