@@ -17584,25 +17584,58 @@ let _savesAll = [];
       // Only holiday status, no events
       html = `<div style="color:#1e40af;font-weight:600">📅 ${holidays}</div>`;
     } else if (upcoming.length > 0) {
-      // Group by child name
-      const byChild = {};
+      // Group by week (Monday-Friday of that week)
+      const byWeek = {};
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
       upcoming.forEach(e => {
-        const child = e.child_name || "School";
-        if (!byChild[child]) byChild[child] = [];
-        byChild[child].push(e);
+        const d = new Date(e.event_date || new Date());
+        const dow = d.getDay(); // 0=Sun, 6=Sat
+        // Calculate Monday of this week (0=Sun, 1=Mon, 6=Sat)
+        const daysSinceMonday = (dow === 0 ? 6 : dow - 1);
+        const monday = new Date(d);
+        monday.setDate(monday.getDate() - daysSinceMonday);
+        const weekKey = monday.toISOString().split('T')[0]; // YYYY-MM-DD of Monday
+
+        if (!byWeek[weekKey]) byWeek[weekKey] = {};
+        const dayKey = d.toDateString();
+        if (!byWeek[weekKey][dayKey]) byWeek[weekKey][dayKey] = [];
+        byWeek[weekKey][dayKey].push(e);
       });
 
-      Object.entries(byChild).forEach(([child, events], idx) => {
-        if (events.length > 0) {
-          const first = events[0];
-          const emoji = first.emoji || "📌";
-          const time = first.event_time ? ` · <strong>${first.event_time}</strong>` : "";
-          html += `<div style="margin-bottom:12px${idx > 0 ? ';padding-top:12px;border-top:1px solid #bfdbfe' : ''}">
-            <div style="font-weight:700;color:#1e40af;font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${child}</div>
-            <div style="color:#1e40af">${emoji} ${first.event_name}${time}</div>
-            ${events.length > 1 ? `<div style="color:#60a5fa;font-size:11px;margin-top:4px">+${events.length - 1} more</div>` : ""}
-          </div>`;
-        }
+      // Render by week, showing Mon-Fri together
+      Object.entries(byWeek).forEach((weekEntry, widx) => {
+        const [weekKey, dayMap] = weekEntry;
+        const weekDays = Object.keys(dayMap).sort(); // chronological order
+
+        html += `<div style="${widx > 0 ? 'margin-top:18px;padding-top:18px;border-top:2px solid #d1e7f0;' : ''}">
+          <div style="font-weight:700;color:#0f766e;font-size:13px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">📋 SUMMARY OF WEEK AHEAD</div>`;
+
+        weekDays.forEach(dayKey => {
+          const dayEvs = dayMap[dayKey];
+          if (dayEvs.length === 0) return;
+
+          const d = new Date(dayKey);
+          const dow = d.getDay();
+          const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dow];
+          const date = d.getDate();
+          const month = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][d.getMonth()];
+
+          html += `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e0f2fe;">
+            <div style="font-weight:700;color:#0369a1;font-size:12px;margin-bottom:6px">${dayName.toUpperCase()} ${date} ${month}</div>`;
+
+          dayEvs.forEach(ev => {
+            const emoji = ev.emoji || "•";
+            const school = ev.school_name ? ` <span style="color:#60a5fa;font-size:11px">(${ev.school_name})</span>` : "";
+            html += `<div style="color:#0c4a6e;font-size:13px;padding-left:12px;margin-bottom:4px">
+              ${emoji} ${ev.event_name}${school}</div>`;
+          });
+
+          html += `</div>`;
+        });
+
+        html += `</div>`;
       });
 
       if (holidays) {
