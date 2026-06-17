@@ -1379,30 +1379,26 @@
            INTEL.HUMANAGENCY.CO — Phase 1: Brand Intelligence
            ════════════════════════════════════════════════════════════════════ -->
 
-      <!-- Hero Section — Premium Modern -->
-      <div style="margin:-20px -20px 40px -20px;background:linear-gradient(135deg,#0f172a,#1e1b4b);border-radius:0;padding:56px 60px;position:relative;overflow:hidden;border:none;border-bottom:2px solid #ec4899">
-        <div style="position:absolute;top:-80px;right:-80px;width:400px;height:400px;background:radial-gradient(circle,rgba(236,72,153,.12),transparent);border-radius:50%;pointer-events:none"></div>
-        <div style="position:relative;z-index:1">
-          <div style="font-size:14px;color:#ec4899;font-weight:800;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">🏪 Brand Intelligence</div>
-          <div style="font-size:56px;font-weight:950;letter-spacing:-2px;margin-bottom:12px;background:linear-gradient(135deg,#fff,#cbd5e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Brand Search</div>
-          <div style="font-size:16px;color:#94a3b8;font-weight:400;margin-bottom:8px;max-width:700px">What is it, history, products, category rank, competitors</div>
+      <!-- Hero — Dark Minimal -->
+      <div style="margin:-20px -20px 40px -20px;background:#111318;padding:48px 40px;border-bottom:1px solid #2a2d35">
+        <div style="max-width:900px">
+          <div style="font-size:12px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:16px;text-transform:uppercase">Intelligence</div>
+          <h1 style="font-size:48px;font-weight:700;color:#fff;margin:0 0 12px 0;font-family:system-ui,-apple-system,sans-serif">Brand Research</h1>
+          <p style="font-size:15px;color:#b0b8c1;margin:0;max-width:600px">Real data from Wikipedia, Reddit, and news. No guesses.</p>
         </div>
       </div>
 
-      <!-- Brand Search Interface — Clean & Simple (Full Width) -->
-      <div id="intel-search-box" style="margin:-20px -20px 40px -20px;padding:48px 60px;background:linear-gradient(180deg,#f0f9ff,#fff)">
-        <!-- Search Card -->
-        <div style="background:#fff;border:2px solid #e0e7ff;border-radius:20px;padding:32px;box-shadow:0 8px 24px rgba(0,0,0,.08);margin-bottom:28px;max-width:700px">
-          <div style="margin-bottom:20px">
-            <div style="font-size:12px;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">Search by name or scan</div>
-            <div style="display:flex;gap:12px">
-              <input id="intel-brand-input" type="text" placeholder="e.g. Apple, Coca-Cola, Nike…"
-                style="flex:1;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 18px;font-size:15px;color:#1e293b;outline:none;transition:all .2s;background:#f8fafc;font-family:'-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'"
-                onkeydown="if(event.key==='Enter') searchBrand()"
-                autocomplete="off">
-              <button onclick="searchBrand()" style="background:linear-gradient(135deg,#ec4899,#f43f5e);color:#fff;border:none;border-radius:12px;padding:14px 28px;font-size:14px;font-weight:800;cursor:pointer;transition:all .2s;box-shadow:0 6px 20px rgba(236,72,153,.35);white-space:nowrap">Search</button>
-              <button onclick="alert('Coming soon: barcode scanner')" style="background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 20px;font-size:14px;font-weight:800;cursor:pointer;transition:all .2s">📱 Scan</button>
-            </div>
+      <!-- Search — Dark Minimal -->
+      <div id="intel-search-box" style="margin:-20px -20px 40px -20px;padding:40px;background:#111318">
+        <div style="max-width:900px">
+          <!-- Search Input -->
+          <div style="display:flex;gap:8px;margin-bottom:32px">
+            <input id="intel-brand-input" type="text" placeholder="Search a brand…"
+              style="flex:1;background:#1a1d25;border:1px solid #2a2d35;color:#fff;padding:12px 16px;border-radius:8px;font-size:14px;outline:none;transition:all .2s;font-family:system-ui,-apple-system,sans-serif"
+              onkeydown="if(event.key==='Enter') searchBrand()"
+              autocomplete="off">
+            <button onclick="searchBrand()" style="background:#fff;color:#111318;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap">Search</button>
+            <button onclick="alert('Coming soon')" style="background:#1a1d25;color:#b0b8c1;border:1px solid #2a2d35;padding:12px 20px;border-radius:8px;font-size:14px;cursor:pointer;transition:all .2s">📱 Scan</button>
           </div>
         </div>
 
@@ -1435,50 +1431,60 @@
           </div>
         </div>
 
-        <!-- Results Card -->
-        <div id="brand-results" style="display:none;max-width:750px">
-          <div style="background:#fff;border:2px solid #e0e7ff;border-radius:20px;padding:36px;box-shadow:0 8px 24px rgba(0,0,0,.08)">
-            <!-- Category Analysis Agent -->
-            <div id="brand-category-section" style="display:none;margin-bottom:24px;padding:16px;background:#f0fdf4;border-left:4px solid #16a34a;border-radius:12px">
-              <div style="font-size:11px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🎯 Market Category</div>
-              <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:6px" id="brand-category-name">—</div>
-              <div id="brand-subcategories" style="font-size:12px;color:#166534;margin-bottom:8px"></div>
-              <div style="font-size:11px;color:#86efac;font-weight:600" id="brand-category-source">Source: —</div>
+        <!-- Results — Dark Minimal -->
+        <div id="brand-results" style="display:none;max-width:900px">
+          <!-- Brand Header -->
+          <div style="margin-bottom:40px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
+            <h2 style="font-size:36px;font-weight:700;color:#fff;margin:0 0 8px 0" id="brand-name">—</h2>
+            <p style="font-size:14px;color:#b0b8c1;margin:0" id="brand-description">—</p>
+            <div style="display:flex;gap:12px;margin-top:16px">
+              <a id="brand-wiki-link" href="" target="_blank" style="font-size:13px;color:#fff;text-decoration:none;padding:8px 12px;background:#1a1d25;border:1px solid #2a2d35;border-radius:6px;transition:all .2s">Learn on Wikipedia</a>
+              <button id="brand-refresh-btn" onclick="refreshBrand()" style="font-size:13px;color:#fff;border:none;padding:8px 12px;background:#1a1d25;border:1px solid #2a2d35;border-radius:6px;cursor:pointer;transition:all .2s">🔄 Refresh</button>
+              <span style="font-size:12px;color:#8b92a0;padding:8px 12px" id="brand-source">Source: Wikipedia</span>
             </div>
+          </div>
 
-            <!-- Market Trend Agent -->
-            <div id="brand-market-trend-section" style="display:none;margin-bottom:24px;padding:16px;background:#dbeafe;border-left:4px solid #0ea5e9;border-radius:12px">
-              <div style="font-size:11px;color:#0c4a6e;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📈 Market Trend</div>
-              <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:6px" id="brand-trend-title">—</div>
-              <div style="font-size:13px;color:#0c4a6e;margin-bottom:8px;line-height:1.5" id="brand-trend-description">—</div>
-              <div id="brand-trend-drivers" style="font-size:12px;color:#0369a1;margin-bottom:8px"></div>
-              <div style="font-size:11px;color:#60a5fa;font-weight:600" id="brand-trend-source">Source: —</div>
-            </div>
+          <!-- Category Analysis Agent — Dark Minimal -->
+          <div id="brand-category-section" style="display:none;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
+            <div style="font-size:11px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Market Category</div>
+            <h3 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 12px 0" id="brand-category-name">—</h3>
+            <div id="brand-subcategories" style="font-size:13px;color:#b0b8c1;margin-bottom:12px;line-height:1.6"></div>
+            <div style="font-size:12px;color:#8b92a0" id="brand-category-source">Source: —</div>
+          </div>
 
-            <!-- Market Direction Agent -->
-            <div id="brand-direction-section" style="display:none;margin-bottom:24px;padding:16px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:12px">
-              <div style="font-size:11px;color:#92400e;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🎯 Market Direction</div>
-              <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:4px" id="brand-direction-title">—</div>
-              <div style="font-size:12px;color:#b45309;font-weight:700;margin-bottom:12px" id="brand-direction-growth">Growth: —</div>
+          <!-- Market Trend Agent — Dark Minimal -->
+          <div id="brand-market-trend-section" style="display:none;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
+            <div style="font-size:11px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Market Trend</div>
+            <h3 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 12px 0" id="brand-trend-title">—</h3>
+            <p style="font-size:13px;color:#b0b8c1;margin:0 0 12px 0;line-height:1.6" id="brand-trend-description">—</p>
+            <div id="brand-trend-drivers" style="font-size:13px;color:#b0b8c1;margin-bottom:12px;line-height:1.6"></div>
+            <div style="font-size:12px;color:#8b92a0" id="brand-trend-source">Source: —</div>
+          </div>
 
-              <div style="margin-bottom:12px">
-                <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px">✓ Opportunities:</div>
-                <div id="brand-opportunities" style="font-size:12px;color:#b45309;margin-bottom:8px"></div>
+            <!-- Market Direction Agent — Dark Minimal -->
+            <div id="brand-direction-section" style="display:none;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
+              <div style="font-size:11px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Market Direction</div>
+              <h3 style="font-size:24px;font-weight:600;color:#fff;margin:0 0 8px 0" id="brand-direction-title">—</h3>
+              <p style="font-size:13px;color:#b0b8c1;margin:0 0 16px 0" id="brand-direction-growth">Growth: —</p>
+
+              <div style="margin-bottom:20px">
+                <div style="font-size:12px;color:#8b92a0;font-weight:600;margin-bottom:8px;text-transform:uppercase">Opportunities</div>
+                <div id="brand-opportunities" style="font-size:13px;color:#b0b8c1;line-height:1.8"></div>
               </div>
 
-              <div style="margin-bottom:8px">
-                <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px">⚠️ Threats:</div>
-                <div id="brand-threats" style="font-size:12px;color:#b45309;margin-bottom:8px"></div>
+              <div style="margin-bottom:16px">
+                <div style="font-size:12px;color:#8b92a0;font-weight:600;margin-bottom:8px;text-transform:uppercase">Threats</div>
+                <div id="brand-threats" style="font-size:13px;color:#b0b8c1;line-height:1.8"></div>
               </div>
 
-              <div style="font-size:11px;color:#d97706;font-weight:600" id="brand-direction-source">Source: —</div>
+              <div style="font-size:12px;color:#8b92a0" id="brand-direction-source">Source: —</div>
             </div>
 
-            <!-- Competitive Landscape Agent -->
-            <div id="brand-competitive-section" style="display:none;margin-bottom:24px;padding:16px;background:#fee2e2;border-left:4px solid #ef4444;border-radius:12px">
-              <div style="font-size:11px;color:#991b1b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">⚔️ Competitive Landscape</div>
-              <div id="brand-competitors-grid" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
-              <div style="font-size:11px;color:#dc2626;font-weight:600" id="brand-competitive-source">Source: —</div>
+            <!-- Competitive Landscape Agent — Dark Minimal -->
+            <div id="brand-competitive-section" style="display:none;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #2a2d35">
+              <div style="font-size:11px;color:#8b92a0;font-weight:600;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Competitive Landscape</div>
+              <div id="brand-competitors-grid" style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px"></div>
+              <div style="font-size:12px;color:#8b92a0" id="brand-competitive-source">Source: —</div>
             </div>
 
             <!-- Brand Header -->
