@@ -103,8 +103,9 @@ def calculate_brand_completeness(brand_name: str) -> dict:
         if ai and len(ai) >= 1:  # At least 1 AI focus
             scores["ai_strategy"] = min(100, len(ai) * 40)
 
-        # Calculate overall
-        overall = int(sum(scores.values()) / len(scores))
+        # Calculate overall (filter out None values)
+        score_values = [v for v in scores.values() if v is not None and isinstance(v, (int, float))]
+        overall = int(sum(score_values) / len(scores)) if score_values else 0
         is_complete = overall >= COMPLETENESS_THRESHOLD
 
         # Quality level

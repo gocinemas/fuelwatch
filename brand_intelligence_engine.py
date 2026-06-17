@@ -257,19 +257,20 @@ def _calculate_completeness(profile, financials, skus, competitors, white_space,
     completeness = 0
     max_points = 700  # 100 points per data category
 
-    if profile:
+    if profile and len(profile) > 0:
         completeness += 100
-    if financials:
+    if financials and len(financials) > 0:
         completeness += 100
-    if skus:
+    if skus and len(skus) > 0:
         completeness += 100
-    if competitors:
+    if competitors and len(competitors) > 0:
         completeness += 100
-    if white_space:
+    if white_space and len(white_space) > 0:
         completeness += 100
-    if social:
+    if social and len(social) > 0:
         completeness += 100
-    if news:
+    if news and len(news) > 0:
         completeness += 100
 
-    return int((completeness / max_points) * 100)
+    score = int((completeness / max_points) * 100) if max_points > 0 else 0
+    return max(0, min(100, score))
