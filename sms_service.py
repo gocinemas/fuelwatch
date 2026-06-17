@@ -2977,6 +2977,7 @@ def api_brand_spin():
 def api_brand():
     name = request.args.get("name", "").strip()
     refresh = request.args.get("refresh", "").lower() == "true"
+    country = request.args.get("country", "US").strip().upper()
     if not name or len(name) < 2:
         return jsonify({"error": "Brand name required"}), 400
 
@@ -2990,10 +2991,10 @@ def api_brand():
     # Fetch brand analysis (existing)
     data = fetch_brand_data(name, force_refresh=refresh)
 
-    # Fetch company intelligence (new Layer 1)
+    # Fetch company intelligence (new Layer 1) - with country support
     try:
         from company_intelligence import fetch_company_intelligence
-        company_data = fetch_company_intelligence(name)
+        company_data = fetch_company_intelligence(name, country=country)
         if company_data:
             data["company_intelligence"] = company_data
     except:
@@ -3007,16 +3008,22 @@ def api_brand():
 
 @app.route("/api/company/intelligence", methods=["GET"])
 def api_company_intelligence():
-    """Fetch real company intelligence: founded, founder, HQ, industry, leadership."""
+    """Fetch real company intelligence with country support.
+
+    Query params:
+    - name: Company name (required)
+    - country: Country code - US, GB, etc. (default: US)
+    """
     name = request.args.get("name", "").strip()
+    country = request.args.get("country", "US").strip().upper()
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
 
     try:
         from company_intelligence import fetch_company_intelligence
-        data = fetch_company_intelligence(name)
+        data = fetch_company_intelligence(name, country=country)
         if not data:
-            return jsonify({"error": "Company not found", "name": name}), 404
+            return jsonify({"error": "Company not found", "name": name, "country": country}), 404
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

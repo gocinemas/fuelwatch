@@ -1,8 +1,9 @@
 """
 Company Intelligence Fetcher
-Fetches real company data from OpenCorporates, Crunchbase, EDGAR
-Uses fallback chain: OpenCorporates → Crunchbase → EDGAR
-Caches results in Supabase to avoid re-fetching
+Fetches real company data from multiple sources:
+- US: OpenCorporates, Crunchbase, SEC EDGAR
+- UK: Companies House
+- International: OpenCorporates, Wikipedia
 """
 
 import requests
@@ -12,6 +13,7 @@ import re
 from datetime import datetime
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+COMPANIES_HOUSE_API_KEY = os.environ.get("COMPANIES_HOUSE_API_KEY", "")
 
 # Known company CIKs (SEC identifiers) - build this over time
 KNOWN_CIKS = {
@@ -64,6 +66,45 @@ def _fetch_opencorporates(company_name: str) -> dict:
         }
     except Exception as e:
         print(f"[opencorporates] {e}")
+        return {}
+
+
+def _fetch_companies_house(company_name: str) -> dict:
+    """Fetch from UK Companies House API (free tier available)."""
+    if not COMPANIES_HOUSE_API_KEY:
+        return {}
+
+    try:
+        # Search for company
+        r = requests.get(
+            "https://api.companieshouse.gov.uk/search/companies",
+            params={"q": company_name},
+            auth=(COMPANIES_HOUSE_API_KEY, ""),
+            timeout=8,
+            headers={"User-Agent": "Miru/1.0"}
+        )
+
+        if r.status_code != 200:
+            return {}
+
+        data = r.json()
+        items = data.get("items", [])
+        if not items:
+            return {}
+
+        comp = items[0]
+        return {
+            "name": comp.get("title", ""),
+            "company_number": comp.get("company_number", ""),
+            "hq": {
+                "city": comp.get("address", {}).get("locality", ""),
+                "country": "United Kingdom"
+            },
+            "industry": comp.get("company_type", ""),
+            "source": "Companies House"
+        }
+    except Exception as e:
+        print(f"[companies_house] {e}")
         return {}
 
 
@@ -231,15 +272,19 @@ Return ONLY this JSON structure, no markdown:
     return raw_data
 
 
-def fetch_company_intelligence(company_name: str) -> dict:
+def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
     """
-    Main orchestrator: try all sources in order, cache result.
+    Main orchestrator: try all sources in order based on country, cache result.
     Returns comprehensive company intelligence.
+
+    Args:
+        company_name: Company to search for
+        country: Country code (US, GB, etc.) - defaults to US
     """
     if not company_name or len(company_name) < 2:
         return {}
 
-    cache_key = f"company:{company_name.lower()}"
+    cache_key = f"company:{company_name.lower()}:{country.upper()}"
 
     # Try cache first
     try:
@@ -251,31 +296,50 @@ def fetch_company_intelligence(company_name: str) -> dict:
     except:
         pass
 
-    # Fallback chain
+    # Fallback chain based on country
     result = {}
+    country = country.upper()
 
-    # Try 1: OpenCorporates (international, free)
-    print(f"[intelligence] Fetching {company_name} from OpenCorporates...")
-    oc_data = _fetch_opencorporates(company_name)
-    if oc_data:
-        result.update(oc_data)
-        print(f"[intelligence] Got data from OpenCorporates")
+    # Country-specific sources
+    if country == "GB":
+        # Try 1: Companies House (UK)
+        print(f"[intelligence] Fetching {company_name} from Companies House...")
+        ch_data = _fetch_companies_house(company_name)
+        if ch_data:
+            result.update(ch_data)
+            print(f"[intelligence] Got data from Companies House")
 
-    # Try 2: Crunchbase (if API key available)
-    if not result or not result.get("founded_year"):
-        print(f"[intelligence] Fetching {company_name} from Crunchbase...")
-        cb_data = _fetch_crunchbase(company_name)
-        if cb_data:
-            result.update(cb_data)
-            print(f"[intelligence] Got data from Crunchbase")
+    elif country == "US":
+        # Try 1: OpenCorporates (US, free)
+        print(f"[intelligence] Fetching {company_name} from OpenCorporates...")
+        oc_data = _fetch_opencorporates(company_name)
+        if oc_data:
+            result.update(oc_data)
+            print(f"[intelligence] Got data from OpenCorporates")
 
-    # Try 3: EDGAR (US public companies)
-    if not result or not result.get("founded_year"):
-        print(f"[intelligence] Fetching {company_name} from EDGAR...")
-        edgar_data = _fetch_edgar(company_name)
-        if edgar_data:
-            result.update(edgar_data)
-            print(f"[intelligence] Got data from EDGAR")
+        # Try 2: Crunchbase (if API key available)
+        if not result or not result.get("founded_year"):
+            print(f"[intelligence] Fetching {company_name} from Crunchbase...")
+            cb_data = _fetch_crunchbase(company_name)
+            if cb_data:
+                result.update(cb_data)
+                print(f"[intelligence] Got data from Crunchbase")
+
+        # Try 3: EDGAR (US public companies)
+        if not result or not result.get("founded_year"):
+            print(f"[intelligence] Fetching {company_name} from EDGAR...")
+            edgar_data = _fetch_edgar(company_name)
+            if edgar_data:
+                result.update(edgar_data)
+                print(f"[intelligence] Got data from EDGAR")
+
+    else:
+        # Default fallback for other countries
+        print(f"[intelligence] Fetching {company_name} from OpenCorporates (international)...")
+        oc_data = _fetch_opencorporates(company_name)
+        if oc_data:
+            result.update(oc_data)
+            print(f"[intelligence] Got data from OpenCorporates")
 
     if not result:
         print(f"[intelligence] No data found for {company_name}")
