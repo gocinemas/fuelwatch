@@ -257,9 +257,6 @@ def _fetch_financial_data(ticker: str, company_name: str) -> dict:
 
 def _detect_ai_strategy(company_name: str) -> dict:
     """Detect AI strategy by parsing recent news/announcements."""
-    if not GROQ_API_KEY:
-        return {}
-
     try:
         # Simplified: just return placeholder - in Phase 3, integrate news API
         # For now, return common AI strategies based on company profile
