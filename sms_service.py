@@ -3363,7 +3363,7 @@ def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> 
     if cache_key in _DC_RESULTS_CACHE:
         cached, ts, has_real = _DC_RESULTS_CACHE[cache_key]
         ttl = _DC_RESULTS_TTL_FINAL if has_real else _DC_RESULTS_TTL_PENDING
-        if _\_time.time() - ts < ttl:
+        if _time.time() - ts < ttl:
             return cached
     try:
         from difflib import SequenceMatcher
@@ -3390,7 +3390,7 @@ def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> 
             return []
         results = _fetch_dc_ballot(best)
         if results:
-            _DC_RESULTS_CACHE[cache_key] = (results, _\_time.time(), any(r["votes"] is not None or r["elected"] for r in results))
+            _DC_RESULTS_CACHE[cache_key] = (results, _time.time(), any(r["votes"] is not None or r["elected"] for r in results))
         return results
     except Exception as e:
         print(f"[dc_results] {e}")
@@ -3875,7 +3875,7 @@ def api_elections_council_view():
     ballots = None
     if cache_list_key in _DC_BALLOT_LIST_CACHE:
         cached_ballots, cached_ts = _DC_BALLOT_LIST_CACHE[cache_list_key]
-        if _\_time.time() - cached_ts < 1800:
+        if _time.time() - cached_ts < 1800:
             ballots = cached_ballots
     if ballots is None:
         try:
@@ -3887,7 +3887,7 @@ def api_elections_council_view():
             if r.status_code != 200:
                 return jsonify({"error": f"DC API returned {r.status_code} for '{council_slug}'. The council may not have elections on {election_date}."}), 502
             ballots = r.json().get("ballots", [])
-            _DC_BALLOT_LIST_CACHE[cache_list_key] = (ballots, _\_time.time())
+            _DC_BALLOT_LIST_CACHE[cache_list_key] = (ballots, _time.time())
         except Exception as e:
             return jsonify({"error": str(e)}), 502
 
@@ -3904,7 +3904,7 @@ def api_elections_council_view():
         cache_key = f"dcb:{ballot_paper_id}"
         if cache_key in _DC_RESULTS_CACHE:
             cached, ts, _ = _DC_RESULTS_CACHE[cache_key]
-            if _\_time.time() - ts < 3600:
+            if _time.time() - ts < 3600:
                 return ballot_paper_id, cached
         url = ballot_url_map.get(ballot_paper_id) or f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/"
         for attempt in range(3):
@@ -3930,7 +3930,7 @@ def api_elections_council_view():
                 has_real = any(rc["votes"] is not None or rc["elected"] for rc in results)
                 payload = {"results": results, "ward": ward_label, "declared": has_real}
                 if results:
-                    _DC_RESULTS_CACHE[cache_key] = (payload, _\_time.time(), has_real)
+                    _DC_RESULTS_CACHE[cache_key] = (payload, _time.time(), has_real)
                 return ballot_paper_id, payload
             except Exception:
                 return ballot_paper_id, None
@@ -7309,10 +7309,10 @@ def api_intel_news():
     keywords  = _AI_WATCH_KEYWORDS.get(vertical, [])
 
     cached = _ai_news_cache.get(vertical)
-    if cached and _\_time.time() - cached["ts"] < 3600:
+    if cached and _time.time() - cached["ts"] < 3600:
         return jsonify({"items": cached["items"], "vertical": vertical})
 
-    seven_days_ago = _\_time.time() - 7 * 86400
+    seven_days_ago = _time.time() - 7 * 86400
     items = []
 
     for source_name, feed_url in _AI_NEWS_FEEDS:
@@ -7331,7 +7331,7 @@ def api_intel_news():
                     ts = dt.timestamp()
                     date_str = dt.strftime("%-d %b")
                 except Exception:
-                    ts = _\_time.time(); date_str = "Recent"
+                    ts = _time.time(); date_str = "Recent"
 
                 if ts < seven_days_ago:
                     continue
@@ -7357,7 +7357,7 @@ def api_intel_news():
     items.sort(key=lambda x: x.pop("_ts", 0), reverse=True)
     items = items[:12]
 
-    _ai_news_cache[vertical] = {"ts": _\_time.time(), "items": items}
+    _ai_news_cache[vertical] = {"ts": _time.time(), "items": items}
     return jsonify({"items": items, "vertical": vertical})
 
 
@@ -10090,7 +10090,7 @@ def api_home_brief():
     _response_time_hour = _cur_hour
     import time as _time
     cached = _v2_brief_cache.get(from_number or postcode)
-    cache_hit = (not force_refresh) and cached and _\_time.time() - cached["ts"] < 900
+    cache_hit = (not force_refresh) and cached and _time.time() - cached["ts"] < 900
 
     # Load prefs + loc_profile + active_trip in parallel with a 5s hard cap.
     # postgrest-py has a 120s default — without this, one hung Supabase call
@@ -22584,7 +22584,7 @@ def wa_digest():
 
     for from_number, saves in by_user.items():
         # Rate limit: skip if sent within the last 20 hours (persisted in Supabase)
-        now = _\_time.time()
+        now = _time.time()
         last = _digest_last_sent_get(from_number)
         if now - last < _DIGEST_MIN_GAP_HOURS * 3600:
             skipped += 1
