@@ -391,7 +391,18 @@
     </div>
 
     <script>
-        document.getElementById('searchInput').focus();
+        // Auto-load brand from URL parameter on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const brandName = params.get('name');
+            if (brandName) {
+                document.getElementById('searchInput').value = brandName;
+                searchBrand();
+            } else {
+                document.getElementById('searchInput').focus();
+            }
+        });
+
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchBrand();
         });
