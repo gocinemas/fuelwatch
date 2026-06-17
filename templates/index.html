@@ -1438,18 +1438,47 @@
         <!-- Results Card -->
         <div id="brand-results" style="display:none;max-width:750px">
           <div style="background:#fff;border:2px solid #e0e7ff;border-radius:20px;padding:36px;box-shadow:0 8px 24px rgba(0,0,0,.08)">
-            <!-- Strategic Theme (HEADLINE) -->
-            <div id="brand-strategy-section" style="display:none;margin-bottom:32px;padding:20px;background:linear-gradient(135deg,#fef3c7,#fef9e7);border-left:4px solid #f59e0b;border-radius:12px">
-              <div style="font-size:12px;color:#92400e;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🧠 Strategic Theme</div>
-              <div style="font-size:18px;font-weight:900;color:#1e293b;margin-bottom:12px;line-height:1.4" id="brand-theme-title">—</div>
-              <div style="font-size:13px;color:#78350f;line-height:1.6" id="brand-theme-insight">—</div>
+            <!-- Category Analysis Agent -->
+            <div id="brand-category-section" style="display:none;margin-bottom:24px;padding:16px;background:#f0fdf4;border-left:4px solid #16a34a;border-radius:12px">
+              <div style="font-size:11px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🎯 Market Category</div>
+              <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:6px" id="brand-category-name">—</div>
+              <div id="brand-subcategories" style="font-size:12px;color:#166534;margin-bottom:8px"></div>
+              <div style="font-size:11px;color:#86efac;font-weight:600" id="brand-category-source">Source: —</div>
             </div>
 
-            <!-- Consumer Trend -->
-            <div id="brand-trend-section" style="display:none;margin-bottom:32px;padding:20px;background:linear-gradient(135deg,#dbeafe,#ecf9ff);border-left:4px solid #0ea5e9;border-radius:12px">
-              <div style="font-size:12px;color:#0c4a6e;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📈 Consumer Trend</div>
-              <div style="font-size:16px;font-weight:900;color:#1e293b;margin-bottom:8px" id="brand-trend-name">—</div>
-              <div style="font-size:13px;color:#0c4a6e;line-height:1.6" id="brand-trend-desc">—</div>
+            <!-- Market Trend Agent -->
+            <div id="brand-market-trend-section" style="display:none;margin-bottom:24px;padding:16px;background:#dbeafe;border-left:4px solid #0ea5e9;border-radius:12px">
+              <div style="font-size:11px;color:#0c4a6e;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📈 Market Trend</div>
+              <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:6px" id="brand-trend-title">—</div>
+              <div style="font-size:13px;color:#0c4a6e;margin-bottom:8px;line-height:1.5" id="brand-trend-description">—</div>
+              <div id="brand-trend-drivers" style="font-size:12px;color:#0369a1;margin-bottom:8px"></div>
+              <div style="font-size:11px;color:#60a5fa;font-weight:600" id="brand-trend-source">Source: —</div>
+            </div>
+
+            <!-- Market Direction Agent -->
+            <div id="brand-direction-section" style="display:none;margin-bottom:24px;padding:16px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:12px">
+              <div style="font-size:11px;color:#92400e;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🎯 Market Direction</div>
+              <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:4px" id="brand-direction-title">—</div>
+              <div style="font-size:12px;color:#b45309;font-weight:700;margin-bottom:12px" id="brand-direction-growth">Growth: —</div>
+
+              <div style="margin-bottom:12px">
+                <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px">✓ Opportunities:</div>
+                <div id="brand-opportunities" style="font-size:12px;color:#b45309;margin-bottom:8px"></div>
+              </div>
+
+              <div style="margin-bottom:8px">
+                <div style="font-size:12px;color:#92400e;font-weight:700;margin-bottom:6px">⚠️ Threats:</div>
+                <div id="brand-threats" style="font-size:12px;color:#b45309;margin-bottom:8px"></div>
+              </div>
+
+              <div style="font-size:11px;color:#d97706;font-weight:600" id="brand-direction-source">Source: —</div>
+            </div>
+
+            <!-- Competitive Landscape Agent -->
+            <div id="brand-competitive-section" style="display:none;margin-bottom:24px;padding:16px;background:#fee2e2;border-left:4px solid #ef4444;border-radius:12px">
+              <div style="font-size:11px;color:#991b1b;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">⚔️ Competitive Landscape</div>
+              <div id="brand-competitors-grid" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+              <div style="font-size:11px;color:#dc2626;font-weight:600" id="brand-competitive-source">Source: —</div>
             </div>
 
             <!-- Brand Header -->
@@ -25696,6 +25725,59 @@ window.spotifyAddTrack = window.spotifyLike;
         document.getElementById('brand-competitors-section').style.display = 'block';
       } else {
         document.getElementById('brand-competitors-section').style.display = 'none';
+      }
+
+      // Display Category Analysis Agent
+      if (brand.category_analysis) {
+        const cat = brand.category_analysis;
+        document.getElementById('brand-category-name').textContent = cat.category || '—';
+        if (cat.subcategories && cat.subcategories.length) {
+          document.getElementById('brand-subcategories').innerHTML = cat.subcategories.map(s => `<div>• ${s}</div>`).join('');
+        }
+        document.getElementById('brand-category-source').textContent = `Source: ${cat.source || 'Analysis'}`;
+        document.getElementById('brand-category-section').style.display = 'block';
+      }
+
+      // Display Market Trend Agent
+      if (brand.market_trend) {
+        const trend = brand.market_trend;
+        document.getElementById('brand-trend-title').textContent = trend.trend_name || '—';
+        document.getElementById('brand-trend-description').textContent = trend.description || '—';
+        if (trend.drivers && trend.drivers.length) {
+          document.getElementById('brand-trend-drivers').innerHTML = trend.drivers.map(d => `<div>✓ ${d}</div>`).join('');
+        }
+        document.getElementById('brand-trend-source').textContent = `Source: ${trend.source || 'Analysis'}`;
+        document.getElementById('brand-market-trend-section').style.display = 'block';
+      }
+
+      // Display Market Direction Agent
+      if (brand.market_direction) {
+        const dir = brand.market_direction;
+        document.getElementById('brand-direction-title').textContent = dir.direction || '—';
+        document.getElementById('brand-direction-growth').textContent = `Growth: ${dir.growth_rate || '—'}`;
+        if (dir.opportunities && dir.opportunities.length) {
+          document.getElementById('brand-opportunities').innerHTML = dir.opportunities.map(o => `<div>• ${o}</div>`).join('');
+        }
+        if (dir.threats && dir.threats.length) {
+          document.getElementById('brand-threats').innerHTML = dir.threats.map(t => `<div>• ${t}</div>`).join('');
+        }
+        document.getElementById('brand-direction-source').textContent = `Source: ${dir.source || 'Analysis'}`;
+        document.getElementById('brand-direction-section').style.display = 'block';
+      }
+
+      // Display Competitive Landscape Agent
+      if (brand.competitive_landscape && brand.competitive_landscape.competitors) {
+        const comps = brand.competitive_landscape.competitors;
+        const grid = document.getElementById('brand-competitors-grid');
+        grid.innerHTML = comps.map(c => `
+          <div style="padding:10px;background:#fff;border-radius:8px;border:1px solid #fca5a5">
+            <div style="font-weight:600;color:#1e293b;font-size:13px">${c.name}</div>
+            <div style="font-size:12px;color:#64748b">${c.category || 'Competitor'}</div>
+            <div style="font-size:11px;color:#dc2626;margin-top:4px">Overlap: ${c.overlap || 'Medium'}</div>
+          </div>
+        `).join('');
+        document.getElementById('brand-competitive-section').style.display = 'block';
+        document.getElementById('brand-competitive-source').textContent = `Source: ${brand.competitive_landscape.source || 'Analysis'}`;
       }
 
       if (brand.wikipedia_url) {
