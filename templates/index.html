@@ -10493,7 +10493,8 @@ function _hcAdd() {
     showScreen("company");
     document.getElementById("intel-input").value = "{{ prefill_company }}";
     window._skipRedirectOnSearch = true; // Prevent infinite loop on /<slug> pages
-    searchIntel();
+    // NOTE: Do NOT auto-search here - let user click search to avoid burning credits
+    // searchIntel();
   });
   {% endif %}
 
