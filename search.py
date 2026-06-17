@@ -1492,7 +1492,8 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             news_f = pool.submit(_fetch_news, news_query, "", 6)
             ads_f  = pool.submit(_fetch_brand_ads, brand)
             fin_f  = pool.submit(_fetch_brand_financials, brand)
-            ai_f   = pool.submit(_fetch_brand_ai, brand, original)
+            # DISABLED: ai_f to save Groq tokens (daily limit exceeded)
+            ai_f   = None  # pool.submit(_fetch_brand_ai, brand, original)
             tp_f   = pool.submit(_fetch_trustpilot, brand, "")  # domain patched in after wiki
 
             wiki = {}
@@ -1553,7 +1554,8 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             ai_budget = max(27 - (time.time() - fetch_start), 3)
             ai = {}
             try:
-                ai = ai_f.result(timeout=ai_budget) or {}
+                if ai_f:  # Only call if ai_f is not None (Groq disabled to save tokens)
+                    ai = ai_f.result(timeout=ai_budget) or {}
             except Exception as e:
                 print(f"[brand_ai] timeout/error after {time.time()-fetch_start:.1f}s: {e}")
             print(f"[brand_ai] {brand}: tl={len(ai.get('timeline',[]))} rivals={len(ai.get('competitors',[]))} facts={bool(ai.get('facts'))} elapsed={time.time()-fetch_start:.1f}s")
