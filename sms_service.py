@@ -3079,6 +3079,65 @@ def api_brand_delete_sku(sku_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/brand/competitors", methods=["GET"])
+def api_brand_competitors():
+    """Fetch tracked competitors for a brand."""
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        import library as lib
+        sb = lib._sb()
+        result = sb.table("tracked_competitors").select("*").eq("tracking_company", name).order("created_at", desc=True).execute().data
+        return jsonify({"brand": name, "competitors": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/competitors", methods=["POST"])
+def api_brand_track_competitor():
+    """Start tracking a competitor for a brand."""
+    data = request.get_json() or {}
+    tracking_company = data.get("tracking_company", "").strip()
+    competitor_name = data.get("competitor_name", "").strip()
+
+    if not tracking_company or not competitor_name:
+        return jsonify({"error": "tracking_company and competitor_name required"}), 400
+
+    try:
+        import library as lib
+        from datetime import datetime
+        sb = lib._sb()
+
+        # Check if already tracking
+        existing = sb.table("tracked_competitors").select("*").eq("tracking_company", tracking_company).eq("competitor_name", competitor_name).execute().data
+        if existing:
+            return jsonify({"success": False, "message": "Already tracking this competitor"}), 409
+
+        result = sb.table("tracked_competitors").insert({
+            "tracking_company": tracking_company,
+            "competitor_name": competitor_name,
+            "created_at": datetime.now().isoformat(),
+            "last_checked": datetime.now().isoformat()
+        }).execute()
+        return jsonify({"success": True, "tracking": result.data[0] if result.data else {}}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/competitors/<int:competitor_id>", methods=["DELETE"])
+def api_brand_untrack_competitor(competitor_id):
+    """Stop tracking a competitor."""
+    try:
+        import library as lib
+        sb = lib._sb()
+        sb.table("tracked_competitors").delete().eq("id", competitor_id).execute()
+        return jsonify({"success": True, "deleted_id": competitor_id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/bookmark", methods=["POST"])
 def bookmark_brand():
     """Explicitly bookmark/track a brand to save to database."""
