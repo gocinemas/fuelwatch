@@ -223,36 +223,45 @@ def _fetch_edgar(company_name: str) -> dict:
 
 
 def _fetch_financial_data(ticker: str, company_name: str) -> dict:
-    """Fetch financial data from free stock API or EDGAR."""
+    """Fetch financial data from Yahoo Finance."""
     if not ticker:
         return {}
 
     try:
-        # Try Alpha Vantage (free tier, limited calls)
-        av_key = os.environ.get("ALPHA_VANTAGE_API_KEY", "")
-        if av_key:
-            r = requests.get(
-                "https://www.alphavantage.co/query",
-                params={"function": "OVERVIEW", "symbol": ticker, "apikey": av_key},
-                timeout=8
-            )
-            if r.status_code == 200:
-                data = r.json()
-                if "MarketCapitalization" in data:
-                    return {
-                        "revenue": data.get("RevenueTTM", ""),
-                        "net_profit": data.get("ProfitMargin", ""),
-                        "market_cap": data.get("MarketCapitalization", ""),
-                        "pe_ratio": data.get("PERatio", ""),
-                        "dividend_yield": data.get("DividendYield", ""),
-                        "52_week_high": data.get("52WeekHigh", ""),
-                        "52_week_low": data.get("52WeekLow", ""),
-                        "financial_source": "AlphaVantage"
-                    }
-    except:
-        pass
+        # Fetch current stock price and market data from Yahoo Finance
+        r = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+            params={"interval": "1d", "range": "1y"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=8
+        )
 
-    return {}
+        if r.status_code != 200:
+            return {}
+
+        data = r.json().get("chart", {}).get("result", [{}])[0]
+        meta = data.get("meta", {})
+
+        # Extract financial data from Yahoo Finance
+        result = {
+            "ticker": ticker,
+            "currency": meta.get("currency", "USD"),
+            "current_price": meta.get("regularMarketPrice"),
+            "52_week_high": meta.get("fiftyTwoWeekHigh"),
+            "52_week_low": meta.get("fiftyTwoWeekLow"),
+            "market_cap": meta.get("marketCap"),
+            "pe_ratio": meta.get("trailingPE"),
+            "dividend_yield": meta.get("trailingAnnualDividendYield"),
+            "exchange": meta.get("fullExchangeName"),
+            "financial_source": "Yahoo Finance"
+        }
+
+        # Remove None/empty values
+        return {k: v for k, v in result.items() if v is not None}
+
+    except Exception as e:
+        print(f"[financial_data] Error fetching {ticker}: {e}")
+        return {}
 
 
 def _detect_ai_strategy(company_name: str) -> dict:
