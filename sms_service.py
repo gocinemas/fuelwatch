@@ -2979,10 +2979,12 @@ def api_brand():
     refresh = request.args.get("refresh", "").lower() == "true"
     if not name or len(name) < 2:
         return jsonify({"error": "Brand name required"}), 400
-    analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
+
+    # Skip logging for automated health checks (Oatly, Innocent repeated queries)
+    if name.lower() not in ["oatly", "innocent"]:
+        analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
+
     data = fetch_brand_data(name, force_refresh=refresh)
-    # Verify agent fields are present
-    print(f"[api_brand] {name}: agents={bool(data.get('category_analysis'))}")
     if data.get("timeline") or data.get("competitors"):
         _save_brand_profile(data)
     return jsonify(data)
