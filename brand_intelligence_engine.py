@@ -29,30 +29,33 @@ def get_brand_full_intelligence(brand_name: str) -> dict:
         from brand_data_fetcher import fetch_and_populate_brand
         sb = lib._sb()
 
+        # Normalize brand name to Title Case for consistent matching
+        brand_name_normalized = brand_name.title() if brand_name else brand_name
+
         # If brand not in DB, fetch and populate it
         from brand_data_validator import calculate_brand_completeness, should_retry_fetch, mark_brand_as_fetched
 
-        profile = sb.table("brand_profile").select("*").eq("name", brand_name).execute().data
+        profile = sb.table("brand_profile").select("*").eq("name", brand_name_normalized).execute().data
 
         if not profile:
             # Brand not in DB, fetch it
-            fetch_and_populate_brand(brand_name)
-        elif should_retry_fetch(brand_name):
+            fetch_and_populate_brand(brand_name_normalized)
+        elif should_retry_fetch(brand_name_normalized):
             # Brand exists but data quality too low, retry fetch
-            print(f"[intelligence] Retrying fetch for {brand_name} (low completeness)")
-            fetch_and_populate_brand(brand_name)
+            print(f"[intelligence] Retrying fetch for {brand_name_normalized} (low completeness)")
+            fetch_and_populate_brand(brand_name_normalized)
 
         # Fetch all brand data in parallel
-        profile = sb.table("brand_profile").select("*").eq("name", brand_name).execute().data
-        financials = sb.table("brand_financials").select("*").eq("brand_name", brand_name).order("year", desc=True).limit(1).execute().data
-        skus = sb.table("brand_skus_complete").select("*").eq("brand_name", brand_name).order("market_position").execute().data
-        competitors = sb.table("brand_competitors_complete").select("*").eq("brand_name", brand_name).order("market_position").execute().data
-        competing_skus = sb.table("competing_skus_complete").select("*").eq("brand_name", brand_name).execute().data
-        white_space = sb.table("brand_white_space").select("*").eq("brand_name", brand_name).order("opportunity_score", desc=True).execute().data
-        social = sb.table("brand_social_media").select("*").eq("brand_name", brand_name).execute().data
-        news = sb.table("brand_news").select("*").eq("brand_name", brand_name).order("published_date", desc=True).limit(5).execute().data
-        podcasts = sb.table("brand_podcasts").select("*").eq("brand_name", brand_name).order("relevance_score", desc=True).limit(5).execute().data
-        ai_strategy = sb.table("brand_ai_strategy").select("*").eq("brand_name", brand_name).execute().data
+        profile = sb.table("brand_profile").select("*").eq("name", brand_name_normalized).execute().data
+        financials = sb.table("brand_financials").select("*").eq("brand_name", brand_name_normalized).order("year", desc=True).limit(1).execute().data
+        skus = sb.table("brand_skus_complete").select("*").eq("brand_name", brand_name_normalized).order("market_position").execute().data
+        competitors = sb.table("brand_competitors_complete").select("*").eq("brand_name", brand_name_normalized).order("market_position").execute().data
+        competing_skus = sb.table("competing_skus_complete").select("*").eq("brand_name", brand_name_normalized).execute().data
+        white_space = sb.table("brand_white_space").select("*").eq("brand_name", brand_name_normalized).order("opportunity_score", desc=True).execute().data
+        social = sb.table("brand_social_media").select("*").eq("brand_name", brand_name_normalized).execute().data
+        news = sb.table("brand_news").select("*").eq("brand_name", brand_name_normalized).order("published_date", desc=True).limit(5).execute().data
+        podcasts = sb.table("brand_podcasts").select("*").eq("brand_name", brand_name_normalized).order("relevance_score", desc=True).limit(5).execute().data
+        ai_strategy = sb.table("brand_ai_strategy").select("*").eq("brand_name", brand_name_normalized).execute().data
 
         # Build response
         result = {
