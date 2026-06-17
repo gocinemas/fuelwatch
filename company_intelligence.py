@@ -105,15 +105,45 @@ def _fetch_crunchbase(company_name: str) -> dict:
         return {}
 
 
+def _get_cik_from_db(company_name: str) -> str:
+    """Fetch CIK from database cache."""
+    try:
+        import library as lib
+        sb = lib._sb()
+        result = sb.table("cik_lookup").select("cik").eq("company_name_lower", company_name.lower()).limit(1).execute().data
+        if result:
+            return result[0].get("cik", "")
+    except:
+        pass
+    return ""
+
+
+def _save_cik_to_db(company_name: str, cik: str):
+    """Save CIK to database cache for future lookups."""
+    try:
+        import library as lib
+        sb = lib._sb()
+        sb.table("cik_lookup").upsert({
+            "company_name": company_name,
+            "company_name_lower": company_name.lower(),
+            "cik": cik,
+            "cached_at": datetime.now().isoformat()
+        }).execute()
+    except:
+        pass
+
+
 def _fetch_edgar(company_name: str) -> dict:
     """Fetch from SEC EDGAR via data.sec.gov API (free, US public companies only)."""
     try:
-        # Step 1: Look up CIK from known companies
-        cik = None
-        for known_name, known_cik in KNOWN_CIKS.items():
-            if company_name.lower() == known_name.lower() or company_name.lower() in known_name.lower():
-                cik = known_cik
-                break
+        # Step 1: Look up CIK - first from DB cache, then hardcoded, then return empty
+        cik = _get_cik_from_db(company_name)
+        if not cik:
+            for known_name, known_cik in KNOWN_CIKS.items():
+                if company_name.lower() == known_name.lower() or company_name.lower() in known_name.lower():
+                    cik = known_cik
+                    _save_cik_to_db(company_name, cik)
+                    break
 
         if not cik:
             return {}
