@@ -2988,9 +2988,28 @@ def api_brand():
     analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
 
     data = fetch_brand_data(name, force_refresh=refresh)
-    if data.get("timeline") or data.get("competitors"):
-        _save_brand_profile(data)
+    # REMOVED: auto-save to database. Only save when user explicitly bookmarks/tracks.
+    # if data.get("timeline") or data.get("competitors"):
+    #     _save_brand_profile(data)
     return jsonify(data)
+
+
+@app.route("/api/brand/bookmark", methods=["POST"])
+def bookmark_brand():
+    """Explicitly bookmark/track a brand to save to database."""
+    data = request.get_json() or {}
+    name = data.get("name", "").strip()
+    brand_data = data.get("brand_data", {})
+
+    if not name:
+        return jsonify({"error": "name required"}), 400
+
+    try:
+        # Save to Supabase only when explicitly bookmarked
+        _save_brand_profile(brand_data or {"name": name})
+        return jsonify({"ok": True, "bookmarked": name})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/brand/clear-cache", methods=["POST"])
