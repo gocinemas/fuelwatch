@@ -2892,10 +2892,10 @@ def _agent_identify_category(brand_name: str, description: str, infobox: dict = 
         "beverages": ["drink", "beverage", "juice", "smoothie", "cola", "water", "coffee", "tea", "alcohol", "wine", "beer"],
         "food": ["food", "snack", "chocolate", "candy", "biscuit", "cereal", "frozen"],
         "cosmetics": ["beauty", "cosmetic", "skincare", "makeup", "haircare"],
-        "fashion": ["clothing", "apparel", "fashion", "shoe", "footwear"],
+        "fashion": ["clothing", "apparel", "fashion", "shoe", "footwear", "sportswear", "sneaker", "athletic", "athletic wear", "activewear"],
         "technology": ["software", "hardware", "computer", "phone", "device", "app"],
         "automotive": ["car", "vehicle", "automotive", "motor"],
-        "fitness": ["fitness", "exercise", "gym", "peloton", "workout", "sports equipment", "athletic"],
+        "fitness": ["fitness", "exercise", "gym", "peloton", "workout", "sports equipment"],
         "retail": ["retail", "store", "shopping"],
     }
 
