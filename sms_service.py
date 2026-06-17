@@ -3042,14 +3042,28 @@ def api_company_intelligence():
     Query params:
     - name: Company name (required)
     - country: Country code - US, GB, etc. (default: US)
+    - refresh: Set to 'true' to bypass cache and fetch fresh data
     """
     name = request.args.get("name", "").strip()
     country = request.args.get("country", "US").strip().upper()
+    refresh = request.args.get("refresh", "").lower() == "true"
+
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
 
     try:
         from company_intelligence import fetch_company_intelligence
+
+        # If refresh=true, clear cache first
+        if refresh:
+            import library as lib
+            sb = lib._sb()
+            cache_key = f"company:{name.lower()}:{country.upper()}"
+            try:
+                sb.table("ai_cache").delete().eq("key", cache_key).execute()
+            except:
+                pass
+
         data = fetch_company_intelligence(name, country=country)
         if not data:
             return jsonify({"error": "Company not found", "name": name, "country": country}), 404
