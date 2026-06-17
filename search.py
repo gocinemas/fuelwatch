@@ -1863,37 +1863,66 @@ def _fetch_wikipedia(company: str) -> dict:
         "surname","given name","first name","fictional character","television series","film","movie",
         "video game","album","song","musical","comic","novel","asteroid","spacecraft",
         "lack of guilt","absence of guilt","concept","philosophy","emotion","abstract noun",
+        "is a","is the","refers to","meaning of","definition of","from the","state of being",
     }
 
     def _is_non_company(res: dict) -> bool:
         """Return True if the Wikipedia article is clearly not about a company/brand."""
-        text = ((res.get("description") or "") + " " + (res.get("extract") or "")[:200]).lower()
-        return any(sig in text for sig in _NON_COMPANY)
+        text = ((res.get("description") or "") + " " + (res.get("extract") or "")[:300]).lower()
+        # Strong rejection if it's a dictionary/definition-like article
+        if any(sig in text for sig in _NON_COMPANY):
+            return True
+        # Also reject if no company-like indicators (no infobox data)
+        if not res.get("infobox") and not res.get("revenue") and not res.get("employees"):
+            # Unless it has strong brand signals
+            if not any(w in text for w in ["brand","company","corporation","retail","product","service"]):
+                return True
+        return False
 
     # Step 1: Smart disambiguation - try multiple variants
     parts = company.split()
     result = None
 
     if len(parts) == 1:
-        # Single word: try (brand) → (company) → direct
+        # Single word: try (brand) → (company) → Drinks variant → generic
+        # But check EACH attempt to reject non-company articles early
         result = _summary(parts[0] + " (brand)")
+        if result and not _is_non_company(result):
+            pass  # Good result, keep it
+        else:
+            result = None
+
         if not result:
             result = _summary(parts[0] + " (company)")
+            if result and _is_non_company(result):
+                result = None
+
         if not result:
             result = _summary(parts[0] + " Drinks")  # e.g., "Innocent" → "Innocent Drinks"
+            if result and _is_non_company(result):
+                result = None
+
         if not result:
             result = _summary(company)
+            if result and _is_non_company(result):
+                result = None  # Reject if it's a non-company article
     else:
         # Multi-word: try direct → product-qualified → brand
         result = _summary(company)
+        if result and not _is_non_company(result):
+            pass  # Good
+        else:
+            result = None
+
         if not result:
             result = _summary(parts[0] + " (" + parts[1].lower() + ")")
+            if result and _is_non_company(result):
+                result = None
+
         if not result:
             result = _summary(parts[0] + " (brand)")
-
-    # Reject clearly non-company articles
-    if result and _is_non_company(result):
-        result = {}
+            if result and _is_non_company(result):
+                result = None
 
     # Step 2: if that fails, search Wikipedia for the best matching article
     if not result:
