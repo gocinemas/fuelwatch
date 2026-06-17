@@ -3067,8 +3067,13 @@ def api_company_intelligence():
         data = fetch_company_intelligence(name, country=country)
         if not data:
             return jsonify({"error": "Company not found", "name": name, "country": country}), 404
+
+        # Debug: log what we're returning
+        app.logger.info(f"[company/intelligence] {name}: returned fields = {list(data.keys())}")
+
         return jsonify(data)
     except Exception as e:
+        app.logger.error(f"[company/intelligence] ERROR: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 

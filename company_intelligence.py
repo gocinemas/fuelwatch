@@ -430,17 +430,26 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
         financial = _fetch_financial_data(ticker, company_name)
         if financial:
             result["financials"] = financial
+            print(f"[intelligence] Added financials for {company_name}")
+    else:
+        print(f"[intelligence] No ticker for {company_name}, skipping financials")
 
     # Add AI strategy detection
     ai_data = _detect_ai_strategy(company_name)
     if ai_data:
         result["ai_strategy"] = ai_data
+        print(f"[intelligence] Added AI strategy for {company_name}: {ai_data}")
+    else:
+        print(f"[intelligence] No AI strategy for {company_name}")
 
     # Add competitor detection
     industry = result.get("industry", "")
     competitors = _detect_competitors(company_name, industry)
     if competitors:
         result["competitors"] = competitors
+        print(f"[intelligence] Added competitors for {company_name}: {competitors}")
+    else:
+        print(f"[intelligence] No competitors for {company_name}")
 
     # Cache result
     try:
