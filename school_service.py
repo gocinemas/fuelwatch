@@ -248,8 +248,14 @@ def _groq_parse_events(subject: str, body: str, school_name: str, year_group: st
                        sent_date: str = "") -> list[dict]:
     """
     Ask Groq to extract events/reminders from an email.
-    Returns list of: {event_title, event_type, event_date, description, action_needed, deadline}
+    TEMPORARILY DISABLED: Groq tokens exhausted (free tier limit 500K/day)
+    Will re-enable after midnight UTC when tokens reset.
+    Returns empty list for now.
     """
+    print(f"[school] groq parse disabled (token quota exhausted, resets after midnight UTC)")
+    return []
+
+    # Original code below (disabled until tokens reset):
     # Use the email's actual send date for relative date resolution
     try:
         ref = date.fromisoformat(sent_date) if sent_date else date.today()
