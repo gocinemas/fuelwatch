@@ -923,7 +923,7 @@
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:20px;flex-shrink:0">🚗</span>
           <div style="flex:1">
-            <div style="font-size:13px;font-weight:700;color:#78350f">School Commute</div>
+            <div style="font-size:13px;font-weight:700;color:#78350f" id="commute-card-title">My Commutes</div>
             <div id="commute-card-body" style="font-size:12px;color:#92400e;margin-top:4px"></div>
           </div>
         </div>
@@ -16841,17 +16841,30 @@ let _savesAll = [];
             var isWeekday = wday >= 1 && wday <= 5;
             var isCommutTime = hour === 7 || (hour === 8 && min <= 30);
             var commuteCard = document.getElementById("commute-card");
-            if (commuteCard && isWeekday && isCommutTime) {
-              var legs = d.context.traffic.legs || [];
-              if (legs.length > 0) {
-                var html = legs.map(function(leg) {
-                  return leg.school + " " + leg.emoji + " " + leg.mins + " min" + (leg.delay_mins > 0 ? " (+"+leg.delay_mins+")" : "");
-                }).join("<br>");
-                document.getElementById("commute-card-body").innerHTML = html;
-                commuteCard.style.display = "block";
+            if (commuteCard) {
+              var allRoutes = [];
+              // Add saved commutes from brief API
+              if (d.commutes && d.commutes.length) {
+                d.commutes.forEach(function(c) {
+                  if (c.label && c.mins) {
+                    allRoutes.push(c.label + " " + (c.traffic || "") + " " + c.mins + " min");
+                  }
+                });
               }
-            } else if (commuteCard) {
-              commuteCard.style.display = "none";
+              // Add traffic legs (school run) on weekday mornings
+              if (isWeekday && isCommutTime && d.context && d.context.traffic) {
+                var legs = d.context.traffic.legs || [];
+                legs.forEach(function(leg) {
+                  allRoutes.push(leg.school + " " + leg.emoji + " " + leg.mins + " min" + (leg.delay_mins > 0 ? " (+"+leg.delay_mins+")" : ""));
+                });
+              }
+
+              if (allRoutes.length > 0) {
+                document.getElementById("commute-card-body").innerHTML = allRoutes.join("<br>");
+                commuteCard.style.display = "block";
+              } else {
+                commuteCard.style.display = "none";
+              }
             }
           }
 
