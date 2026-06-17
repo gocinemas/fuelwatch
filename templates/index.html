@@ -3801,6 +3801,7 @@
     setTimeout(function() { _MORE_FEATURES[i].action(); }, 120);
   }
   const _INTEL_MODE = {{ 'true' if intel_mode else 'false' }};
+  const _AI_MODE = {{ 'true' if ai_mode else 'false' }};
   function showHome() {
     if (_INTEL_MODE) { showScreen("company"); return; }
     var bb = document.getElementById("back-btn");
@@ -16838,7 +16839,12 @@ let _savesAll = [];
             (async function() {
               const commutes = await _commuteLoad();
               if (!commutes.length) return;
-              const pc = _miruPostcode ? _miruPostcode() : "";
+              // Try to get postcode from brief data, then localStorage
+              let pc = (d && d.area && d.area.postcode) || (d && d.postcode) || (_miruPostcode ? _miruPostcode() : "");
+              if (!pc) {
+                // Fallback: extract from brief if available
+                pc = document.querySelector('[data-postcode]') ? document.querySelector('[data-postcode]').getAttribute('data-postcode') : "";
+              }
               if (!pc) return;
               const commuteLines = [];
               for (const c of commutes) {
