@@ -21486,7 +21486,7 @@ def _whatsapp_reply_inner():
         r'school\s+event|school\s+news|school\s+week|what\'s\s+on\s+at\s+school)\b',
         re.I
     )
-    if _SCHOOL_NL_RE.search(body) and from_number not in school_service._SETUP_STATE:
+    if _SCHOOL_NL_RE.search(body) and from_number not in school_service._SETUP_STEPS:
         try:
             # Route natural language school queries to school_service
             # Normalise: if it doesn't start with "school", prepend it so handle_wa_school can route it
@@ -21499,7 +21499,7 @@ def _whatsapp_reply_inner():
             return str(resp)
 
     # ── School comms ──────────────────────────────────────────────────────────
-    if body_lower.startswith("school") or from_number in school_service._SETUP_STATE:
+    if body_lower.startswith("school") or from_number in school_service._SETUP_STEPS:
         try:
             reply = school_service.handle_wa_school(from_number, body)
         except Exception as _e:
