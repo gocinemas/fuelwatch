@@ -1472,6 +1472,29 @@
             </div>
           </div>
 
+          <!-- Company Intelligence (Real EDGAR Data) — Prominent -->
+          <div id="company-intel-section" style="display:none;margin-bottom:32px;padding:28px;background:linear-gradient(135deg,#f5f3ff,#faf5ff);border:2px solid #d8b4fe;border-radius:16px;box-shadow:0 4px 16px rgba(139,92,246,.08)">
+            <div style="font-size:11px;color:#7c3aed;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">💼 Company Intelligence</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:16px">
+              <div style="padding:12px;background:rgba(255,255,255,0.6);border-radius:10px;border:1px solid rgba(124,58,237,0.2)">
+                <div style="font-size:11px;color:#6b21a8;font-weight:700;text-transform:uppercase;margin-bottom:4px">Headquarters</div>
+                <div style="font-size:16px;font-weight:800;color:#1e293b" id="company-hq">—</div>
+              </div>
+              <div style="padding:12px;background:rgba(255,255,255,0.6);border-radius:10px;border:1px solid rgba(124,58,237,0.2)">
+                <div style="font-size:11px;color:#6b21a8;font-weight:700;text-transform:uppercase;margin-bottom:4px">Industry</div>
+                <div style="font-size:16px;font-weight:800;color:#1e293b" id="company-industry">—</div>
+              </div>
+              <div style="padding:12px;background:rgba(255,255,255,0.6);border-radius:10px;border:1px solid rgba(124,58,237,0.2)">
+                <div style="font-size:11px;color:#6b21a8;font-weight:700;text-transform:uppercase;margin-bottom:4px">Ticker</div>
+                <div style="font-size:16px;font-weight:800;color:#7c3aed" id="company-ticker">—</div>
+              </div>
+              <div style="padding:12px;background:rgba(255,255,255,0.6);border-radius:10px;border:1px solid rgba(124,58,237,0.2)">
+                <div style="font-size:11px;color:#6b21a8;font-weight:700;text-transform:uppercase;margin-bottom:4px">Source</div>
+                <div style="font-size:14px;font-weight:700;color:#6b21a8" id="company-source">EDGAR</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Category Analysis Agent — Bright -->
           <div id="brand-category-section" style="display:none;margin-bottom:32px;padding:24px;background:linear-gradient(135deg,#ecf9ff,#f0f9ff);border:1.5px solid #bfdbfe;border-radius:12px">
             <div style="font-size:12px;color:#0369a1;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">🎯 Market Category</div>
@@ -12565,8 +12588,17 @@ function _hcAdd() {
       if (_el('brand-positioning-section')) _el('brand-positioning-section').style.display = 'block';
     }
 
-    // Stats grid — merge company intelligence with brand data
+    // Company Intelligence Section — Real EDGAR Data
     const ci = d.company_intelligence || {};
+    if (ci && ci.name) {
+      if (_el('company-hq')) _el('company-hq').textContent = (ci.hq && ci.hq.city) ? `${ci.hq.city}, ${ci.hq.country || 'USA'}` : '—';
+      if (_el('company-industry')) _el('company-industry').textContent = ci.industry || '—';
+      if (_el('company-ticker')) _el('company-ticker').textContent = ci.ticker || '—';
+      if (_el('company-source')) _el('company-source').textContent = ci.source || 'EDGAR';
+      if (_el('company-intel-section')) _el('company-intel-section').style.display = 'block';
+    }
+
+    // Stats grid — merge company intelligence with brand data
     const hqDisplay = (ci.hq && ci.hq.city) ? `${ci.hq.city}, ${ci.hq.country || ''}` : d.hq;
     const industryDisplay = ci.industry || d.industry;
     const _statFields = [
