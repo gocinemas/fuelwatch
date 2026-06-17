@@ -3039,6 +3039,9 @@ def api_brand():
 def api_company_intelligence():
     """Fetch real company intelligence with country support.
 
+    Uses /api/brand as the data source since it includes financial data
+    and enriches with company-specific analysis.
+
     Query params:
     - name: Company name (required)
     - country: Country code - US, GB, etc. (default: US)
@@ -3052,24 +3055,24 @@ def api_company_intelligence():
         return jsonify({"error": "Company name required"}), 400
 
     try:
-        from company_intelligence import fetch_company_intelligence
+        # Use fetch_brand_data which includes financial data
+        # Then merge company_intelligence for AI strategy and competitors
+        data = fetch_brand_data(name, force_refresh=refresh)
 
-        # If refresh=true, clear cache first
-        if refresh:
-            import library as lib
-            sb = lib._sb()
-            cache_key = f"company:{name.lower()}:{country.upper()}"
-            try:
-                sb.table("ai_cache").delete().eq("key", cache_key).execute()
-            except:
-                pass
-
-        data = fetch_company_intelligence(name, country=country)
         if not data:
-            return jsonify({"error": "Company not found", "name": name, "country": country}), 404
+            return jsonify({"error": "Company not found", "name": name}), 404
 
-        # Debug: log what we're returning
-        app.logger.info(f"[company/intelligence] {name}: returned fields = {list(data.keys())}")
+        # Add company intelligence (AI strategy, competitors)
+        try:
+            from company_intelligence import fetch_company_intelligence
+            company_data = fetch_company_intelligence(name, country=country)
+            if company_data:
+                data["company_intelligence"] = company_data
+                # Also merge top-level fields for convenience
+                if "ticker" in company_data and "ticker" not in data:
+                    data["ticker"] = company_data["ticker"]
+        except:
+            pass
 
         return jsonify(data)
     except Exception as e:
