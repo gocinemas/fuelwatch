@@ -222,6 +222,84 @@ def _fetch_edgar(company_name: str) -> dict:
         return {}
 
 
+def _fetch_financial_data(ticker: str, company_name: str) -> dict:
+    """Fetch financial data from free stock API or EDGAR."""
+    if not ticker:
+        return {}
+
+    try:
+        # Try Alpha Vantage (free tier, limited calls)
+        av_key = os.environ.get("ALPHA_VANTAGE_API_KEY", "")
+        if av_key:
+            r = requests.get(
+                "https://www.alphavantage.co/query",
+                params={"function": "OVERVIEW", "symbol": ticker, "apikey": av_key},
+                timeout=8
+            )
+            if r.status_code == 200:
+                data = r.json()
+                if "MarketCapitalization" in data:
+                    return {
+                        "revenue": data.get("RevenueTTM", ""),
+                        "net_profit": data.get("ProfitMargin", ""),
+                        "market_cap": data.get("MarketCapitalization", ""),
+                        "pe_ratio": data.get("PERatio", ""),
+                        "dividend_yield": data.get("DividendYield", ""),
+                        "52_week_high": data.get("52WeekHigh", ""),
+                        "52_week_low": data.get("52WeekLow", ""),
+                        "financial_source": "AlphaVantage"
+                    }
+    except:
+        pass
+
+    return {}
+
+
+def _detect_ai_strategy(company_name: str) -> dict:
+    """Detect AI strategy by parsing recent news/announcements."""
+    if not GROQ_API_KEY:
+        return {}
+
+    try:
+        # Simplified: just return placeholder - in Phase 3, integrate news API
+        # For now, return common AI strategies based on company profile
+        ai_strategies = {
+            "Apple": ["AI in devices", "On-device ML"],
+            "Microsoft": ["Copilot AI", "Azure AI", "OpenAI partnership"],
+            "Google": ["Gemini AI", "TPU chips"],
+            "Amazon": ["AWS AI/ML", "Alexa AI"],
+            "Nike": ["Supply chain AI", "Personalization ML"],
+            "Tesla": ["Autonomous driving", "FSD AI"],
+        }
+
+        strategy = ai_strategies.get(company_name, [])
+        return {
+            "ai_focus": strategy,
+            "has_ai_strategy": len(strategy) > 0,
+            "ai_source": "Profile-based"
+        }
+    except:
+        return {}
+
+
+def _detect_competitors(company_name: str, industry: str) -> dict:
+    """Detect top competitors for a company."""
+    competitors_map = {
+        "Nike": ["Adidas", "Puma", "New Balance", "Asics"],
+        "Adidas": ["Nike", "Puma", "New Balance", "Under Armour"],
+        "Coca-Cola": ["Pepsi", "Red Bull", "Monster", "Keurig"],
+        "Apple": ["Samsung", "Google", "Microsoft", "OnePlus"],
+        "Microsoft": ["Google", "Apple", "Amazon", "Oracle"],
+    }
+
+    comps = competitors_map.get(company_name, [])
+    return {
+        "competitors": comps,
+        "competitor_count": len(comps),
+        "competitors_source": "Industry-based"
+    }
+
+
 def _groq_parse_company_data(raw_data: dict, company_name: str) -> dict:
     """Use Groq to parse/structure company data from multiple sources."""
     if not GROQ_API_KEY:
@@ -348,6 +426,24 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
     # Parse with Groq if needed
     if not all(result.get(k) for k in ["founded_year", "hq"]):
         result = _groq_parse_company_data(result, company_name)
+
+    # Add financial data
+    ticker = result.get("ticker", "")
+    if ticker:
+        financial = _fetch_financial_data(ticker, company_name)
+        if financial:
+            result["financials"] = financial
+
+    # Add AI strategy detection
+    ai_data = _detect_ai_strategy(company_name)
+    if ai_data:
+        result["ai_strategy"] = ai_data
+
+    # Add competitor detection
+    industry = result.get("industry", "")
+    competitors = _detect_competitors(company_name, industry)
+    if competitors:
+        result["competitors"] = competitors
 
     # Cache result
     try:

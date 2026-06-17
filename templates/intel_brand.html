@@ -304,10 +304,29 @@
                 <div id="competitorsList" class="grid"></div>
             </div>
 
-            <!-- Popular SKUs -->
+            <!-- Popular SKUs by Country -->
             <div class="section">
-                <div class="section-title">📦 Popular SKUs from this Brand</div>
-                <div id="skusList" class="grid"></div>
+                <div class="section-title">📦 Best-Selling SKUs
+                    <select id="countrySelector" onchange="fetchCountrySKUs()" style="margin-left: auto; padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px;">
+                        <option value="US">🇺🇸 United States</option>
+                        <option value="GB">🇬🇧 United Kingdom</option>
+                        <option value="DE">🇩🇪 Germany</option>
+                        <option value="JP">🇯🇵 Japan</option>
+                        <option value="IN">🇮🇳 India</option>
+                        <option value="AU">🇦🇺 Australia</option>
+                        <option value="CA">🇨🇦 Canada</option>
+                        <option value="FR">🇫🇷 France</option>
+                        <option value="ES">🇪🇸 Spain</option>
+                        <option value="BR">🇧🇷 Brazil</option>
+                    </select>
+                </div>
+                <div id="countrySkusList" class="grid"></div>
+            </div>
+
+            <!-- Competitor SKUs -->
+            <div class="section">
+                <div class="section-title">🏪 Competing SKUs</div>
+                <div id="competitorSkusList"></div>
             </div>
 
             <!-- Navigation -->
@@ -342,6 +361,8 @@
 
                 currentBrand = data;
                 displayBrand(data);
+                await fetchCountrySKUs();
+                await fetchCompetitorSKUs();
                 showBrandCard();
             } catch (e) {
                 hideLoading();
@@ -363,8 +384,8 @@
 
             document.getElementById('brandMarketCap').textContent = (data.share && data.share.symbol) ? data.share.symbol + ' ' + data.share.current : '—';
 
-            // Competitors
-            const comps = data.competitive_landscape?.competitors || [];
+            // Competitors from brand data
+            const comps = data.competitive_landscape?.competitors || data.competitors?.competitors || [];
             document.getElementById('competitorsList').innerHTML = comps.length ?
                 comps.slice(0, 4).map(c => `
                     <div class="list-item">
@@ -372,9 +393,65 @@
                     </div>
                 `).join('') :
                 '<div class="empty">No competitor data</div>';
+        }
 
-            // SKUs (placeholder - would need real SKU data)
-            document.getElementById('skusList').innerHTML = '<div class="empty">SKU data coming soon</div>';
+        async function fetchCountrySKUs() {
+            if (!currentBrand) return;
+            const country = document.getElementById('countrySelector')?.value || 'US';
+            try {
+                const response = await fetch(`/api/brand/skus/by-country?name=${encodeURIComponent(currentBrand.name)}&country=${country}`);
+                const data = await response.json();
+                const skus = data.skus || [];
+                document.getElementById('countrySkusList').innerHTML = skus.length ?
+                    skus.map(s => `
+                        <div class="list-item">
+                            <div>
+                                <div class="item-title">${s.sku_name}</div>
+                                <div style="font-size: 12px; color: #64748b;">${s.category || 'Category TBD'}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-weight: 600;">${s.price ? '$' + s.price : '—'}</div>
+                            </div>
+                        </div>
+                    `).join('') :
+                    '<div class="empty">No SKUs tracked for ' + country + ' yet</div>';
+            } catch (e) {
+                document.getElementById('countrySkusList').innerHTML = '<div class="empty">Error loading SKUs</div>';
+            }
+        }
+
+        async function fetchCompetitorSKUs() {
+            if (!currentBrand) return;
+            try {
+                const response = await fetch(`/api/brand/competitor-skus?brand=${encodeURIComponent(currentBrand.name)}`);
+                const data = await response.json();
+                const competitors = data.competitors || {};
+
+                if (Object.keys(competitors).length === 0) {
+                    document.getElementById('competitorSkusList').innerHTML = '<div class="empty">No competitor SKUs tracked yet</div>';
+                    return;
+                }
+
+                const html = Object.entries(competitors).map(([compName, skus]) => `
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-weight: 600; color: #0369a1; margin-bottom: 8px;">${compName}</div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            ${skus.map(s => `
+                                <div class="list-item">
+                                    <div>
+                                        <div class="item-title">${s.sku_name}</div>
+                                        <div style="font-size: 12px; color: #64748b;">${s.category || 'Category TBD'}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('competitorSkusList').innerHTML = html;
+            } catch (e) {
+                document.getElementById('competitorSkusList').innerHTML = '<div class="empty">Error loading competitor SKUs</div>';
+            }
         }
 
         function showLoading() {

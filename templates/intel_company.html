@@ -288,8 +288,8 @@
                         <div class="value" id="marketCap">—</div>
                     </div>
                     <div class="card">
-                        <div class="label">Growth</div>
-                        <div class="value" id="growth">—</div>
+                        <div class="label">P/E Ratio</div>
+                        <div class="value" id="peRatio">—</div>
                     </div>
                 </div>
             </div>
@@ -306,7 +306,21 @@
                         <div class="label">Ticker</div>
                         <div class="value" id="ticker">—</div>
                     </div>
+                    <div class="card">
+                        <div class="label">52W High</div>
+                        <div class="value" id="high52w">—</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">52W Low</div>
+                        <div class="value" id="low52w">—</div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- AI Strategy -->
+            <div class="section">
+                <div class="section-title">🤖 AI Strategy</div>
+                <div id="aiStrategyList" class="grid"></div>
             </div>
 
             <!-- Competitors -->
@@ -361,14 +375,45 @@
             document.getElementById('industry').textContent = data.industry || '—';
             document.getElementById('ticker').textContent = data.ticker || '—';
 
-            // Placeholder financials - would come from brand data or company_intelligence extension
-            document.getElementById('revenue').textContent = '—';
-            document.getElementById('profit').textContent = '—';
-            document.getElementById('marketCap').textContent = '—';
-            document.getElementById('growth').textContent = '—';
+            // Financial data
+            const financials = data.financials || {};
+            document.getElementById('revenue').textContent = formatValue(financials.revenue || '—');
+            document.getElementById('profit').textContent = formatValue(financials.net_profit || '—');
+            document.getElementById('marketCap').textContent = formatValue(financials.market_cap || '—');
+            document.getElementById('peRatio').textContent = financials.pe_ratio || '—';
+            document.getElementById('high52w').textContent = financials['52_week_high'] || '—';
+            document.getElementById('low52w').textContent = financials['52_week_low'] || '—';
 
-            // Competitors placeholder
-            document.getElementById('competitorsList').innerHTML = '<div class="empty">Competitor data coming soon</div>';
+            // AI Strategy
+            const aiStrategy = data.ai_strategy || {};
+            const aiFocus = aiStrategy.ai_focus || [];
+            document.getElementById('aiStrategyList').innerHTML = aiFocus.length ?
+                aiFocus.map(f => `
+                    <div class="card">
+                        <div class="label">AI Focus Area</div>
+                        <div class="value" style="font-size: 14px;">${f}</div>
+                    </div>
+                `).join('') :
+                '<div class="empty">No AI strategy data available</div>';
+
+            // Competitors
+            const competitors = data.competitors?.competitors || [];
+            document.getElementById('competitorsList').innerHTML = competitors.length ?
+                competitors.map(c => `
+                    <div class="list-item">
+                        <div class="item-title">${c}</div>
+                    </div>
+                `).join('') :
+                '<div class="empty">No competitor data available</div>';
+        }
+
+        function formatValue(val) {
+            if (!val || val === '—') return '—';
+            // Format large numbers with commas
+            if (typeof val === 'number' || !isNaN(val)) {
+                return Number(val).toLocaleString();
+            }
+            return String(val);
         }
 
         function showLoading() {

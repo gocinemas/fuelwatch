@@ -3214,6 +3214,104 @@ def clear_brand_cache():
     return jsonify({"cleared": name, "cache_key": cache_key})
 
 
+@app.route("/api/brand/skus/by-country", methods=["GET"])
+def api_brand_skus_by_country():
+    """Fetch best-selling SKUs for a brand in a specific country."""
+    name = request.args.get("name", "").strip()
+    country = request.args.get("country", "US").strip().upper()
+
+    if not name:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        import library as lib
+        sb = lib._sb()
+
+        # Try to fetch country-specific SKUs
+        result = sb.table("brand_skus_by_country").select("*").eq("brand_name", name).eq("country", country).order("market_position", asc=True).limit(5).execute().data
+
+        if not result:
+            # Fallback: return generic SKUs if no country-specific data
+            result = sb.table("company_skus").select("*").eq("company_name", name).order("created_at", desc=True).limit(5).execute().data
+
+        return jsonify({
+            "brand": name,
+            "country": country,
+            "skus": result,
+            "total": len(result)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/skus/by-country", methods=["POST"])
+def api_brand_add_sku_by_country():
+    """Add a country-specific SKU for a brand."""
+    data = request.get_json() or {}
+    brand_name = data.get("brand_name", "").strip()
+    sku_name = data.get("sku_name", "").strip()
+    country = data.get("country", "US").strip().upper()
+    category = data.get("category", "").strip()
+    price = data.get("price", "")
+    market_position = data.get("market_position", 999)
+
+    if not brand_name or not sku_name:
+        return jsonify({"error": "brand_name and sku_name required"}), 400
+
+    try:
+        import library as lib
+        from datetime import datetime
+        sb = lib._sb()
+        result = sb.table("brand_skus_by_country").insert({
+            "brand_name": brand_name,
+            "sku_name": sku_name,
+            "country": country,
+            "category": category,
+            "price": price,
+            "market_position": market_position,
+            "created_at": datetime.now().isoformat(),
+            "last_checked": datetime.now().isoformat()
+        }).execute()
+        return jsonify({"success": True, "sku": result.data[0] if result.data else {}}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/competitor-skus", methods=["GET"])
+def api_brand_competitor_skus():
+    """Fetch competitor SKUs for a brand."""
+    brand = request.args.get("brand", "").strip()
+
+    if not brand:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        import library as lib
+        sb = lib._sb()
+
+        # Fetch tracked competitors for this brand
+        competitors_data = sb.table("tracked_competitors").select("competitor_name").eq("tracking_company", brand).execute().data
+        competitor_names = [c.get("competitor_name") for c in competitors_data]
+
+        if not competitor_names:
+            return jsonify({"brand": brand, "competitors": []})
+
+        # Fetch SKUs for each competitor
+        result = {}
+        for comp_name in competitor_names:
+            skus = sb.table("company_skus").select("*").eq("company_name", comp_name).order("created_at", desc=True).limit(3).execute().data
+            if skus:
+                result[comp_name] = skus
+
+        return jsonify({
+            "brand": brand,
+            "competitors": result,
+            "total_competitors": len(result)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/deep-research")
 def api_brand_deep_research():
     """Phase 2: Deep research on company strategy, recent moves, EDGAR filings"""
