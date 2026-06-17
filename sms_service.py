@@ -9042,6 +9042,69 @@ out body 20;
         return {}
 
 
+def _v2_fetch_commutes(from_number: str) -> list:
+    """Fetch user's saved commutes with live traffic times."""
+    try:
+        if not from_number:
+            return []
+
+        sb = lib._sb()
+        rows = sb.table("user_commutes").select("id,label,dest,created_at") \
+                 .eq("phone", from_number).order("created_at").execute().data or []
+
+        # For each commute, try to get live traffic if dest is a postcode
+        commutes = []
+        for row in rows:
+            commute = {
+                "id": row.get("id"),
+                "label": row.get("label"),
+                "dest": row.get("dest"),
+            }
+
+            # Try to fetch live traffic for this commute if it's a postcode
+            dest = (row.get("dest") or "").strip().upper().replace(" ", "")
+            if dest and len(dest) >= 6:  # valid postcode format
+                try:
+                    gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY") or
+                              os.environ.get("GOOGLE_PLACES_KEY") or
+                              os.environ.get("GOOGLE_MAPS_KEY") or
+                              os.environ.get("GOOGLE_API_KEY", ""))
+                    if gm_key:
+                        r = requests.get(
+                            "https://maps.googleapis.com/maps/api/distancematrix/json",
+                            params={
+                                "origins": "TW10 7UX",  # Home location
+                                "destinations": dest,
+                                "key": gm_key,
+                                "departure_time": "now",
+                            },
+                            timeout=4
+                        )
+                        if r.status_code == 200:
+                            data = r.json()
+                            rows_res = data.get("rows", [])
+                            if rows_res and rows_res[0].get("elements"):
+                                elem = rows_res[0]["elements"][0]
+                                if elem.get("status") == "OK":
+                                    duration = elem.get("duration", {})
+                                    duration_in_traffic = elem.get("duration_in_traffic", {})
+                                    mins = int(duration.get("value", 0) / 60)
+                                    mins_traffic = int(duration_in_traffic.get("value", 0) / 60) if duration_in_traffic else mins
+                                    delay = mins_traffic - mins
+                                    traffic_emoji = "🟢" if delay <= 0 else "🟡" if delay <= 3 else "🔴"
+                                    commute["mins"] = mins_traffic
+                                    commute["traffic"] = traffic_emoji
+                except Exception:
+                    pass
+
+            commutes.append(commute)
+
+        return commutes
+    except Exception as e:
+        print(f"[commutes] fetch error: {e}")
+        return []
+
+
 def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: dict = None, school_anchor: dict = None) -> dict:
     """Live drive times for school run + work commute. Called on weekday mornings only.
     Returns {"legs": [{child, school, mins, normal_mins, delay_mins, traffic, emoji}, ...]}"""
@@ -10205,6 +10268,7 @@ def api_home_brief():
             futures["thread"]           = pool.submit(_wa_load_thread, from_number)
             futures["today_activity"]   = pool.submit(_v2_fetch_today_activity, from_number)
             futures["weekend_patterns"] = pool.submit(_v2_fetch_weekend_patterns, from_number)
+            futures["commutes"]         = pool.submit(_v2_fetch_commutes, from_number)
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
@@ -10498,6 +10562,14 @@ def api_home_brief():
                 facts.append(f"{_label} {_tleg['emoji']} {_tleg['mins']} min ({_ttxt})")
             else:
                 facts.append(f"{_label} {_tleg['emoji']} {_tleg['mins']} min")
+        # Saved commutes — show with live traffic
+        for _commute in (ctx.get("commutes") or []):
+            _c_label = _commute.get("label", "")
+            _c_mins = _commute.get("mins")
+            _c_traffic = _commute.get("traffic", "")
+            if _c_label and _c_mins:
+                _c_txt = f"{_c_label} {_c_traffic} {_c_mins} min" if _c_traffic else f"{_c_label} {_c_mins} min"
+                facts.append(_c_txt)
     fuel = ctx.get("fuel", {})
     if fuel.get("price") and time_mode in ("morning_commute", "daytime") and not _car_at_service:
         change = f" ({fuel['change']})" if fuel.get("change") else ""
