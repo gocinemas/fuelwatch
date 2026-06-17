@@ -10458,8 +10458,8 @@ def api_home_brief():
     _wfh_today = (prefs.get("wfh_mode") == "wfh" and
                   prefs.get("wfh_date") == now.strftime("%Y-%m-%d"))
 
-    # Trains: weekday commute window only — never on weekends or WFH days
-    if time_mode == "morning_commute" and day_type not in ("weekend",) and not bank_holiday_today and not _wfh_today:
+    # Trains: show anytime (unless weekend or WFH day)
+    if day_type not in ("weekend",) and not bank_holiday_today and not _wfh_today:
         trains = ctx.get("trains", {})
         if trains.get("departures"):
             deps = trains["departures"]
@@ -10486,7 +10486,7 @@ def api_home_brief():
                 if times:
                     facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
         # Evening return journey trains
-        if time_mode == "evening_leisure" and day_type not in ("weekend",) and not _wfh_today:
+        if day_type not in ("weekend",) and not _wfh_today:
             trains_home = ctx.get("trains_home", {})
             if trains_home.get("departures"):
                 deps = trains_home["departures"]
