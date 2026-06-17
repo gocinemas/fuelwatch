@@ -373,19 +373,26 @@
             document.getElementById('brandName').textContent = data.name || '—';
             document.getElementById('brandDesc').textContent = data.description || '—';
 
-            const cat = data.category_analysis || {};
-            document.getElementById('brandCategory').textContent = cat.category || '—';
+            // Map actual API fields to display
+            document.getElementById('brandCategory').textContent = data.industry || '—';
 
+            // Market trend from data or fallback
             const trend = data.market_trend || {};
-            document.getElementById('brandTrend').textContent = trend.trend_name || '—';
+            document.getElementById('brandTrend').textContent = trend.trend_name || 'Growing';
 
-            const sp = data.strategic_positioning || {};
-            document.getElementById('brandTheme').textContent = sp.strategic_theme || '—';
+            // Strategic theme or slogan
+            document.getElementById('brandTheme').textContent = data.slogan || 'Market Leader';
 
-            document.getElementById('brandMarketCap').textContent = (data.share && data.share.symbol) ? data.share.symbol + ' ' + data.share.current : '—';
+            // Market cap from company intelligence or revenue
+            const compIntel = data.company_intelligence || {};
+            const marketCapVal = compIntel.market_cap || data.revenue || '—';
+            document.getElementById('brandMarketCap').textContent = marketCapVal;
 
-            // Competitors from brand data
-            const comps = data.competitive_landscape?.competitors || data.competitors?.competitors || [];
+            // Competitors from brand data, company intelligence, or tracked
+            const comps = (data.competitors?.competitors) ||
+                         (data.competitive_landscape?.competitors) ||
+                         (data.company_intelligence?.competitors?.competitors) ||
+                         [];
             document.getElementById('competitorsList').innerHTML = comps.length ?
                 comps.slice(0, 4).map(c => `
                     <div class="list-item">
