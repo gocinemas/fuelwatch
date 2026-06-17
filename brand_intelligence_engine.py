@@ -30,8 +30,16 @@ def get_brand_full_intelligence(brand_name: str) -> dict:
         sb = lib._sb()
 
         # If brand not in DB, fetch and populate it
+        from brand_data_validator import calculate_brand_completeness, should_retry_fetch, mark_brand_as_fetched
+
         profile = sb.table("brand_profile").select("*").eq("name", brand_name).execute().data
+
         if not profile:
+            # Brand not in DB, fetch it
+            fetch_and_populate_brand(brand_name)
+        elif should_retry_fetch(brand_name):
+            # Brand exists but data quality too low, retry fetch
+            print(f"[intelligence] Retrying fetch for {brand_name} (low completeness)")
             fetch_and_populate_brand(brand_name)
 
         # Fetch all brand data in parallel
@@ -61,7 +69,8 @@ def get_brand_full_intelligence(brand_name: str) -> dict:
             },
             "metadata": {
                 "last_updated": datetime.now().isoformat(),
-                "data_completeness": _calculate_completeness(profile, financials, skus, competitors, white_space, social, news)
+                "data_completeness": _calculate_completeness(profile, financials, skus, competitors, white_space, social, news),
+                "quality_assessment": calculate_brand_completeness(brand_name)
             }
         }
 
