@@ -351,7 +351,8 @@
             showLoading();
 
             try {
-                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(name)}`);
+                // Always refresh to get latest data with enrichment
+                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(name)}&refresh=true`);
                 const data = await response.json();
 
                 if (data.error || !data.name) {
