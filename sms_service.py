@@ -10548,6 +10548,29 @@ def api_home_brief():
                 _from_label = loc_station or trains.get("from", "")
                 if times:
                     facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
+        # Evening return journey trains
+        if time_mode == "evening_leisure" and day_type not in ("weekend",) and not _wfh_today:
+            trains_home = ctx.get("trains_home", {})
+            if trains_home.get("departures"):
+                deps = trains_home["departures"]
+                _future_deps = []
+                for d in deps:
+                    dep_time_str = d.get("departs") or d.get("time") or ""
+                    if not dep_time_str or ":" not in dep_time_str:
+                        continue
+                    try:
+                        _hour, _min = map(int, dep_time_str.split(":")[:2])
+                        _dep_minutes = _hour * 60 + _min
+                        _now_minutes = now.hour * 60 + now.minute
+                        if _dep_minutes >= _now_minutes:
+                            _future_deps.append(d)
+                    except ValueError:
+                        _future_deps.append(d)
+                if _future_deps:
+                    times = " · ".join(d.get("departs", "") for d in _future_deps[:2] if d.get("departs"))
+                    _to_label = loc_station or trains_home.get("to", "")
+                    if times:
+                        facts.append(f"Next trains {trains_home.get('from','')} → {_to_label}: {times}")
         # Commute traffic (work + school) — 7:00–8:30am only
         _tr = ctx.get("traffic", {}) if (7 <= now.hour <= 8 and not (now.hour == 8 and now.minute > 30)) else {}
         for _tleg in (_tr.get("legs") or []):
