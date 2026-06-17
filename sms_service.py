@@ -9052,8 +9052,13 @@ def _v2_fetch_commutes(from_number: str, home_postcode: str = "") -> list:
         rows = sb.table("user_commutes").select("id,label,dest,created_at") \
                  .eq("phone", from_number).order("created_at").execute().data or []
 
-        # For each commute, try to get live traffic if dest is a postcode
+        # For each commute, try to get live traffic
         commutes = []
+        gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY") or
+                  os.environ.get("GOOGLE_PLACES_KEY") or
+                  os.environ.get("GOOGLE_MAPS_KEY") or
+                  os.environ.get("GOOGLE_API_KEY", ""))
+
         for row in rows:
             commute = {
                 "id": row.get("id"),
@@ -9061,40 +9066,36 @@ def _v2_fetch_commutes(from_number: str, home_postcode: str = "") -> list:
                 "dest": row.get("dest"),
             }
 
-            # Try to fetch live traffic for this commute if it's a postcode
-            dest = (row.get("dest") or "").strip().upper().replace(" ", "")
-            home_pc = (home_postcode or "").strip().upper().replace(" ", "")
-            if dest and len(dest) >= 6 and home_pc and len(home_pc) >= 6:  # valid postcode format
+            # Try to fetch live traffic using Google Directions (works with place names or postcodes)
+            dest = (row.get("dest") or "").strip()
+            home_pc = (home_postcode or "").strip()
+
+            if dest and home_pc and gm_key:
                 try:
-                    gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY") or
-                              os.environ.get("GOOGLE_PLACES_KEY") or
-                              os.environ.get("GOOGLE_MAPS_KEY") or
-                              os.environ.get("GOOGLE_API_KEY", ""))
-                    if gm_key:
-                        r = requests.get(
-                            "https://maps.googleapis.com/maps/api/distancematrix/json",
-                            params={
-                                "origins": home_pc,
-                                "destinations": dest,
-                                "key": gm_key,
-                                "departure_time": "now",
-                            },
-                            timeout=4
-                        )
-                        if r.status_code == 200:
-                            data = r.json()
-                            rows_res = data.get("rows", [])
-                            if rows_res and rows_res[0].get("elements"):
-                                elem = rows_res[0]["elements"][0]
-                                if elem.get("status") == "OK":
-                                    duration = elem.get("duration", {})
-                                    duration_in_traffic = elem.get("duration_in_traffic", {})
-                                    mins = int(duration.get("value", 0) / 60)
-                                    mins_traffic = int(duration_in_traffic.get("value", 0) / 60) if duration_in_traffic else mins
-                                    delay = mins_traffic - mins
-                                    traffic_emoji = "🟢" if delay <= 0 else "🟡" if delay <= 3 else "🔴"
-                                    commute["mins"] = mins_traffic
-                                    commute["traffic"] = traffic_emoji
+                    # Use Directions API which can geocode place names
+                    r = requests.get(
+                        "https://maps.googleapis.com/maps/api/directions/json",
+                        params={
+                            "origin": home_pc,
+                            "destination": dest,
+                            "mode": "driving",
+                            "departure_time": "now",
+                            "key": gm_key,
+                        },
+                        timeout=5
+                    )
+                    if r.status_code == 200:
+                        data = r.json()
+                        if data.get("status") == "OK" and data.get("routes"):
+                            leg = data["routes"][0]["legs"][0]
+                            duration = leg.get("duration", {})
+                            duration_in_traffic = leg.get("duration_in_traffic", duration)
+                            mins = int(duration.get("value", 0) / 60)
+                            mins_traffic = int(duration_in_traffic.get("value", 0) / 60)
+                            delay = mins_traffic - mins
+                            traffic_emoji = "🟢" if delay <= 0 else "🟡" if delay <= 3 else "🔴"
+                            commute["mins"] = mins_traffic
+                            commute["traffic"] = traffic_emoji
                 except Exception:
                     pass
 
