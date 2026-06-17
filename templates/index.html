@@ -25614,36 +25614,69 @@ window.spotifyAddTrack = window.spotifyLike;
         document.getElementById('brand-loading').style.display = 'none';
       }
 
-      // Display results
+      // Display results (NEW AGENT STRUCTURE)
       const brand = data.brand;
-      document.getElementById('brand-name').textContent = brand.name;
-      document.getElementById('brand-description').textContent = brand.description || 'No description available';
-      document.getElementById('brand-competitors-count').textContent = (brand.competitors && brand.competitors.length) || 0;
-      document.getElementById('brand-source').textContent = `Source: ${brand.source === 'cache' ? 'Cached' : brand.source === 'wikipedia' ? 'Wikipedia' : brand.source === 'wikidata' ? 'Wikidata' : 'Google Knowledge Graph'}`;
+      const el = (id) => document.getElementById(id);
+      if (el('brand-name')) el('brand-name').textContent = brand.name || '—';
+      if (el('brand-description')) el('brand-description').textContent = brand.description || '—';
+      if (el('brand-source')) el('brand-source').textContent = `Source: ${brand.source || 'Wikipedia'}`;
 
-      // Display strategic theme (TOP PRIORITY)
-      if (brand.marketing_intelligence && brand.marketing_intelligence.strategic_theme) {
-        const theme = brand.marketing_intelligence.strategic_theme;
-        document.getElementById('brand-theme-title').textContent = theme.theme;
-        document.getElementById('brand-theme-insight').textContent = theme.insight;
-        document.getElementById('brand-strategy-section').style.display = 'block';
+      // Display Category Analysis Agent
+      if (brand.category_analysis) {
+        const cat = brand.category_analysis;
+        if (el('brand-category-name')) el('brand-category-name').textContent = cat.category || '—';
+        if (el('brand-subcategories')) {
+          el('brand-subcategories').innerHTML = (cat.subcategories || []).map(s => `<div>• ${s}</div>`).join('');
+        }
+        if (el('brand-category-source')) el('brand-category-source').textContent = `Source: ${cat.source || 'Analysis'}`;
+        if (el('brand-category-section')) el('brand-category-section').style.display = 'block';
       }
 
-      // Display consumer trend
-      if (brand.marketing_intelligence && brand.marketing_intelligence.consumer_trend) {
-        const trend = brand.marketing_intelligence.consumer_trend;
-        document.getElementById('brand-trend-name').textContent = trend.trend;
-        document.getElementById('brand-trend-desc').textContent = trend.description;
-        document.getElementById('brand-trend-section').style.display = 'block';
+      // Display Market Trend Agent
+      if (brand.market_trend) {
+        const trend = brand.market_trend;
+        if (el('brand-trend-title')) el('brand-trend-title').textContent = trend.trend_name || '—';
+        if (el('brand-trend-description')) el('brand-trend-description').textContent = trend.description || '—';
+        if (el('brand-trend-drivers')) {
+          el('brand-trend-drivers').innerHTML = (trend.drivers || []).map(d => `<div>✓ ${d}</div>`).join('');
+        }
+        if (el('brand-trend-source')) el('brand-trend-source').textContent = `Source: ${trend.source || 'Analysis'}`;
+        if (el('brand-market-trend-section')) el('brand-market-trend-section').style.display = 'block';
       }
 
-      // Display ranking
-      if (brand.ranking) {
-        const rank = brand.ranking;
-        document.getElementById('brand-rank').innerHTML = `#${rank.rank} in<br><span style="font-size:12px;color:#64748b">${rank.category}</span>`;
-      } else {
-        document.getElementById('brand-rank').textContent = 'No ranking';
+      // Display Market Direction Agent
+      if (brand.market_direction) {
+        const dir = brand.market_direction;
+        if (el('brand-direction-title')) el('brand-direction-title').textContent = dir.direction || '—';
+        if (el('brand-direction-growth')) el('brand-direction-growth').textContent = `Growth: ${dir.growth_rate || '—'}`;
+        if (el('brand-opportunities')) {
+          el('brand-opportunities').innerHTML = (dir.opportunities || []).map(o => `<div>• ${o}</div>`).join('');
+        }
+        if (el('brand-threats')) {
+          el('brand-threats').innerHTML = (dir.threats || []).map(t => `<div>• ${t}</div>`).join('');
+        }
+        if (el('brand-direction-source')) el('brand-direction-source').textContent = `Source: ${dir.source || 'Analysis'}`;
+        if (el('brand-direction-section')) el('brand-direction-section').style.display = 'block';
       }
+
+      // Display Competitive Landscape Agent
+      if (brand.competitive_landscape && brand.competitive_landscape.competitors) {
+        const comps = brand.competitive_landscape.competitors;
+        if (el('brand-competitors-grid')) {
+          el('brand-competitors-grid').innerHTML = comps.map(c => `
+            <div style="padding:10px;background:#1a1d25;border:1px solid #2a2d35;border-radius:8px">
+              <div style="font-weight:600;color:#fff;font-size:13px">${c.name}</div>
+              <div style="font-size:12px;color:#b0b8c1">${c.category || 'Competitor'}</div>
+              <div style="font-size:11px;color:#8b92a0;margin-top:4px">Overlap: ${c.overlap || 'Medium'}</div>
+            </div>
+          `).join('');
+        }
+        if (el('brand-competitive-section')) el('brand-competitive-section').style.display = 'block';
+        if (el('brand-competitive-source')) el('brand-competitive-source').textContent = `Source: ${brand.competitive_landscape.source || 'Analysis'}`;
+      }
+
+      // Show results
+      if (el('brand-results')) el('brand-results').style.display = 'block';
 
       // Display financials
       if (brand.financials) {
