@@ -2980,9 +2980,12 @@ def api_brand():
     if not name or len(name) < 2:
         return jsonify({"error": "Brand name required"}), 400
 
-    # Skip logging for automated health checks (Oatly, Innocent repeated queries)
-    if name.lower() not in ["oatly", "innocent"]:
-        analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
+    # Skip health check brands entirely (Oatly, Innocent) to avoid burning credits
+    if name.lower() in ["oatly", "innocent"]:
+        return jsonify({"name": name, "description": "Health check", "category_analysis": {}, "market_trend": {}, "market_direction": {}, "strategic_positioning": {}})
+
+    # Log searches (excluding health checks above)
+    analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
 
     data = fetch_brand_data(name, force_refresh=refresh)
     if data.get("timeline") or data.get("competitors"):
