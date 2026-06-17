@@ -3228,7 +3228,7 @@ def api_brand_skus_by_country():
         sb = lib._sb()
 
         # Try to fetch country-specific SKUs
-        result = sb.table("brand_skus_by_country").select("*").eq("brand_name", name).eq("country", country).order("market_position", asc=True).limit(5).execute().data
+        result = sb.table("brand_skus_by_country").select("*").eq("brand_name", name).eq("country", country).order("market_position").limit(5).execute().data
 
         if not result:
             # Fallback: return generic SKUs if no country-specific data
