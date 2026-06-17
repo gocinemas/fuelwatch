@@ -25705,12 +25705,8 @@ window.spotifyAddTrack = window.spotifyLike;
         document.getElementById('brand-wiki-link').style.display = 'none';
       }
 
-      // Show refresh button if cached and no description
-      if (brand.source === 'cache' && !brand.description) {
-        document.getElementById('brand-refresh-btn').style.display = 'inline-block';
-      } else {
-        document.getElementById('brand-refresh-btn').style.display = 'none';
-      }
+      // Always show refresh button so users can bust bad cache (e.g. dictionary definitions)
+      document.getElementById('brand-refresh-btn').style.display = 'inline-block';
 
       document.getElementById('brand-results').style.display = 'block';
     } catch (e) {
