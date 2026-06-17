@@ -398,34 +398,32 @@
             const sp = data.strategic_positioning || {};
             document.getElementById('brandTheme').textContent = sp.strategic_theme || data.slogan || '—';
 
-            // Market cap from company intelligence, revenue, or extract
+            // Market cap from financials, company intelligence, or revenue
+            const financials = data.financials || {};
             const compIntel = data.company_intelligence || {};
-            let marketCapVal = compIntel.market_cap || data.revenue || '—';
-            // Try to extract from description if available
-            if (marketCapVal === '—' && data.extract) {
-                const capMatch = data.extract.match(/\$[\d.]+\s*(billion|million|trillion)/i);
-                if (capMatch) marketCapVal = capMatch[0];
-            }
+            const marketCapVal = financials.market_cap || compIntel.market_cap || data.revenue || '—';
             document.getElementById('brandMarketCap').textContent = marketCapVal;
 
             // Competitors - handle different response structures
             let comps = [];
-            if (data.competitive_landscape?.competitors) {
-                comps = Array.isArray(data.competitive_landscape.competitors) ?
-                    data.competitive_landscape.competitors :
-                    [data.competitive_landscape.competitors];
-            } else if (data.competitors?.competitors) {
-                comps = Array.isArray(data.competitors.competitors) ?
-                    data.competitors.competitors :
-                    [data.competitors.competitors];
-            } else if (data.company_intelligence?.competitors?.competitors) {
-                comps = Array.isArray(data.company_intelligence.competitors.competitors) ?
-                    data.company_intelligence.competitors.competitors :
-                    [data.company_intelligence.competitors.competitors];
+
+            // Try competitive_landscape first (if it has non-empty competitors array)
+            if (data.competitive_landscape?.competitors && Array.isArray(data.competitive_landscape.competitors) && data.competitive_landscape.competitors.length > 0) {
+                comps = data.competitive_landscape.competitors;
+            }
+            // Try company_intelligence competitors (better quality)
+            else if (data.company_intelligence?.competitors?.competitors && Array.isArray(data.company_intelligence.competitors.competitors)) {
+                comps = data.company_intelligence.competitors.competitors;
+            }
+            // Try top-level competitors
+            else if (Array.isArray(data.competitors) && data.competitors.length > 0) {
+                comps = data.competitors;
             }
 
-            // Ensure we're working with strings
-            comps = comps.filter(c => c).map(c => typeof c === 'string' ? c : (c.name || c.competitor_name || JSON.stringify(c)));
+            // Ensure we're working with strings only
+            comps = comps
+                .filter(c => c && typeof c === 'string' && c.trim().length > 0)
+                .slice(0, 4);
 
             document.getElementById('competitorsList').innerHTML = comps.length ?
                 comps.slice(0, 4).map(c => `

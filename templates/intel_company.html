@@ -374,16 +374,18 @@
             document.getElementById('companyHQ').textContent = hq && hq.city ? `${hq.city}, ${hq.country || ''}` : '—';
 
             document.getElementById('industry').textContent = data.industry || '—';
-            document.getElementById('ticker').textContent = data.ticker || '—';
+            // Use ticker from financials or top level
+            const ticker = data.ticker || (data.financials && data.financials.ticker) || '—';
+            document.getElementById('ticker').textContent = ticker;
 
-            // Financial data
+            // Financial data - use correct field names from API
             const financials = data.financials || {};
-            document.getElementById('revenue').textContent = formatValue(financials.revenue || '—');
-            document.getElementById('profit').textContent = formatValue(financials.net_profit || '—');
+            document.getElementById('revenue').textContent = formatValue(financials.total_revenue || financials.revenue || '—');
+            document.getElementById('profit').textContent = formatValue(financials.net_income || financials.net_profit || '—');
             document.getElementById('marketCap').textContent = formatValue(financials.market_cap || '—');
-            document.getElementById('peRatio').textContent = financials.pe_ratio || '—';
-            document.getElementById('high52w').textContent = financials['52_week_high'] || '—';
-            document.getElementById('low52w').textContent = financials['52_week_low'] || '—';
+            document.getElementById('peRatio').textContent = formatValue(financials.pe_ratio || '—');
+            document.getElementById('high52w').textContent = formatValue(financials['52_week_high'] || '—');
+            document.getElementById('low52w').textContent = formatValue(financials['52_week_low'] || '—');
 
             // AI Strategy
             const aiStrategy = data.ai_strategy || {};
