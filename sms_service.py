@@ -1162,6 +1162,18 @@ def index():
     resp.headers["Expires"] = "0"
     return resp
 
+
+@app.route("/intelagent")
+@app.route("/intelagent/")
+def intel_agent():
+    """Intel Agent - Company Intelligence Platform"""
+    resp = make_response(render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=True))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
 @app.route("/saves-login", methods=["POST", "GET"])
 def saves_login():
     """Server-side saves login — embeds token in redirect URL so no JS/cookie needed."""
