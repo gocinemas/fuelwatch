@@ -2892,8 +2892,9 @@ def _save_brand_profile(data: dict):
             "raw_data":         data,
             "last_enriched_at": _dt.utcnow().isoformat() + "Z",
         }
-        lib._sb().table("brand_profiles").upsert(row, on_conflict="name").execute()
-        print(f"[brand_profiles] saved: {name}")
+        # DISABLED: Intel brand profiles save too frequently, mixing with Miru logs
+        # lib._sb().table("brand_profiles").upsert(row, on_conflict="name").execute()
+        # print(f"[brand_profiles] saved: {name}")
     except Exception as e:
         print(f"[brand_profiles] save failed (table may not exist yet): {e}")
 
