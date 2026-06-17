@@ -11507,7 +11507,12 @@ def api_home_brief_narrative():
         narrative = OutputSanitizer.sanitize(narrative)
 
         app.logger.info(f"[brief/narrative] ✅ NEW PIPELINE SUCCESS: {len(facts)} facts → {len(narrative)} chars")
-        return jsonify({"text": narrative})
+        return jsonify({
+            "text": narrative,
+            "commutes": ctx.get("commutes", []),
+            "trains": ctx.get("trains", {}),
+            "trains_home": ctx.get("trains_home", {}),
+        })
 
     except ImportError as e:
         app.logger.warning(f"[brief/narrative] ❌ New pipeline import error: {e}")
