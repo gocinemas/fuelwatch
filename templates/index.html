@@ -17756,10 +17756,12 @@ let _savesAll = [];
         var _trBdr = leg.traffic === "heavy"    ? "#fca5a5" : leg.traffic === "moderate" ? "#fde68a" : "#86efac";
         var _trCol = leg.traffic === "heavy"    ? "#dc2626" : leg.traffic === "moderate" ? "#92400e" : "#166534";
         var _delay = leg.delay_mins > 0 ? ' <span style="font-size:11px;font-weight:700;color:' + _trCol + '">+' + leg.delay_mins + ' min</span>' : "";
+        var _from = leg.child || "Home";
+        var _to = leg.school || "School";
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
           + '<div>'
-          + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (leg.child || leg.school.split(" ")[0]) + ' → school</div>'
-          + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + leg.school + '</div>'
+          + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + _from + ' → ' + _to + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + leg.mins + ' min' + (leg.delay_mins ? ' (live)' : '') + '</div>'
           + '</div>'
           + '<div style="text-align:right">'
           + '<div style="font-size:15px;font-weight:900;color:var(--text)">' + leg.emoji + ' ' + leg.mins + ' min</div>'
