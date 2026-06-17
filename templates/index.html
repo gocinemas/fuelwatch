@@ -25697,10 +25697,10 @@ window.spotifyAddTrack = window.spotifyLike;
         if (el('brand-direction-section')) el('brand-direction-section').style.display = 'block';
       }
 
-      // Display Competitive Landscape Agent
-      if (brand.competitive_landscape && brand.competitive_landscape.competitors) {
-        const comps = brand.competitive_landscape.competitors;
-        if (el('brand-competitors-grid')) {
+      // Display Competitive Landscape Agent (from competitors array)
+      if (brand.competitors && brand.competitors.length > 0) {
+        const comps = brand.competitors.filter(c => c.name && !c.name.toLowerCase().includes('disambiguation'));
+        if (comps.length > 0 && el('brand-competitors-grid')) {
           el('brand-competitors-grid').innerHTML = comps.map(c => `
             <div style="padding:14px;background:#fff9e6;border:1px solid #fde68a;border-radius:10px">
               <div style="font-weight:700;color:#92400e;font-size:14px">${c.name}</div>
@@ -25723,33 +25723,30 @@ window.spotifyAddTrack = window.spotifyLike;
       if (el('brand-results')) el('brand-results').style.display = 'block';
 
       // Display financials
-      if (brand.financials) {
+      if (brand.financials && Object.keys(brand.financials).length > 0) {
         const fin = brand.financials;
         const grid = document.getElementById('brand-financials-grid');
+        if (!grid) return;
+
         grid.innerHTML = `
           <div style="padding:12px;background:#fef3c7;border-radius:8px;border:1px solid #fcd34d">
             <div style="font-size:11px;color:#92400e;font-weight:700">Revenue</div>
-            <div style="font-size:18px;font-weight:900;color:#1e293b">$${fin.revenue_billions}B</div>
+            <div style="font-size:18px;font-weight:900;color:#1e293b">${fin.total_revenue || '—'}</div>
           </div>
           <div style="padding:12px;background:#dcfce7;border-radius:8px;border:1px solid #bbf7d0">
             <div style="font-size:11px;color:#166534;font-weight:700">Net Profit</div>
-            <div style="font-size:18px;font-weight:900;color:#1e293b">$${fin.profit_billions}B</div>
+            <div style="font-size:18px;font-weight:900;color:#1e293b">${fin.net_income || '—'}</div>
           </div>
           <div style="padding:12px;background:#e0f2fe;border-radius:8px;border:1px solid #bae6fd">
-            <div style="font-size:11px;color:#0c4a6e;font-weight:700">Employees</div>
-            <div style="font-size:18px;font-weight:900;color:#1e293b">${(fin.employees/1000).toFixed(0)}K</div>
+            <div style="font-size:11px;color:#0c4a6e;font-weight:700">Market Cap</div>
+            <div style="font-size:18px;font-weight:900;color:#1e293b">${fin.market_cap || '—'}</div>
           </div>
           <div style="padding:12px;background:#f3e8ff;border-radius:8px;border:1px solid #e9d5ff">
-            <div style="font-size:11px;color:#6b21a8;font-weight:700">5Y Growth</div>
-            <div style="font-size:18px;font-weight:900;color:#1e293b">+${fin.growth_5yr}%</div>
+            <div style="font-size:11px;color:#6b21a8;font-weight:700">Growth</div>
+            <div style="font-size:18px;font-weight:900;color:#1e293b">${fin.revenue_growth || '—'}</div>
           </div>
         `;
-        // Add source attribution below
-        const sourceEl = document.createElement('div');
-        sourceEl.style.cssText = 'font-size:11px;color:#64748b;margin-top:8px;padding:8px;background:#f1f5f9;border-radius:6px';
-        sourceEl.textContent = `Source: ${fin.source} (${fin.country})`;
-        document.getElementById('brand-financials-section').appendChild(sourceEl);
-        document.getElementById('brand-financials-section').style.display = 'block';
+        if (el('brand-financials-section')) el('brand-financials-section').style.display = 'block';
       }
 
       // Display social campaigns
