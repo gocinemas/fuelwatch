@@ -12682,14 +12682,17 @@ def api_morning_brief():
         prefs = (_row.get("data") or {})
         postcode = (prefs.get("fuel_postcode") or "").strip().upper()
         if not phone or not phone.startswith("whatsapp:"):
+            print(f"[wa-digest] skip: invalid phone {phone}")
             skipped += 1
             continue
         # Opt-in only — skip users who haven't enabled morning push (unless force=true)
         if not _force and not prefs.get("morning_push"):
+            print(f"[wa-digest] skip: morning_push not enabled for {phone}, force={_force}")
             skipped += 1
             continue
         # Skip paused users (unless force=true)
         if not _force and prefs.get("brief_paused"):
+            print(f"[wa-digest] skip: brief_paused for {phone}")
             skipped += 1
             continue
 
