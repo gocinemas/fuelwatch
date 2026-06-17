@@ -21837,12 +21837,20 @@ def _whatsapp_reply_inner():
         elif _itype == "train":
             _from_stn = (_intent.get("from") or "").strip()
             _to_stn   = (_intent.get("to") or "").strip()
+            # Fallback to saved preferences if not specified
+            if not _from_stn:
+                _from_stn = (prefs.get("train_from") or "").strip()
+            if not _to_stn:
+                _to_stn = (prefs.get("train_to") or "").strip()
             if _from_stn:
                 _train_reply = _wa_train_format(_from_stn, _to_stn)
                 if _train_reply:
                     resp.message(_train_reply)
                     return str(resp)
-                resp.message(f"🚂 Couldn't find '{_from_stn}' — try: *train waterloo to lewisham*")
+                resp.message(f"🚂 Couldn't find '{_from_stn}' — try: *train waterloo to lewisham* or set your route in Miru preferences")
+                return str(resp)
+            else:
+                resp.message("🚂 Which stations? Try: *train waterloo to lewisham* or set your default route in Miru.")
                 return str(resp)
         elif _itype == "tube":
             _from_stn = (_intent.get("from") or "").strip()
