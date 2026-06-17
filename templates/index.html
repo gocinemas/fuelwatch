@@ -1468,6 +1468,7 @@
             <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
               <a id="brand-wiki-link" href="" target="_blank" style="font-size:13px;color:#0ea5e9;font-weight:700;text-decoration:none;padding:8px 14px;background:#ecf9ff;border-radius:8px;transition:all .2s;border:1px solid #cffafe">📖 Wikipedia</a>
               <button id="brand-refresh-btn" onclick="refreshBrand()" style="font-size:13px;color:#ca8a04;font-weight:700;border:none;padding:8px 14px;background:#fef9e7;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid #fef08a">🔄 Refresh</button>
+              <button id="brand-bookmark-btn" onclick="bookmarkBrand()" style="font-size:13px;color:#10b981;font-weight:700;border:none;padding:8px 14px;background:#ecfdf5;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid #d1fae5">🔖 Bookmark</button>
             </div>
           </div>
 
@@ -25696,6 +25697,7 @@ window.spotifyAddTrack = window.spotifyLike;
 
       // Display results (NEW AGENT STRUCTURE)
       const brand = data;
+      window._currentBrandData = brand;  // Store for bookmark function
       const el = (id) => document.getElementById(id);
       if (el('brand-name')) el('brand-name').textContent = brand.name || '—';
       if (el('brand-description')) el('brand-description').textContent = brand.description || '—';
@@ -25871,6 +25873,33 @@ window.spotifyAddTrack = window.spotifyLike;
   window.refreshBrand = async function() {
     // Call searchBrand with force refresh
     await searchBrand(true);
+  };
+
+  window.bookmarkBrand = async function() {
+    const brandName = document.getElementById('brand-name-el')?.textContent || '';
+    if (!brandName) return alert('No brand selected');
+
+    try {
+      const res = await fetch('/api/brand/bookmark', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: brandName, brand_data: window._currentBrandData || {}})
+      });
+      const result = await res.json();
+      if (result.ok) {
+        const btn = document.getElementById('brand-bookmark-btn');
+        if (btn) {
+          btn.textContent = '✓ Bookmarked';
+          btn.style.background = '#d1fae5';
+          setTimeout(() => {
+            btn.textContent = '🔖 Bookmark';
+            btn.style.background = '#ecfdf5';
+          }, 2000);
+        }
+      }
+    } catch (e) {
+      alert('Bookmark failed: ' + e.message);
+    }
   };
 
   // ── Intel Functional Tabs ──────────────────────────────────────────────
