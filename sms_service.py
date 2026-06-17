@@ -12663,6 +12663,7 @@ def api_morning_brief():
 
     # Allow testing a single phone number
     _test_phone = (request.args.get("phone") or "").strip()
+    _force = request.args.get("force") in ("true", "1", "yes")
 
     # Get all V2 users (device_id = whatsapp phone, type = v2_prefs)
     try:
@@ -12683,12 +12684,12 @@ def api_morning_brief():
         if not phone or not phone.startswith("whatsapp:"):
             skipped += 1
             continue
-        # Opt-in only — skip users who haven't enabled morning push
-        if not prefs.get("morning_push"):
+        # Opt-in only — skip users who haven't enabled morning push (unless force=true)
+        if not _force and not prefs.get("morning_push"):
             skipped += 1
             continue
-        # Skip paused users
-        if prefs.get("brief_paused"):
+        # Skip paused users (unless force=true)
+        if not _force and prefs.get("brief_paused"):
             skipped += 1
             continue
 
