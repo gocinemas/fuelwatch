@@ -1418,8 +1418,16 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
         cached = _BRAND_CACHE.get(cache_key)
         if cached and time.time() - cached["ts"] < _BRAND_TTL:
             data = dict(cached["data"])
-            data["suggested_name"] = suggested
-            return data
+            # Reject if cached data is clearly non-company (e.g. dictionary definition)
+            # Check for non-company signals
+            text = ((data.get("description") or "") + " " + (data.get("extract") or "")[:300]).lower()
+            is_garbage = any(sig in text for sig in {"lack of guilt", "absence of guilt", "definition of", "refers to"})
+            if is_garbage or (not data.get("infobox") and not data.get("revenue") and not any(w in text for w in ["brand","company","corporation"])):
+                # Stale cache has junk — force fresh fetch
+                del _BRAND_CACHE[cache_key]
+            else:
+                data["suggested_name"] = suggested
+                return data
 
     # Stampede protection: if another thread is already fetching, wait for it
     with _BRAND_LOCK:
