@@ -13,6 +13,26 @@ from datetime import datetime
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
+# Known company CIKs (SEC identifiers) - build this over time
+KNOWN_CIKS = {
+    "Nike": "0000320187",
+    "Adidas": "0001018724",
+    "Coca-Cola": "0000021344",
+    "Pepsi": "0000077476",
+    "Apple": "0000320193",
+    "Microsoft": "0000789019",
+    "Amazon": "0001018724",
+    "Google": "0001652044",
+    "Meta": "0001326801",
+    "Tesla": "0001318605",
+    "Netflix": "0001564408",
+    "Walmart": "0000104169",
+    "Target": "0000027674",
+    "Best Buy": "0000764478",
+    "Unilever": "0000884996",
+    "Nestlé": "0000912057",
+}
+
 def _fetch_opencorporates(company_name: str) -> dict:
     """Fetch from OpenCorporates API (free, international)."""
     try:
@@ -86,65 +106,46 @@ def _fetch_crunchbase(company_name: str) -> dict:
 
 
 def _fetch_edgar(company_name: str) -> dict:
-    """Fetch from SEC EDGAR (free, US public companies only)."""
+    """Fetch from SEC EDGAR via data.sec.gov API (free, US public companies only)."""
     try:
-        # Step 1: Search for company in SEC EDGAR
+        # Step 1: Look up CIK from known companies
+        cik = None
+        for known_name, known_cik in KNOWN_CIKS.items():
+            if company_name.lower() == known_name.lower() or company_name.lower() in known_name.lower():
+                cik = known_cik
+                break
+
+        if not cik:
+            return {}
+
+        # Step 2: Fetch company data from data.sec.gov
         r = requests.get(
-            "https://www.sec.gov/cgi-bin/browse-edgar",
-            params={
-                "company": company_name,
-                "action": "getcompany",
-                "output": "json",
-                "count": 1
-            },
+            f"https://data.sec.gov/submissions/CIK{int(cik):0>10}.json",
             timeout=8,
-            headers={"User-Agent": "Miru/1.0"}
+            headers={"User-Agent": "Mozilla/5.0"}
         )
 
         if r.status_code != 200:
             return {}
 
-        data = r.json()
-        companies = data.get("companies", [])
-        if not companies:
-            return {}
+        comp_data = r.json()
 
-        comp = companies[0]
-        cik = comp.get("cik_str", "")
-
-        if not cik:
-            return {}
-
-        # Step 2: Fetch latest 10-K filing
-        r2 = requests.get(
-            f"https://data.sec.gov/submissions/CIK{cik:0>10}.json",
-            timeout=8,
-            headers={"User-Agent": "Miru/1.0"}
-        )
-
-        if r2.status_code != 200:
-            return {
-                "name": comp.get("title", ""),
-                "cik": cik,
-                "source": "EDGAR (metadata only)"
-            }
-
-        filing_data = r2.json()
-        filings = filing_data.get("filings", {}).get("recent", [])
-
-        # Find 10-K filing
-        revenue = ""
-        for filing in filings:
-            if filing.get("form") == "10-K":
-                # Would need to parse actual 10-K HTML/XML for financials
-                # For now, return basic info
-                break
-
-        return {
-            "name": comp.get("title", ""),
+        # Extract company information
+        result = {
+            "name": comp_data.get("name", ""),
             "cik": cik,
+            "ticker": comp_data.get("tickers", [""])[0] if comp_data.get("tickers") else "",
+            "hq": {
+                "city": comp_data.get("addresses", {}).get("business", {}).get("city", ""),
+                "state": comp_data.get("addresses", {}).get("business", {}).get("stateOrCountry", ""),
+                "country": "United States"
+            },
+            "industry": comp_data.get("sicDescription", ""),
             "source": "EDGAR"
         }
+
+        return {k: v for k, v in result.items() if v}  # Remove empty fields
+
     except Exception as e:
         print(f"[edgar] {e}")
         return {}
