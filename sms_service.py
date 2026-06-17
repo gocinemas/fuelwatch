@@ -9042,7 +9042,7 @@ out body 20;
         return {}
 
 
-def _v2_fetch_commutes(from_number: str) -> list:
+def _v2_fetch_commutes(from_number: str, home_postcode: str = "") -> list:
     """Fetch user's saved commutes with live traffic times."""
     try:
         if not from_number:
@@ -9063,7 +9063,8 @@ def _v2_fetch_commutes(from_number: str) -> list:
 
             # Try to fetch live traffic for this commute if it's a postcode
             dest = (row.get("dest") or "").strip().upper().replace(" ", "")
-            if dest and len(dest) >= 6:  # valid postcode format
+            home_pc = (home_postcode or "").strip().upper().replace(" ", "")
+            if dest and len(dest) >= 6 and home_pc and len(home_pc) >= 6:  # valid postcode format
                 try:
                     gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY") or
                               os.environ.get("GOOGLE_PLACES_KEY") or
@@ -9073,7 +9074,7 @@ def _v2_fetch_commutes(from_number: str) -> list:
                         r = requests.get(
                             "https://maps.googleapis.com/maps/api/distancematrix/json",
                             params={
-                                "origins": "TW10 7UX",  # Home location
+                                "origins": home_pc,
                                 "destinations": dest,
                                 "key": gm_key,
                                 "departure_time": "now",
@@ -10268,7 +10269,7 @@ def api_home_brief():
             futures["thread"]           = pool.submit(_wa_load_thread, from_number)
             futures["today_activity"]   = pool.submit(_v2_fetch_today_activity, from_number)
             futures["weekend_patterns"] = pool.submit(_v2_fetch_weekend_patterns, from_number)
-            futures["commutes"]         = pool.submit(_v2_fetch_commutes, from_number)
+            futures["commutes"]         = pool.submit(_v2_fetch_commutes, from_number, postcode)
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
