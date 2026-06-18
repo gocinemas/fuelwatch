@@ -3209,7 +3209,19 @@ def api_brand():
     # REMOVED: auto-save to database. Only save when user explicitly bookmarks/tracks.
     # if data.get("timeline") or data.get("competitors"):
     #     _save_brand_profile(data)
-    return jsonify(data)
+
+    # Wrap in nested structure expected by intel_brand_full.html template
+    return jsonify({
+        "brand": data,
+        "financials": data.get("financials", {}),
+        "products": data.get("products", []),
+        "competitors": data.get("competitors", []),
+        "white_space": data.get("market_opportunities", []),
+        "brand_presence": data.get("brand_presence", []),
+        "intelligence": {},
+        "metadata": {"source": "wikipedia", "last_updated": data.get("_updated", "")},
+        "name": data.get("name", "")
+    })
 
 
 @app.route("/api/company/intelligence", methods=["GET"])
