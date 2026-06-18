@@ -1150,6 +1150,14 @@ def sms_reply():
     return str(resp)
 
 
+@app.route("/brand")
+@app.route("/brand/")
+def brand_redirect():
+    if "intel.humanagency.co" in request.host:
+        return redirect("/brand/full")
+    return render_template("intel_brand.html")
+
+
 @app.route("/brand/full")
 def brand_full_intelligence():
     """Complete Brand Intelligence page"""
@@ -1159,13 +1167,6 @@ def brand_full_intelligence():
 
 
 @app.route("/")
-@app.route("/brand")
-@app.route("/brand/")
-def brand_redirect():
-    if "intel.humanagency.co" in request.host:
-        return redirect("/brand/full")
-    return render_template("intel_brand.html")
-
 @app.route("/company")
 def index():
     if "space." in request.host:
