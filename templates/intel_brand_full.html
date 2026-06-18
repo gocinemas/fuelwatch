@@ -550,13 +550,8 @@
             <!-- HERO SECTION -->
             <div class="hero">
                 <div class="hero-content">
-                    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 16px;">
-                        <img id="heroBrandLogo" src="" style="height: 60px; width: auto; display: none;">
-                        <div>
-                            <div class="brand-name" id="heroName">—</div>
-                            <div class="brand-tagline" id="heroTagline">—</div>
-                        </div>
-                    </div>
+                    <div class="brand-name" id="heroName">—</div>
+                    <div class="brand-tagline" id="heroTagline">—</div>
                     <div class="brand-meta" id="heroMeta">—</div>
                 </div>
             </div>
@@ -812,15 +807,6 @@
             document.getElementById('heroTagline').textContent = b.tagline || '—';
             document.getElementById('heroMeta').textContent = b.origin?.city && b.founded ?
                 `Founded ${b.founded} in ${b.origin.city}, ${b.origin.country}` : '—';
-
-            // Logo
-            const logoImg = document.getElementById('heroBrandLogo');
-            if (b.logo) {
-                logoImg.src = b.logo;
-                logoImg.style.display = 'block';
-            } else {
-                logoImg.style.display = 'none';
-            }
 
             // Executive Summary
             if (exec.status) {
