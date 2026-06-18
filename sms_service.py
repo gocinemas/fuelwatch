@@ -1166,6 +1166,57 @@ def brand_full_intelligence():
     return resp
 
 
+@app.route("/api/admin/populate-brands", methods=["GET", "POST"])
+def admin_populate_brands():
+    """Admin endpoint to populate all brands with intelligence data."""
+    token = request.args.get("token") or request.json.get("token") if request.is_json else None
+
+    # Simple security check (should be more secure in production)
+    if token != "miru-digest-2026":
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        from brand_data_fetcher_v2 import fetch_and_populate_brand
+
+        # Top 20 brands to populate first
+        top_brands = [
+            "iPhone", "iPad", "MacBook", "AirPods",
+            "Coca Cola", "Sprite", "Fanta",
+            "Pepsi", "Tropicana", "Gatorade",
+            "Nike Air Max", "Adidas", "Starbucks",
+            "Samsung Galaxy", "Tesla Model S",
+            "Red Bull", "Monster Energy", "Hershey",
+            "Dove", "Gillette"
+        ]
+
+        results = {"success": 0, "failed": 0, "errors": []}
+
+        for brand in top_brands:
+            try:
+                success = fetch_and_populate_brand(brand)
+                if success:
+                    results["success"] += 1
+                else:
+                    results["failed"] += 1
+                    results["errors"].append(f"{brand}: partial")
+            except Exception as e:
+                results["failed"] += 1
+                results["errors"].append(f"{brand}: {str(e)}")
+
+        return jsonify({
+            "status": "complete",
+            "brands_processed": len(top_brands),
+            **results
+        }), 200
+
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
 @app.route("/")
 @app.route("/company")
 def index():
