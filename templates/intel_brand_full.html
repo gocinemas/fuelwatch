@@ -1419,12 +1419,23 @@
             document.getElementById('competitorsContent').innerHTML = competitorsHtml;
 
             // White Space
-            let whiteSpaceHtml = '';
+            let whiteSpaceHtml = `
+                <div style="background: #eff6ff; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+                    <div style="font-size: 12px; color: #0369a1; line-height: 1.5;">
+                        <strong>⚠️ Market Opportunity Note:</strong> Market sizes and trends are based on industry analysis.
+                        For investment decisions, verify against primary market research sources (Mintel, McKinsey, Euromonitor, Bain, etc.).
+                    </div>
+                </div>
+            `;
             (w.market_gaps || []).forEach(gap => {
+                // Strip research firm citations from description
+                let cleanDescription = gap.description || '';
+                cleanDescription = cleanDescription.replace(/^(Mintel|McKinsey|Euromonitor|Bain|HBR|Harvard Business Review):\s*/i, '');
+
                 whiteSpaceHtml += `
                     <div class="list-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
                         <div class="list-item-title">${gap.gap}</div>
-                        <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${gap.description || ''}</div>
+                        <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${cleanDescription}</div>
                         <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
                             <div><span style="color: #64748b; font-weight: 600;">Market Size:</span><br><strong>${gap.market_size || '—'}</strong></div>
                             <div>
@@ -1443,10 +1454,14 @@
                 whiteSpaceHtml += `<div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
                     <div style="font-weight: 700; font-size: 14px; margin-bottom: 16px; color: #1e293b;">📈 Growth Adjacencies</div>`;
                 w.growth_adjacencies.forEach(adj => {
+                    // Strip research firm citations from description
+                    let adjDescription = adj.description || '';
+                    adjDescription = adjDescription.replace(/^(Mintel|McKinsey|Euromonitor|Bain|HBR|Harvard Business Review):\s*/i, '');
+
                     whiteSpaceHtml += `
                         <div class="list-item" style="padding: 16px; background: #f0f9ff; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #0369a1;">
                             <div class="list-item-title">${adj.adjacency}</div>
-                            <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${adj.description || ''}</div>
+                            <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${adjDescription}</div>
                             <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
                                 <div>
                                     <span style="color: #0369a1; font-weight: 600;">Fit Score</span><br>
