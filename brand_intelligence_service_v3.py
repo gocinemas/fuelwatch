@@ -20,7 +20,7 @@ BRAND_INTELLIGENCE_DB = {
             "origin": {"city": "Cupertino", "country": "USA"},
             "website": "apple.com",
             "tagline": "The most advanced smartphone in the world",
-            "logo": None,
+            "logo": "https://upload.wikimedia.org/wikipedia/commons/a/a9/iPhone_logo.svg",
         },
         "financials": {
             "year": 2026,
@@ -175,7 +175,7 @@ BRAND_INTELLIGENCE_DB = {
             "origin": {"city": "Atlanta", "country": "USA"},
             "website": "coca-cola.com",
             "tagline": "Taste the Feeling",
-            "logo": None,
+            "logo": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg",
         },
         "financials": {
             "year": 2026,
@@ -347,7 +347,7 @@ BRAND_INTELLIGENCE_DB = {
             "origin": {"city": "Seattle", "country": "USA"},
             "website": "starbucks.com",
             "tagline": "Coffee, community, and connection",
-            "logo": None,
+            "logo": "https://upload.wikimedia.org/wikipedia/en/d/d3/Starbucks_logo.svg",
         },
         "financials": {
             "year": 2026,
