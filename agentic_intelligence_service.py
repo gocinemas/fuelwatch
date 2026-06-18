@@ -207,23 +207,35 @@ def generate_risk_flags(brand_data: dict) -> dict:
         competitors = brand_data.get("competitors", {})
         white_space = brand_data.get("white_space", {})
 
+        opportunities = white_space.get('market_gaps', [])
         context = f"""
         Brand: {brand.get('name', 'Unknown')}
         Revenue: {financials.get('revenue', 'N/A')}
         Profit Margin: {financials.get('profit_margin', 0)}%
         Growth Rate: {financials.get('growth_rate', 0)}%
         Market Cap: {financials.get('market_cap', 'N/A')}
-        Competitors: {json.dumps([c.get('name') for c in competitors.get('direct_competitors', [])])}
+        Direct Competitors: {json.dumps([c.get('name') for c in competitors.get('direct_competitors', [])])}
+        Market Opportunities Identified: {len(opportunities)}
         """
 
         prompt = f"""
-        Identify top 3 risks for this brand. Keep each to ONE short phrase (max 6 words).
-        Consider: declining growth, profit pressure, competitive threats, market saturation, regulatory changes.
+        Analyze this brand's SPECIFIC risks. Identify top 3 unique risks (not generic).
+        Each risk should be ONE short phrase (max 6 words).
+
+        Risk types to consider:
+        - If growth <5%: slow growth / mature market decline
+        - If profit margin <15%: profitability pressure / margin erosion
+        - If many competitors: intense competition in segment
+        - If few opportunities (<2): limited expansion vectors
+        - If high growth (>10%): scaling challenges / supply chain risk
+        - Regulatory/category-specific risks
+
+        Make risks SPECIFIC to this brand's situation, not generic.
 
         {context}
 
         Format: "Risk 1 | Risk 2 | Risk 3"
-        Example: "Declining margins | Strong competition | Market saturation"
+        Examples: "Slow market growth | Margin compression | Supply chain complexity" OR "Scaling execution risk | DTC channel saturation | Premium positioning challenge"
         """
 
         response = groq_client.chat.completions.create(
