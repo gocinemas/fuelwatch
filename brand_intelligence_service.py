@@ -12,6 +12,36 @@ import library as lib
 from datetime import datetime
 from threading import Thread
 
+# Brand aliases: map user inputs to canonical brand names
+BRAND_ALIASES = {
+    "Coca Cola": ["Coke", "Coca-Cola", "coca cola", "diet coke", "sprite", "fanta"],
+    "Hershey": ["Hersheys", "hershey bars", "hershey"],
+    "Starbucks": ["starbucks coffee", "sbux"],
+    "PepsiCo": ["Pepsi", "pepsi cola", "tropicana", "gatorade"],
+    "Nike": ["nike", "air jordan", "jordan"],
+    "Adidas": ["adidas", "three stripes"],
+    "Apple": ["apple", "iphone", "macbook", "ipad"],
+    "Samsung": ["samsung", "galaxy"],
+    "Tesla": ["tesla", "model 3", "model y"],
+    "Red Bull": ["red bull", "redbull", "energy drink"],
+    "Monster Beverage": ["monster", "monster energy"],
+    "Unilever": ["dove", "axe", "lipton"],
+    "Procter & Gamble": ["tide", "gillette", "pampers", "pg"],
+    "Nestlé": ["nestle", "nescafe", "kitkat", "purina"],
+}
+
+def resolve_brand_alias(user_input: str) -> str:
+    """Resolve user input to canonical brand name using aliases."""
+    user_lower = user_input.lower().strip()
+
+    # Check if input matches any alias
+    for canonical_name, aliases in BRAND_ALIASES.items():
+        if user_lower in [a.lower() for a in aliases]:
+            return canonical_name
+
+    # Return original input if no alias found
+    return user_input
+
 def get_brand_intelligence_smart(brand_name: str) -> dict:
     """
     Get brand intelligence with smart background enrichment.
@@ -24,22 +54,23 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
         from brand_data_validator import calculate_brand_completeness
         sb = lib._sb()
 
-        # Normalize brand name: convert to lowercase for case-insensitive matching
-        # Database queries will use LOWER() function for matching
+        # Step 1: Resolve alias (e.g., "coke" → "Coca Cola")
+        brand_name = resolve_brand_alias(brand_name)
+
+        # Step 2: Normalize for case-insensitive matching
         brand_name_lower = brand_name.lower() if brand_name else brand_name
 
-        # Check if brand exists (case-insensitive search by reading all and filtering)
-        # Note: Supabase doesn't have native case-insensitive eq, so we fetch and filter
+        # Step 3: Check if brand exists in database
         all_profiles = sb.table("brand_profile").select("name").execute().data
         profile = [p for p in all_profiles if p['name'].lower() == brand_name_lower]
 
-        # If found, fetch full profile
+        # If found, use the correct casing from database
         if profile:
-            brand_name_normalized = profile[0]['name']  # Use the correct casing from DB
+            brand_name_normalized = profile[0]['name']
             profile = sb.table("brand_profile").select("*").eq("name", brand_name_normalized).execute().data
         else:
             profile = None
-            brand_name_normalized = brand_name.title()  # Use title case as fallback for new brands
+            brand_name_normalized = brand_name.title()  # Fallback for new brands
 
         # NEW BRAND: Fetch and populate
         if not profile:
