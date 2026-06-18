@@ -548,8 +548,13 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
         bestseller_resp = sb.table("brand_global_bestseller").select("*").eq("brand_name", canonical_name).limit(1).execute()
 
         # Get brand fundamentals from brand_profile
-        profile_resp = sb.table("brand_profile").select("*").eq("name", canonical_name).limit(1).execute()
-        profile_data = profile_resp.data[0] if profile_resp.data else {}
+        try:
+            profile_resp = sb.table("brand_profile").select("*").eq("name", canonical_name).limit(1).execute()
+            profile_data = profile_resp.data[0] if profile_resp.data else {}
+        except Exception as e:
+            # Log error but continue with defaults
+            print(f"Warning: Could not fetch brand_profile for {canonical_name}: {e}")
+            profile_data = {}
 
         # Build response
         products_by_country = {}
