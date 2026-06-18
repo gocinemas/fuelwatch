@@ -18,11 +18,6 @@ def fetch_and_populate_brand(brand_name: str) -> bool:
     try:
         sb = lib._sb()
 
-        # Check if already exists
-        existing = sb.table("brand_profile").select("*").eq("name", brand_name).execute().data
-        if existing:
-            return True
-
         print(f"[fetcher_v2] Fetching {brand_name}...")
 
         brand_data = {}
