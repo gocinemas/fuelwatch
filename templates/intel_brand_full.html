@@ -450,6 +450,55 @@
             padding: 24px;
         }
 
+        .collapsible-section {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .collapsible-header {
+            padding: 20px;
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 16px;
+            user-select: none;
+        }
+
+        .collapsible-header:hover {
+            background: #f1f5f9;
+        }
+
+        .collapsible-toggle {
+            transition: transform 0.3s ease;
+            font-size: 20px;
+        }
+
+        .collapsible-toggle.open {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .collapsible-content.open {
+            max-height: 2000px;
+            overflow: visible;
+        }
+
+        .collapsible-body {
+            padding: 24px;
+        }
+
         @media (max-width: 768px) {
             .hero {
                 padding: 24px;
@@ -800,13 +849,8 @@
                         ${exec.risk_level ? `<div class="exec-risk">⚠️ Risk Level: ${exec.risk_level}</div>` : ''}
                     </div>
                 `;
-                // Remove old summary if exists
-                const oldSummary = document.querySelector('header').nextElementSibling;
-                if (oldSummary && oldSummary.querySelector('.executive-summary')) {
-                    oldSummary.remove();
-                }
-                // Insert after header
-                document.querySelector('header').insertAdjacentHTML('afterend', `<div class="container" style="margin-top: 0; padding-top: 0;">${execHtml}</div>`);
+                // Store exec summary HTML for later injection into report
+                window.execSummaryHtml = execHtml;
             }
 
             // Fundamentals
@@ -1024,6 +1068,34 @@
             const comp = m.data_completeness || 0;
             document.getElementById('completenessValue').textContent = comp + '%';
             document.getElementById('completenessBar').style.width = comp + '%';
+
+            // Inject Executive Summary as collapsible section after hero
+            if (window.execSummaryHtml) {
+                const heroSection = document.querySelector('.hero');
+                if (heroSection && heroSection.nextElementSibling) {
+                    const collapsibleHtml = `
+                        <div class="collapsible-section" style="margin-top: 24px;">
+                            <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                                📊 Executive Summary
+                                <span class="collapsible-toggle">▼</span>
+                            </div>
+                            <div class="collapsible-content">
+                                <div class="collapsible-body">
+                                    ${window.execSummaryHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    heroSection.insertAdjacentHTML('afterend', collapsibleHtml);
+                }
+            }
+        }
+
+        function toggleCollapsible(header) {
+            const content = header.nextElementSibling;
+            const toggle = header.querySelector('.collapsible-toggle');
+            content.classList.toggle('open');
+            toggle.classList.toggle('open');
         }
 
         function showLoading() {
