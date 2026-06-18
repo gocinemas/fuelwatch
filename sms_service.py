@@ -4239,17 +4239,27 @@ def school_settings_get():
 @app.route("/api/user/schools")
 def api_user_schools():
     """Get schools for authenticated user. Used by settings page."""
+    wa = request.args.get("wa", "").strip()
     token = request.args.get("token", "").strip()
-    if not token:
-        return _cors(jsonify({"error": "token required"})), 400
+
+    phone = None
+
+    # Try to get phone from wa parameter first (from OAuth redirect or manual entry)
+    if wa:
+        phone = _normalise_from_number(wa)
+    # Fallback to token lookup
+    elif token:
+        try:
+            rows = lib._sb().table("ai_cache").select("data").eq("key", f"user_token:{token}").limit(1).execute().data or []
+            if rows:
+                phone = rows[0].get("data", {}).get("phone", "")
+        except Exception:
+            pass
+
+    if not phone:
+        return _cors(jsonify({"error": "wa or token required"})), 400
+
     try:
-        # Validate token — look up the phone number it maps to
-        rows = lib._sb().table("ai_cache").select("data").eq("key", f"user_token:{token}").limit(1).execute().data or []
-        if not rows:
-            return _cors(jsonify({"error": "invalid token"})), 401
-        phone = rows[0].get("data", {}).get("phone", "")
-        if not phone:
-            return _cors(jsonify({"error": "no phone for token"})), 401
         # Normalize to whatsapp: format
         phone = _normalise_from_number(phone)
         # Get schools for this phone

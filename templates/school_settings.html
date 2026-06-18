@@ -318,10 +318,26 @@
 
   async function loadSchools() {
     try {
-      const token = localStorage.getItem('_miruToken');
-      const res = await fetch(`/api/user/schools?token=${token}`);
+      // Try to get phone from URL parameter first (from OAuth redirect)
+      const params = new URLSearchParams(window.location.search);
+      let wa = params.get('wa');
+
+      // Fallback to phone from localStorage
+      if (!wa) {
+        wa = localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
+      }
+
+      let url = '/api/user/schools';
+      if (wa) {
+        url += `?wa=${encodeURIComponent(wa)}`;
+      } else {
+        const token = localStorage.getItem('_miruToken');
+        if (token) url += `?token=${encodeURIComponent(token)}`;
+      }
+
+      const res = await fetch(url);
       const data = await res.json();
-      schools = data.schools || [];
+      schools = data.profiles || data.schools || [];
       renderSchools();
     } catch (e) {
       console.error('Failed to load schools:', e);
@@ -403,11 +419,23 @@
     }
 
     try {
+      // Get phone from URL or localStorage
+      const params = new URLSearchParams(window.location.search);
+      let wa = params.get('wa') || localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
+
       const token = localStorage.getItem('_miruToken');
-      const res = await fetch('/api/user/schools?token=' + token, {
+      let url = '/api/school/signup';
+      const body = {
+        child_name: childName,
+        school_name: schoolName,
+        sender_emails: []
+      };
+      if (wa) body.wa_number = wa;
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ child_name: childName, school_name: schoolName })
+        body: JSON.stringify(body)
       });
 
       if (res.ok) {
