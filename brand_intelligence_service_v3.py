@@ -498,13 +498,24 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
     """
     Get complete brand intelligence data - curated and ready to display.
     Checks hardcoded DB first, then Supabase for newer brands.
+    Adds Health Score + Risk Flags via Groq for all brands.
     """
     # Resolve alias
     brand_name = resolve_brand_alias(brand_name)
 
     # Check if we have complete data in hardcoded DB (flagship brands)
     if brand_name in BRAND_INTELLIGENCE_DB:
-        return BRAND_INTELLIGENCE_DB[brand_name]
+        response = BRAND_INTELLIGENCE_DB[brand_name]
+        # Add Groq insights for hardcoded brands too
+        try:
+            from agentic_intelligence_service import generate_health_score, generate_risk_flags
+            response["health_score"] = generate_health_score(response)
+            response["risk_flags"] = generate_risk_flags(response)
+        except Exception as e:
+            print(f"[brand_intel] Warning: Could not add Groq insights for {brand_name}: {e}")
+            response["health_score"] = {"score": None, "error": str(e)}
+            response["risk_flags"] = {"risks": [], "error": str(e)}
+        return response
 
     # Query Supabase for the brand (case-insensitive)
     try:
@@ -568,6 +579,7 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
         # Note: News and AI Strategy sections removed - using Groq-generated insights instead
         # These will be added by agentic enrichment layer with real Groq analysis
 
+        # Prepare brand_data for Groq analysis
         # Build response
         products_by_country = {}
         for sku in skus_resp.data:
@@ -602,7 +614,7 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
             completeness += 10
         completeness = min(completeness, 95)
 
-        return {
+        response = {
             "brand": {
                 "name": canonical_name,
                 "description": profile_data.get("description", "Premium consumer brand"),
@@ -673,6 +685,20 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
                 "is_enriching": False,
             }
         }
+
+        # Add Health Score and Risk Flags via Groq
+        try:
+            from agentic_intelligence_service import generate_health_score, generate_risk_flags
+
+            response["health_score"] = generate_health_score(response)
+            response["risk_flags"] = generate_risk_flags(response)
+            print(f"[brand_intel] Added health_score and risk_flags for {canonical_name}")
+        except Exception as e:
+            print(f"[brand_intel] Warning: Could not add Groq insights: {e}")
+            response["health_score"] = {"score": None, "error": str(e)}
+            response["risk_flags"] = {"risks": [], "error": str(e)}
+
+        return response
     except Exception as e:
         print(f"[brand_intel] Supabase error: {e}")
         return {

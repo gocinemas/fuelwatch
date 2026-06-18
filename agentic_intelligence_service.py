@@ -135,6 +135,119 @@ def generate_strategic_insight(brand_data: dict) -> dict:
         return {"insight": None, "error": str(e)}
 
 
+def generate_health_score(brand_data: dict) -> dict:
+    """
+    Generate brand health score (0-100) using Groq analysis.
+    Considers: growth, profitability, market position, opportunities.
+    """
+    if not groq_client:
+        return {"score": 75, "source": "default"}
+
+    try:
+        brand = brand_data.get("brand", {})
+        financials = brand_data.get("financials", {})
+        competitors = brand_data.get("competitors", {})
+        white_space = brand_data.get("white_space", {})
+
+        context = f"""
+        Brand: {brand.get('name', 'Unknown')}
+        Revenue: {financials.get('revenue', 'N/A')}
+        Profit Margin: {financials.get('profit_margin', 0)}%
+        Growth Rate: {financials.get('growth_rate', 0)}%
+        Competitors: {len(competitors.get('direct_competitors', []))} major players
+        Market Opportunities: {len(white_space.get('market_gaps', []))} gaps identified
+        """
+
+        prompt = f"""
+        Score this brand's health 0-100 based on:
+        - Growth trajectory (20%)
+        - Profitability (20%)
+        - Market position vs competitors (25%)
+        - Innovation opportunities (20%)
+        - Overall market attractiveness (15%)
+
+        {context}
+
+        Respond ONLY with a number 0-100, no explanation.
+        """
+
+        response = groq_client.chat.completions.create(
+            model="mixtral-8x7b-32768",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=10,
+            timeout=3
+        )
+
+        score_text = response.choices[0].message.content.strip()
+        score = int(''.join(filter(str.isdigit, score_text.split()[0])))
+        score = max(0, min(100, score))  # Clamp to 0-100
+
+        return {
+            "score": score,
+            "timestamp": datetime.now().isoformat(),
+            "source": "groq"
+        }
+
+    except Exception as e:
+        print(f"[agentic] Health score error: {e}")
+        return {"score": 75, "error": str(e)}
+
+
+def generate_risk_flags(brand_data: dict) -> dict:
+    """
+    Identify top 3 risk flags for a brand using Groq analysis.
+    """
+    if not groq_client:
+        return {"risks": [], "source": "default"}
+
+    try:
+        brand = brand_data.get("brand", {})
+        financials = brand_data.get("financials", {})
+        competitors = brand_data.get("competitors", {})
+        white_space = brand_data.get("white_space", {})
+
+        context = f"""
+        Brand: {brand.get('name', 'Unknown')}
+        Revenue: {financials.get('revenue', 'N/A')}
+        Profit Margin: {financials.get('profit_margin', 0)}%
+        Growth Rate: {financials.get('growth_rate', 0)}%
+        Market Cap: {financials.get('market_cap', 'N/A')}
+        Competitors: {json.dumps([c.get('name') for c in competitors.get('direct_competitors', [])])}
+        """
+
+        prompt = f"""
+        Identify top 3 risks for this brand. Keep each to ONE short phrase (max 6 words).
+        Consider: declining growth, profit pressure, competitive threats, market saturation, regulatory changes.
+
+        {context}
+
+        Format: "Risk 1 | Risk 2 | Risk 3"
+        Example: "Declining margins | Strong competition | Market saturation"
+        """
+
+        response = groq_client.chat.completions.create(
+            model="mixtral-8x7b-32768",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=100,
+            timeout=3
+        )
+
+        risks_text = response.choices[0].message.content.strip()
+        risks = [r.strip() for r in risks_text.split("|")][:3]
+
+        return {
+            "risks": risks,
+            "timestamp": datetime.now().isoformat(),
+            "source": "groq"
+        }
+
+    except Exception as e:
+        print(f"[agentic] Risk flags error: {e}")
+        return {"risks": [], "error": str(e)}
+
+
 def search_relevant_videos(brand_name: str, topics: list, max_results: int = 1) -> dict:
     """
     Search YouTube for videos relevant to brand topics.
