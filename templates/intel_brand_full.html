@@ -1055,10 +1055,16 @@
             if (i.latest_news?.length > 0) {
                 intHtml += '<div style="margin-bottom: 20px;"><div style="font-weight: 700; margin-bottom: 12px;">Latest News</div>';
                 i.latest_news.forEach(n => {
+                    const newsUrl = n.url ? `href="${n.url}" target="_blank"` : '';
+                    const titleTag = n.url ? 'a' : 'div';
+                    const titleStyle = n.url ? 'cursor: pointer; color: #0369a1; text-decoration: underline;' : '';
                     intHtml += `
                         <div class="news-item">
-                            <div class="news-title">${n.title}</div>
-                            <div class="news-meta">${n.source} • ${new Date(n.published_date).toLocaleDateString()}</div>
+                            <${titleTag} ${newsUrl} style="font-weight: 600; margin-bottom: 4px; ${titleStyle}">${n.title}</${titleTag}>
+                            <div class="news-meta" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>${n.source} • ${new Date(n.published_date).toLocaleDateString()}</span>
+                                <button onclick="searchVideos('${n.title.replace(/'/g, "\\'")}', event)" style="background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px 8px;">🎥</button>
+                            </div>
                         </div>
                     `;
                 });
@@ -1068,7 +1074,12 @@
             if (i.ai_strategy?.length > 0) {
                 intHtml += '<div style="margin-bottom: 20px;"><div style="font-weight: 700; margin-bottom: 12px;">AI Strategy Focus</div>';
                 i.ai_strategy.forEach(ai => {
-                    intHtml += `<div class="ai-focus">🤖 ${ai.focus}</div>`;
+                    intHtml += `
+                        <div class="ai-focus" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>🤖 ${ai.focus}</span>
+                            <button onclick="searchPodcasts('${ai.focus.replace(/'/g, "\\'")}', event)" style="background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px 8px;">🎙️</button>
+                        </div>
+                    `;
                 });
                 intHtml += '</div>';
             }
@@ -1113,6 +1124,24 @@
             const toggle = header.querySelector('.collapsible-toggle');
             content.classList.toggle('open');
             toggle.classList.toggle('open');
+        }
+
+        function searchVideos(query, event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Open YouTube search in new tab
+            const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+            window.open(searchUrl, '_blank');
+        }
+
+        function searchPodcasts(query, event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Open Spotify podcast search in new tab (fallback to Google)
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query + ' podcast')}`;
+            window.open(searchUrl, '_blank');
         }
 
         function showLoading() {
