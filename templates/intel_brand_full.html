@@ -578,7 +578,7 @@
 
             section.style.display = 'block';
             container.innerHTML = recent.map(brand => `
-                <button onclick="loadRecentBrand(${JSON.stringify(brand)})" style="
+                <button onclick="loadRecentBrand('${brand.replace(/'/g, "\\'")}')" style="
                     background: #f1f5f9;
                     border: 1px solid #e2e8f0;
                     padding: 6px 12px;
@@ -639,7 +639,7 @@
                         dropdown.innerHTML = '<div style="padding: 12px; color: #94a3b8; font-size: 13px;">No companies found</div>';
                     } else {
                         dropdown.innerHTML = companies.map(c => `
-                            <div onclick="selectCompany(${JSON.stringify(c)})" style="padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; background: white; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                            <div onclick="selectCompany('${c.replace(/'/g, "\\'")}')" style="padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; background: white; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
                                 <div style="font-weight: 500; color: #1e293b;">${c}</div>
                             </div>
                         `).join('');
