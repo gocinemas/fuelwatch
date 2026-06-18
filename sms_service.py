@@ -3157,11 +3157,31 @@ def api_brand():
     # Generate Groq analysis for missing sections
     try:
         from agentic_intelligence_service import (
+            generate_health_score,
+            generate_risk_flags,
             generate_market_opportunities_analysis,
             generate_social_media_strategy,
             generate_product_ecosystem_analysis,
             generate_competitive_landscape_analysis
         )
+
+        # Health Score
+        try:
+            health_score = generate_health_score(data)
+            if health_score.get("score") is not None:
+                data["health_score"] = health_score
+                app.logger.info(f"[api_brand] Generated health score for {name}")
+        except Exception as e:
+            app.logger.warning(f"[api_brand] Health score generation failed: {e}")
+
+        # Risk Flags
+        try:
+            risk_flags = generate_risk_flags(data)
+            if risk_flags.get("risks"):
+                data["risk_flags"] = risk_flags
+                app.logger.info(f"[api_brand] Generated risk flags for {name}")
+        except Exception as e:
+            app.logger.warning(f"[api_brand] Risk flags generation failed: {e}")
 
         # Market Opportunities analysis (if missing)
         if len(data.get("market_gaps", [])) == 0:

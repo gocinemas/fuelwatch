@@ -1134,7 +1134,7 @@ def _detect_brand_category(description: str, industry: str = "") -> str:
 
     categories = {
         "beverage": ["drink", "beverage", "coffee", "tea", "juice", "soda", "cola", "water", "coconut water"],
-        "automotive": ["vehicle", "car", "automobile", "electric vehicle", "ev", "motor", "truck", "suv"],
+        "automotive": ["vehicle", " car ", " car,", "automobile", "electric vehicle", "ev", "motor", "truck", "suv"],
         "technology": ["software", "hardware", "computer", "phone", "smartphone", "tech", "device", "electronics", "semiconductor"],
         "retail": ["retail", "store", "retail chain", "retailer", "e-commerce", "online retail"],
         "fashion": ["apparel", "clothing", "fashion", "footwear", "shoes", "sneakers", "sportswear"],
