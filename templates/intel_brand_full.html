@@ -614,20 +614,10 @@
                 </div>
             </div>
 
-            <!-- AGENTIC INSIGHTS (AT END) -->
-            <div id="agenticInsightsSection" style="display: none;">
-                <div class="section">
-                    <div class="section-title">🧠 AI Strategic Insight</div>
-                    <div id="agenticInsight" style="font-size: 15px; line-height: 1.6; color: #1e293b;"></div>
-                </div>
-                <div id="agenticVideosSection" style="display: none;" class="section">
-                    <div class="section-title">🎥 Related Videos</div>
-                    <div id="agenticVideos"></div>
-                </div>
-                <div id="agenticPodcastsSection" style="display: none;" class="section">
-                    <div class="section-title">🎙️ Relevant Podcasts</div>
-                    <div id="agenticPodcasts"></div>
-                </div>
+            <!-- AGENTIC INSIGHTS (STRATEGIC INSIGHT ONLY - VIDEOS/PODCASTS INLINE WITH NEWS) -->
+            <div id="agenticInsightsSection" style="display: none;" class="section">
+                <div class="section-title">🧠 AI Strategic Insight</div>
+                <div id="agenticInsight" style="font-size: 15px; line-height: 1.6; color: #1e293b;"></div>
             </div>
         </div>
     </div>
@@ -1081,15 +1071,20 @@
             presenceHtml += '</div>';
             document.getElementById('presenceContent').innerHTML = presenceHtml || '<div class="empty">No social media data</div>';
 
-            // Intelligence
+            // Intelligence with inline video/podcast links
             let intHtml = '';
             if (i.latest_news?.length > 0) {
                 intHtml += '<div style="margin-bottom: 20px;"><div style="font-weight: 700; margin-bottom: 12px;">Latest News</div>';
                 i.latest_news.forEach(n => {
                     intHtml += `
-                        <div class="news-item">
-                            <div class="news-title">${n.title}</div>
-                            <div class="news-meta">${n.source} • ${new Date(n.published_date).toLocaleDateString()}</div>
+                        <div class="news-item" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px;">
+                            <div style="flex: 1;">
+                                <div class="news-title">${n.title}</div>
+                                <div class="news-meta">${n.source} • ${new Date(n.published_date).toLocaleDateString()}</div>
+                            </div>
+                            <div style="margin-left: 12px; white-space: nowrap;" data-news-topic="${n.title}">
+                                <!-- Video/podcast buttons will be injected here by agentic layer -->
+                            </div>
                         </div>
                     `;
                 });
@@ -1146,61 +1141,51 @@
         }
 
         function displayAgenticInsights(agentic) {
-            const section = document.getElementById('agenticInsightsSection');
-
             if (!agentic || agentic.error) {
-                section.style.display = 'none';
                 return;
             }
 
-            let hasContent = false;
+            // Store agentic data globally for matching with news
+            window.agenticData = agentic;
 
-            // Show strategic insight
+            // Show strategic insight if available
             if (agentic.strategic_insight?.insight) {
+                const section = document.getElementById('agenticInsightsSection');
                 document.getElementById('agenticInsight').textContent = agentic.strategic_insight.insight;
-                hasContent = true;
-            }
-
-            // Show videos if found (quality-filtered with real links)
-            if (agentic.videos?.videos && Object.keys(agentic.videos.videos).length > 0) {
-                let videosHtml = '';
-                for (const [topic, data] of Object.entries(agentic.videos.videos)) {
-                    if (data.found && data.url && data.quality === 'high') {
-                        videosHtml += `<div style="margin-bottom: 12px;">`;
-                        videosHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #1f2937;">${topic}</div>`;
-                        videosHtml += `<a href="${data.url}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #0369a1; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Watch on YouTube →</a>`;
-                        videosHtml += `</div>`;
-                    }
-                }
-                if (videosHtml) {
-                    document.getElementById('agenticVideos').innerHTML = videosHtml;
-                    document.getElementById('agenticVideosSection').style.display = 'block';
-                    hasContent = true;
-                }
-            }
-
-            // Show podcasts if found (quality-filtered with real Spotify links)
-            if (agentic.podcasts?.podcasts && Object.keys(agentic.podcasts.podcasts).length > 0) {
-                let podcastsHtml = '';
-                for (const [topic, data] of Object.entries(agentic.podcasts.podcasts)) {
-                    if (data.found && data.spotify_url && data.quality === 'high') {
-                        podcastsHtml += `<div style="margin-bottom: 12px;">`;
-                        podcastsHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #1f2937;">${topic}</div>`;
-                        podcastsHtml += `<a href="${data.spotify_url}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #1db954; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Listen on Spotify →</a>`;
-                        podcastsHtml += `</div>`;
-                    }
-                }
-                if (podcastsHtml) {
-                    document.getElementById('agenticPodcasts').innerHTML = podcastsHtml;
-                    document.getElementById('agenticPodcastsSection').style.display = 'block';
-                    hasContent = true;
-                }
-            }
-
-            // Show section if any content found
-            if (hasContent) {
                 section.style.display = 'block';
             }
+
+            // Inject inline video/podcast buttons into news items
+            const newsItems = document.querySelectorAll('[data-news-topic]');
+            newsItems.forEach((item) => {
+                const topic = item.getAttribute('data-news-topic');
+                const buttonsHtml = buildInlineActionButtons(topic, agentic);
+                if (buttonsHtml) {
+                    item.innerHTML = buttonsHtml;
+                }
+            });
+        }
+
+        function buildInlineActionButtons(topic, agentic) {
+            let html = '';
+
+            // Check for matching video
+            if (agentic.videos?.videos && agentic.videos.videos[topic]) {
+                const video = agentic.videos.videos[topic];
+                if (video.found && video.url && video.quality === 'high') {
+                    html += `<a href="${video.url}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #0369a1; color: white; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600; margin-right: 6px;">🎥 Watch</a>`;
+                }
+            }
+
+            // Check for matching podcast
+            if (agentic.podcasts?.podcasts && agentic.podcasts.podcasts[topic]) {
+                const podcast = agentic.podcasts.podcasts[topic];
+                if (podcast.found && podcast.spotify_url && podcast.quality === 'high') {
+                    html += `<a href="${podcast.spotify_url}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #1db954; color: white; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">🎙️ Listen</a>`;
+                }
+            }
+
+            return html;
         }
 
         function toggleCollapsible(header) {
