@@ -1399,16 +1399,19 @@
                     </div>
                 `;
             }
-            document.getElementById('productsContent').innerHTML = productsHtml;
+            document.getElementById('productsContent').innerHTML = productsHtml || `
+                <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
+                    <div style="font-size: 14px; margin-bottom: 12px;">📊 Product ecosystem data not yet available</div>
+                    <div style="font-size: 12px; color: #94a3b8;">We're researching SKU volumes and regional availability. Check back soon.</div>
+                </div>
+            `;
 
             // Competitors
             let competitorsHtml = `<div class="competitive-grid">`;
             (c.direct_competitors || []).forEach(comp => {
                 competitorsHtml += `
                     <div class="competitor-card">
-                        <div class="competitor-name">#${comp.market_position} ${comp.name}</div>
-                        <div class="competitor-metric">Market Share: ${comp.market_share}</div>
-                        ${comp.vs_brand ? `<div class="competitor-metric">vs Brand: ${comp.vs_brand}</div>` : ''}
+                        <div class="competitor-name">${comp.name}</div>
                         <div style="font-size: 12px; color: #64748b; margin-top: 8px;">
                             ${(c.competing_skus?.[comp.name] || []).map(sku => `<div>• ${sku.sku} (${sku.price})</div>`).join('')}
                         </div>
@@ -1416,95 +1419,127 @@
                 `;
             });
             competitorsHtml += `</div>`;
+
+            if ((c.direct_competitors || []).length === 0) {
+                competitorsHtml = `
+                    <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
+                        <div style="font-size: 14px; margin-bottom: 12px;">🏆 Competitive landscape data pending</div>
+                        <div style="font-size: 12px; color: #94a3b8;">Market share analysis requires verified research sources. We're working on adding this.</div>
+                    </div>
+                `;
+            }
+
             document.getElementById('competitorsContent').innerHTML = competitorsHtml;
 
             // White Space
-            let whiteSpaceHtml = `
-                <div style="background: #eff6ff; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-                    <div style="font-size: 12px; color: #0369a1; line-height: 1.5;">
-                        <strong>⚠️ Market Opportunity Note:</strong> Market sizes and trends are based on industry analysis.
-                        For investment decisions, verify against primary market research sources (Mintel, McKinsey, Euromonitor, Bain, etc.).
-                    </div>
-                </div>
-            `;
-            (w.market_gaps || []).forEach(gap => {
-                // Strip research firm citations from description
-                let cleanDescription = gap.description || '';
-                cleanDescription = cleanDescription.replace(/^(Mintel|McKinsey|Euromonitor|Bain|HBR|Harvard Business Review):\s*/i, '');
-
-                whiteSpaceHtml += `
-                    <div class="list-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
-                        <div class="list-item-title">${gap.gap}</div>
-                        <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${cleanDescription}</div>
-                        <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
-                            <div><span style="color: #64748b; font-weight: 600;">Market Size:</span><br><strong>${gap.market_size || '—'}</strong></div>
-                            <div>
-                                <span style="color: #64748b; font-weight: 600;">Opportunity Score</span><br>
-                                <span style="background: ${gap.opportunity_score > 8 ? '#dcfce7' : '#fef3c7'}; color: ${gap.opportunity_score > 8 ? '#166534' : '#92400e'}; padding: 4px 8px; border-radius: 4px; font-weight: 700;">
-                                    ${gap.opportunity_score}/10
-                                </span>
-                            </div>
+            let whiteSpaceHtml = '';
+            if ((w.market_gaps || []).length > 0) {
+                whiteSpaceHtml = `
+                    <div style="background: #eff6ff; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+                        <div style="font-size: 12px; color: #0369a1; line-height: 1.5;">
+                            <strong>ℹ️ Note:</strong> Market opportunity data requires verification against primary sources. Use this as a starting point for deeper research.
                         </div>
-                        ${gap.why ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569; font-style: italic;">💡 Why: ${gap.why}</div>` : ''}
                     </div>
                 `;
-            });
 
-            if (w.growth_adjacencies?.length > 0) {
-                whiteSpaceHtml += `<div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
-                    <div style="font-weight: 700; font-size: 14px; margin-bottom: 16px; color: #1e293b;">📈 Growth Adjacencies</div>`;
-                w.growth_adjacencies.forEach(adj => {
+                (w.market_gaps || []).forEach(gap => {
                     // Strip research firm citations from description
-                    let adjDescription = adj.description || '';
-                    adjDescription = adjDescription.replace(/^(Mintel|McKinsey|Euromonitor|Bain|HBR|Harvard Business Review):\s*/i, '');
+                    let cleanDescription = gap.description || '';
+                    cleanDescription = cleanDescription.replace(/^(Mintel|McKinsey|Euromonitor|Bain|HBR|Harvard Business Review):\s*/i, '');
 
                     whiteSpaceHtml += `
-                        <div class="list-item" style="padding: 16px; background: #f0f9ff; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #0369a1;">
-                            <div class="list-item-title">${adj.adjacency}</div>
-                            <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${adjDescription}</div>
+                        <div class="list-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
+                            <div class="list-item-title">${gap.gap}</div>
+                            <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${cleanDescription}</div>
                             <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
+                                <div><span style="color: #64748b; font-weight: 600;">Market Size:</span><br><strong>${gap.market_size || '—'}</strong></div>
                                 <div>
-                                    <span style="color: #0369a1; font-weight: 600;">Fit Score</span><br>
-                                    <span style="background: #dbeafe; color: #0c4a6e; padding: 4px 8px; border-radius: 4px; font-weight: 700;">
-                                        ${adj.fit_score}/10
+                                    <span style="color: #64748b; font-weight: 600;">Opportunity Score</span><br>
+                                    <span style="background: ${gap.opportunity_score > 8 ? '#dcfce7' : '#fef3c7'}; color: ${gap.opportunity_score > 8 ? '#166534' : '#92400e'}; padding: 4px 8px; border-radius: 4px; font-weight: 700;">
+                                        ${gap.opportunity_score}/10
                                     </span>
                                 </div>
                             </div>
-                            ${adj.strategic_rationale ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #bfdbfe; font-size: 12px; color: #0c4a6e; font-style: italic;">🎯 Strategic Rationale: ${adj.strategic_rationale}</div>` : ''}
+                            ${gap.why ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569; font-style: italic;">💡 Why: ${gap.why}</div>` : ''}
                         </div>
                     `;
                 });
-                whiteSpaceHtml += `</div>`;
-            }
 
-            document.getElementById('whiteSpaceContent').innerHTML = whiteSpaceHtml || '<div class="empty">No market gap data</div>';
+                if (w.growth_adjacencies?.length > 0) {
+                    whiteSpaceHtml += `<div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                        <div style="font-weight: 700; font-size: 14px; margin-bottom: 16px; color: #1e293b;">📈 Growth Adjacencies</div>`;
+                    w.growth_adjacencies.forEach(adj => {
+                        // Strip research firm citations from description
+                        let adjDescription = adj.description || '';
+                        adjDescription = adjDescription.replace(/^(Mintel|McKinsey|Euromonitor|Bain|HBR|Harvard Business Review):\s*/i, '');
 
-            // Brand Presence - Sort by engagement rate (highest first)
-            let presenceHtml = '<div class="grid-2">';
-            const platforms = Object.entries(br.by_platform || {});
-            // Sort by engagement rate (descending)
-            platforms.sort((a, b) => {
-                const engageA = parseFloat(a[1].engagement_rate) || 0;
-                const engageB = parseFloat(b[1].engagement_rate) || 0;
-                return engageB - engageA;
-            });
-
-            platforms.forEach((entry, idx) => {
-                const [platform, data] = entry;
-                const engagePercent = parseFloat(data.engagement_rate) || 0;
-                const leadingNote = idx === 0 ? ' 🏆 Leading Platform' : '';
-                presenceHtml += `
-                    <div class="list-item">
-                        <div class="list-item-title">${platform}${leadingNote}</div>
-                        <div class="list-item-meta">Followers: ${data.followers}</div>
-                        <div class="list-item-meta">Engagement: <strong>${data.engagement_rate}</strong></div>
-                        <div class="list-item-meta">Ad Spend: ${data.monthly_ad_spend}</div>
-                        <div class="list-item-meta">Reach: ${data.reach}</div>
+                        whiteSpaceHtml += `
+                            <div class="list-item" style="padding: 16px; background: #f0f9ff; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #0369a1;">
+                                <div class="list-item-title">${adj.adjacency}</div>
+                                <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${adjDescription}</div>
+                                <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
+                                    <div>
+                                        <span style="color: #0369a1; font-weight: 600;">Fit Score</span><br>
+                                        <span style="background: #dbeafe; color: #0c4a6e; padding: 4px 8px; border-radius: 4px; font-weight: 700;">
+                                            ${adj.fit_score}/10
+                                        </span>
+                                    </div>
+                                </div>
+                                ${adj.strategic_rationale ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #bfdbfe; font-size: 12px; color: #0c4a6e; font-style: italic;">🎯 Strategic Rationale: ${adj.strategic_rationale}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                    whiteSpaceHtml += `</div>`;
+                }
+            } else {
+                whiteSpaceHtml = `
+                    <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
+                        <div style="font-size: 14px; margin-bottom: 12px;">⚡ Market opportunities data not yet available</div>
+                        <div style="font-size: 12px; color: #94a3b8;">We're researching expansion opportunities. Come back soon.</div>
                     </div>
                 `;
-            });
-            presenceHtml += '</div>';
-            document.getElementById('presenceContent').innerHTML = presenceHtml || '<div class="empty">No social media data</div>';
+            }
+
+            document.getElementById('whiteSpaceContent').innerHTML = whiteSpaceHtml;
+
+            // Brand Presence
+            let presenceHtml = '';
+            const platforms = Object.entries(br.by_platform || {});
+
+            if (platforms.length > 0) {
+                presenceHtml = '<div class="grid-2">';
+                // Sort by engagement rate (descending)
+                platforms.sort((a, b) => {
+                    const engageA = parseFloat(a[1].engagement_rate) || 0;
+                    const engageB = parseFloat(b[1].engagement_rate) || 0;
+                    return engageB - engageA;
+                });
+
+                platforms.forEach((entry, idx) => {
+                    const [platform, data] = entry;
+                    const engagePercent = parseFloat(data.engagement_rate) || 0;
+                    const leadingNote = idx === 0 ? ' 🏆 Leading Platform' : '';
+                    presenceHtml += `
+                        <div class="list-item">
+                            <div class="list-item-title">${platform}${leadingNote}</div>
+                            <div class="list-item-meta">Followers: ${data.followers}</div>
+                            <div class="list-item-meta">Engagement: <strong>${data.engagement_rate}</strong></div>
+                            <div class="list-item-meta">Ad Spend: ${data.monthly_ad_spend}</div>
+                            <div class="list-item-meta">Reach: ${data.reach}</div>
+                        </div>
+                    `;
+                });
+                presenceHtml += '</div>';
+            } else {
+                presenceHtml = `
+                    <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
+                        <div style="font-size: 14px; margin-bottom: 12px;">📱 Social media metrics data pending</div>
+                        <div style="font-size: 12px; color: #94a3b8;">We're gathering authentic engagement and reach data from brand channels.</div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('presenceContent').innerHTML = presenceHtml;
 
             // Intelligence with inline video/podcast links
             let intHtml = '';
