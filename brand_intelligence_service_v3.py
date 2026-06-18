@@ -8,6 +8,7 @@ from datetime import datetime
 import requests
 import json
 from urllib.parse import quote
+from difflib import SequenceMatcher
 
 # News generation moved to Groq agentic enrichment layer
 
@@ -532,9 +533,15 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
                 break
 
         if not canonical_name:
+            # Find similar brands for "did you mean?" suggestions
+            all_brand_names = [b['brand_name'] for b in all_brands]
+            suggestions = find_similar_brands(brand_name, all_brand_names, threshold=0.55)
+
             return {
                 "error": f"Brand '{brand_name}' not found",
                 "name": brand_name,
+                "suggestions": suggestions,
+                "message": "Did you mean one of these?" if suggestions else "Brand not in database. We can research it for you!",
                 "metadata": {"data_completeness": 0, "quality_level": "NOT_AVAILABLE"}
             }
 
@@ -706,6 +713,26 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
             "name": brand_name,
             "metadata": {"data_completeness": 0, "quality_level": "NOT_AVAILABLE"}
         }
+
+
+def find_similar_brands(user_input: str, all_brands: list, threshold: float = 0.6) -> list:
+    """
+    Find similar brand names using fuzzy matching (Levenshtein-like).
+    Returns top 3 suggestions if match score > threshold.
+    """
+    user_lower = user_input.lower().strip()
+    matches = []
+
+    for brand in all_brands:
+        brand_lower = brand.lower()
+        # Calculate similarity ratio
+        ratio = SequenceMatcher(None, user_lower, brand_lower).ratio()
+        if ratio > threshold:
+            matches.append((brand, ratio))
+
+    # Sort by similarity and return top 3
+    matches.sort(key=lambda x: x[1], reverse=True)
+    return [m[0] for m in matches[:3]]
 
 
 def resolve_brand_alias(user_input: str) -> str:
