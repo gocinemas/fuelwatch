@@ -1399,12 +1399,27 @@
                     </div>
                 `;
             }
-            document.getElementById('productsContent').innerHTML = productsHtml || `
-                <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
-                    <div style="font-size: 14px; margin-bottom: 12px;">📊 Product ecosystem data not yet available</div>
-                    <div style="font-size: 12px; color: #94a3b8;">We're researching SKU volumes and regional availability. Check back soon.</div>
-                </div>
-            `;
+            // Products section - show Groq analysis if no real data
+            if (!productsHtml || productsHtml.trim() === '') {
+                const aiProductAnalysis = brand_data?.ai_product_ecosystem;
+                if (aiProductAnalysis?.ecosystem) {
+                    productsHtml = `
+                        <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; border-left: 4px solid #16a34a;">
+                            <div style="font-size: 12px; color: #166534; margin-bottom: 12px; font-weight: 600;">🤖 AI-Generated Product Analysis</div>
+                            <div style="font-size: 13px; color: #166534; line-height: 1.6; white-space: pre-wrap; font-family: system-ui;">${aiProductAnalysis.ecosystem}</div>
+                            <div style="font-size: 11px; color: #b7e4c7; margin-top: 12px;">Note: ${aiProductAnalysis.note || 'AI analysis. Verify with brand research.'}</div>
+                        </div>
+                    `;
+                } else {
+                    productsHtml = `
+                        <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
+                            <div style="font-size: 14px; margin-bottom: 12px;">📊 Product ecosystem data not yet available</div>
+                            <div style="font-size: 12px; color: #94a3b8;">We're researching SKU volumes and regional availability. Check back soon.</div>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('productsContent').innerHTML = productsHtml;
 
             // Competitors
             let competitorsHtml = `<div class="competitive-grid">`;
@@ -1421,17 +1436,28 @@
             competitorsHtml += `</div>`;
 
             if ((c.direct_competitors || []).length === 0) {
-                competitorsHtml = `
-                    <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
-                        <div style="font-size: 14px; margin-bottom: 12px;">🏆 Competitive landscape data pending</div>
-                        <div style="font-size: 12px; color: #94a3b8;">Market share analysis requires verified research sources. We're working on adding this.</div>
-                    </div>
-                `;
+                const aiCompetitiveAnalysis = brand_data?.ai_competitive_landscape;
+                if (aiCompetitiveAnalysis?.landscape) {
+                    competitorsHtml = `
+                        <div style="background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #0369a1;">
+                            <div style="font-size: 12px; color: #0369a1; margin-bottom: 12px; font-weight: 600;">🤖 AI-Generated Competitive Analysis</div>
+                            <div style="font-size: 13px; color: #0369a1; line-height: 1.6; white-space: pre-wrap; font-family: system-ui;">${aiCompetitiveAnalysis.landscape}</div>
+                            <div style="font-size: 11px; color: #7dd3fc; margin-top: 12px;">Note: ${aiCompetitiveAnalysis.note || 'AI analysis. Verify with market research.'}</div>
+                        </div>
+                    `;
+                } else {
+                    competitorsHtml = `
+                        <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
+                            <div style="font-size: 14px; margin-bottom: 12px;">🏆 Competitive landscape data pending</div>
+                            <div style="font-size: 12px; color: #94a3b8;">Market share analysis requires verified research sources. We're working on adding this.</div>
+                        </div>
+                    `;
+                }
             }
 
             document.getElementById('competitorsContent').innerHTML = competitorsHtml;
 
-            // White Space
+            // White Space / Market Opportunities
             let whiteSpaceHtml = '';
             if ((w.market_gaps || []).length > 0) {
                 whiteSpaceHtml = `
@@ -1492,17 +1518,29 @@
                     whiteSpaceHtml += `</div>`;
                 }
             } else {
-                whiteSpaceHtml = `
-                    <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
-                        <div style="font-size: 14px; margin-bottom: 12px;">⚡ Market opportunities data not yet available</div>
-                        <div style="font-size: 12px; color: #94a3b8;">We're researching expansion opportunities. Come back soon.</div>
-                    </div>
-                `;
+                // Show Groq analysis if no real data
+                const aiOppAnalysis = brand_data?.ai_market_opportunities;
+                if (aiOppAnalysis?.opportunities) {
+                    whiteSpaceHtml = `
+                        <div style="background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                            <div style="font-size: 12px; color: #92400e; margin-bottom: 12px; font-weight: 600;">🤖 AI-Generated Market Opportunities</div>
+                            <div style="font-size: 13px; color: #92400e; line-height: 1.6; white-space: pre-wrap; font-family: system-ui;">${aiOppAnalysis.opportunities}</div>
+                            <div style="font-size: 11px; color: #d97706; margin-top: 12px;">Note: ${aiOppAnalysis.note || 'AI analysis. Verify with market research.'}</div>
+                        </div>
+                    `;
+                } else {
+                    whiteSpaceHtml = `
+                        <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
+                            <div style="font-size: 14px; margin-bottom: 12px;">⚡ Market opportunities data not yet available</div>
+                            <div style="font-size: 12px; color: #94a3b8;">We're researching expansion opportunities. Come back soon.</div>
+                        </div>
+                    `;
+                }
             }
 
             document.getElementById('whiteSpaceContent').innerHTML = whiteSpaceHtml;
 
-            // Brand Presence
+            // Brand Presence / Social Media Strategy
             let presenceHtml = '';
             const platforms = Object.entries(br.by_platform || {});
 
@@ -1531,12 +1569,24 @@
                 });
                 presenceHtml += '</div>';
             } else {
-                presenceHtml = `
-                    <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
-                        <div style="font-size: 14px; margin-bottom: 12px;">📱 Social media metrics data pending</div>
-                        <div style="font-size: 12px; color: #94a3b8;">We're gathering authentic engagement and reach data from brand channels.</div>
-                    </div>
-                `;
+                // Show Groq analysis if no real data
+                const aiSocialAnalysis = brand_data?.ai_social_strategy;
+                if (aiSocialAnalysis?.strategy) {
+                    presenceHtml = `
+                        <div style="background: #fce7f3; padding: 16px; border-radius: 8px; border-left: 4px solid #ec4899;">
+                            <div style="font-size: 12px; color: #be185d; margin-bottom: 12px; font-weight: 600;">🤖 AI-Generated Social Media Strategy</div>
+                            <div style="font-size: 13px; color: #be185d; line-height: 1.6; white-space: pre-wrap; font-family: system-ui;">${aiSocialAnalysis.strategy}</div>
+                            <div style="font-size: 11px; color: #f472b6; margin-top: 12px;">Note: ${aiSocialAnalysis.note || 'AI strategy. Needs authentic platform data verification.'}</div>
+                        </div>
+                    `;
+                } else {
+                    presenceHtml = `
+                        <div class="empty" style="padding: 20px; text-align: center; color: #64748b;">
+                            <div style="font-size: 14px; margin-bottom: 12px;">📱 Social media metrics data pending</div>
+                            <div style="font-size: 12px; color: #94a3b8;">We're gathering authentic engagement and reach data from brand channels.</div>
+                        </div>
+                    `;
+                }
             }
 
             document.getElementById('presenceContent').innerHTML = presenceHtml;

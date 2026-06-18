@@ -349,6 +349,226 @@ def search_relevant_podcasts(topics: list, max_results: int = 1) -> dict:
         return {"podcasts": {}, "error": str(e)}
 
 
+def generate_market_opportunities_analysis(brand_data: dict) -> dict:
+    """
+    Generate intelligent market opportunity analysis using Groq.
+    Used when market opportunity data is missing from database.
+    """
+    if not groq_client:
+        return {
+            "opportunities": None,
+            "source": "unavailable",
+            "note": "Groq service unavailable"
+        }
+
+    try:
+        brand = brand_data.get("brand", {})
+        financials = brand_data.get("financials", {})
+
+        brand_name = brand.get("name", "Unknown")
+        category = brand_data.get("category_analysis", {}).get("category", "Consumer Goods")
+        revenue = financials.get("total_revenue", "N/A")
+        growth = financials.get("revenue_growth", "0%")
+        market_position = brand_data.get("competitive_landscape", {}).get("market_position", "Mid-tier")
+
+        prompt = f"""
+        As a market strategist, analyze expansion opportunities for this brand:
+
+        Brand: {brand_name}
+        Category: {category}
+        Revenue: {revenue}
+        Growth Rate: {growth}
+        Market Position: {market_position}
+
+        Generate 3-4 realistic market expansion opportunities (2-3 sentences each).
+        Focus on: new product categories, geographic expansion, customer segments, channels.
+        Be specific and actionable, not generic.
+
+        Format each opportunity as: "Opportunity: [Name] - [Description]"
+        """
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=500,
+            timeout=5
+        )
+
+        opportunities_text = response.choices[0].message.content.strip()
+
+        return {
+            "opportunities": opportunities_text,
+            "timestamp": datetime.now().isoformat(),
+            "source": "groq_analysis",
+            "note": "AI-generated based on brand fundamentals. Verify with market research."
+        }
+    except Exception as e:
+        print(f"[agentic] Market opportunities analysis error: {e}")
+        return {"opportunities": None, "error": str(e)}
+
+
+def generate_social_media_strategy(brand_data: dict) -> dict:
+    """
+    Generate intelligent social media strategy using Groq.
+    Used when social media data is missing from database.
+    """
+    if not groq_client:
+        return {"strategy": None, "source": "unavailable"}
+
+    try:
+        brand = brand_data.get("brand", {})
+        financials = brand_data.get("financials", {})
+
+        brand_name = brand.get("name", "Unknown")
+        category = brand_data.get("category_analysis", {}).get("category", "Consumer Goods")
+        market_position = brand_data.get("competitive_landscape", {}).get("market_position", "Mid-tier")
+
+        prompt = f"""
+        As a social media strategist, recommend platforms and engagement strategy for this brand:
+
+        Brand: {brand_name}
+        Category: {category}
+        Market Position: {market_position}
+
+        Recommend:
+        1. Top 3 platforms (with reasoning)
+        2. Recommended content strategy (2-3 sentences)
+        3. Estimated engagement approach
+
+        Be specific to this brand's category and position.
+        """
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=400,
+            timeout=5
+        )
+
+        strategy_text = response.choices[0].message.content.strip()
+
+        return {
+            "strategy": strategy_text,
+            "timestamp": datetime.now().isoformat(),
+            "source": "groq_analysis",
+            "note": "AI-generated strategy. Requires authentic data gathering from brand channels."
+        }
+    except Exception as e:
+        print(f"[agentic] Social media strategy error: {e}")
+        return {"strategy": None, "error": str(e)}
+
+
+def generate_product_ecosystem_analysis(brand_data: dict) -> dict:
+    """
+    Generate intelligent product ecosystem analysis using Groq.
+    Used when SKU data is missing from database.
+    """
+    if not groq_client:
+        return {"ecosystem": None, "source": "unavailable"}
+
+    try:
+        brand = brand_data.get("brand", {})
+        financials = brand_data.get("financials", {})
+
+        brand_name = brand.get("name", "Unknown")
+        category = brand_data.get("category_analysis", {}).get("category", "Consumer Goods")
+        revenue = financials.get("total_revenue", "N/A")
+
+        prompt = f"""
+        As a product strategist, analyze the likely product ecosystem for this brand:
+
+        Brand: {brand_name}
+        Category: {category}
+        Revenue: {revenue}
+
+        Based on the brand's market position and category, describe:
+        1. Core product lines (2-3 main categories)
+        2. Likely price positioning (budget/mid/premium)
+        3. Geographic markets (likely strongest regions)
+        4. Distribution channels (retail, DTC, wholesale, etc.)
+
+        Be realistic based on typical brands in this category.
+        """
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=400,
+            timeout=5
+        )
+
+        ecosystem_text = response.choices[0].message.content.strip()
+
+        return {
+            "ecosystem": ecosystem_text,
+            "timestamp": datetime.now().isoformat(),
+            "source": "groq_analysis",
+            "note": "AI-generated based on category patterns. Needs verification via brand research."
+        }
+    except Exception as e:
+        print(f"[agentic] Product ecosystem analysis error: {e}")
+        return {"ecosystem": None, "error": str(e)}
+
+
+def generate_competitive_landscape_analysis(brand_data: dict) -> dict:
+    """
+    Generate intelligent competitive landscape analysis using Groq.
+    Used when competitor data is missing from database.
+    """
+    if not groq_client:
+        return {"landscape": None, "source": "unavailable"}
+
+    try:
+        brand = brand_data.get("brand", {})
+        financials = brand_data.get("financials", {})
+        market_cap = financials.get("market_cap", "N/A")
+
+        brand_name = brand.get("name", "Unknown")
+        category = brand_data.get("category_analysis", {}).get("category", "Consumer Goods")
+        market_position = brand_data.get("competitive_landscape", {}).get("market_position", "Mid-tier")
+
+        prompt = f"""
+        As a competitive strategist, analyze the competitive landscape for this brand:
+
+        Brand: {brand_name}
+        Category: {category}
+        Market Position: {market_position}
+        Market Cap: {market_cap}
+
+        Provide:
+        1. Direct competitors (2-3 similar-scale brands)
+        2. Premium tier competitors (aspirational)
+        3. Value tier competitors (price-based)
+        4. Key competitive advantages {brand_name} likely has
+        5. Threats from newer/adjacent brands
+
+        Be realistic based on category dynamics.
+        """
+
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=500,
+            timeout=5
+        )
+
+        landscape_text = response.choices[0].message.content.strip()
+
+        return {
+            "landscape": landscape_text,
+            "timestamp": datetime.now().isoformat(),
+            "source": "groq_analysis",
+            "note": "AI-generated competitive view. Verify with market research for market share."
+        }
+    except Exception as e:
+        print(f"[agentic] Competitive landscape analysis error: {e}")
+        return {"landscape": None, "error": str(e)}
+
+
 def enrich_brand_with_agentic_intelligence(brand_data: dict) -> dict:
     """
     Enrich brand data with agentic insights, videos, and podcasts.
