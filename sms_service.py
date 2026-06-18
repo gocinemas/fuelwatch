@@ -1180,7 +1180,7 @@ def admin_populate_brands():
         # Define top brands with complete intelligence data
         brands_data = {
             "iPhone": {
-                "financials": {"year": 2026, "revenue": "451.4B", "market_cap": "4.3T", "profit_margin": "28%", "growth_rate": "6%", "source": "Apple"},
+                "financials": {"year": 2026, "revenue": "451.4B", "market_cap": "4.3T", "profit_margin": 28.0, "growth_rate": 6.0, "source": "Apple"},
                 "products": [
                     {"sku": "iPhone 15 Pro Max", "category": "Smartphone", "price": "$1199", "market_position": 1, "sales_trend": "growing"},
                     {"sku": "iPhone 15 Pro", "category": "Smartphone", "price": "$999", "market_position": 2, "sales_trend": "growing"},
@@ -1204,7 +1204,7 @@ def admin_populate_brands():
                 ],
             },
             "Coca Cola": {
-                "financials": {"year": 2026, "revenue": "47.2B", "market_cap": "280B", "profit_margin": "27%", "growth_rate": "4%", "source": "The Coca-Cola Company"},
+                "financials": {"year": 2026, "revenue": "47.2B", "market_cap": "280B", "profit_margin": 27.0, "growth_rate": 4.0, "source": "The Coca-Cola Company"},
                 "products": [
                     {"sku": "Coca-Cola Classic 330ml", "category": "Beverage", "price": "$1.50", "market_position": 1, "sales_trend": "stable"},
                     {"sku": "Diet Coca-Cola 330ml", "category": "Beverage", "price": "$1.50", "market_position": 2, "sales_trend": "declining"},
@@ -1228,7 +1228,7 @@ def admin_populate_brands():
                 ],
             },
             "Starbucks": {
-                "financials": {"year": 2026, "revenue": "36.2B", "market_cap": "110B", "profit_margin": "15%", "growth_rate": "8%", "source": "Starbucks Corp"},
+                "financials": {"year": 2026, "revenue": "36.2B", "market_cap": "110B", "profit_margin": 15.0, "growth_rate": 8.0, "source": "Starbucks Corp"},
                 "products": [
                     {"sku": "Caffe Latte Grande", "category": "Coffee", "price": "$5.45", "market_position": 1, "sales_trend": "stable"},
                     {"sku": "Caramel Macchiato Grande", "category": "Coffee", "price": "$5.95", "market_position": 2, "sales_trend": "stable"},
