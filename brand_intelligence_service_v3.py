@@ -644,13 +644,13 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
                     for s in social_resp.data
                 }
             },
-            "opportunities": {
+            "white_space": {
                 "market_gaps": [
                     {
-                        "gap_name": o.get('gap_name', ''),
+                        "gap": o.get('gap_name', ''),
                         "description": o.get('gap_description', ''),
                         "market_size": o.get('market_size', ''),
-                        "score": o.get('opportunity_score', 0),
+                        "opportunity_score": o.get('opportunity_score', 0),
                         "why": o.get('why_opportunity', ''),
                         "recommendation": o.get('brand_recommendation', ''),
                         "source": o.get('source_reference', '')
@@ -662,9 +662,8 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
                         "adjacency": o.get('gap_name', ''),
                         "description": o.get('gap_description', ''),
                         "market_size": o.get('market_size', ''),
-                        "score": o.get('opportunity_score', 0),
-                        "why": o.get('why_opportunity', ''),
-                        "recommendation": o.get('brand_recommendation', ''),
+                        "fit_score": o.get('opportunity_score', 0),
+                        "strategic_rationale": o.get('brand_recommendation', ''),
                         "source": o.get('source_reference', '')
                     }
                     for o in opportunities if o.get('gap_type') == 'growth_adjacency'
