@@ -1877,27 +1877,24 @@ def _fetch_wikipedia(company: str) -> dict:
             "thumbnail":   (d.get("thumbnail") or d.get("originalimage") or {}).get("source", ""),
         }
 
-    _NON_COMPANY = {
+    _NON_COMPANY_STRONG = {
         "species","genus","wild cat","wild cats","animal","bird","fish","insect","plant","tree","flower",
         "geographical","river","lake","mountain","city","town","village","country","county","district",
         "surname","given name","first name","fictional character","television series","film","movie",
         "video game","album","song","musical","comic","novel","asteroid","spacecraft",
-        "lack of guilt","absence of guilt","concept","philosophy","emotion","abstract noun",
-        "is a","is the","refers to","meaning of","definition of","from the","state of being",
     }
 
     def _is_non_company(res: dict) -> bool:
         """Return True if the Wikipedia article is clearly not about a company/brand."""
         text = ((res.get("description") or "") + " " + (res.get("extract") or "")[:300]).lower()
-        # Strong rejection if it's a dictionary/definition-like article
-        if any(sig in text for sig in _NON_COMPANY):
+        # Strong rejection only for obvious non-company categories (animals, geography, entertainment)
+        if any(sig in text for sig in _NON_COMPANY_STRONG):
             print(f"[wiki_filter] Rejected as non-company: {text[:100]}")
             return True
-        # Also reject if no company-like indicators (no infobox data)
-        if not res.get("infobox") and not res.get("revenue") and not res.get("employees"):
-            # Unless it has strong brand signals
-            if not any(w in text for w in ["brand","company","corporation","retail","product","service"]):
-                return True
+        # Accept if it clearly has brand/company signals
+        if any(w in text for w in ["brand","company","corporation","retail","product","service","owned by"]):
+            return False
+        # Otherwise default to accepting (Wikipedia likely has something useful)
         return False
 
     # Step 1: Smart disambiguation - try multiple variants
