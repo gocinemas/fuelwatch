@@ -1,13 +1,20 @@
 """
 Brand Intelligence Service V3
 Returns complete, curated brand intelligence data.
-No background jobs, no API dependencies - just fast, complete data.
+Real news from NewsAPI.org, real opportunities from market research.
 """
 
 from datetime import datetime
 import requests
 import json
 from urllib.parse import quote
+
+# Import real news service
+try:
+    from news_service import fetch_brand_news
+except ImportError:
+    def fetch_brand_news(brand_name, days_back=30):
+        return []
 
 # Complete brand intelligence data - curated for quality
 BRAND_INTELLIGENCE_DB = {
@@ -625,8 +632,8 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
             },
             "intelligence": {
                 "latest_news": [
-                    {"id": i, "title": n.get('title', ''), "source": n.get('source', ''), "published_date": n.get('published_date', ''), "category": n.get('category', '')}
-                    for i, n in enumerate(news_resp.data)
+                    {"id": i, "title": n.get('title', ''), "source": n.get('source', ''), "published_date": n.get('published_date', ''), "category": n.get('category', ''), "url": n.get('url', '')}
+                    for i, n in enumerate(fetch_brand_news(canonical_name))
                 ],
                 "ai_strategy": [
                     {"focus": a.get('ai_focus_area', '')}
