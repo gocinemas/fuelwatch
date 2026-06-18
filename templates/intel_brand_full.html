@@ -559,6 +559,22 @@
                 </div>
             </div>
 
+            <!-- AGENTIC INSIGHTS -->
+            <div id="agenticInsightsSection" style="display: none;">
+                <div class="section">
+                    <div class="section-title">🧠 AI Strategic Insight</div>
+                    <div id="agenticInsight" style="font-size: 15px; line-height: 1.6; color: #1e293b;"></div>
+                </div>
+                <div id="agenticVideosSection" style="display: none;" class="section">
+                    <div class="section-title">🎥 Related Videos</div>
+                    <div id="agenticVideos"></div>
+                </div>
+                <div id="agenticPodcastsSection" style="display: none;" class="section">
+                    <div class="section-title">🎙️ Relevant Podcasts</div>
+                    <div id="agenticPodcasts"></div>
+                </div>
+            </div>
+
             <!-- SECTION 1: FUNDAMENTALS -->
             <div class="section">
                 <div class="section-title">📖 Brand Fundamentals</div>
@@ -785,8 +801,23 @@
                     return;
                 }
 
+                // Store data globally for agentic checks
+                window.currentBrandData = data;
+
                 displayBrandIntelligence(data);
                 showBrandView();
+
+                // Check for agentic insights in background (they may not be ready immediately)
+                if (data.agentic) {
+                    displayAgenticInsights(data.agentic);
+                } else {
+                    // Poll for agentic data if not ready yet
+                    setTimeout(() => {
+                        if (window.currentBrandData?.agentic) {
+                            displayAgenticInsights(window.currentBrandData.agentic);
+                        }
+                    }, 1000);
+                }
             } catch (e) {
                 console.error('Search error:', e);
                 hideLoading();
@@ -1091,6 +1122,12 @@
             document.getElementById('completenessValue').textContent = comp + '%';
             document.getElementById('completenessBar').style.width = comp + '%';
 
+            // Display agentic insights if available (check top-level data object)
+            // Note: agentic data is added to response after brand data
+            if (window.currentBrandData?.agentic) {
+                setTimeout(() => displayAgenticInsights(window.currentBrandData.agentic), 500);
+            }
+
             // Inject Executive Summary as collapsible section after hero
             if (window.execSummaryHtml) {
                 const heroSection = document.querySelector('.hero');
@@ -1115,6 +1152,58 @@
                         </div>
                     `;
                     heroSection.insertAdjacentHTML('afterend', collapsibleHtml);
+                }
+            }
+        }
+
+        function displayAgenticInsights(agentic) {
+            const section = document.getElementById('agenticInsightsSection');
+
+            if (!agentic || agentic.error) {
+                section.style.display = 'none';
+                return;
+            }
+
+            // Show strategic insight
+            if (agentic.strategic_insight?.insight) {
+                document.getElementById('agenticInsight').textContent = agentic.strategic_insight.insight;
+                section.style.display = 'block';
+            }
+
+            // Show videos if found
+            if (agentic.videos?.videos && Object.keys(agentic.videos.videos).length > 0) {
+                let videosHtml = '';
+                for (const [topic, data] of Object.entries(agentic.videos.videos)) {
+                    if (data.found && data.urls?.length > 0) {
+                        videosHtml += `<div style="margin-bottom: 12px;">`;
+                        videosHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #0369a1;">${topic}</div>`;
+                        data.urls.slice(0, 2).forEach((url, idx) => {
+                            videosHtml += `<a href="${url}" target="_blank" style="display: block; color: #0369a1; text-decoration: underline; font-size: 13px; margin-bottom: 4px;">Video ${idx + 1} →</a>`;
+                        });
+                        videosHtml += `</div>`;
+                    }
+                }
+                if (videosHtml) {
+                    document.getElementById('agenticVideos').innerHTML = videosHtml;
+                    document.getElementById('agenticVideosSection').style.display = 'block';
+                }
+            }
+
+            // Show podcasts if found
+            if (agentic.podcasts?.podcasts && Object.keys(agentic.podcasts.podcasts).length > 0) {
+                let podcastsHtml = '';
+                for (const [topic, data] of Object.entries(agentic.podcasts.podcasts)) {
+                    if (data.found) {
+                        podcastsHtml += `<div style="margin-bottom: 12px;">`;
+                        podcastsHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #7c3aed;">${topic}</div>`;
+                        podcastsHtml += `<a href="${data.spotify_url}" target="_blank" style="display: block; color: #1db954; text-decoration: underline; font-size: 13px; margin-bottom: 4px;">Spotify →</a>`;
+                        podcastsHtml += `<a href="${data.apple_url}" target="_blank" style="display: block; color: #555; text-decoration: underline; font-size: 13px;">Apple Podcasts →</a>`;
+                        podcastsHtml += `</div>`;
+                    }
+                }
+                if (podcastsHtml) {
+                    document.getElementById('agenticPodcasts').innerHTML = podcastsHtml;
+                    document.getElementById('agenticPodcastsSection').style.display = 'block';
                 }
             }
         }

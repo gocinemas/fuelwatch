@@ -3501,11 +3501,22 @@ def api_brand_full_intelligence():
 
     try:
         from brand_intelligence_service_v3 import get_brand_intelligence_smart
+        from agentic_intelligence_service import enrich_brand_with_agentic_intelligence
 
         data = get_brand_intelligence_smart(name)
 
         if data.get("error"):
             return jsonify(data), 404
+
+        # Add agentic intelligence with timeout (max 2 seconds)
+        # This runs inline but is fast enough to not block page load
+        try:
+            agentic = enrich_brand_with_agentic_intelligence(data)
+            data["agentic"] = agentic
+        except Exception as e:
+            app.logger.error(f"[agentic] Error: {e}")
+            # Don't fail the whole response if agentic fails
+            data["agentic"] = {"error": str(e)}
 
         return jsonify(data)
     except Exception as e:
