@@ -26,7 +26,7 @@ def get_brand_full_intelligence(brand_name: str) -> dict:
 
     try:
         import library as lib
-        from brand_data_fetcher import fetch_and_populate_brand
+        from brand_data_fetcher_v2 import fetch_and_populate_brand
         sb = lib._sb()
 
         # Normalize brand name to Title Case for consistent matching

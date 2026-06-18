@@ -3050,44 +3050,51 @@ def api_brand():
 
 @app.route("/api/company/intelligence", methods=["GET"])
 def api_company_intelligence():
-    """Fetch real company intelligence with country support.
-
-    Uses /api/brand as the data source since it includes financial data
-    and enriches with company-specific analysis.
+    """Fetch real company intelligence using yfinance + AI strategy.
 
     Query params:
     - name: Company name (required)
-    - country: Country code - US, GB, etc. (default: US)
-    - refresh: Set to 'true' to bypass cache and fetch fresh data
     """
     name = request.args.get("name", "").strip()
-    country = request.args.get("country", "US").strip().upper()
-    refresh = request.args.get("refresh", "").lower() == "true"
 
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
 
     try:
-        # Use fetch_brand_data which includes financial data
-        # Then merge company_intelligence for AI strategy and competitors
-        data = fetch_brand_data(name, force_refresh=refresh)
+        from company_data_fetcher_v2 import fetch_and_populate_company
+        import library as lib
+        sb = lib._sb()
 
-        if not data:
-            return jsonify({"error": "Company not found", "name": name}), 404
+        # Normalize company name
+        name_normalized = name.title()
 
-        # Add company intelligence (AI strategy, competitors)
-        try:
-            from company_intelligence import fetch_company_intelligence
-            company_data = fetch_company_intelligence(name, country=country)
-            if company_data:
-                data["company_intelligence"] = company_data
-                # Also merge top-level fields for convenience
-                if "ticker" in company_data and "ticker" not in data:
-                    data["ticker"] = company_data["ticker"]
-        except:
-            pass
+        # Fetch if not in DB
+        fetch_and_populate_company(name_normalized)
 
-        return jsonify(data)
+        # Get company fundamentals
+        fundamentals = sb.table("company_fundamentals").select("*").eq("name", name_normalized).execute().data
+        financials = sb.table("company_financials").select("*").eq("company_name", name_normalized).order("year", desc=True).limit(1).execute().data
+        ai_strategy = sb.table("company_ai_strategy").select("*").eq("company_name", name_normalized).execute().data
+
+        result = {
+            "name": name_normalized,
+            "ticker": fundamentals[0].get("ticker") if fundamentals else "—",
+            "industry": fundamentals[0].get("industry") if fundamentals else "—",
+            "sector": fundamentals[0].get("sector") if fundamentals else "—",
+            "website": fundamentals[0].get("website") if fundamentals else "—",
+            "financials": {
+                "revenue": financials[0].get("revenue") if financials else "—",
+                "net_profit": financials[0].get("net_profit") if financials else "—",
+                "market_cap": financials[0].get("market_cap") if financials else "—",
+                "pe_ratio": financials[0].get("pe_ratio") if financials else "—",
+                "profit_margin": financials[0].get("profit_margin") if financials else "—",
+                "high_52w": financials[0].get("high_52w") if financials else "—",
+                "low_52w": financials[0].get("low_52w") if financials else "—",
+            },
+            "ai_strategy": ai_strategy or []
+        }
+
+        return jsonify(result)
     except Exception as e:
         app.logger.error(f"[company/intelligence] ERROR: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
