@@ -313,10 +313,16 @@
     </header>
 
     <div class="container">
-        <div class="search-box" style="position: relative;">
-            <input type="text" id="searchInput" placeholder="Search 50 companies (e.g., Coca-Cola, Unilever, Red Bull)..." autocomplete="off" style="width: 100%; padding-right: 120px;">
-            <button onclick="searchBrand()" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%);">Search</button>
-            <div id="autocompleteDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; max-height: 300px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;"></div>
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
+            <div class="search-box" style="position: relative; flex: 1;">
+                <input type="text" id="searchInput" placeholder="Search 50 companies (e.g., Coca-Cola, Unilever, Red Bull)..." autocomplete="off" style="width: 100%; padding-right: 120px;">
+                <button onclick="searchBrand()" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%);">Search</button>
+                <div id="autocompleteDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; max-height: 300px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;"></div>
+            </div>
+            <div style="background: white; border-radius: 8px; padding: 4px; border: 1px solid #e2e8f0; display: flex; gap: 4px;">
+                <button id="currencyUSD" onclick="setCurrency('USD')" style="padding: 8px 12px; border: none; background: #0369a1; color: white; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">USD $</button>
+                <button id="currencyGBP" onclick="setCurrency('GBP')" style="padding: 8px 12px; border: none; background: #e2e8f0; color: #475569; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">GBP £</button>
+            </div>
         </div>
 
         <div style="text-align: center; margin-top: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #0369a1;">
@@ -455,6 +461,7 @@
 
         // Auto-load brand from URL parameter on page load
         window.addEventListener('DOMContentLoaded', () => {
+            initCurrencyToggle();
             displayRecentSearches();
 
             const params = new URLSearchParams(window.location.search);
@@ -554,6 +561,34 @@
             }
         }
 
+        function setCurrency(currency) {
+            localStorage.setItem('brandCurrency', currency);
+            // Update button styles
+            const usdBtn = document.getElementById('currencyUSD');
+            const gbpBtn = document.getElementById('currencyGBP');
+            if (currency === 'USD') {
+                usdBtn.style.background = '#0369a1';
+                usdBtn.style.color = 'white';
+                gbpBtn.style.background = '#e2e8f0';
+                gbpBtn.style.color = '#475569';
+            } else {
+                usdBtn.style.background = '#e2e8f0';
+                usdBtn.style.color = '#475569';
+                gbpBtn.style.background = '#0369a1';
+                gbpBtn.style.color = 'white';
+            }
+            // Refresh current brand if one is displayed
+            const brandName = document.getElementById('brandName')?.textContent;
+            if (brandName && brandName !== '—') {
+                displayBrand(JSON.parse(localStorage.getItem('currentBrandData') || '{}'));
+            }
+        }
+
+        function initCurrencyToggle() {
+            const currency = localStorage.getItem('brandCurrency') || 'USD';
+            setCurrency(currency);
+        }
+
         async function searchBrand() {
             const name = document.getElementById('searchInput').value.trim();
             if (!name) return;
@@ -581,6 +616,7 @@
         }
 
         function displayBrandIntelligence(data) {
+            localStorage.setItem('currentBrandData', JSON.stringify(data));
             const b = data.brand || {};
             const f = data.financials || {};
             const p = data.products || {};
@@ -646,29 +682,34 @@
 
             // Products
             const bestseller = p.global_bestseller || {};
+            let currencyForBestseller = localStorage.getItem('brandCurrency') || 'USD';
+            const bestsellerPrice = currencyForBestseller === 'GBP' ? bestseller.price_gbp : bestseller.price;
             let productsHtml = `
                 <div style="margin-bottom: 24px; padding: 20px; background: linear-gradient(135deg, #fef08a, #fef3c7); border-radius: 12px;">
                     <div style="font-size: 12px; color: #92400e; font-weight: 700; margin-bottom: 8px;">🏆 GLOBAL BESTSELLER</div>
                     <div style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 12px;">${bestseller.name || '—'}</div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
                         <div><span style="color: #64748b;">Category:</span> ${bestseller.category || '—'}</div>
-                        <div><span style="color: #64748b;">Price:</span> ${bestseller.price || '—'}</div>
-                        <div><span style="color: #64748b;">Sales:</span> ${bestseller.monthly_sales || '—'}</div>
+                        <div><span style="color: #64748b;">Price:</span> <strong>${bestsellerPrice || '—'}</strong></div>
+                        <div><span style="color: #64748b;">Monthly Volume:</span> ${bestseller.monthly_volume || bestseller.monthly_sales || '—'}</div>
                     </div>
                 </div>
             `;
 
             const byCountry = p.by_country || {};
+            let currencyToggle = localStorage.getItem('brandCurrency') || 'USD';
             for (const [country, skus] of Object.entries(byCountry)) {
                 productsHtml += `
                     <div style="margin-bottom: 16px;">
                         <div style="font-weight: 700; color: #0369a1; margin-bottom: 8px;">${country}</div>
-                        ${skus.map(sku => `
+                        ${skus.map(sku => {
+                            const displayPrice = currencyToggle === 'GBP' ? sku.price_gbp : sku.price;
+                            return `
                             <div class="list-item" style="margin-bottom: 8px;">
                                 <div class="list-item-title">#${sku.position} ${sku.name}</div>
-                                <div class="list-item-meta">${sku.category} • ${sku.price} • ${sku.sales_monthly}</div>
+                                <div class="list-item-meta">${sku.category} • <strong>${displayPrice}</strong> • ${sku.monthly_volume || sku.sales_monthly}</div>
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 `;
             }

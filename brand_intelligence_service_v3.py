@@ -32,17 +32,17 @@ BRAND_INTELLIGENCE_DB = {
         "products": {
             "by_country": {
                 "USA": [
-                    {"position": 1, "name": "iPhone 15 Pro Max", "category": "Premium", "price": "$1199", "sales_monthly": "$3.2B"},
-                    {"position": 2, "name": "iPhone 15 Pro", "category": "Premium", "price": "$999", "sales_monthly": "$2.8B"},
+                    {"position": 1, "name": "iPhone 15 Pro Max", "category": "Premium", "price": "$1199", "price_gbp": "£959", "monthly_volume": "2.1M units"},
+                    {"position": 2, "name": "iPhone 15 Pro", "category": "Premium", "price": "$999", "price_gbp": "£799", "monthly_volume": "2.8M units"},
                 ],
                 "UK": [
-                    {"position": 1, "name": "iPhone 15", "category": "Standard", "price": "£799", "sales_monthly": "£180M"},
+                    {"position": 1, "name": "iPhone 15", "category": "Standard", "price": "$799", "price_gbp": "£639", "monthly_volume": "1.2M units"},
                 ],
                 "India": [
-                    {"position": 1, "name": "iPhone 15", "category": "Standard", "price": "₹79,900", "sales_monthly": "₹45Cr"},
+                    {"position": 1, "name": "iPhone 15", "category": "Standard", "price": "$599", "price_gbp": "£479", "monthly_volume": "890K units"},
                 ],
             },
-            "global_bestseller": {"name": "iPhone 15 Pro", "category": "Premium Smartphone", "price": "$999", "monthly_sales": "$2.8B"},
+            "global_bestseller": {"name": "iPhone 15 Pro", "category": "Premium Smartphone", "price": "$999", "price_gbp": "£799", "monthly_volume": "6.2M units"},
         },
         "competitors": {
             "direct_competitors": [
@@ -151,17 +151,17 @@ BRAND_INTELLIGENCE_DB = {
         "products": {
             "by_country": {
                 "USA": [
-                    {"position": 1, "name": "Coca-Cola Classic", "category": "Cola", "price": "$1.50", "sales_monthly": "$180M"},
-                    {"position": 2, "name": "Diet Coke", "category": "Diet Cola", "price": "$1.50", "sales_monthly": "$120M"},
+                    {"position": 1, "name": "Coca-Cola Classic", "category": "Cola", "price": "$1.50", "price_gbp": "£1.20", "monthly_volume": "425M bottles"},
+                    {"position": 2, "name": "Diet Coke", "category": "Diet Cola", "price": "$1.50", "price_gbp": "£1.20", "monthly_volume": "280M bottles"},
                 ],
                 "Europe": [
-                    {"position": 1, "name": "Coca-Cola Zero Sugar", "category": "Zero Sugar", "price": "€1.75", "sales_monthly": "€95M"},
+                    {"position": 1, "name": "Coca-Cola Zero Sugar", "category": "Zero Sugar", "price": "$1.75", "price_gbp": "£1.40", "monthly_volume": "210M bottles"},
                 ],
                 "Asia": [
-                    {"position": 1, "name": "Coca-Cola Plus", "category": "Functional", "price": "¥2.5", "sales_monthly": "¥150M"},
+                    {"position": 1, "name": "Coca-Cola Plus", "category": "Functional", "price": "$1.80", "price_gbp": "£1.44", "monthly_volume": "155M bottles"},
                 ],
             },
-            "global_bestseller": {"name": "Coca-Cola Classic", "category": "Cola Soft Drink", "price": "$1.50", "monthly_sales": "$22.1B"},
+            "global_bestseller": {"name": "Coca-Cola Classic", "category": "Cola Soft Drink", "price": "$1.50", "price_gbp": "£1.20", "monthly_volume": "1.2B bottles"},
         },
         "competitors": {
             "direct_competitors": [
@@ -267,17 +267,17 @@ BRAND_INTELLIGENCE_DB = {
         "products": {
             "by_country": {
                 "USA": [
-                    {"position": 1, "name": "Caffe Latte", "category": "Espresso", "price": "$5.45", "sales_monthly": "$320M"},
-                    {"position": 2, "name": "Caramel Macchiato", "category": "Espresso", "price": "$5.95", "sales_monthly": "$240M"},
+                    {"position": 1, "name": "Caffe Latte", "category": "Espresso", "price": "$5.45", "price_gbp": "£4.35", "monthly_volume": "2.1M cups"},
+                    {"position": 2, "name": "Caramel Macchiato", "category": "Espresso", "price": "$5.95", "price_gbp": "£4.75", "monthly_volume": "1.8M cups"},
                 ],
                 "Europe": [
-                    {"position": 1, "name": "Americano", "category": "Espresso", "price": "€4.50", "sales_monthly": "€85M"},
+                    {"position": 1, "name": "Americano", "category": "Espresso", "price": "$4.50", "price_gbp": "£3.60", "monthly_volume": "1.2M cups"},
                 ],
                 "Asia": [
-                    {"position": 1, "name": "Green Tea Latte", "category": "Tea", "price": "¥650", "sales_monthly": "¥120M"},
+                    {"position": 1, "name": "Green Tea Latte", "category": "Tea", "price": "$5.20", "price_gbp": "£4.15", "monthly_volume": "890K cups"},
                 ],
             },
-            "global_bestseller": {"name": "Caffe Latte", "category": "Espresso-based Coffee", "price": "$5.45", "monthly_sales": "$8.2B"},
+            "global_bestseller": {"name": "Caffe Latte", "category": "Espresso-based Coffee", "price": "$5.45", "price_gbp": "£4.35", "monthly_volume": "8.2M cups"},
         },
         "competitors": {
             "direct_competitors": [
