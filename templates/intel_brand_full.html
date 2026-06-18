@@ -1161,16 +1161,13 @@
                 hasContent = true;
             }
 
-            // Show videos if found (only top 1 per topic - most relevant)
+            // Show videos if found (only topics - no links until we have relevance scoring)
             if (agentic.videos?.videos && Object.keys(agentic.videos.videos).length > 0) {
                 let videosHtml = '';
                 for (const [topic, data] of Object.entries(agentic.videos.videos)) {
                     if (data.found && data.urls?.length > 0) {
-                        videosHtml += `<div style="margin-bottom: 12px;">`;
-                        videosHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #0369a1;">${topic}</div>`;
-                        // Only show top 1 video (most relevant)
-                        videosHtml += `<a href="${data.urls[0]}" target="_blank" style="display: block; color: #0369a1; text-decoration: underline; font-size: 13px; margin-bottom: 4px;">Watch video →</a>`;
-                        videosHtml += `</div>`;
+                        // Show topic only - actual video links will be added once we filter by view count/relevance
+                        videosHtml += `<div style="margin-bottom: 8px; padding: 8px 12px; background: #f0f9ff; border-left: 3px solid #0369a1; border-radius: 4px; font-size: 14px; color: #0369a1;">${topic}</div>`;
                     }
                 }
                 if (videosHtml) {
@@ -1180,16 +1177,13 @@
                 }
             }
 
-            // Show podcasts if found (only best option per topic)
+            // Show podcasts if found (only topics - no links until we have relevance scoring)
             if (agentic.podcasts?.podcasts && Object.keys(agentic.podcasts.podcasts).length > 0) {
                 let podcastsHtml = '';
                 for (const [topic, data] of Object.entries(agentic.podcasts.podcasts)) {
                     if (data.found) {
-                        podcastsHtml += `<div style="margin-bottom: 12px;">`;
-                        podcastsHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #7c3aed;">${topic}</div>`;
-                        // Prefer Spotify (most popular), with Apple as alternative
-                        podcastsHtml += `<a href="${data.spotify_url}" target="_blank" style="display: block; color: #1db954; text-decoration: underline; font-size: 13px;">Listen on Spotify →</a>`;
-                        podcastsHtml += `</div>`;
+                        // Show topic only - actual podcast episode links will be added once we filter by listener count/relevance
+                        podcastsHtml += `<div style="margin-bottom: 8px; padding: 8px 12px; background: #f3e8ff; border-left: 3px solid #7c3aed; border-radius: 4px; font-size: 14px; color: #7c3aed;">${topic}</div>`;
                     }
                 }
                 if (podcastsHtml) {
