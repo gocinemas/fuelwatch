@@ -47,7 +47,8 @@ def get_brand_full_intelligence(brand_name: str) -> dict:
 
         # Fetch all brand data in parallel
         profile = sb.table("brand_profile").select("*").eq("name", brand_name_normalized).execute().data
-        financials = sb.table("brand_financials").select("*").eq("brand_name", brand_name_normalized).order("year", desc=True).limit(1).execute().data
+        # Skip NULL financial records - get only rows with actual data
+        financials = sb.table("brand_financials").select("*").eq("brand_name", brand_name_normalized).neq("revenue", None).order("year", desc=True).limit(1).execute().data
         skus = sb.table("brand_skus_complete").select("*").eq("brand_name", brand_name_normalized).order("market_position").execute().data
         competitors = sb.table("brand_competitors_complete").select("*").eq("brand_name", brand_name_normalized).order("market_position").execute().data
         competing_skus = sb.table("competing_skus_complete").select("*").eq("brand_name", brand_name_normalized).execute().data
