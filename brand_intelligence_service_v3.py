@@ -547,6 +547,10 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
         ai_resp = sb.table("brand_ai_strategy").select("*").eq("brand_name", canonical_name).limit(4).execute()
         bestseller_resp = sb.table("brand_global_bestseller").select("*").eq("brand_name", canonical_name).limit(1).execute()
 
+        # Get brand fundamentals from brand_profile
+        profile_resp = sb.table("brand_profile").select("*").eq("name", canonical_name).limit(1).execute()
+        profile_data = profile_resp.data[0] if profile_resp.data else {}
+
         # Build response
         products_by_country = {}
         for sku in skus_resp.data:
@@ -584,11 +588,11 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
         return {
             "brand": {
                 "name": canonical_name,
-                "description": "Premium consumer brand",
-                "tagline": "Leading brand in category",
-                "website": "example.com",
-                "headquarters": "Global",
-                "founded": 2000,
+                "description": profile_data.get("description", "Premium consumer brand"),
+                "tagline": profile_data.get("tagline", "Leading brand in category"),
+                "website": profile_data.get("website", "example.com"),
+                "headquarters": profile_data.get("headquarters", "Global"),
+                "founded": profile_data.get("founded_year", 2000),
             },
             "financials": {
                 "year": fin.get('year', 2026),
