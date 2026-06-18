@@ -3165,7 +3165,7 @@ def api_brand():
             generate_competitive_landscape_analysis
         )
 
-        # Health Score
+        # Health Score (expects flat data)
         try:
             health_score = generate_health_score(data)
             if health_score.get("score") is not None:
@@ -3174,9 +3174,15 @@ def api_brand():
         except Exception as e:
             app.logger.warning(f"[api_brand] Health score generation failed: {e}")
 
-        # Risk Flags
+        # Risk Flags (expects nested data structure)
         try:
-            risk_flags = generate_risk_flags(data)
+            nested_data = {
+                "brand": data,
+                "financials": data.get("financials", {}),
+                "competitors": {"direct_competitors": data.get("competitors", [])},
+                "white_space": {"market_gaps": data.get("market_gaps", [])}
+            }
+            risk_flags = generate_risk_flags(nested_data)
             if risk_flags.get("risks"):
                 data["risk_flags"] = risk_flags
                 app.logger.info(f"[api_brand] Generated risk flags for {name}")
