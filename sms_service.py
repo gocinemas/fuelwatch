@@ -3321,7 +3321,7 @@ def api_brand_add_sku_by_country():
 
 @app.route("/api/companies/search", methods=["GET"])
 def api_companies_search():
-    """Search for companies by name. Returns matching company names for autocomplete."""
+    """Search for companies by name (case-insensitive). Returns matching company names for autocomplete."""
     query = request.args.get("q", "").strip().lower()
 
     if not query or len(query) < 1:
@@ -3331,14 +3331,15 @@ def api_companies_search():
         import library as lib
         sb = lib._sb()
 
-        # Get all companies and filter by query
+        # Get all companies and filter by query (case-insensitive)
         companies = sb.table("brand_profile").select("name").execute().data
 
-        # Filter companies that match query
+        # Filter companies that match query (case-insensitive substring match)
         matching = [c['name'] for c in companies if query in c['name'].lower()]
 
-        # Return up to 10 matches
-        return jsonify(matching[:10]), 200
+        # Return up to 10 matches, sorted alphabetically
+        matching_sorted = sorted(matching)
+        return jsonify(matching_sorted[:10]), 200
 
     except Exception as e:
         print(f"[companies/search] Error: {e}")

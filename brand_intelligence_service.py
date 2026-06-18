@@ -24,11 +24,22 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
         from brand_data_validator import calculate_brand_completeness
         sb = lib._sb()
 
-        # Normalize brand name
-        brand_name_normalized = brand_name.title() if brand_name else brand_name
+        # Normalize brand name: convert to lowercase for case-insensitive matching
+        # Database queries will use LOWER() function for matching
+        brand_name_lower = brand_name.lower() if brand_name else brand_name
 
-        # Check if brand exists
-        profile = sb.table("brand_profile").select("*").eq("name", brand_name_normalized).execute().data
+        # Check if brand exists (case-insensitive search by reading all and filtering)
+        # Note: Supabase doesn't have native case-insensitive eq, so we fetch and filter
+        all_profiles = sb.table("brand_profile").select("name").execute().data
+        profile = [p for p in all_profiles if p['name'].lower() == brand_name_lower]
+
+        # If found, fetch full profile
+        if profile:
+            brand_name_normalized = profile[0]['name']  # Use the correct casing from DB
+            profile = sb.table("brand_profile").select("*").eq("name", brand_name_normalized).execute().data
+        else:
+            profile = None
+            brand_name_normalized = brand_name.title()  # Use title case as fallback for new brands
 
         # NEW BRAND: Fetch and populate
         if not profile:
