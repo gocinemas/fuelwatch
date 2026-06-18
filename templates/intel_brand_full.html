@@ -615,48 +615,49 @@
             } else {
                 document.getElementById('searchInput').focus();
             }
-        });
 
-        document.getElementById('searchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchBrand();
-        });
+            // Attach event listeners after DOM is ready
+            document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchBrand();
+            });
 
-        // Autocomplete functionality
-        document.getElementById('searchInput').addEventListener('input', async (e) => {
-            const query = e.target.value.trim();
-            const dropdown = document.getElementById('autocompleteDropdown');
+            // Autocomplete functionality
+            document.getElementById('searchInput').addEventListener('input', async (e) => {
+                const query = e.target.value.trim();
+                const dropdown = document.getElementById('autocompleteDropdown');
 
-            if (query.length < 1) {
-                dropdown.style.display = 'none';
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
-                const companies = await response.json();
-
-                if (companies.length === 0) {
-                    dropdown.innerHTML = '<div style="padding: 12px; color: #94a3b8; font-size: 13px;">No companies found</div>';
-                } else {
-                    dropdown.innerHTML = companies.map(c => `
-                        <div onclick="selectCompany(${JSON.stringify(c)})" style="padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; background: white; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                            <div style="font-weight: 500; color: #1e293b;">${c}</div>
-                        </div>
-                    `).join('');
+                if (query.length < 1) {
+                    dropdown.style.display = 'none';
+                    return;
                 }
 
-                dropdown.style.display = 'block';
-            } catch (error) {
-                console.error('Autocomplete error:', error);
-                dropdown.style.display = 'none';
-            }
-        });
+                try {
+                    const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
+                    const companies = await response.json();
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-box')) {
-                document.getElementById('autocompleteDropdown').style.display = 'none';
-            }
+                    if (companies.length === 0) {
+                        dropdown.innerHTML = '<div style="padding: 12px; color: #94a3b8; font-size: 13px;">No companies found</div>';
+                    } else {
+                        dropdown.innerHTML = companies.map(c => `
+                            <div onclick="selectCompany(${JSON.stringify(c)})" style="padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; background: white; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                                <div style="font-weight: 500; color: #1e293b;">${c}</div>
+                            </div>
+                        `).join('');
+                    }
+
+                    dropdown.style.display = 'block';
+                } catch (error) {
+                    console.error('Autocomplete error:', error);
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-box')) {
+                    document.getElementById('autocompleteDropdown').style.display = 'none';
+                }
+            });
         });
 
         function selectCompany(name) {
