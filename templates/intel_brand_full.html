@@ -736,27 +736,40 @@
             let whiteSpaceHtml = '';
             (w.market_gaps || []).forEach(gap => {
                 whiteSpaceHtml += `
-                    <div class="list-item">
+                    <div class="list-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
                         <div class="list-item-title">${gap.gap}</div>
-                        <div class="list-item-meta">${gap.description}</div>
-                        <div style="margin-top: 8px;">
-                            <span style="color: #64748b;">Market Size:</span> ${gap.market_size}
-                            <span class="opportunity-badge opportunity-${gap.opportunity_score > 8 ? 'high' : 'medium'}">
-                                Opportunity: ${gap.opportunity_score}/10
-                            </span>
+                        <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${gap.description || ''}</div>
+                        <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
+                            <div><span style="color: #64748b; font-weight: 600;">Market Size:</span><br><strong>${gap.market_size || '—'}</strong></div>
+                            <div>
+                                <span style="color: #64748b; font-weight: 600;">Opportunity Score</span><br>
+                                <span style="background: ${gap.opportunity_score > 8 ? '#dcfce7' : '#fef3c7'}; color: ${gap.opportunity_score > 8 ? '#166534' : '#92400e'}; padding: 4px 8px; border-radius: 4px; font-weight: 700;">
+                                    ${gap.opportunity_score}/10
+                                </span>
+                            </div>
                         </div>
+                        ${gap.why ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569; font-style: italic;">💡 Why: ${gap.why}</div>` : ''}
                     </div>
                 `;
             });
 
             if (w.growth_adjacencies?.length > 0) {
-                whiteSpaceHtml += `<div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-                    <div style="font-weight: 700; margin-bottom: 12px;">Growth Adjacencies</div>`;
+                whiteSpaceHtml += `<div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                    <div style="font-weight: 700; font-size: 14px; margin-bottom: 16px; color: #1e293b;">📈 Growth Adjacencies</div>`;
                 w.growth_adjacencies.forEach(adj => {
                     whiteSpaceHtml += `
-                        <div class="list-item">
+                        <div class="list-item" style="padding: 16px; background: #f0f9ff; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #0369a1;">
                             <div class="list-item-title">${adj.adjacency}</div>
-                            <div class="list-item-meta">Fit Score: ${adj.fit_score}/10</div>
+                            <div class="list-item-meta" style="margin-top: 8px; line-height: 1.5;">${adj.description || ''}</div>
+                            <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 12px;">
+                                <div>
+                                    <span style="color: #0369a1; font-weight: 600;">Fit Score</span><br>
+                                    <span style="background: #dbeafe; color: #0c4a6e; padding: 4px 8px; border-radius: 4px; font-weight: 700;">
+                                        ${adj.fit_score}/10
+                                    </span>
+                                </div>
+                            </div>
+                            ${adj.strategic_rationale ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #bfdbfe; font-size: 12px; color: #0c4a6e; font-style: italic;">🎯 Strategic Rationale: ${adj.strategic_rationale}</div>` : ''}
                         </div>
                     `;
                 });

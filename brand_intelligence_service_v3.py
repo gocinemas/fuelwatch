@@ -61,12 +61,34 @@ BRAND_INTELLIGENCE_DB = {
         },
         "white_space": {
             "market_gaps": [
-                {"gap": "Budget Premium ($600-800 segment)", "opportunity_score": 7.8, "adjacent_category": "Mid-range"},
-                {"gap": "Enterprise/Business Focus", "opportunity_score": 6.2, "adjacent_category": "B2B"},
+                {
+                    "gap": "Budget Premium ($600-800 segment)",
+                    "description": "Underserved market between standard and flagship models. Consumers want premium features at mid-range pricing.",
+                    "market_size": "~$42B globally",
+                    "opportunity_score": 7.8,
+                    "why": "OnePlus, Nothing Phone capturing this segment; Apple could launch A17-based phone to dominate mid-premium"
+                },
+                {
+                    "gap": "Enterprise/Business Focus",
+                    "description": "B2B solutions for enterprises (bulk licensing, MDM, business apps). Apple historically weak in enterprise vs. Android.",
+                    "market_size": "~$8.3B enterprise mobility market",
+                    "opportunity_score": 6.2,
+                    "why": "Corporate market moving to mobile-first; Apple's security advantage could capture more enterprise adoption"
+                },
             ],
             "growth_adjacencies": [
-                {"adjacency": "Health & Medical AI", "growth_potential": 8.5},
-                {"adjacency": "Automotive Integration", "growth_potential": 7.9},
+                {
+                    "adjacency": "Health & Medical AI",
+                    "description": "Expansion of health monitoring (ECG, blood glucose, sleep quality). Positioning iPhone as personal health hub.",
+                    "fit_score": 8.5,
+                    "strategic_rationale": "Healthcare is fastest-growing segment; FDA approvals create defensible moat vs. competitors"
+                },
+                {
+                    "adjacency": "Automotive Integration",
+                    "description": "Deeper CarPlay integration, automotive APIs, EV battery management. iPhone as car command center.",
+                    "fit_score": 7.9,
+                    "strategic_rationale": "EV market growing 40% YoY; first-mover advantage in vehicle integration worth billions"
+                },
             ]
         },
         "brand_presence": {
@@ -181,8 +203,50 @@ BRAND_INTELLIGENCE_DB = {
                 {"gap": "Premium Craft Colas", "opportunity_score": 6.5, "adjacent_category": "Premium"},
             ],
             "growth_adjacencies": [
-                {"adjacency": "Plant-Based Alternatives", "growth_potential": 9.1},
-                {"adjacency": "Personalized Nutrition", "growth_potential": 7.8},
+                {
+                    "adjacency": "Plant-Based Alternatives",
+                    "description": "Shift toward plant-based, zero-sugar, and functional beverages aligning with health trends.",
+                    "fit_score": 9.1,
+                    "strategic_rationale": "Millennial/Gen-Z consumers demand healthier options; fastest-growing beverage category at 15% CAGR"
+                },
+                {
+                    "adjacency": "Personalized Nutrition",
+                    "description": "AI-powered recommendations for personalized beverages based on health goals and biometrics.",
+                    "fit_score": 7.8,
+                    "strategic_rationale": "Emerging category; partnerships with health apps and wearables create new revenue streams"
+                },
+            ]
+        },
+        "white_space": {
+            "market_gaps": [
+                {
+                    "gap": "Functional Beverages (Health Focus)",
+                    "description": "Growing market for beverages with added benefits: energy, immunity boost, mental clarity. Coca-Cola's presence limited.",
+                    "market_size": "~$12.4B globally, growing 12% YoY",
+                    "opportunity_score": 8.2,
+                    "why": "Red Bull, Monster dominating functional segment; Coca-Cola could launch health-focused sub-brand"
+                },
+                {
+                    "gap": "Premium Craft Colas",
+                    "description": "High-end, small-batch cola market with natural ingredients and premium positioning vs. mass market.",
+                    "market_size": "~$1.2B niche premium market",
+                    "opportunity_score": 6.5,
+                    "why": "Consumers willing to pay 3-5x for premium craft experiences; Coca-Cola lacks premium positioning"
+                },
+            ],
+            "growth_adjacencies": [
+                {
+                    "adjacency": "Plant-Based Alternatives",
+                    "description": "Expand plant-based drink lines, oat-based, almond-based beverages aligned with sustainability goals.",
+                    "fit_score": 9.1,
+                    "strategic_rationale": "Millennial/Gen-Z consumers demand healthier options; fastest-growing beverage category at 15% CAGR"
+                },
+                {
+                    "adjacency": "Personalized Nutrition",
+                    "description": "AI-powered recommendations for personalized beverages based on health goals and biometrics.",
+                    "fit_score": 7.8,
+                    "strategic_rationale": "Emerging category; partnerships with health apps and wearables create new revenue streams"
+                },
             ]
         },
         "brand_presence": {
@@ -293,12 +357,34 @@ BRAND_INTELLIGENCE_DB = {
         },
         "white_space": {
             "market_gaps": [
-                {"gap": "Premium At-Home Coffee Subscription", "opportunity_score": 7.9, "adjacent_category": "Retail"},
-                {"gap": "Wellness-Focused Beverages", "opportunity_score": 8.3, "adjacent_category": "Health"},
+                {
+                    "gap": "Premium At-Home Coffee Subscription",
+                    "description": "Market opportunity for high-end home coffee delivery service with subscriptions. Growing trend in premium home experiences.",
+                    "market_size": "~$2.3B globally",
+                    "opportunity_score": 7.9,
+                    "why": "Starbucks excels in stores but underserves home coffee drinkers wanting premium experience"
+                },
+                {
+                    "gap": "Wellness-Focused Beverages",
+                    "description": "Expansion into health-conscious drinks (adaptogens, probiotics, functional ingredients). Strong growth in wellness category.",
+                    "market_size": "~$5.1B and growing 12% YoY",
+                    "opportunity_score": 8.3,
+                    "why": "Competitors (Blue Bottle, Nespresso) targeting wellness; Starbucks positioned to lead this segment"
+                },
             ],
             "growth_adjacencies": [
-                {"adjacency": "Personalized Beverage AI Ordering", "growth_potential": 8.7},
-                {"adjacency": "Sustainable Packaging & Local Sourcing", "growth_potential": 8.1},
+                {
+                    "adjacency": "Personalized Beverage AI Ordering",
+                    "description": "AI-driven recommendation engine predicting customer preferences, enabling personalized menu suggestions and faster ordering.",
+                    "fit_score": 8.7,
+                    "strategic_rationale": "Improves customer experience, increases AOV (average order value), competitive advantage vs. local cafes"
+                },
+                {
+                    "adjacency": "Sustainable Packaging & Local Sourcing",
+                    "description": "Shift to eco-friendly packaging and partnerships with local coffee farmers. Aligns with consumer ESG preferences.",
+                    "fit_score": 8.1,
+                    "strategic_rationale": "Builds brand loyalty with Gen-Z/Millennials, supports climate commitments, differentiates from competitors"
+                },
             ]
         },
         "brand_presence": {
