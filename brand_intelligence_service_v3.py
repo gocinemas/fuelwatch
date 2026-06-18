@@ -5,6 +5,9 @@ No background jobs, no API dependencies - just fast, complete data.
 """
 
 from datetime import datetime
+import requests
+import json
+from urllib.parse import quote
 
 # Complete brand intelligence data - curated for quality
 BRAND_INTELLIGENCE_DB = {
@@ -526,3 +529,76 @@ def resolve_brand_alias(user_input: str) -> str:
             return canonical
 
     return user_input
+
+
+def fetch_youtube_videos(query: str, max_results: int = 3, timeout: int = 5) -> list:
+    """
+    Fetch YouTube videos for a query - safe, non-blocking, graceful error handling.
+    Returns empty list if fails.
+    """
+    try:
+        # Use YouTube Data API via wrapper or direct search
+        # For safety: use YouTube's public search with requests
+        url = f"https://www.youtube.com/results?search_query={quote(query)}"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=timeout)
+        
+        if response.status_code != 200:
+            return []
+        
+        # Simple extraction of video links from YouTube HTML
+        videos = []
+        import re
+        
+        # Extract video IDs from response
+        video_pattern = r'"/watch\?v=([a-zA-Z0-9_-]{11})"'
+        matches = re.findall(video_pattern, response.text)
+        
+        for video_id in matches[:max_results]:
+            videos.append({
+                "id": video_id,
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+                "thumbnail": f"https://img.youtube.com/vi/{video_id}/default.jpg"
+            })
+        
+        return videos
+    
+    except Exception as e:
+        # Fail silently - don't break the page
+        print(f"[videos] Error fetching YouTube videos for '{query}': {e}")
+        return []
+
+
+def get_brand_videos(brand_name: str, topics: list = None) -> dict:
+    """
+    Get YouTube videos for a brand and its topics.
+    Returns dict with video data - empty if fails.
+    """
+    if not topics:
+        topics = []
+    
+    result = {
+        "brand_videos": [],
+        "topic_videos": {}
+    }
+    
+    try:
+        # Fetch videos for brand name
+        brand_videos = fetch_youtube_videos(f"{brand_name} documentary", max_results=2)
+        if brand_videos:
+            result["brand_videos"] = brand_videos
+        
+        # Fetch videos for each topic
+        for topic in topics[:3]:  # Limit to 3 topics
+            topic_videos = fetch_youtube_videos(topic, max_results=2)
+            if topic_videos:
+                result["topic_videos"][topic] = topic_videos
+    
+    except Exception as e:
+        print(f"[videos] Error getting brand videos for {brand_name}: {e}")
+    
+    return result
