@@ -545,6 +545,7 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
         news_resp = sb.table("brand_news").select("*").eq("brand_name", canonical_name).limit(5).execute()
         social_resp = sb.table("brand_social_media").select("*").eq("brand_name", canonical_name).execute()
         ai_resp = sb.table("brand_ai_strategy").select("*").eq("brand_name", canonical_name).limit(4).execute()
+        bestseller_resp = sb.table("brand_global_bestseller").select("*").eq("brand_name", canonical_name).limit(1).execute()
 
         # Build response
         products_by_country = {}
@@ -598,7 +599,7 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
             },
             "products": {
                 "by_country": products_by_country,
-                "global_bestseller": {"name": canonical_name, "monthly_volume": "5M units"},
+                "global_bestseller": bestseller_resp.data[0] if bestseller_resp.data else {"name": canonical_name, "product_name": "Best-selling product", "category": "N/A", "price_usd": "N/A", "price_gbp": "N/A", "monthly_volume": "N/A"},
             },
             "competitors": {
                 "direct_competitors": [
