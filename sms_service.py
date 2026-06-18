@@ -3170,30 +3170,46 @@ def api_brand():
         )
 
         # Market Opportunities analysis (if missing)
-        if not data.get("market_gaps") or len(data.get("market_gaps", [])) == 0:
-            opp_analysis = generate_market_opportunities_analysis(data)
-            if opp_analysis.get("opportunities"):
-                data["ai_market_opportunities"] = opp_analysis
+        if len(data.get("market_gaps", [])) == 0:
+            try:
+                opp_analysis = generate_market_opportunities_analysis(data)
+                if opp_analysis.get("opportunities"):
+                    data["ai_market_opportunities"] = opp_analysis
+                    app.logger.info(f"[api_brand] Generated market opportunities for {name}")
+            except Exception as e:
+                app.logger.warning(f"[api_brand] Market opportunities analysis failed: {e}")
 
         # Social Media Strategy (if missing)
-        if not data.get("brand_presence") or len(data.get("brand_presence", [])) == 0:
-            social_analysis = generate_social_media_strategy(data)
-            if social_analysis.get("strategy"):
-                data["ai_social_strategy"] = social_analysis
+        if len(data.get("brand_presence", [])) == 0:
+            try:
+                social_analysis = generate_social_media_strategy(data)
+                if social_analysis.get("strategy"):
+                    data["ai_social_strategy"] = social_analysis
+                    app.logger.info(f"[api_brand] Generated social strategy for {name}")
+            except Exception as e:
+                app.logger.warning(f"[api_brand] Social media strategy failed: {e}")
 
         # Product Ecosystem analysis (if missing)
-        if not data.get("products") or len(data.get("products", [])) == 0:
-            product_analysis = generate_product_ecosystem_analysis(data)
-            if product_analysis.get("ecosystem"):
-                data["ai_product_ecosystem"] = product_analysis
+        if len(data.get("products", [])) == 0:
+            try:
+                product_analysis = generate_product_ecosystem_analysis(data)
+                if product_analysis.get("ecosystem"):
+                    data["ai_product_ecosystem"] = product_analysis
+                    app.logger.info(f"[api_brand] Generated product ecosystem for {name}")
+            except Exception as e:
+                app.logger.warning(f"[api_brand] Product ecosystem analysis failed: {e}")
 
         # Competitive Landscape analysis (if missing)
-        if not data.get("competitors") or len(data.get("competitors", [])) == 0:
-            comp_analysis = generate_competitive_landscape_analysis(data)
-            if comp_analysis.get("landscape"):
-                data["ai_competitive_landscape"] = comp_analysis
+        if len(data.get("competitors", [])) == 0:
+            try:
+                comp_analysis = generate_competitive_landscape_analysis(data)
+                if comp_analysis.get("landscape"):
+                    data["ai_competitive_landscape"] = comp_analysis
+                    app.logger.info(f"[api_brand] Generated competitive landscape for {name}")
+            except Exception as e:
+                app.logger.warning(f"[api_brand] Competitive landscape analysis failed: {e}")
     except Exception as e:
-        app.logger.warning(f"[api_brand] Groq analysis failed: {e}")
+        app.logger.warning(f"[api_brand] Groq analysis import failed: {e}")
         # Continue - AI analysis is optional enhancement
 
     # REMOVED: auto-save to database. Only save when user explicitly bookmarks/tracks.
