@@ -44,6 +44,9 @@
             margin-bottom: 32px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             position: relative;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
         }
 
         .search-box input {
@@ -54,6 +57,7 @@
             border-radius: 8px;
             font-size: 15px;
             box-sizing: border-box;
+            height: 44px;
         }
 
         .search-box input:focus {
@@ -62,13 +66,18 @@
         }
 
         .search-box button {
-            padding: 12px 24px;
+            position: absolute;
+            right: 28px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 10px 20px;
             background: #3b82f6;
             color: white;
             border: none;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
+            height: 44px;
         }
 
         .search-box button:hover {
