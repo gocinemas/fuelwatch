@@ -247,7 +247,7 @@ def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) 
 def _groq_parse_events(subject: str, body: str, school_name: str, year_group: str,
                        sent_date: str = "") -> list[dict]:
     """
-    Extract events/reminders from school emails using Claude.
+    Extract events/reminders from school emails using Groq.
     Returns list of: {event_title, event_type, event_date, description, action_needed, deadline}
     """
     # Use the email's actual send date for relative date resolution
@@ -305,8 +305,8 @@ Rules:
 If nothing relevant, return [].
 JSON array:"""
 
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not anthropic_key:
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
         return []
 
     # Truncate body to reduce token usage
@@ -316,32 +316,32 @@ JSON array:"""
     for attempt in range(3):
         try:
             r = requests.post(
-                "https://api.anthropic.com/v1/messages",
+                "https://api.groq.com/openai/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {anthropic_key}",
+                    "Authorization": f"Bearer {groq_key}",
                     "Content-Type": "application/json",
-                    "anthropic-version": "2023-06-01"
                 },
                 json={
-                    "model": "claude-3-5-sonnet-20241022",
+                    "model": "llama-3.1-8b-instant",
                     "max_tokens": 2000,
-                    "system": system,
+                    "temperature": 0.5,
                     "messages": [
+                        {"role": "system", "content": system},
                         {"role": "user", "content": prompt},
                     ],
                 },
                 timeout=30,
             )
             rj = r.json()
-            if "content" not in rj:
+            if "choices" not in rj or not rj["choices"]:
                 err_msg = rj.get("error", {}).get("message", str(rj))
-                print(f"[school] claude parse error (attempt {attempt+1}): {err_msg}")
+                print(f"[school] groq parse error (attempt {attempt+1}): {err_msg}")
                 if "overloaded" in err_msg.lower() and attempt < 2:
                     import time as _time
                     _time.sleep(10 * (attempt + 1))
                     continue
                 return []
-            raw = rj["content"][0]["text"].strip()
+            raw = rj["choices"][0]["message"]["content"].strip()
             raw = re.sub(r"^```[a-z]*\n?", "", raw)
             raw = re.sub(r"\n?```$", "", raw)
             events = json.loads(raw)
@@ -349,7 +349,7 @@ JSON array:"""
                 return events
             return []
         except Exception as e:
-            print(f"[school] claude parse error (attempt {attempt+1}): {e}")
+            print(f"[school] groq parse error (attempt {attempt+1}): {e}")
             if attempt < 2:
                 import time as _time
                 _time.sleep(5)
