@@ -2902,7 +2902,7 @@ def _agent_identify_category(brand_name: str, description: str, infobox: dict = 
     categories = {
         "beverages": ["drink", "beverage", "juice", "smoothie", "cola", "water", "coffee", "tea", "alcohol", "wine", "beer"],
         "food": ["food", "snack", "chocolate", "candy", "biscuit", "cereal", "frozen"],
-        "cosmetics": ["beauty", "cosmetic", "skincare", "makeup", "haircare"],
+        "cosmetics": ["beauty", "cosmetic", "skincare", "skin care", "makeup", "haircare", "hair care", "personal care", "fragrance", "deodorant"],
         "fashion": ["clothing", "apparel", "fashion", "shoe", "footwear", "sportswear", "sneaker", "athletic", "athletic wear", "activewear"],
         "technology": ["software", "hardware", "computer", "phone", "device", "app"],
         "automotive": ["car", "vehicle", "automotive", "motor"],
