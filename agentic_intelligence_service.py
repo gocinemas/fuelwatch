@@ -199,6 +199,7 @@ def generate_risk_flags(brand_data: dict) -> dict:
     Identify top 3 risk flags for a brand using Groq analysis.
     """
     if not groq_client:
+        print(f"[agentic] Risk flags: groq_client not available, returning empty")
         return {"risks": [], "source": "default"}
 
     try:
