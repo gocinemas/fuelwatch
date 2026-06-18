@@ -4224,6 +4224,43 @@ def school_settings_get():
         return _cors(jsonify({"error": str(e)})), 500
 
 
+@app.route("/api/user/schools")
+def api_user_schools():
+    """Get schools for authenticated user. Used by settings page."""
+    token = request.args.get("token", "").strip()
+    if not token:
+        return _cors(jsonify({"error": "token required"})), 400
+    try:
+        # Validate token — look up the phone number it maps to
+        rows = lib._sb().table("ai_cache").select("data").eq("key", f"user_token:{token}").limit(1).execute().data or []
+        if not rows:
+            return _cors(jsonify({"error": "invalid token"})), 401
+        phone = rows[0].get("data", {}).get("phone", "")
+        if not phone:
+            return _cors(jsonify({"error": "no phone for token"})), 401
+        # Normalize to whatsapp: format
+        phone = _normalise_from_number(phone)
+        # Get schools for this phone
+        profiles = school_service._get_profiles(from_number=phone)
+        result = []
+        for p in profiles:
+            gmail_connected = bool(p.get("gmail_refresh_token"))
+            result.append({
+                "id":              p["id"],
+                "child_name":      p.get("child_name", ""),
+                "school_name":     p.get("school_name", ""),
+                "class_name":      p.get("class_name", ""),
+                "teacher_name":    p.get("teacher_name", ""),
+                "sender_emails":   p.get("sender_emails") or [],
+                "gmail_connected": gmail_connected,
+                "gmail_token_error": bool(p.get("gmail_token_error")),
+                "oauth_url":       _school_oauth_url(p["id"]),
+            })
+        return _cors(jsonify({"profiles": result}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
 @app.route("/api/school/gmail-disconnect", methods=["POST", "OPTIONS"])
 def school_gmail_disconnect():
     if request.method == "OPTIONS":
