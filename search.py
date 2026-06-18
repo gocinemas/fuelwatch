@@ -1496,7 +1496,7 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
         with _cf.ThreadPoolExecutor(max_workers=7) as pool:
             wiki_f = pool.submit(_fetch_wikipedia, wiki_query)
             news_f = pool.submit(_fetch_news, news_query, "", 6)
-            # REMOVED: ads_f = pool.submit(_fetch_brand_ads, brand)  # Unused on frontend, saving API calls + time
+            ads_f  = pool.submit(_fetch_brand_ads, brand)
             fin_f  = pool.submit(_fetch_brand_financials, brand)
             # DISABLED: ai_f to save Groq tokens (daily limit exceeded)
             ai_f   = None  # pool.submit(_fetch_brand_ai, brand, original)
@@ -1532,6 +1532,10 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             _orig_words  = set(original.lower().split())
             _keep_words  = _brand_words | _orig_words
             news = [n for n in news if any(w in n.get("title","").lower() for w in _keep_words)]
+
+            ads = []
+            try: ads = ads_f.result(timeout=8) or []
+            except Exception: pass
 
             trustpilot = {}
             try: trustpilot = tp_f.result(timeout=8) or {}
@@ -1599,6 +1603,7 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             "campaigns":    ai.get("campaigns", []),
             "competitors":  competitors_from_ai,
             "ranking":      ranking,
+            "ads":          ads,
             "financials":   financials,
             "news":         news,
             "trustpilot":   trustpilot,
