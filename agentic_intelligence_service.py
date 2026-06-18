@@ -22,17 +22,51 @@ except:
     groq_client = None
 
 
+def generate_template_insight(brand_data: dict) -> dict:
+    """
+    Template-based insight when Groq is unavailable.
+    Analyzes key metrics to generate strategic summary.
+    """
+    try:
+        brand = brand_data.get("brand", {})
+        financials = brand_data.get("financials", {})
+        intelligence = brand_data.get("intelligence", {})
+        white_space = brand_data.get("white_space", {})
+
+        brand_name = brand.get("name", "Brand")
+        revenue = financials.get("revenue", "N/A")
+        growth = financials.get("growth_rate", "0%")
+        news_count = len(intelligence.get("latest_news", []))
+        opportunities = len(white_space.get("market_gaps", []))
+
+        # Build insight based on data patterns
+        insight = f"{brand_name} shows {growth}% growth with ${revenue} revenue. "
+        insight += f"Recent activity includes {news_count} key news items. "
+        if opportunities > 0:
+            insight += f"{opportunities} market opportunities identified for expansion."
+
+        return {
+            "insight": insight,
+            "timestamp": datetime.now().isoformat(),
+            "source": "template"
+        }
+    except Exception as e:
+        print(f"[agentic] Template insight error: {e}")
+        return {"insight": None, "error": str(e)}
+
+
 def generate_strategic_insight(brand_data: dict) -> dict:
     """
     Use Groq to generate AI-driven strategic insight about the brand.
-    Analyzes financials, market position, opportunities, AI strategy.
+    Falls back to template-based insight if Groq unavailable.
     """
     print(f"[agentic] generate_strategic_insight called")
     print(f"[agentic] groq_client available: {groq_client is not None}")
 
     if not groq_client:
-        print(f"[agentic] Groq client not available")
-        return {"insight": None, "error": "Groq not available"}
+        print(f"[agentic] Groq unavailable - using template fallback")
+        # Fallback template-based insight
+        return generate_template_insight(brand_data)
 
     try:
         brand = brand_data.get("brand", {})
