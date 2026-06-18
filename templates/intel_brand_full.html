@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Brand Intelligence">
+    <meta name="theme-color" content="#3b82f6">
     <title>Brand Intelligence</title>
     <style>
         * {
@@ -499,17 +503,351 @@
             padding: 24px;
         }
 
+        #autocompleteDropdown {
+            max-height: 200px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #autocompleteDropdown > div {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            font-size: 14px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+        }
+
+        #autocompleteDropdown > div:hover {
+            background: #f0f9ff;
+        }
+
+        /* ────────────────────────────────────────────────────────
+           MOBILE RESPONSIVE (max-width: 768px - tablets & phones)
+           ──────────────────────────────────────────────────────── */
         @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            header {
+                padding: 20px 0;
+                margin-bottom: 20px;
+            }
+
+            .search-box {
+                padding: 12px;
+                margin-bottom: 16px;
+                min-height: auto;
+                flex-wrap: wrap;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .search-box input {
+                padding: 12px 14px;
+                padding-right: 14px;
+                font-size: 16px;
+                height: 48px;
+                margin-bottom: 0;
+                width: 100%;
+                order: 1;
+            }
+
+            .search-box button {
+                position: relative;
+                transform: none;
+                width: 100%;
+                height: 48px;
+                padding: 0;
+                margin-top: 8px;
+                font-size: 14px;
+                right: auto;
+                top: auto;
+                order: 2;
+            }
+
+            #autocompleteDropdown {
+                max-height: 150px;
+                width: 100%;
+            }
+
             .hero {
-                padding: 24px;
+                padding: 20px;
+                margin-bottom: 20px;
             }
 
             .brand-name {
                 font-size: 28px;
+                margin-bottom: 8px;
+            }
+
+            .brand-tagline {
+                font-size: 15px;
+                margin-bottom: 6px;
+            }
+
+            .brand-meta {
+                font-size: 12px;
             }
 
             .section {
+                padding: 16px;
+                margin-bottom: 16px;
+                border-radius: 8px;
+            }
+
+            .section-title {
+                font-size: 16px;
+                margin-bottom: 16px;
+                gap: 6px;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            .stat-card {
+                padding: 16px;
+                border-radius: 8px;
+            }
+
+            .stat-label {
+                font-size: 10px;
+                margin-bottom: 6px;
+            }
+
+            .stat-value {
+                font-size: 18px;
+            }
+
+            /* Health Score + Risk Flags - stack vertically on mobile */
+            .section > div[style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
+            }
+
+            #healthScoreContent {
+                font-size: 32px !important;
+            }
+
+            #riskFlagsContent {
+                gap: 8px !important;
+            }
+
+            #riskFlagsContent > div {
+                padding: 10px 12px !important;
+                font-size: 12px !important;
+            }
+
+            .list-item {
+                padding: 12px;
+                border-radius: 6px;
+            }
+
+            .list-item-title {
+                font-size: 14px;
+                font-weight: 700;
+                margin-bottom: 4px;
+            }
+
+            .list-item-meta {
+                font-size: 12px;
+            }
+
+            .tooltip-trigger {
+                display: none;
+            }
+
+            .tooltip-text {
+                display: none;
+            }
+
+            .competitive-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .competitor-card {
+                padding: 12px;
+            }
+
+            .competitor-name {
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .competitor-metric {
+                font-size: 11px;
+            }
+
+            .executive-summary {
                 padding: 20px;
+                margin-bottom: 20px;
+            }
+
+            .exec-status {
+                font-size: 18px;
+                margin-bottom: 6px;
+            }
+
+            .exec-headline {
+                font-size: 13px;
+                margin-bottom: 16px;
+            }
+
+            .exec-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .exec-metric {
+                padding: 12px;
+            }
+
+            .exec-metric-label {
+                font-size: 10px;
+                margin-bottom: 6px;
+            }
+
+            .exec-metric-value {
+                font-size: 12px;
+            }
+
+            .exec-metric-detail {
+                font-size: 11px;
+            }
+
+            .completeness-bar {
+                height: 8px;
+            }
+
+            #completenessValue {
+                font-size: 24px;
+            }
+        }
+
+        /* ────────────────────────────────────────────────────────
+           SMALL PHONES (max-width: 480px - iPhone SE, older phones)
+           ──────────────────────────────────────────────────────── */
+        @media (max-width: 480px) {
+            .container {
+                padding: 8px;
+            }
+
+            .search-box {
+                padding: 8px;
+            }
+
+            .search-box input {
+                padding: 10px 12px;
+                font-size: 16px;
+                height: 48px;
+            }
+
+            .search-box button {
+                height: 48px;
+                font-size: 12px;
+            }
+
+            .hero {
+                padding: 16px;
+            }
+
+            .brand-name {
+                font-size: 24px;
+            }
+
+            .brand-tagline {
+                font-size: 14px;
+            }
+
+            .section {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+
+            .section-title {
+                font-size: 14px;
+            }
+
+            .stat-card {
+                padding: 12px;
+            }
+
+            .stat-label {
+                font-size: 9px;
+            }
+
+            .stat-value {
+                font-size: 16px;
+            }
+
+            #healthScoreContent {
+                font-size: 28px !important;
+            }
+
+            .list-item {
+                padding: 10px;
+            }
+
+            .list-item-title {
+                font-size: 13px;
+            }
+
+            .list-item-meta {
+                font-size: 11px;
+            }
+
+            .executive-summary {
+                padding: 12px;
+            }
+
+            .exec-status {
+                font-size: 16px;
+            }
+
+            .exec-headline {
+                font-size: 12px;
+            }
+
+            .recent-searches {
+                padding: 12px !important;
+            }
+
+            #recentList {
+                gap: 6px !important;
+            }
+
+            #recentList button {
+                padding: 8px 12px !important;
+                font-size: 12px !important;
+                min-height: 40px;
+            }
+        }
+
+        /* ────────────────────────────────────────────────────────
+           TABLETS (max-width: 1024px but > 768px - landscape tablets)
+           ──────────────────────────────────────────────────────── */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container {
+                max-width: 100%;
+                padding: 16px;
+            }
+
+            .grid-2 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .exec-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .section {
+                padding: 24px;
             }
         }
     </style>
@@ -523,14 +861,14 @@
     </header>
 
     <div class="container">
-        <div class="search-box" style="position: relative; margin-bottom: 16px;">
-            <input type="text" id="searchInput" placeholder="Search 146 brands (e.g., Coca-Cola, Unilever, Red Bull)..." autocomplete="off" style="width: 100%; padding-right: 120px; box-sizing: border-box;">
-            <button onclick="searchBrand()" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%);">Search</button>
+        <div class="search-box" style="position: relative; margin-bottom: 16px; flex-wrap: wrap;">
+            <input type="text" id="searchInput" placeholder="Search 160 brands (e.g., Olay, Red Bull...)" autocomplete="off" style="width: 100%; padding-right: 120px; box-sizing: border-box;" inputmode="search">
+            <button onclick="searchBrand()" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-height: 44px;">Search</button>
             <div id="autocompleteDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; max-height: 300px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;"></div>
         </div>
 
         <div style="text-align: center; margin-top: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #0369a1;">
-            💡 <strong>Tip:</strong> Type to search or <a href="#" onclick="showBrowseAll(event)" style="text-decoration: underline; color: #0369a1;">browse all 146 brands</a>
+            💡 <strong>Tip:</strong> Type to search or <a href="#" onclick="showBrowseAll(event)" style="text-decoration: underline; color: #0369a1;">browse all 160 brands</a>
         </div>
 
         <div id="recentSearches" class="recent-searches" style="display: none; background: white; padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
