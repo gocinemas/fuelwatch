@@ -954,10 +954,10 @@
             let productsHtml = `
                 <div style="margin-bottom: 24px; padding: 20px; background: linear-gradient(135deg, #fef08a, #fef3c7); border-radius: 12px;">
                     <div style="font-size: 12px; color: #92400e; font-weight: 700; margin-bottom: 8px;">🏆 GLOBAL BESTSELLER</div>
-                    <div style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 12px;">${bestseller.name || '—'}</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 12px;">${bestseller.product_name || bestseller.name || '—'}</div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
                         <div><span style="color: #64748b;">Category:</span> ${bestseller.category || '—'}</div>
-                        <div><span style="color: #64748b;">Price:</span> <strong>${bestseller.price || '—'}</strong></div>
+                        <div><span style="color: #64748b;">Price:</span> <strong>${bestseller.price_usd || bestseller.price || '—'} / ${bestseller.price_gbp || '—'}</strong></div>
                         <div><span style="color: #64748b;">Monthly Volume:</span> ${bestseller.monthly_volume || bestseller.monthly_sales || '—'}</div>
                     </div>
                 </div>
