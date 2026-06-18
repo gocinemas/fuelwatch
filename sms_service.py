@@ -3395,6 +3395,46 @@ def api_brand_full_intelligence():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/company/full", methods=["GET"])
+def api_company_full_intelligence():
+    """
+    COMPLETE Company Intelligence Report
+
+    Returns company details + all brands owned by company
+
+    Query params:
+    - name: Company name (required)
+    """
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        sb = lib._sb()
+
+        # Find company (case-insensitive)
+        all_companies = sb.table("company_profile").select("*").execute().data
+        company = [c for c in all_companies if c['name'].lower() == name.lower()]
+
+        if not company:
+            return jsonify({"error": f"Company '{name}' not found"}), 404
+
+        company_data = company[0]
+        company_id = company_data['id']
+
+        # Get all brands owned by this company
+        brands = sb.table("brand_profile").select("name, brand_category, founded_year, description").eq("company_id", company_id).order("name").execute().data
+
+        return jsonify({
+            "company": company_data,
+            "brands": brands,
+            "total_brands": len(brands)
+        })
+    except Exception as e:
+        app.logger.error(f"[company/full] Error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/competitor-skus", methods=["GET"])
 def api_brand_competitor_skus():
     """Fetch competitor SKUs for a brand."""
