@@ -141,6 +141,20 @@ BRAND_INTELLIGENCE_DB = {
                 {"focus": "Computational Photography AI", "announced": "2026-04-10"},
             ]
         },
+        "executive_summary": {
+            "status": "Premium Leader 👑",
+            "headline": "Dominant premium smartphone with strong AI positioning",
+            "financial_health": {"signal": "📈 Healthy", "detail": "6% YoY growth, 28% profit margin - premium pricing power"},
+            "market_position": {"signal": "🏆 Dominant", "detail": "#1 premium segment, 23% market share, strong ecosystem"},
+            "opportunity_level": {"signal": "🚀 Very High", "detail": "Health AI, automotive, enterprise B2B"},
+            "key_initiatives": [
+                "Health & Medical AI expansion (ECG, glucose monitoring)",
+                "Budget premium segment ($600-800) untapped",
+                "Enterprise/B2B solutions underexploited"
+            ],
+            "recommendation": "INVEST in health AI and mid-premium - capture adjacent markets",
+            "risk_level": "Low - brand loyalty, ecosystem lock-in, strong financials"
+        },
         "metadata": {
             "last_updated": datetime.now().isoformat(),
             "data_completeness": 92,
@@ -299,6 +313,20 @@ BRAND_INTELLIGENCE_DB = {
                 {"focus": "Consumer Insights & Predictive Analytics", "announced": "2026-04-20"},
             ]
         },
+        "executive_summary": {
+            "status": "Market Incumbent 🥤",
+            "headline": "Established leader facing growth headwinds, pivoting to health trends",
+            "financial_health": {"signal": "📊 Stable", "detail": "4% YoY growth, 27% profit margin - mature market plateau"},
+            "market_position": {"signal": "👑 Dominant", "detail": "#1 global cola, 47% market share but declining in health segment"},
+            "opportunity_level": {"signal": "📈 High", "detail": "Health/functional beverages, plant-based, personalization"},
+            "key_initiatives": [
+                "Functional beverage expansion (probiotics, adaptogens)",
+                "Plant-based alternatives rollout",
+                "AI-powered personalization for premium customers"
+            ],
+            "recommendation": "INVEST in functional/health category - capture millennial/Gen-Z shift",
+            "risk_level": "Medium - sugar regulation risks, health trends vs. core business"
+        },
         "metadata": {
             "last_updated": datetime.now().isoformat(),
             "data_completeness": 91,
@@ -436,6 +464,20 @@ BRAND_INTELLIGENCE_DB = {
                 {"focus": "Predictive Ordering & Inventory", "announced": "2026-05-22"},
                 {"focus": "Customer Experience Enhancement", "announced": "2026-04-18"},
             ]
+        },
+        "executive_summary": {
+            "status": "Strong Brand 🏆",
+            "headline": "Market leader with strong growth and innovation focus",
+            "financial_health": {"signal": "📈 Growing", "detail": "8% YoY growth, 15% profit margin - steady expansion"},
+            "market_position": {"signal": "🏆 Leading", "detail": "#1 in premium coffee, 34% market share"},
+            "opportunity_level": {"signal": "⚡ High", "detail": "Premium home delivery, wellness, AI ordering"},
+            "key_initiatives": [
+                "AI-powered personalization rolling out",
+                "Health-focused beverage expansion",
+                "Sustainable packaging transition"
+            ],
+            "recommendation": "INVEST in AI/wellness adjacencies - strong ROI potential",
+            "risk_level": "Low - diversified revenue, market leadership"
         },
         "metadata": {
             "last_updated": datetime.now().isoformat(),
