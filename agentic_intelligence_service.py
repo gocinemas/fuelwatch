@@ -27,7 +27,11 @@ def generate_strategic_insight(brand_data: dict) -> dict:
     Use Groq to generate AI-driven strategic insight about the brand.
     Analyzes financials, market position, opportunities, AI strategy.
     """
+    print(f"[agentic] generate_strategic_insight called")
+    print(f"[agentic] groq_client available: {groq_client is not None}")
+
     if not groq_client:
+        print(f"[agentic] Groq client not available")
         return {"insight": None, "error": "Groq not available"}
 
     try:
@@ -175,8 +179,11 @@ def enrich_brand_with_agentic_intelligence(brand_data: dict) -> dict:
     Enrich brand data with agentic insights, videos, and podcasts.
     Runs in background, doesn't block if services fail.
     """
+    brand_name = brand_data.get("brand", {}).get("name", "Unknown")
+    print(f"[agentic] enrich_brand_with_agentic_intelligence called for {brand_name}")
+
     result = {
-        "brand_name": brand_data.get("brand", {}).get("name", "Unknown"),
+        "brand_name": brand_name,
         "strategic_insight": None,
         "videos": {},
         "podcasts": {},

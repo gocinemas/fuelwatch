@@ -1157,9 +1157,11 @@
         }
 
         function displayAgenticInsights(agentic) {
+            console.log('[agentic] displayAgenticInsights called:', agentic);
             const section = document.getElementById('agenticInsightsSection');
 
             if (!agentic || agentic.error) {
+                console.log('[agentic] No agentic data or error:', agentic?.error);
                 section.style.display = 'none';
                 return;
             }
