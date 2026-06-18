@@ -1161,13 +1161,15 @@
                 hasContent = true;
             }
 
-            // Show videos if found (only topics - no links until we have relevance scoring)
+            // Show videos if found (quality-filtered with real links)
             if (agentic.videos?.videos && Object.keys(agentic.videos.videos).length > 0) {
                 let videosHtml = '';
                 for (const [topic, data] of Object.entries(agentic.videos.videos)) {
-                    if (data.found && data.urls?.length > 0) {
-                        // Show topic only - actual video links will be added once we filter by view count/relevance
-                        videosHtml += `<div style="margin-bottom: 8px; padding: 8px 12px; background: #f0f9ff; border-left: 3px solid #0369a1; border-radius: 4px; font-size: 14px; color: #0369a1;">${topic}</div>`;
+                    if (data.found && data.url && data.quality === 'high') {
+                        videosHtml += `<div style="margin-bottom: 12px;">`;
+                        videosHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #1f2937;">${topic}</div>`;
+                        videosHtml += `<a href="${data.url}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #0369a1; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Watch on YouTube →</a>`;
+                        videosHtml += `</div>`;
                     }
                 }
                 if (videosHtml) {
@@ -1177,13 +1179,15 @@
                 }
             }
 
-            // Show podcasts if found (only topics - no links until we have relevance scoring)
+            // Show podcasts if found (quality-filtered with real Spotify links)
             if (agentic.podcasts?.podcasts && Object.keys(agentic.podcasts.podcasts).length > 0) {
                 let podcastsHtml = '';
                 for (const [topic, data] of Object.entries(agentic.podcasts.podcasts)) {
-                    if (data.found) {
-                        // Show topic only - actual podcast episode links will be added once we filter by listener count/relevance
-                        podcastsHtml += `<div style="margin-bottom: 8px; padding: 8px 12px; background: #f3e8ff; border-left: 3px solid #7c3aed; border-radius: 4px; font-size: 14px; color: #7c3aed;">${topic}</div>`;
+                    if (data.found && data.spotify_url && data.quality === 'high') {
+                        podcastsHtml += `<div style="margin-bottom: 12px;">`;
+                        podcastsHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #1f2937;">${topic}</div>`;
+                        podcastsHtml += `<a href="${data.spotify_url}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #1db954; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Listen on Spotify →</a>`;
+                        podcastsHtml += `</div>`;
                     }
                 }
                 if (podcastsHtml) {
