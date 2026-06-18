@@ -313,9 +313,14 @@
     </header>
 
     <div class="container">
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Search from 50 brands (e.g., Coca-Cola, Starbucks, Unilever)..." autocomplete="off">
-            <button onclick="searchBrand()">Search</button>
+        <div class="search-box" style="position: relative;">
+            <input type="text" id="searchInput" placeholder="Search 50 companies (e.g., Coca-Cola, Unilever, Red Bull)..." autocomplete="off" style="width: 100%; padding-right: 120px;">
+            <button onclick="searchBrand()" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%);">Search</button>
+            <div id="autocompleteDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; max-height: 300px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;"></div>
+        </div>
+
+        <div style="text-align: center; margin-top: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #0369a1;">
+            💡 <strong>Tip:</strong> Type to search or <a href="#" onclick="showBrowseAll(event)" style="text-decoration: underline; color: #0369a1;">browse all 50 companies</a>
         </div>
 
         <div id="recentSearches" class="recent-searches" style="display: none; background: white; padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -465,6 +470,89 @@
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchBrand();
         });
+
+        // Autocomplete functionality
+        document.getElementById('searchInput').addEventListener('input', async (e) => {
+            const query = e.target.value.trim();
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            if (query.length < 1) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
+                const companies = await response.json();
+
+                if (companies.length === 0) {
+                    dropdown.innerHTML = '<div style="padding: 12px; color: #94a3b8; font-size: 13px;">No companies found</div>';
+                } else {
+                    dropdown.innerHTML = companies.map(c => `
+                        <div onclick="selectCompany('${c}')" style="padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; hover:background: #f8fafc; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                            <div style="font-weight: 500; color: #1e293b;">${c}</div>
+                        </div>
+                    `).join('');
+                }
+
+                dropdown.style.display = 'block';
+            } catch (error) {
+                console.error('Autocomplete error:', error);
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) {
+                document.getElementById('autocompleteDropdown').style.display = 'none';
+            }
+        });
+
+        function selectCompany(name) {
+            document.getElementById('searchInput').value = name;
+            document.getElementById('autocompleteDropdown').style.display = 'none';
+            searchBrand();
+        }
+
+        function showBrowseAll(e) {
+            e.preventDefault();
+            displayBrowseAllModal();
+        }
+
+        function displayBrowseAllModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;';
+            modal.onclick = (e) => e.target === modal && modal.remove();
+
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 12px; padding: 24px; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 25px rgba(0,0,0,0.15);">
+                    <h2 style="margin-top: 0; margin-bottom: 20px; font-size: 20px;">50 Consumer Goods Companies</h2>
+                    <div id="companiesList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
+                    <button onclick="this.closest('div').parentElement.remove()" style="margin-top: 20px; width: 100%; padding: 10px; background: #f1f5f9; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">Close</button>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            loadCompaniesList();
+        }
+
+        async function loadCompaniesList() {
+            try {
+                const response = await fetch('/api/companies/all');
+                const companies = await response.json();
+                const list = document.getElementById('companiesList');
+
+                list.innerHTML = companies.map(c => `
+                    <div onclick="selectCompany('${c}')" style="padding: 12px; background: #f8fafc; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0; transition: all 0.2s; font-size: 13px; font-weight: 500;" onmouseover="this.style.background='#0369a1'; this.style.color='white'; this.style.borderColor='#0369a1'" onmouseout="this.style.background='#f8fafc'; this.style.color='#1e293b'; this.style.borderColor='#e2e8f0'">
+                        ${c}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load companies:', error);
+                document.getElementById('companiesList').innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #94a3b8;">Failed to load companies</div>';
+            }
+        }
 
         async function searchBrand() {
             const name = document.getElementById('searchInput').value.trim();

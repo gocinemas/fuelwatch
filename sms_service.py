@@ -3319,6 +3319,49 @@ def api_brand_add_sku_by_country():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/companies/search", methods=["GET"])
+def api_companies_search():
+    """Search for companies by name. Returns matching company names for autocomplete."""
+    query = request.args.get("q", "").strip().lower()
+
+    if not query or len(query) < 1:
+        return jsonify([]), 200
+
+    try:
+        import library as lib
+        sb = lib._sb()
+
+        # Get all companies and filter by query
+        companies = sb.table("brand_profile").select("name").execute().data
+
+        # Filter companies that match query
+        matching = [c['name'] for c in companies if query in c['name'].lower()]
+
+        # Return up to 10 matches
+        return jsonify(matching[:10]), 200
+
+    except Exception as e:
+        print(f"[companies/search] Error: {e}")
+        return jsonify([]), 200
+
+
+@app.route("/api/companies/all", methods=["GET"])
+def api_companies_all():
+    """Get all 50 consumer goods companies."""
+    try:
+        import library as lib
+        sb = lib._sb()
+
+        # Get all companies, sorted by name
+        companies = sb.table("brand_profile").select("name").order("name").execute().data
+
+        return jsonify([c['name'] for c in companies]), 200
+
+    except Exception as e:
+        print(f"[companies/all] Error: {e}")
+        return jsonify([]), 200
+
+
 @app.route("/api/brand/full", methods=["GET"])
 def api_brand_full_intelligence():
     """
