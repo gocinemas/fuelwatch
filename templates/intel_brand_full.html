@@ -182,6 +182,49 @@
             color: #1e293b;
         }
 
+        .tooltip-trigger {
+            position: relative;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: left;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 400;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: -80px;
+            width: 280px;
+            line-height: 1.5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            transition: opacity 0.3s;
+            text-transform: none;
+            letter-spacing: normal;
+            pointer-events: none;
+        }
+
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 80px;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+
+        .tooltip-trigger:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .list-item {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -659,24 +702,40 @@
             // Financials
             document.getElementById('financialsContent').innerHTML = `
                 <div class="stat-card">
-                    <div class="stat-label">Revenue <span style="cursor: help; color: #0369a1; font-weight: 700; margin-left: 4px;" title="Total annual revenue earned by the company">?</span></div>
+                    <div class="stat-label">
+                        Revenue
+                        <span class="tooltip-trigger" style="cursor: help; color: #0369a1; font-weight: 700; margin-left: 4px; display: inline-block; width: 20px; height: 20px; text-align: center; line-height: 1; border-radius: 50%; border: 2px solid #0369a1; font-size: 12px;">?
+                            <span class="tooltip-text">Total annual revenue earned by the company from all products and services</span>
+                        </span>
+                    </div>
                     <div class="stat-value">${f.revenue || '—'}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 6px;">Annual earnings from all products/services</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Market Cap <span style="cursor: help; color: #0369a1; font-weight: 700; margin-left: 4px;" title="Total market value of the company (stock price × shares outstanding)">?</span></div>
+                    <div class="stat-label">
+                        Market Cap
+                        <span class="tooltip-trigger" style="cursor: help; color: #0369a1; font-weight: 700; margin-left: 4px; display: inline-block; width: 20px; height: 20px; text-align: center; line-height: 1; border-radius: 50%; border: 2px solid #0369a1; font-size: 12px;">?
+                            <span class="tooltip-text">Total market value of the company (Stock Price × Total Shares Outstanding)</span>
+                        </span>
+                    </div>
                     <div class="stat-value">${f.market_cap || '—'}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 6px;">Stock price × total shares</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Profit Margin <span style="cursor: help; color: #0369a1; font-weight: 700; margin-left: 4px;" title="What % of revenue becomes profit after all expenses">?</span></div>
-                    <div class="stat-value">${f.profit_margin || '—'}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 6px;">% of revenue that becomes profit</div>
+                    <div class="stat-label">
+                        Profit Margin
+                        <span class="tooltip-trigger" style="cursor: help; color: #0369a1; font-weight: 700; margin-left: 4px; display: inline-block; width: 20px; height: 20px; text-align: center; line-height: 1; border-radius: 50%; border: 2px solid #0369a1; font-size: 12px;">?
+                            <span class="tooltip-text">Percentage of revenue that becomes profit after all expenses (Net Income ÷ Revenue × 100)</span>
+                        </span>
+                    </div>
+                    <div class="stat-value">${f.profit_margin || '—'}%</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Growth Rate <span style="cursor: help; color: #0369a1; font-weight: 700; margin-left: 4px;" title="Year-over-year percentage increase in revenue">?</span></div>
-                    <div class="stat-value">${f.growth_rate || '—'}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 6px;">YoY % increase in revenue</div>
+                    <div class="stat-label">
+                        Growth Rate
+                        <span class="tooltip-trigger" style="cursor: help; color: #0369a1; font-weight: 700; margin-left: 4px; display: inline-block; width: 20px; height: 20px; text-align: center; line-height: 1; border-radius: 50%; border: 2px solid #0369a1; font-size: 12px;">?
+                            <span class="tooltip-text">Year-over-year percentage increase in revenue (This Year Revenue - Last Year ÷ Last Year × 100)</span>
+                        </span>
+                    </div>
+                    <div class="stat-value">${f.growth_rate || '—'}%</div>
                 </div>
             `;
 
