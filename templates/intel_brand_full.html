@@ -1146,32 +1146,25 @@
         }
 
         function displayAgenticInsights(agentic) {
-            console.log('[agentic] Full data:', JSON.stringify(agentic, null, 2));
             const section = document.getElementById('agenticInsightsSection');
 
             if (!agentic || agentic.error) {
-                console.log('[agentic] No agentic data or error:', agentic?.error);
                 section.style.display = 'none';
                 return;
             }
 
+            let hasContent = false;
+
             // Show strategic insight
-            console.log('[agentic] strategic_insight:', agentic.strategic_insight);
             if (agentic.strategic_insight?.insight) {
-                console.log('[agentic] Setting insight text:', agentic.strategic_insight.insight);
                 document.getElementById('agenticInsight').textContent = agentic.strategic_insight.insight;
-                section.style.display = 'block';
-            } else {
-                console.log('[agentic] No insight found');
+                hasContent = true;
             }
 
             // Show videos if found
-            console.log('[agentic] videos data:', agentic.videos);
             if (agentic.videos?.videos && Object.keys(agentic.videos.videos).length > 0) {
-                console.log('[agentic] Processing videos...');
                 let videosHtml = '';
                 for (const [topic, data] of Object.entries(agentic.videos.videos)) {
-                    console.log(`[agentic] Video topic: ${topic}`, data);
                     if (data.found && data.urls?.length > 0) {
                         videosHtml += `<div style="margin-bottom: 12px;">`;
                         videosHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #0369a1;">${topic}</div>`;
@@ -1182,19 +1175,16 @@
                     }
                 }
                 if (videosHtml) {
-                    console.log('[agentic] Setting videos HTML');
                     document.getElementById('agenticVideos').innerHTML = videosHtml;
                     document.getElementById('agenticVideosSection').style.display = 'block';
+                    hasContent = true;
                 }
             }
 
             // Show podcasts if found
-            console.log('[agentic] podcasts data:', agentic.podcasts);
             if (agentic.podcasts?.podcasts && Object.keys(agentic.podcasts.podcasts).length > 0) {
-                console.log('[agentic] Processing podcasts...');
                 let podcastsHtml = '';
                 for (const [topic, data] of Object.entries(agentic.podcasts.podcasts)) {
-                    console.log(`[agentic] Podcast topic: ${topic}`, data);
                     if (data.found) {
                         podcastsHtml += `<div style="margin-bottom: 12px;">`;
                         podcastsHtml += `<div style="font-weight: 600; margin-bottom: 6px; color: #7c3aed;">${topic}</div>`;
@@ -1204,10 +1194,15 @@
                     }
                 }
                 if (podcastsHtml) {
-                    console.log('[agentic] Setting podcasts HTML');
                     document.getElementById('agenticPodcasts').innerHTML = podcastsHtml;
                     document.getElementById('agenticPodcastsSection').style.display = 'block';
+                    hasContent = true;
                 }
+            }
+
+            // Show section if any content found
+            if (hasContent) {
+                section.style.display = 'block';
             }
         }
 
