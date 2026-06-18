@@ -1083,7 +1083,13 @@
             // Inject Executive Summary as collapsible section after hero
             if (window.execSummaryHtml) {
                 const heroSection = document.querySelector('.hero');
-                if (heroSection && heroSection.nextElementSibling) {
+                if (heroSection) {
+                    // Remove any existing collapsible summary
+                    const oldSummary = heroSection.nextElementSibling;
+                    if (oldSummary && oldSummary.classList.contains('collapsible-section')) {
+                        oldSummary.remove();
+                    }
+
                     const collapsibleHtml = `
                         <div class="collapsible-section" style="margin-top: 24px;">
                             <div class="collapsible-header" onclick="toggleCollapsible(this)">
