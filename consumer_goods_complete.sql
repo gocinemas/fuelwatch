@@ -54,7 +54,7 @@ VALUES
 ('Aldi', 1913, 'Essen', 'Germany', 'Good Different', 'Discount grocer', 'aldi.com', 'Essen, Germany'),
 ('Whole Foods Market', 1980, 'Austin', 'USA', 'Whole Foods', 'Premium organic grocer', 'wholefoodsmarket.com', 'Austin, USA'),
 ('Chipotle', 1993, 'Denver', 'USA', 'Food With Integrity', 'Mexican restaurant chain', 'chipotle.com', 'Denver, USA'),
-('Panera Bread', 1987, 'St. Louis', 'USA', 'You & Panera', 'Bakery-cafe chain', 'panerabread.com', 'St. Louis', 'USA')
+('Panera Bread', 1987, 'St. Louis', 'USA', 'You & Panera', 'Bakery-cafe chain', 'panerabread.com', 'St. Louis, USA')
 ON CONFLICT DO NOTHING;
 
 -- ===== INSERT FINANCIAL DATA FOR 50 COMPANIES =====
