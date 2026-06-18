@@ -856,7 +856,7 @@
     <header>
         <div class="header-content">
             <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 20px;">🎯 Consumer Goods Intelligence</h1>
-            <p style="color: #64748b;">Curated analysis of 146 consumer brands across beverages, snacks, personal care, household, QSR, and packaged food.</p>
+            <p style="color: #64748b;">Curated analysis of 160 consumer brands across beverages, snacks, personal care, household, QSR, and packaged food.</p>
         </div>
     </header>
 
@@ -951,7 +951,7 @@
             </div>
 
             <!-- SECTION 7: REAL-TIME INTELLIGENCE (hidden if no data) -->
-            <div class="section" id="intelligenceSection" style="display: none;">
+            <div class="section" id="intelligenceSection" style="display: none !important;">
                 <div class="section-title">🔍 Real-Time Intelligence</div>
                 <div id="intelligenceContent"></div>
             </div>
@@ -1463,13 +1463,14 @@
             let intHtml = '';
             // News and AI Strategy sections removed - replaced with Groq-generated insights in agentic layer
 
-            // Hide the intelligence section if no data
+            // Hide the intelligence section completely if no data
             const intelligenceSection = document.getElementById('intelligenceSection');
             if (intHtml && intHtml.trim().length > 0) {
                 document.getElementById('intelligenceContent').innerHTML = intHtml;
                 intelligenceSection.style.display = 'block';
             } else {
-                intelligenceSection.style.display = 'none';
+                document.getElementById('intelligenceContent').innerHTML = '';
+                intelligenceSection.style.display = 'none !important';
             }
 
             // Completeness
