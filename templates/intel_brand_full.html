@@ -1427,21 +1427,27 @@
             }
             document.getElementById('productsContent').innerHTML = productsHtml;
 
-            // Competitors
-            let competitorsHtml = `<div class="competitive-grid">`;
-            (c.direct_competitors || []).forEach(comp => {
-                competitorsHtml += `
-                    <div class="competitor-card">
-                        <div class="competitor-name">${comp.name}</div>
-                        <div style="font-size: 12px; color: #64748b; margin-top: 8px;">
-                            ${(c.competing_skus?.[comp.name] || []).map(sku => `<div>• ${sku.sku} (${sku.price})</div>`).join('')}
-                        </div>
-                    </div>
-                `;
-            });
-            competitorsHtml += `</div>`;
+            // Competitors - check if has real data FIRST
+            let competitorsHtml = '';
+            const realCompetitors = data.competitors || [];
 
-            if ((c.direct_competitors || []).length === 0) {
+            if (realCompetitors.length > 0) {
+                competitorsHtml = `<div class="competitive-grid">`;
+                realCompetitors.forEach(comp => {
+                    competitorsHtml += `
+                        <div class="competitor-card">
+                            <div class="competitor-name">${comp.name}</div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 8px;">
+                                ${comp.category || '—'}
+                            </div>
+                        </div>
+                    `;
+                });
+                competitorsHtml += `</div>`;
+            }
+
+            // Show Groq analysis if no real data
+            if (realCompetitors.length === 0) {
                 const aiCompetitiveAnalysis = data?.ai_competitive_landscape;
                 if (aiCompetitiveAnalysis?.landscape) {
                     competitorsHtml = `
@@ -1465,7 +1471,7 @@
 
             // White Space / Market Opportunities - check if has real data FIRST
             let whiteSpaceHtml = '';
-            const hasRealMarketData = (w.market_gaps && w.market_gaps.length > 0) || (w.growth_adjacencies && w.growth_adjacencies.length > 0);
+            const hasRealMarketData = (w.market_gaps?.length > 0) || (w.growth_adjacencies?.length > 0);
 
             if (hasRealMarketData) {
                 whiteSpaceHtml = `
