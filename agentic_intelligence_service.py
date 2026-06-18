@@ -11,15 +11,20 @@ import requests
 from datetime import datetime
 
 # Groq setup (reuse from school_service)
+groq_client = None
 try:
     import groq as groq_module
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+    print(f"[agentic] GROQ_API_KEY set: {bool(GROQ_API_KEY)}")
     if GROQ_API_KEY:
         groq_client = groq_module.Groq(api_key=GROQ_API_KEY)
+        print(f"[agentic] Groq client initialized successfully")
     else:
-        groq_client = None
-except:
-    groq_client = None
+        print(f"[agentic] GROQ_API_KEY not found in environment")
+except ImportError as e:
+    print(f"[agentic] Failed to import groq module: {e}")
+except Exception as e:
+    print(f"[agentic] Failed to initialize Groq: {e}")
 
 
 def generate_template_insight(brand_data: dict) -> dict:
