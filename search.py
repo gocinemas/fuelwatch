@@ -1503,8 +1503,15 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             tp_f   = pool.submit(_fetch_trustpilot, brand, "")  # domain patched in after wiki
 
             wiki = {}
-            try: wiki = wiki_f.result(timeout=10) or {}
-            except Exception: pass
+            try:
+                wiki = wiki_f.result(timeout=10) or {}
+                if not wiki:
+                    print(f"[brand_wiki] EMPTY result for '{brand}'")
+                else:
+                    print(f"[brand_wiki] Got data for '{brand}': desc='{wiki.get('description', '')[:50]}'")
+            except Exception as e:
+                print(f"[brand_wiki] EXCEPTION fetching '{brand}': {e}")
+                pass
 
             # Discard Wikipedia result if it describes a person, animal, or non-brand entity
             _wd = wiki.get("description", "").lower()
@@ -1884,6 +1891,7 @@ def _fetch_wikipedia(company: str) -> dict:
         text = ((res.get("description") or "") + " " + (res.get("extract") or "")[:300]).lower()
         # Strong rejection if it's a dictionary/definition-like article
         if any(sig in text for sig in _NON_COMPANY):
+            print(f"[wiki_filter] Rejected as non-company: {text[:100]}")
             return True
         # Also reject if no company-like indicators (no infobox data)
         if not res.get("infobox") and not res.get("revenue") and not res.get("employees"):
