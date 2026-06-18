@@ -3151,14 +3151,8 @@ def api_brand():
     # Fetch brand analysis (existing)
     data = fetch_brand_data(name, force_refresh=refresh)
 
-    # Fetch company intelligence (new Layer 1) - with country support
-    try:
-        from company_intelligence import fetch_company_intelligence
-        company_data = fetch_company_intelligence(name, country=country)
-        if company_data:
-            data["company_intelligence"] = company_data
-    except:
-        pass
+    # NOTE: Company intelligence (Crunchbase, EDGAR, OpenCorporates) moved to /api/company/intelligence endpoint only
+    # Brand module should not make external API calls - use Groq + Wikipedia instead
 
     # Generate Groq analysis for missing sections
     try:
