@@ -549,10 +549,13 @@
         <div id="brandView" class="brand-view">
             <!-- HERO SECTION -->
             <div class="hero">
-                <div class="hero-content">
-                    <div class="brand-name" id="heroName">—</div>
-                    <div class="brand-tagline" id="heroTagline">—</div>
-                    <div class="brand-meta" id="heroMeta">—</div>
+                <div class="hero-content" style="display: flex; gap: 20px; align-items: flex-start;">
+                    <img id="heroBrandLogo" src="" style="height: 50px; width: auto; flex-shrink: 0; display: none;">
+                    <div>
+                        <div class="brand-name" id="heroName">—</div>
+                        <div class="brand-tagline" id="heroTagline">—</div>
+                        <div class="brand-meta" id="heroMeta">—</div>
+                    </div>
                 </div>
             </div>
 
@@ -807,6 +810,14 @@
             document.getElementById('heroTagline').textContent = b.tagline || '—';
             document.getElementById('heroMeta').textContent = b.origin?.city && b.founded ?
                 `Founded ${b.founded} in ${b.origin.city}, ${b.origin.country}` : '—';
+
+            // Logo (safe display)
+            if (b.logo) {
+                const logoEl = document.getElementById('heroBrandLogo');
+                logoEl.src = b.logo;
+                logoEl.style.display = 'block';
+                logoEl.onerror = () => { logoEl.style.display = 'none'; };
+            }
 
             // Executive Summary
             if (exec.status) {

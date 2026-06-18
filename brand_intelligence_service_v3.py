@@ -347,7 +347,7 @@ BRAND_INTELLIGENCE_DB = {
             "origin": {"city": "Seattle", "country": "USA"},
             "website": "starbucks.com",
             "tagline": "Coffee, community, and connection",
-            "logo": "https://upload.wikimedia.org/wikipedia/en/d/d3/Starbucks_logo.svg",
+            "logo": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Starbucks_Corporation_Logo_2011.svg",
         },
         "financials": {
             "year": 2026,
