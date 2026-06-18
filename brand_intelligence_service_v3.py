@@ -506,11 +506,27 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
 
     # Query Supabase for the brand (case-insensitive)
     try:
-        import lib
+        import library as lib
         sb = lib._sb()
 
-        # Get financials (case-insensitive search)
-        financials_resp = sb.table("brand_financials").select("*").ilike("brand_name", f"%{brand_name}%").execute()
+        # Get all brands and find case-insensitive match
+        all_brands = sb.table("brand_financials").select("brand_name").execute().data
+        canonical_name = None
+
+        for brand_row in all_brands:
+            if brand_row['brand_name'].lower() == brand_name.lower():
+                canonical_name = brand_row['brand_name']
+                break
+
+        if not canonical_name:
+            return {
+                "error": f"Brand '{brand_name}' not found",
+                "name": brand_name,
+                "metadata": {"data_completeness": 0, "quality_level": "NOT_AVAILABLE"}
+            }
+
+        # Get financials for canonical brand name
+        financials_resp = sb.table("brand_financials").select("*").eq("brand_name", canonical_name).execute()
         financials = financials_resp.data
 
         if not financials:
@@ -520,9 +536,8 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
                 "metadata": {"data_completeness": 0, "quality_level": "NOT_AVAILABLE"}
             }
 
-        # Use first match (most recent)
+        # Get financials data
         fin = financials[0]
-        canonical_name = fin['brand_name']
 
         # Get all related data using canonical name
         skus_resp = sb.table("brand_skus_complete").select("*").eq("brand_name", canonical_name).execute()
