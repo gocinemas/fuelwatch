@@ -800,7 +800,12 @@
                         ${exec.risk_level ? `<div class="exec-risk">⚠️ Risk Level: ${exec.risk_level}</div>` : ''}
                     </div>
                 `;
-                // Insert after hero section
+                // Remove old summary if exists
+                const oldSummary = document.querySelector('header').nextElementSibling;
+                if (oldSummary && oldSummary.querySelector('.executive-summary')) {
+                    oldSummary.remove();
+                }
+                // Insert after header
                 document.querySelector('header').insertAdjacentHTML('afterend', `<div class="container" style="margin-top: 0; padding-top: 0;">${execHtml}</div>`);
             }
 
