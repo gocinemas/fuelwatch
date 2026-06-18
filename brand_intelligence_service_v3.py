@@ -30,13 +30,19 @@ BRAND_INTELLIGENCE_DB = {
             "source": "Apple Inc Financial Reports",
         },
         "products": {
-            "by_country": {"USA": "iPhone 15 Pro", "UK": "iPhone 15", "India": "iPhone 14"},
-            "global_bestseller": {"name": "iPhone 15 Pro", "market_position": 1, "sales": "$42.3B annually"},
-            "all_products": [
-                {"name": "iPhone 15 Pro Max", "price": "$1199", "market_position": 1},
-                {"name": "iPhone 15 Pro", "price": "$999", "market_position": 2},
-                {"name": "iPhone 15", "price": "$799", "market_position": 3},
-            ]
+            "by_country": {
+                "USA": [
+                    {"position": 1, "name": "iPhone 15 Pro Max", "category": "Premium", "price": "$1199", "sales_monthly": "$3.2B"},
+                    {"position": 2, "name": "iPhone 15 Pro", "category": "Premium", "price": "$999", "sales_monthly": "$2.8B"},
+                ],
+                "UK": [
+                    {"position": 1, "name": "iPhone 15", "category": "Standard", "price": "£799", "sales_monthly": "£180M"},
+                ],
+                "India": [
+                    {"position": 1, "name": "iPhone 15", "category": "Standard", "price": "₹79,900", "sales_monthly": "₹45Cr"},
+                ],
+            },
+            "global_bestseller": {"name": "iPhone 15 Pro", "category": "Premium Smartphone", "price": "$999", "monthly_sales": "$2.8B"},
         },
         "competitors": {
             "direct_competitors": [
@@ -143,13 +149,19 @@ BRAND_INTELLIGENCE_DB = {
             "source": "The Coca-Cola Company Financial Reports",
         },
         "products": {
-            "by_country": {"USA": "Coca-Cola Classic", "Europe": "Coca-Cola Zero Sugar", "Asia": "Coca-Cola Plus"},
-            "global_bestseller": {"name": "Coca-Cola Classic", "market_position": 1, "sales": "$22.1B annually"},
-            "all_products": [
-                {"name": "Coca-Cola Classic", "price": "$1.50", "market_position": 1},
-                {"name": "Diet Coke", "price": "$1.50", "market_position": 2},
-                {"name": "Coca-Cola Zero Sugar", "price": "$1.75", "market_position": 3},
-            ]
+            "by_country": {
+                "USA": [
+                    {"position": 1, "name": "Coca-Cola Classic", "category": "Cola", "price": "$1.50", "sales_monthly": "$180M"},
+                    {"position": 2, "name": "Diet Coke", "category": "Diet Cola", "price": "$1.50", "sales_monthly": "$120M"},
+                ],
+                "Europe": [
+                    {"position": 1, "name": "Coca-Cola Zero Sugar", "category": "Zero Sugar", "price": "€1.75", "sales_monthly": "€95M"},
+                ],
+                "Asia": [
+                    {"position": 1, "name": "Coca-Cola Plus", "category": "Functional", "price": "¥2.5", "sales_monthly": "¥150M"},
+                ],
+            },
+            "global_bestseller": {"name": "Coca-Cola Classic", "category": "Cola Soft Drink", "price": "$1.50", "monthly_sales": "$22.1B"},
         },
         "competitors": {
             "direct_competitors": [
@@ -253,13 +265,19 @@ BRAND_INTELLIGENCE_DB = {
             "source": "Starbucks Corporation Financial Reports",
         },
         "products": {
-            "by_country": {"USA": "Caffe Latte", "Europe": "Americano", "Asia": "Green Tea Latte"},
-            "global_bestseller": {"name": "Caffe Latte", "market_position": 1, "sales": "$8.2B annually"},
-            "all_products": [
-                {"name": "Caffe Latte", "price": "$5.45", "market_position": 1},
-                {"name": "Caramel Macchiato", "price": "$5.95", "market_position": 2},
-                {"name": "Pike Place Roast", "price": "$2.45", "market_position": 3},
-            ]
+            "by_country": {
+                "USA": [
+                    {"position": 1, "name": "Caffe Latte", "category": "Espresso", "price": "$5.45", "sales_monthly": "$320M"},
+                    {"position": 2, "name": "Caramel Macchiato", "category": "Espresso", "price": "$5.95", "sales_monthly": "$240M"},
+                ],
+                "Europe": [
+                    {"position": 1, "name": "Americano", "category": "Espresso", "price": "€4.50", "sales_monthly": "€85M"},
+                ],
+                "Asia": [
+                    {"position": 1, "name": "Green Tea Latte", "category": "Tea", "price": "¥650", "sales_monthly": "¥120M"},
+                ],
+            },
+            "global_bestseller": {"name": "Caffe Latte", "category": "Espresso-based Coffee", "price": "$5.45", "monthly_sales": "$8.2B"},
         },
         "competitors": {
             "direct_competitors": [
