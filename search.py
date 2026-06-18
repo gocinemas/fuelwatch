@@ -1142,6 +1142,7 @@ def _detect_brand_category(description: str, industry: str = "") -> str:
         "energy": ["oil", "gas", "petroleum", "energy", "power", "fuel"],
         "finance": ["bank", "financial", "investment", "insurance", "credit"],
         "healthcare": ["pharmaceutical", "medicine", "drug", "health", "medical", "hospital"],
+        "personal_care": ["skin care", "skincare", "cosmetics", "beauty", "personal care", "makeup", "fragrance", "deodorant", "haircare"],
     }
 
     for category, keywords in categories.items():
@@ -1178,6 +1179,11 @@ def _get_category_competitors(category: str, brand_name: str) -> list:
         "energy": {
             "Shell": ["ExxonMobil", "Chevron", "TotalEnergies", "BP", "Equinor"],
             "default": ["Shell", "ExxonMobil", "Chevron", "BP", "TotalEnergies"]
+        },
+        "personal_care": {
+            "Olay": ["Neutrogena", "Dove", "Cetaphil", "CeraVe", "Estée Lauder"],
+            "Dove": ["Olay", "Neutrogena", "Cetaphil", "CeraVe", "Palmolive"],
+            "default": ["Olay", "Dove", "Neutrogena", "Cetaphil", "CeraVe"]
         },
     }
 
