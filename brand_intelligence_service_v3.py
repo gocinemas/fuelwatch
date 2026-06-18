@@ -556,6 +556,13 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
             print(f"Warning: Could not fetch brand_profile for {canonical_name}: {e}")
             profile_data = {}
 
+        # Get market opportunities
+        try:
+            opp_resp = sb.table("brand_market_opportunities").select("*").eq("brand_name", canonical_name).execute()
+            opportunities = opp_resp.data if opp_resp.data else []
+        except Exception as e:
+            opportunities = []
+
         # Build response
         products_by_country = {}
         for sku in skus_resp.data:
@@ -636,6 +643,32 @@ def get_brand_intelligence_smart(brand_name: str) -> dict:
                     }
                     for s in social_resp.data
                 }
+            },
+            "opportunities": {
+                "market_gaps": [
+                    {
+                        "gap_name": o.get('gap_name', ''),
+                        "description": o.get('gap_description', ''),
+                        "market_size": o.get('market_size', ''),
+                        "score": o.get('opportunity_score', 0),
+                        "why": o.get('why_opportunity', ''),
+                        "recommendation": o.get('brand_recommendation', ''),
+                        "source": o.get('source_reference', '')
+                    }
+                    for o in opportunities if o.get('gap_type') == 'market_gap'
+                ],
+                "growth_adjacencies": [
+                    {
+                        "adjacency": o.get('gap_name', ''),
+                        "description": o.get('gap_description', ''),
+                        "market_size": o.get('market_size', ''),
+                        "score": o.get('opportunity_score', 0),
+                        "why": o.get('why_opportunity', ''),
+                        "recommendation": o.get('brand_recommendation', ''),
+                        "source": o.get('source_reference', '')
+                    }
+                    for o in opportunities if o.get('gap_type') == 'growth_adjacency'
+                ]
             },
             "metadata": {
                 "data_completeness": completeness,
