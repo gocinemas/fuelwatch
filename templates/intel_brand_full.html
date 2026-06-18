@@ -950,8 +950,8 @@
                 <div id="presenceContent"></div>
             </div>
 
-            <!-- SECTION 7: REAL-TIME INTELLIGENCE -->
-            <div class="section">
+            <!-- SECTION 7: REAL-TIME INTELLIGENCE (hidden if no data) -->
+            <div class="section" id="intelligenceSection" style="display: none;">
                 <div class="section-title">🔍 Real-Time Intelligence</div>
                 <div id="intelligenceContent"></div>
             </div>
@@ -1463,7 +1463,14 @@
             let intHtml = '';
             // News and AI Strategy sections removed - replaced with Groq-generated insights in agentic layer
 
-            document.getElementById('intelligenceContent').innerHTML = intHtml || '<div class="empty">No intelligence data</div>';
+            // Hide the intelligence section if no data
+            const intelligenceSection = document.getElementById('intelligenceSection');
+            if (intHtml && intHtml.trim().length > 0) {
+                document.getElementById('intelligenceContent').innerHTML = intHtml;
+                intelligenceSection.style.display = 'block';
+            } else {
+                intelligenceSection.style.display = 'none';
+            }
 
             // Completeness
             const comp = m.data_completeness || 0;
