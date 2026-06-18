@@ -1162,7 +1162,7 @@
             addToRecentSearches(name);
 
             try {
-                const response = await fetch(`/api/brand?name=${encodeURIComponent(name)}`);
+                const response = await fetch(`/api/brand/full?name=${encodeURIComponent(name)}`);
                 const data = await response.json();
 
                 if (data.error) {
