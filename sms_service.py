@@ -3365,16 +3365,13 @@ def api_companies_all():
 @app.route("/api/brand/full", methods=["GET"])
 def api_brand_full_intelligence():
     """
-    COMPLETE Brand Intelligence Report
+    COMPLETE Brand Intelligence Report (Smart Retrieval)
 
-    Returns comprehensive brand analysis including:
-    - Brand fundamentals (history, origin, tagline)
-    - Financials (revenue, market cap, growth)
-    - Product ecosystem (bestsellers, SKUs by country)
-    - Competitive landscape (competitors ranked, SKU comparison)
-    - White space (market gaps, growth adjacencies)
-    - Brand presence (social media investment, campaigns)
-    - Real-time intelligence (news, podcasts, AI strategy)
+    Strategy:
+    - Returns existing data immediately (no blocking)
+    - If new brand: fetches and populates
+    - If < 75% complete: triggers background enrichment
+    - Next request gets better data
 
     Query params:
     - name: Brand name (required)
@@ -3384,9 +3381,9 @@ def api_brand_full_intelligence():
         return jsonify({"error": "Brand name required"}), 400
 
     try:
-        from brand_intelligence_engine import get_brand_full_intelligence
+        from brand_intelligence_service import get_brand_intelligence_smart
 
-        data = get_brand_full_intelligence(name)
+        data = get_brand_intelligence_smart(name)
 
         if data.get("error"):
             return jsonify(data), 404
