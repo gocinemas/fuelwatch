@@ -12,22 +12,27 @@ import library as lib
 from datetime import datetime
 from threading import Thread
 
-# Brand aliases: map user inputs to canonical brand names
+# Brand aliases: map user inputs to canonical brand names (not company names)
 BRAND_ALIASES = {
-    "Coca Cola": ["Coke", "Coca-Cola", "coca cola", "diet coke", "sprite", "fanta"],
-    "Hershey": ["Hersheys", "hershey bars", "hershey"],
+    "Coca Cola": ["coke", "coca-cola", "diet coke"],
+    "Sprite": ["sprite"],
+    "Fanta": ["fanta"],
+    "Hershey": ["hersheys", "hershey bars"],
     "Starbucks": ["starbucks coffee", "sbux"],
-    "PepsiCo": ["Pepsi", "pepsi cola", "tropicana", "gatorade"],
-    "Nike": ["nike", "air jordan", "jordan"],
-    "Adidas": ["adidas", "three stripes"],
-    "Apple": ["apple", "iphone", "macbook", "ipad"],
-    "Samsung": ["samsung", "galaxy"],
-    "Tesla": ["tesla", "model 3", "model y"],
-    "Red Bull": ["red bull", "redbull", "energy drink"],
-    "Monster Beverage": ["monster", "monster energy"],
-    "Unilever": ["dove", "axe", "lipton"],
-    "Procter & Gamble": ["tide", "gillette", "pampers", "pg"],
-    "Nestlé": ["nestle", "nescafe", "kitkat", "purina"],
+    "Pepsi": ["pepsi cola"],
+    "Tropicana": ["tropicana orange"],
+    "Gatorade": ["gatorade"],
+    "Nike": ["nike air", "air jordan"],
+    "Adidas": ["three stripes"],
+    "iPhone": ["iphone"],
+    "iPad": ["ipad"],
+    "MacBook": ["macbook"],
+    "AirPods": ["airpods"],
+    "Galaxy": ["samsung galaxy"],
+    "Tesla Model S": ["model s", "model 3"],
+    "Powerwall": ["powerwall"],
+    "Red Bull": ["red bull", "redbull"],
+    "Monster Energy": ["monster energy"],
 }
 
 def resolve_brand_alias(user_input: str) -> str:
