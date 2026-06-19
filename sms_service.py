@@ -1322,6 +1322,44 @@ def brand_full_intelligence():
     return resp
 
 
+@app.route("/api/brands/search")
+def brands_search():
+    """Search for brands by name - returns matching brands for autocomplete"""
+    query = request.args.get("q", "").strip().lower()
+
+    if not query or len(query) < 1:
+        return jsonify([])
+
+    try:
+        sb = lib._sb()
+        # Get all unique brands
+        result = sb.table("brand_phase1_intelligence").select("brand_name, category").execute()
+
+        if not result.data:
+            return jsonify([])
+
+        # Get unique brands and filter by query
+        brands_dict = {}
+        for row in result.data:
+            brand_name = row.get("brand_name")
+            category = row.get("category")
+            if brand_name.lower().startswith(query) or query in brand_name.lower():
+                if brand_name not in brands_dict:
+                    brands_dict[brand_name] = category
+
+        # Return sorted list
+        suggestions = [
+            {"name": name, "category": cat}
+            for name, cat in sorted(brands_dict.items())
+        ]
+
+        return jsonify(suggestions[:10])  # Max 10 suggestions
+
+    except Exception as e:
+        app.logger.error(f"[brands_search] Error: {e}")
+        return jsonify([])
+
+
 @app.route("/api/brand/debug")
 def brand_debug():
     """Debug endpoint to check brand lookup"""
