@@ -599,9 +599,9 @@
 
             {% if market_score.market_opportunity %}
             <div style="margin-top: 16px; padding: 12px; background: white; border-radius: 8px; font-size: 13px; color: #475569;">
-                <strong>💰 Revenue Potential:</strong> At current market size (${{'%,.0f' | format(market_score.market_opportunity.usd_millions)}}M),
-                a 1% market share = ${{'%,.0f' | format(market_score.market_opportunity.at_1_pct_share)}}M;
-                realistic target share = ${{'%,.0f' | format(market_score.market_opportunity.at_target_share)}}M
+                <strong>💰 Revenue Potential:</strong> At current market size (${{ "%.0f" | format(market_score.market_opportunity.usd_millions) }}M),
+                a 1% market share = ${{ "%.0f" | format(market_score.market_opportunity.at_1_pct_share) }}M;
+                realistic target share = ${{ "%.0f" | format(market_score.market_opportunity.at_target_share) }}M
             </div>
             {% endif %}
         </div>
