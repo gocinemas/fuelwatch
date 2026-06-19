@@ -12624,25 +12624,21 @@ def api_home_brief():
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
             if _ll:
                 _lat, _lon = _ll
-                # Fetch food, pubs, parks in parallel
+                # Fetch food, pubs, parks using local function
                 _snippet_places = {"food": [], "pubs": [], "parks": []}
-                import concurrent.futures as _cf2
-                with _cf2.ThreadPoolExecutor(max_workers=3) as _pool2:
+                try:
+                    # Use local _places_nearby function (no external API call)
                     for cat in ["food", "pubs", "parks"]:
-                        try:
-                            _cat_name = "beer" if cat == "pubs" else cat
-                            _url = f"https://api.humanagency.co/places/nearby?lat={_lat}&lon={_lon}&cat={_cat_name}&limit=5"
-                            _r = requests.get(_url, timeout=3)
-                            app.logger.info(f"[weekend-snippet] {cat}: status={_r.status_code}")
-                            if _r.status_code == 200:
-                                _places = _r.json().get("places", [])
-                                app.logger.info(f"[weekend-snippet] {cat}: got {len(_places)} places, first: {_places[0] if _places else 'none'}")
-                                # Filter for 4.0+ rating, take top 2
-                                _filtered = [p for p in _places if p.get("rating", 0) >= 4.0][:2]
-                                _snippet_places[cat] = [{"name": p.get("name", ""), "dist": round(p.get("distance_mi", 0), 1), "rating": p.get("rating", 0)} for p in _filtered]
-                                app.logger.info(f"[weekend-snippet] {cat}: filtered to {len(_snippet_places[cat])}")
-                        except Exception as _e:
-                            app.logger.error(f"[weekend-snippet] {cat} error: {_e}")
+                        _type_map = {"food": "restaurant", "pubs": "bar", "parks": "park"}
+                        _ptype = _type_map.get(cat, cat)
+                        _places = _places_nearby(_lat, _lon, _ptype, radius_m=5000, max_results=5) or []
+                        app.logger.info(f"[weekend-snippet] {cat}: got {len(_places)} places")
+                        # Filter for 4.0+ rating, take top 2
+                        _filtered = [p for p in _places if p.get("rating", 0) >= 4.0][:2]
+                        _snippet_places[cat] = [{"name": p.get("name", ""), "dist": round(p.get("distance_km", 0), 1), "rating": p.get("rating", 0)} for p in _filtered]
+                        app.logger.info(f"[weekend-snippet] {cat}: filtered to {len(_snippet_places[cat])}")
+                except Exception as _e:
+                    app.logger.error(f"[weekend-snippet] fetch error: {_e}")
                 if any(_snippet_places.values()):
                     _weekend_snippet = {
                         "food": _snippet_places.get("food", []),
