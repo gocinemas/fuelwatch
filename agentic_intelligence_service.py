@@ -186,8 +186,10 @@ def generate_strategic_insight(brand_data: dict) -> dict:
 
 def generate_health_score(brand_data: dict) -> dict:
     """
-    Generate brand health score (0-100) using Groq analysis with caching.
+    Generate brand health score (0-100) using AI Router (Groq→Anthropic fallback).
     """
+    from ai_router import router, TaskType
+
     brand_name = brand_data.get("brand", {}).get("name", "Unknown")
 
     # Check cache first
@@ -226,15 +228,13 @@ def generate_health_score(brand_data: dict) -> dict:
         Respond ONLY with a number 0-100, no explanation.
         """
 
-        response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=10,
-            timeout=3
-        )
+        # Use AI Router for automatic Groq→Anthropic fallback
+        result = router.route(TaskType.SYNTHESIS, prompt, max_tokens=10)
+        if result.get("error"):
+            print(f"[agentic] Router error: {result['error']}")
+            return {"score": 75, "source": "default"}
 
-        score_text = response.choices[0].message.content.strip()
+        score_text = result.get("response", "").strip()
         print(f"[agentic] Groq health score response: '{score_text}'")
 
         # Extract first number from response
@@ -264,8 +264,10 @@ def generate_health_score(brand_data: dict) -> dict:
 
 def generate_risk_flags(brand_data: dict) -> dict:
     """
-    Identify top 3 risk flags for a brand using Groq analysis with caching.
+    Identify top 3 risk flags using AI Router (Groq→Anthropic fallback).
     """
+    from ai_router import router, TaskType
+
     brand_name = brand_data.get("brand", {}).get("name", "Unknown")
 
     # Check cache first
@@ -314,15 +316,13 @@ def generate_risk_flags(brand_data: dict) -> dict:
         Examples: "Slow market growth | Margin compression | Supply chain complexity" OR "Scaling execution risk | DTC channel saturation | Premium positioning challenge"
         """
 
-        response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=100,
-            timeout=3
-        )
+        # Use AI Router for automatic Groq→Anthropic fallback
+        result = router.route(TaskType.NLP, prompt, max_tokens=100)
+        if result.get("error"):
+            print(f"[agentic] Router error: {result['error']}")
+            return {"risks": [], "source": "default"}
 
-        risks_text = response.choices[0].message.content.strip()
+        risks_text = result.get("response", "").strip()
         risks = [r.strip() for r in risks_text.split("|")][:3]
 
         result = {
