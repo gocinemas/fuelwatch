@@ -1,33 +1,19 @@
 """
-Smart AI Router - Hybrid Together AI + Groq + Anthropic
+Smart AI Router - Groq Primary (Free Tier)
 
-Routes tasks to the optimal AI provider based on:
-- Task type (NLP vs synthesis vs creative)
-- Provider rate limits & availability
-- Cost optimization (Together AI cheapest → Groq → Anthropic)
-- Response time requirements
+Routes tasks intelligently:
+- Groq free tier: 500K tokens/day, 12K TPM for 70B model
+- Caching: 7-day TTL prevents regenerating analyses
+- Strategy: Use cache heavily, reserve Groq for new brands only
 
-Together AI: Cheapest ($0.50/1M tokens), good for synthesis
-Groq: Free tier but quota limits, good for real-time
-Anthropic: Best quality, use for complex analysis only
+Cost: Free (as long as you stay under daily quota)
 """
 
 import os
 from enum import Enum
 from datetime import datetime
 
-# Together AI setup (PRIMARY - cheapest)
-TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
-together_client = None
-try:
-    import together
-    if TOGETHER_API_KEY:
-        together_client = together.Together(api_key=TOGETHER_API_KEY)
-        print("[router] Together AI client initialized")
-except:
-    print("[router] Together AI initialization failed")
-
-# Groq setup (SECONDARY - free tier)
+# Groq setup (PRIMARY - free tier)
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 groq_client = None
 try:
@@ -64,7 +50,6 @@ class AIRouter:
     """Route AI tasks to optimal provider"""
 
     def __init__(self):
-        self.together_rate_limited = False
         self.groq_rate_limited = False
         self.anthropic_rate_limited = False
         self.usage_log = []
@@ -86,20 +71,20 @@ class AIRouter:
         import time
         start_time = time.time()
 
-        # Routing logic - try Together AI first (cheapest), fallback to Groq, then Anthropic
+        # Routing logic - Groq primary (free tier), Anthropic fallback only
         if task_type == TaskType.SYNTHESIS:
-            result = self._use_together(prompt, max_tokens) or self._use_groq(prompt, max_tokens)
+            result = self._use_groq(prompt, max_tokens)
         elif task_type == TaskType.NLP:
-            result = self._use_together(prompt, max_tokens) or self._use_anthropic(prompt, max_tokens)
+            result = self._use_groq(prompt, max_tokens)
         elif task_type == TaskType.ANALYSIS:
-            result = self._use_anthropic(prompt, max_tokens) or self._use_together(prompt, max_tokens)
+            result = self._use_groq(prompt, max_tokens)
         elif task_type == TaskType.EXTRACTION:
-            result = self._use_anthropic(prompt, max_tokens) or self._use_together(prompt, max_tokens)
+            result = self._use_groq(prompt, max_tokens)
         elif task_type == TaskType.FAST:
-            result = self._use_together(prompt, max_tokens) or self._use_groq(prompt, max_tokens)
+            result = self._use_groq(prompt, max_tokens)
         else:
-            # Fallback: try all in order
-            result = self._use_together(prompt, max_tokens) or self._use_groq(prompt, max_tokens) or self._use_anthropic(prompt, max_tokens)
+            # Fallback
+            result = self._use_groq(prompt, max_tokens)
 
         latency = (time.time() - start_time) * 1000
 
@@ -110,41 +95,6 @@ class AIRouter:
             return result
 
         return {"error": "All providers unavailable", "provider": "none"}
-
-    def _use_together(self, prompt: str, max_tokens: int) -> dict:
-        """Try Together AI first (cheapest)"""
-        if not together_client or self.together_rate_limited:
-            return None
-
-        try:
-            response = together_client.chat.completions.create(
-                model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_tokens,
-                temperature=0.3,
-                timeout=10
-            )
-
-            text = response.choices[0].message.content.strip()
-            tokens = response.usage.total_tokens if hasattr(response, 'usage') else len(prompt.split()) + max_tokens
-            # Together AI: ~$0.50/1M tokens for 70B model
-            cost = (tokens / 1000000) * 0.0005
-
-            return {
-                "response": text,
-                "provider": "together",
-                "tokens_used": tokens,
-                "cost": cost
-            }
-
-        except Exception as e:
-            error_msg = str(e)
-            if "rate_limit" in error_msg.lower() or "quota" in error_msg.lower():
-                self.together_rate_limited = True
-                print(f"[router] Together AI rate limited: {e}")
-            else:
-                print(f"[router] Together AI error: {e}")
-            return None
 
     def _use_groq(self, prompt: str, max_tokens: int) -> dict:
         """Try Groq second (free tier, quota limits)"""
@@ -213,7 +163,6 @@ class AIRouter:
 
     def reset_rate_limits(self):
         """Reset rate limit flags (after rate limit window expires)"""
-        self.together_rate_limited = False
         self.groq_rate_limited = False
         self.anthropic_rate_limited = False
         print("[router] Rate limit flags reset")
@@ -224,13 +173,11 @@ class AIRouter:
             return {"total_calls": 0, "total_cost": 0}
 
         total_cost = sum(log.get("cost", 0) for log in self.usage_log)
-        together_calls = len([l for l in self.usage_log if l.get("provider") == "together"])
         groq_calls = len([l for l in self.usage_log if l.get("provider") == "groq"])
         anthropic_calls = len([l for l in self.usage_log if l.get("provider") == "anthropic"])
 
         return {
             "total_calls": len(self.usage_log),
-            "together_calls": together_calls,
             "groq_calls": groq_calls,
             "anthropic_calls": anthropic_calls,
             "total_cost": total_cost,
