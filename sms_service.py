@@ -3151,6 +3151,37 @@ def api_brand():
     # Fetch brand analysis (existing)
     data = fetch_brand_data(name, force_refresh=refresh)
 
+    # Enrich brand fundamentals from Wikidata + SEC + Groq (not Wikipedia)
+    try:
+        from brand_data_enricher import enrich_brand_data
+        import re
+
+        # Extract parent company from description
+        desc = data.get("description", "")
+        parent_company = None
+        if "owned by" in desc.lower():
+            match = re.search(r"owned by ([^.]+)", desc, re.IGNORECASE)
+            if match:
+                parent_company = match.group(1).strip()
+
+        # Enrich with real data sources
+        enriched = enrich_brand_data(name, parent_company)
+        if enriched:
+            # Update data with enriched values (prefer enriched over fetch_brand_data)
+            if enriched.get("founding_year"):
+                data["founded"] = enriched["founding_year"]
+            if enriched.get("website"):
+                data["website"] = enriched["website"]
+            if enriched.get("headquarters"):
+                data["hq"] = enriched["headquarters"]
+            if enriched.get("industry"):
+                data["industry"] = enriched["industry"]
+            # Store enrichment metadata
+            data["_enriched"] = enriched
+            app.logger.info(f"[api_brand] Enriched {name} from Wikidata+Groq")
+    except Exception as e:
+        app.logger.warning(f"[api_brand] Brand enrichment failed: {e}")
+
     # NOTE: Company intelligence (Crunchbase, EDGAR, OpenCorporates) moved to /api/company/intelligence endpoint only
     # Brand module should not make external API calls - use Groq + Wikipedia instead
 
