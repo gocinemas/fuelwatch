@@ -1159,7 +1159,6 @@ def brand_redirect():
     return render_template("intel_brand.html")
 
 
-@app.route("/")
 @app.route("/intel")
 def intel_home():
     """Intel home page - search interface for Phase 1 brands"""
