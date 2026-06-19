@@ -1608,7 +1608,8 @@ def admin_populate_brands():
 @app.route("/company")
 def index():
     _host = request.host.lower()
-    app.logger.info(f"[index] Host: {_host}, Path: {request.path}")
+    print(f"🚨 [index] ROUTING DEBUG: host={_host}, path={request.path}, url={request.url}")
+    app.logger.error(f"🚨 [index] ROUTING DEBUG: host={_host}, path={request.path}, url={request.url}")
 
     if "space." in _host:
         return render_template("space.html")
