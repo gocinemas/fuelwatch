@@ -1197,12 +1197,16 @@ def brand_full_intelligence():
 
         print(f"[brand_full] Query result: {len(result.data) if result.data else 0} records found")
 
+        # Initialize defaults
+        competitors_list = []
+        market_econ = {}
+        market_entry_score = None
+
         if result.data:
             row = result.data[0]
             category = row.get("category", "").lower()
 
             # Fetch competitor data
-            competitors_list = []
             comp_names = [
                 row.get("direct_competitor_1"),
                 row.get("direct_competitor_2"),
@@ -1295,7 +1299,6 @@ def brand_full_intelligence():
                 market_econ = {}
 
             # Calculate market entry score (Phase 2)
-            market_entry_score = None
             try:
                 scorer = MarketEntryScorer()
                 market_entry_score = scorer.score_market(
