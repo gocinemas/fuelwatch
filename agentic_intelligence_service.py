@@ -431,46 +431,214 @@ def search_relevant_podcasts(topics: list, max_results: int = 1) -> dict:
 
 def generate_market_opportunities_analysis(brand_data: dict) -> dict:
     """
-    Market opportunities disabled until Groq quota resets.
+    Generate market opportunity analysis using AI Router (Together AI → Groq → Anthropic).
     """
-    return {
-        "opportunities": None,
-        "source": "unavailable",
-        "reason": "Groq quota exhausted, re-enabled tomorrow"
-    }
+    from ai_router import router, TaskType
+
+    brand_name = brand_data.get("brand", {}).get("name", "Unknown")
+
+    # Check cache first
+    cached = _cache_get(brand_name, "market_opportunities")
+    if cached:
+        return cached
+
+    try:
+        brand = brand_data.get("brand", {})
+        category = brand_data.get("category_analysis", {}).get("category", "Consumer Goods")
+        revenue = brand_data.get("financials", {}).get("total_revenue", "N/A")
+        growth = brand_data.get("financials", {}).get("revenue_growth", "0%")
+        market_position = brand_data.get("competitive_landscape", {}).get("market_position", "Mid-tier")
+
+        prompt = f"""As a market strategist, analyze expansion opportunities for this brand:
+
+Brand: {brand_name}
+Category: {category}
+Revenue: {revenue}
+Growth Rate: {growth}
+Market Position: {market_position}
+
+Generate 3-4 realistic market expansion opportunities (2-3 sentences each).
+Focus on: new product categories, geographic expansion, customer segments, channels.
+Be specific and actionable, not generic.
+
+Format each opportunity as: "Opportunity: [Name] - [Description]"
+"""
+
+        result = router.route(TaskType.SYNTHESIS, prompt, max_tokens=500)
+
+        if result.get("response"):
+            output = {
+                "opportunities": result["response"],
+                "timestamp": datetime.now().isoformat(),
+                "source": f"ai_router({result.get('provider', 'unknown')})",
+                "note": "AI-generated based on brand fundamentals. Verify with market research."
+            }
+            _cache_set(brand_name, "market_opportunities", output)
+            return output
+        else:
+            return {"opportunities": None, "error": "All AI providers unavailable"}
+
+    except Exception as e:
+        print(f"[agentic] Market opportunities error: {e}")
+        return {"opportunities": None, "error": str(e)}
 
 
 def generate_social_media_strategy(brand_data: dict) -> dict:
     """
-    Social media strategy disabled until Groq quota resets.
+    Generate social media strategy using AI Router.
     """
-    return {
-        "strategy": None,
-        "source": "unavailable",
-        "reason": "Groq quota exhausted, re-enabled tomorrow"
-    }
+    from ai_router import router, TaskType
+
+    brand_name = brand_data.get("brand", {}).get("name", "Unknown")
+
+    # Check cache first
+    cached = _cache_get(brand_name, "social_media_strategy")
+    if cached:
+        return cached
+
+    try:
+        brand = brand_data.get("brand", {})
+        category = brand_data.get("category_analysis", {}).get("category", "Consumer Goods")
+        market_position = brand_data.get("competitive_landscape", {}).get("market_position", "Mid-tier")
+
+        prompt = f"""As a social media strategist, recommend platforms and engagement strategy for this brand:
+
+Brand: {brand_name}
+Category: {category}
+Market Position: {market_position}
+
+Recommend:
+1. Top 3 platforms (with reasoning)
+2. Recommended content strategy (2-3 sentences)
+3. Estimated engagement approach
+
+Be specific to this brand's category and position.
+"""
+
+        result = router.route(TaskType.SYNTHESIS, prompt, max_tokens=400)
+
+        if result.get("response"):
+            output = {
+                "strategy": result["response"],
+                "timestamp": datetime.now().isoformat(),
+                "source": f"ai_router({result.get('provider', 'unknown')})",
+                "note": "AI-generated strategy. Requires authentic data gathering from brand channels."
+            }
+            _cache_set(brand_name, "social_media_strategy", output)
+            return output
+        else:
+            return {"strategy": None, "error": "All AI providers unavailable"}
+
+    except Exception as e:
+        print(f"[agentic] Social media strategy error: {e}")
+        return {"strategy": None, "error": str(e)}
 
 
 def generate_product_ecosystem_analysis(brand_data: dict) -> dict:
     """
-    Product ecosystem disabled until Groq quota resets.
+    Generate product ecosystem analysis using AI Router.
     """
-    return {
-        "ecosystem": None,
-        "source": "unavailable",
-        "reason": "Groq quota exhausted, re-enabled tomorrow"
-    }
+    from ai_router import router, TaskType
+
+    brand_name = brand_data.get("brand", {}).get("name", "Unknown")
+
+    # Check cache first
+    cached = _cache_get(brand_name, "product_ecosystem")
+    if cached:
+        return cached
+
+    try:
+        brand = brand_data.get("brand", {})
+        category = brand_data.get("category_analysis", {}).get("category", "Consumer Goods")
+        revenue = brand_data.get("financials", {}).get("total_revenue", "N/A")
+
+        prompt = f"""As a product strategist, analyze the likely product ecosystem for this brand:
+
+Brand: {brand_name}
+Category: {category}
+Revenue: {revenue}
+
+Based on the brand's market position and category, describe:
+1. Core product lines (2-3 main categories)
+2. Likely price positioning (budget/mid/premium)
+3. Geographic markets (likely strongest regions)
+4. Distribution channels (retail, DTC, wholesale, etc.)
+
+Be realistic based on typical brands in this category.
+"""
+
+        result = router.route(TaskType.SYNTHESIS, prompt, max_tokens=400)
+
+        if result.get("response"):
+            output = {
+                "ecosystem": result["response"],
+                "timestamp": datetime.now().isoformat(),
+                "source": f"ai_router({result.get('provider', 'unknown')})",
+                "note": "AI-generated based on category patterns. Needs verification via brand research."
+            }
+            _cache_set(brand_name, "product_ecosystem", output)
+            return output
+        else:
+            return {"ecosystem": None, "error": "All AI providers unavailable"}
+
+    except Exception as e:
+        print(f"[agentic] Product ecosystem error: {e}")
+        return {"ecosystem": None, "error": str(e)}
 
 
 def generate_competitive_landscape_analysis(brand_data: dict) -> dict:
     """
-    Competitive landscape disabled until Groq quota resets.
+    Generate competitive landscape analysis using AI Router.
     """
-    return {
-        "landscape": None,
-        "source": "unavailable",
-        "reason": "Groq quota exhausted, re-enabled tomorrow"
-    }
+    from ai_router import router, TaskType
+
+    brand_name = brand_data.get("brand", {}).get("name", "Unknown")
+
+    # Check cache first
+    cached = _cache_get(brand_name, "competitive_landscape")
+    if cached:
+        return cached
+
+    try:
+        brand = brand_data.get("brand", {})
+        category = brand_data.get("category_analysis", {}).get("category", "Consumer Goods")
+        market_position = brand_data.get("competitive_landscape", {}).get("market_position", "Mid-tier")
+        market_cap = brand_data.get("financials", {}).get("market_cap", "N/A")
+
+        prompt = f"""As a competitive strategist, analyze the competitive landscape for this brand:
+
+Brand: {brand_name}
+Category: {category}
+Market Position: {market_position}
+Market Cap: {market_cap}
+
+Provide:
+1. Direct competitors (2-3 similar-scale brands)
+2. Premium tier competitors (aspirational)
+3. Value tier competitors (price-based)
+4. Key competitive advantages {brand_name} likely has
+5. Threats from newer/adjacent brands
+
+Be realistic based on category dynamics.
+"""
+
+        result = router.route(TaskType.ANALYSIS, prompt, max_tokens=500)
+
+        if result.get("response"):
+            output = {
+                "landscape": result["response"],
+                "timestamp": datetime.now().isoformat(),
+                "source": f"ai_router({result.get('provider', 'unknown')})",
+                "note": "AI-generated competitive view. Verify with market research for market share."
+            }
+            _cache_set(brand_name, "competitive_landscape", output)
+            return output
+        else:
+            return {"landscape": None, "error": "All AI providers unavailable"}
+
+    except Exception as e:
+        print(f"[agentic] Competitive landscape error: {e}")
+        return {"landscape": None, "error": str(e)}
 
 
 def enrich_brand_with_agentic_intelligence(brand_data: dict) -> dict:
