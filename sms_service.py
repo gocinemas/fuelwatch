@@ -1320,7 +1320,10 @@ def brand_full_intelligence():
         else:
             resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[], market=market, market_econ={}))
     except Exception as e:
-        app.logger.error(f"[brand_full] Error: {e}")
+        import traceback
+        error_msg = f"[brand_full] EXCEPTION: {str(e)}\n{traceback.format_exc()}"
+        app.logger.error(error_msg)
+        print(error_msg)  # Also print to stdout
         resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[], market=market, market_econ={}))
 
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
