@@ -3186,6 +3186,24 @@ def api_brand_spin():
         return jsonify({"error": "could not save spin"}), 500
 
 
+@app.route("/api/brand/phase1/directory")
+def api_brand_phase1_directory():
+    """
+    Get all Phase 1 brands for directory/search interface.
+    """
+    try:
+        sb = lib._sb()
+        result = sb.table("brand_phase1_intelligence").select("*").execute()
+
+        if result.data:
+            return jsonify(result.data)
+        else:
+            return jsonify([])
+    except Exception as e:
+        app.logger.error(f"[api_brand_phase1_directory] Error: {e}")
+        return jsonify([]), 500
+
+
 @app.route("/api/brand/phase1/get")
 def api_brand_phase1_get():
     """
