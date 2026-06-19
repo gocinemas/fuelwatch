@@ -1313,6 +1313,36 @@ def brand_full_intelligence():
     return resp
 
 
+@app.route("/api/brand/debug")
+def brand_debug():
+    """Debug endpoint to check brand lookup"""
+    search = request.args.get("search", "Dove").strip()
+    market = request.args.get("market", "UK").strip()
+
+    try:
+        sb = lib._sb()
+        result = sb.table("brand_phase1_intelligence").select("brand_name, market_country, price_local, price_currency").eq(
+            "brand_name", search
+        ).eq(
+            "market_country", market
+        ).execute()
+
+        return jsonify({
+            "search": search,
+            "market": market,
+            "found": bool(result.data),
+            "record_count": len(result.data) if result.data else 0,
+            "data": result.data[0] if result.data else None,
+            "error": None
+        })
+    except Exception as e:
+        return jsonify({
+            "search": search,
+            "market": market,
+            "error": str(e)
+        })
+
+
 @app.route("/api/admin/populate-brands", methods=["GET", "POST"])
 def admin_populate_brands():
     """Admin endpoint to populate top brands with real intelligence data."""
