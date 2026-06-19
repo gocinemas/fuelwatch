@@ -3134,6 +3134,85 @@ def api_brand_spin():
         return jsonify({"error": "could not save spin"}), 500
 
 
+@app.route("/api/brand/phase1/get")
+def api_brand_phase1_get():
+    """
+    Phase 1: Retrieve real data for a brand in a market.
+    Query params: brand_name, market_country
+    """
+    brand_name = request.args.get("brand_name", "").strip()
+    market_country = request.args.get("market_country", "").strip()
+
+    if not brand_name or not market_country:
+        return jsonify({"error": "brand_name and market_country required"}), 400
+
+    try:
+        from phase1_service import get_brand_phase1
+        data = get_brand_phase1(brand_name, market_country)
+        return jsonify(data)
+    except Exception as e:
+        app.logger.error(f"[api_brand_phase1_get] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/phase1/collect", methods=["POST"])
+def api_brand_phase1_collect():
+    """
+    Phase 1: Collect and insert data for a brand in a market.
+    POST body: {brand_name, category, market_country, market_iso_code}
+    """
+    try:
+        payload = request.json
+
+        brand_name = payload.get("brand_name", "").strip()
+        category = payload.get("category", "").strip()
+        market_country = payload.get("market_country", "").strip()
+        market_iso = payload.get("market_iso_code", "").strip()
+
+        if not all([brand_name, category, market_country, market_iso]):
+            return jsonify({"error": "All fields required: brand_name, category, market_country, market_iso_code"}), 400
+
+        from phase1_data_collector import Phase1DataCollector
+        from phase1_service import insert_phase1_data
+
+        # Collect data
+        collector = Phase1DataCollector(brand_name, category, market_country, market_iso)
+        collected_data = collector.collect_all()
+
+        # Insert into Supabase
+        insert_result = insert_phase1_data(collected_data)
+
+        return jsonify({
+            "collected_data": collected_data,
+            "insert_result": insert_result
+        })
+
+    except Exception as e:
+        app.logger.error(f"[api_brand_phase1_collect] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/phase1/score", methods=["GET"])
+def api_brand_phase1_score():
+    """
+    Phase 1 → Phase 2: Score market entry opportunity.
+    Query params: brand_name, market_country
+    """
+    brand_name = request.args.get("brand_name", "").strip()
+    market_country = request.args.get("market_country", "").strip()
+
+    if not brand_name or not market_country:
+        return jsonify({"error": "brand_name and market_country required"}), 400
+
+    try:
+        from phase1_service import score_market_entry
+        score = score_market_entry(brand_name, market_country)
+        return jsonify(score)
+    except Exception as e:
+        app.logger.error(f"[api_brand_phase1_score] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/phase1")
 def api_brand_phase1():
     """
