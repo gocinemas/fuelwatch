@@ -1161,7 +1161,7 @@ def brand_redirect():
     return render_template("intel_brand.html")
 
 
-@app.route("/")
+@app.route("/intel-landing")
 def intel_root():
     """Intel landing page - mission and explanation"""
     return render_template("intel_landing.html")
