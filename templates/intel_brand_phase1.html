@@ -329,12 +329,14 @@
 
         <!-- Pricing -->
         <div class="section">
-            <h2>💰 Pricing (UK Market)</h2>
+            <h2>💰 Pricing ({{ market or 'UK' }} Market)</h2>
             <div class="fundamentals">
+                {% if brand.typical_sku %}
                 <div class="fundamental-item">
                     <div class="fundamental-label">Typical SKU</div>
-                    <div class="fundamental-value">Moisturizing Cream Bar Soap or Body Wash</div>
+                    <div class="fundamental-value">{{ brand.typical_sku }}</div>
                 </div>
+                {% endif %}
 
                 {% if brand.price_local %}
                 <div class="fundamental-item">
@@ -381,11 +383,11 @@
 
         <!-- Distribution & Marketing -->
         <div class="section">
-            <h2>🚀 Distribution & Marketing (UK)</h2>
+            <h2>🚀 Distribution & Marketing ({{ market or 'UK' }})</h2>
             <div class="fundamentals">
                 {% if brand.distribution_channels %}
                 <div class="fundamental-item">
-                    <div class="fundamental-label">Where to Buy (UK)</div>
+                    <div class="fundamental-label">Where to Buy ({{ market or 'UK' }})</div>
                     <div class="fundamental-value">
                         {% if brand.distribution_channels is string %}
                             {{ brand.distribution_channels }}
@@ -405,7 +407,7 @@
 
                 {% if brand.marketing_channels %}
                 <div class="fundamental-item">
-                    <div class="fundamental-label">How They Advertise (UK)</div>
+                    <div class="fundamental-label">How They Advertise ({{ market or 'UK' }})</div>
                     <div class="fundamental-value">
                         {% if brand.marketing_channels is string %}
                             {{ brand.marketing_channels }}

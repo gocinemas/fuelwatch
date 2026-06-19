@@ -1184,6 +1184,18 @@ def brand_full_intelligence():
 
         if result.data:
             row = result.data[0]
+            category = row.get("category", "").lower()
+
+            # Category-based typical SKU descriptions
+            sku_map = {
+                "skincare": "Bar Soap, Moisturizing Cream, or Facial Wash",
+                "beverages": "330ml Can, 2L Bottle, or Multipak",
+                "snacks": "Standard Pack (50-100g) or Multipack",
+                "qsr": "Standard Meal or Individual Item",
+                "beauty": "Makeup Set or Single Product",
+            }
+            typical_sku = sku_map.get(category, "Standard Product")
+
             # Transform to match template expectations
             brand = {
                 "name": row.get("brand_name"),
@@ -1192,6 +1204,8 @@ def brand_full_intelligence():
                 "headquarters": f"{row.get('headquarters_city')}, {row.get('headquarters_country')}" if row.get('headquarters_city') else None,
                 "website": row.get("official_website"),
                 "parent_company": row.get("parent_company"),
+                "category": category,
+                "typical_sku": typical_sku,
                 "positioning_tier": row.get("positioning_tier"),
                 "tagline": row.get("brand_tagline"),
                 "primary_benefit": row.get("primary_benefit"),
@@ -1215,7 +1229,7 @@ def brand_full_intelligence():
                 "confidence_score": row.get("confidence_score"),
             }
 
-            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[]))
+            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[], market=market))
         else:
             resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[]))
     except Exception as e:
