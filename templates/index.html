@@ -471,6 +471,8 @@
     .tool-live-dot::before { content:''; width: 5px; height: 5px; border-radius: 50%; background: #4ade80; animation: live-pulse 2s infinite; display: block; }
     .tool-live-dot span { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.55); letter-spacing: .06em; }
     @keyframes live-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    @keyframes fadeIn { from {opacity:0} to {opacity:1} }
+    @keyframes slideUp { from {opacity:0;transform:translate(-50%,-60%)} to {opacity:1;transform:translate(-50%,-50%)} }
     .tool-card-sm {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 14px; padding: 12px 8px; cursor: pointer;
@@ -3170,31 +3172,32 @@
             </div>
           </div>
 
-          <!-- Edit commute modal -->
-          <div id="commute-edit-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:8px">
-            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Edit commute</div>
-            <input id="commute-edit-name" placeholder="Label" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:8px">
+          <!-- Edit commute modal overlay -->
+          <div id="commute-edit-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;animation:fadeIn 0.15s" onclick="if(event.target.id==='commute-edit-overlay') _closeCommuteEdit()"></div>
+          <div id="commute-edit-form" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:400px;width:90%;z-index:1000;box-shadow:0 10px 40px rgba(0,0,0,0.2);animation:slideUp 0.2s">
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">Edit commute</div>
+            <input id="commute-edit-name" placeholder="Label" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:12px">
 
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;margin-bottom:8px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;margin-bottom:12px">
               <input type="checkbox" id="commute-edit-show-home" style="cursor:pointer;width:16px;height:16px">
               <span>Show on home page</span>
             </label>
 
-            <div style="margin-bottom:8px">
-              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Display time window</div>
+            <div style="margin-bottom:12px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Display time window</div>
               <div style="display:flex;gap:6px;align-items:center">
-                <input type="time" id="commute-edit-time-start" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)">
+                <input type="time" id="commute-edit-time-start" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)">
                 <span style="color:var(--muted);font-size:12px">to</span>
-                <input type="time" id="commute-edit-time-end" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)">
+                <input type="time" id="commute-edit-time-end" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)">
               </div>
             </div>
 
-            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Show on these days</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px" id="commute-edit-days"></div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Show on these days</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px" id="commute-edit-days"></div>
 
-            <div style="display:flex;gap:6px">
-              <button id="commute-edit-save" style="flex:1;padding:8px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
-              <button onclick="document.getElementById('commute-edit-form').style.display='none'" style="padding:8px 14px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
+            <div style="display:flex;gap:8px">
+              <button id="commute-edit-save" style="flex:1;padding:10px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
+              <button onclick="_closeCommuteEdit()" style="padding:10px 16px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
             </div>
           </div>
         </div>
@@ -7010,7 +7013,20 @@ function _hcAdd() {
     document.querySelectorAll('[id^="menu-"]').forEach(m => m.style.display = "none");
   }
 
+  // Close menu when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest('[id^="menu-"]') && !e.target.closest('button[onclick*="_commuteMenu"]')) {
+      _closeCommuteMenu();
+    }
+  });
+
   let _commuteEditingId = null;
+
+  function _closeCommuteEdit() {
+    document.getElementById("commute-edit-form").style.display = "none";
+    document.getElementById("commute-edit-overlay").style.display = "none";
+    _commuteEditingId = null;
+  }
 
   async function _commuteEdit(id, currentLabel) {
     // Load commute data and show edit modal
@@ -7038,6 +7054,7 @@ function _hcAdd() {
 
     // Update save button handler
     document.getElementById("commute-edit-save").onclick = _commuteSaveEdits;
+    document.getElementById("commute-edit-overlay").style.display = "block";
     document.getElementById("commute-edit-form").style.display = "block";
   }
 
@@ -7118,7 +7135,7 @@ function _hcAdd() {
           <div style="position:relative">
             <button onclick="_commuteMenu('${c.id}')" style="padding:4px 8px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;opacity:0.6;transition:opacity 0.2s">⋮</button>
             <div id="menu-${c.id}" style="position:absolute;right:0;top:28px;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:140px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:1000;display:none;overflow:hidden">
-              <button onclick="_commuteEdit('${c.id}', '${c.label.replace(/'/g,"\\'")}'); _closeCommuteMenu();" style="width:100%;padding:10px 14px;background:none;border:none;color:var(--text);text-align:left;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s">✎ Rename</button>
+              <button onclick="_commuteEdit('${c.id}', '${c.label.replace(/'/g,"\\'")}'); _closeCommuteMenu();" style="width:100%;padding:10px 14px;background:none;border:none;color:var(--text);text-align:left;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s">✎ Edit</button>
               <button onclick="_commuteDelete('${c.id}'); _closeCommuteMenu();" style="width:100%;padding:10px 14px;background:none;border:none;color:#ef4444;text-align:left;font-size:13px;cursor:pointer;transition:background 0.15s">🗑 Delete</button>
             </div>
           </div>
