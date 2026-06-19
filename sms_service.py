@@ -48,13 +48,9 @@ app = Flask(__name__)
 
 # CENTRAL BRIEF TEXT VALIDATION — Used by /api/home/brief and all Groq brief paths
 def _validate_brief_text(text):
-    """Remove obvious inferences from brief text. Keep factual statements."""
+    """Remove obvious inferences from brief text. Keep only factual statements."""
     if not text:
         return ""
-
-    # ONLY block extremely obvious inferences
-    # "You have", "You've got", "You might", "You should", "I think"
-    # These are clear pronouns + inferred action
 
     sentences = [s.strip() for s in text.split(".") if s.strip()]
     valid = []
@@ -62,19 +58,27 @@ def _validate_brief_text(text):
     for sent in sentences:
         sent_lower = sent.lower().strip()
 
-        # HARD BLOCK: Clear pronouns + inference verbs (include contractions)
-        hard_blocks = [
+        # BLOCK: Any advice, imperatives, reminders, inferences
+        blocks = [
+            # You-form advice/inferences
             "you have", "you've", "you've got", "you might", "you should",
             "you could", "you want", "you need", "you are", "you're",
             "you just", "might want to", "pop into", "pop to",
+            # I-form inferences
             "i think", "i believe", "i know",
+            # Imperative commands (advice)
+            "grab your", "get a", "don't forget", "remember to", "make sure",
+            "try to", "consider", "ensure", "check", "visit", "go to",
+            # Advice patterns
+            "so ", "so,", # "so [advice]" pattern
+            "in 2 hours", "in hours", # Inferred timing of personal activity
         ]
 
-        if any(sent_lower.startswith(block) or block in sent_lower for block in hard_blocks):
-            app.logger.debug(f"[validate] Blocked hard inference: {sent[:40]}")
+        if any(sent_lower.startswith(block) or f" {block}" in f" {sent_lower}" for block in blocks):
+            app.logger.debug(f"[validate] Blocked inference: {sent[:50]}")
             continue
 
-        # Keep everything else - let user see the facts
+        # Only keep pure facts (no imperatives, no "so...", no unsourced personal details)
         valid.append(sent)
 
     result = ". ".join(valid)

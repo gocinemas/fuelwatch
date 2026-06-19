@@ -1215,15 +1215,16 @@
                 }
             } catch (e) {
                 console.error('Search error:', e);
+                console.error('Stack trace:', e.stack);
                 hideLoading();
-                alert(`Failed to fetch brand data: ${e.message}`);
+                alert(`Search error: ${e.message}\n\nCheck browser console (F12) for details.`);
             }
         }
 
         function displayBrandIntelligence(data) {
             const b = data.brand || {};
-            const comp = data.company || {};  // Company data (HQ, founded, financials)
-            const f = comp.financials || data.financials || {};  // Use company financials first
+            const companyData = data.company || {};  // Company data (HQ, founded, financials)
+            const f = companyData.financials || data.financials || {};  // Use company financials first
             const p = data.products || {};
             const c = data.competitors || {};
             const w = data.white_space || {};
@@ -1301,16 +1302,16 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="list-item">
                             <div class="list-item-title">Founded</div>
-                            <div class="list-item-meta">${comp.founded_year || b.founded || '—'}</div>
+                            <div class="list-item-meta">${companyData.founded_year || b.founded || '—'}</div>
                         </div>
                         <div class="list-item">
                             <div class="list-item-title">Headquarters</div>
-                            <div class="list-item-meta">${comp.headquarters || b.headquarters || '—'}</div>
+                            <div class="list-item-meta">${companyData.headquarters || b.headquarters || '—'}</div>
                         </div>
                     </div>
                     <div class="list-item">
                         <div class="list-item-title">Website</div>
-                        <div class="list-item-meta"><a href="https://${comp.website || b.website}" target="_blank" style="color: #3b82f6;">${comp.website || b.website || '—'}</a></div>
+                        <div class="list-item-meta"><a href="https://${companyData.website || b.website}" target="_blank" style="color: #3b82f6;">${companyData.website || b.website || '—'}</a></div>
                     </div>
                 </div>
             `;
