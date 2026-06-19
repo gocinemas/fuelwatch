@@ -48,7 +48,7 @@ app = Flask(__name__)
 
 # CENTRAL BRIEF TEXT VALIDATION — Used by /api/home/brief and all Groq brief paths
 def _validate_brief_text(text):
-    """Remove obvious inferences from brief text. Keep only factual statements."""
+    """Remove personal advice/imperatives. Allow facts, humor, situational context, place suggestions."""
     if not text:
         return ""
 
@@ -58,27 +58,23 @@ def _validate_brief_text(text):
     for sent in sentences:
         sent_lower = sent.lower().strip()
 
-        # BLOCK: Any advice, imperatives, reminders, inferences
-        blocks = [
-            # You-form advice/inferences
-            "you have", "you've", "you've got", "you might", "you should",
-            "you could", "you want", "you need", "you are", "you're",
-            "you just", "might want to", "pop into", "pop to",
+        # BLOCK: Personal imperatives and "you should/might/need" advice
+        hard_blocks = [
+            # You-form direct advice
+            "you should", "you might", "you could", "you need",
+            "you have", "you've got",
             # I-form inferences
             "i think", "i believe", "i know",
-            # Imperative commands (advice)
-            "grab your", "get a", "don't forget", "remember to", "make sure",
-            "try to", "consider", "ensure", "check", "visit", "go to",
-            # Advice patterns
-            "so ", "so,", # "so [advice]" pattern
-            "in 2 hours", "in hours", # Inferred timing of personal activity
+            # Imperative verbs targeting user (grab YOUR, get A, don't forget)
+            "grab your", "get a ", "don't forget", "remember to",
         ]
 
-        if any(sent_lower.startswith(block) or f" {block}" in f" {sent_lower}" for block in blocks):
-            app.logger.debug(f"[validate] Blocked inference: {sent[:50]}")
+        if any(sent_lower.startswith(block) for block in hard_blocks):
+            app.logger.debug(f"[validate] Blocked advice: {sent[:50]}")
             continue
 
-        # Only keep pure facts (no imperatives, no "so...", no unsourced personal details)
+        # Allow: weather facts, time facts, place suggestions, situational humor
+        # Allow: "try the café", "perfect day for", "it's raining", "3pm shows", etc.
         valid.append(sent)
 
     result = ". ".join(valid)
