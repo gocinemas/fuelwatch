@@ -1160,8 +1160,9 @@ def brand_redirect():
 
 @app.route("/brand/full")
 def brand_full_intelligence():
-    """Complete Brand Intelligence page"""
-    resp = make_response(render_template("intel_brand_full.html"))
+    """Brand Intelligence page - Phase 1: Real Data Only"""
+    # Use Phase 1 template (real data only, no fabrication)
+    resp = make_response(render_template("intel_brand_phase1.html"))
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
     return resp
 
@@ -3131,6 +3132,63 @@ def api_brand_spin():
     except Exception as e:
         print(f"[brand_spins] insert failed: {e}")
         return jsonify({"error": "could not save spin"}), 500
+
+
+@app.route("/api/brand/phase1")
+def api_brand_phase1():
+    """
+    Phase 1: Brand Basics Only - Real Data Only
+    Returns: Brand fundamentals + top performing SKUs
+    No AI hallucination, no fake data.
+    """
+    name = request.args.get("name", "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        from brand_data_enricher import enrich_brand_data
+        from sku_fetcher import get_top_skus
+        import re
+
+        # Fetch brand fundamentals from Wikidata
+        enriched = enrich_brand_data(name)
+
+        if not enriched:
+            return jsonify({"error": f"Brand '{name}' not found in verified sources"}), 404
+
+        # Extract parent company if available
+        parent_company = enriched.get("parent_company")
+
+        # Fetch real SKUs
+        skus = get_top_skus(
+            brand_name=name,
+            parent_company=parent_company,
+            brand_website=enriched.get("website"),
+            category=enriched.get("industry")
+        )
+
+        # Return clean Phase 1 response
+        return jsonify({
+            "brand": {
+                "name": name,
+                "description": enriched.get("description", ""),
+                "founded": enriched.get("founding_year"),
+                "headquarters": enriched.get("headquarters"),
+                "website": enriched.get("website"),
+                "parent_company": parent_company,
+                "industry": enriched.get("industry")
+            },
+            "skus": skus,
+            "metadata": {
+                "source": "Wikidata + Brand website + Amazon + Retailers",
+                "data_quality": "verified",
+                "phase": "phase1"
+            }
+        })
+
+    except Exception as e:
+        app.logger.error(f"[api_brand_phase1] Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/brand")
