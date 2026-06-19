@@ -1171,6 +1171,31 @@
                     return;
                 }
 
+                // Extract parent company from description (e.g., "owned by Procter & Gamble")
+                let parentCompany = null;
+                const brandData = data.brand || {};
+                const desc = brandData.description || '';
+                const ownedByMatch = desc.match(/owned by ([^.]+)/i);
+                if (ownedByMatch) {
+                    parentCompany = ownedByMatch[1].trim();
+                }
+
+                // Fetch company data if parent company found
+                let companyData = null;
+                if (parentCompany) {
+                    try {
+                        const compResponse = await fetch(`/api/company/intelligence?name=${encodeURIComponent(parentCompany)}`);
+                        companyData = await compResponse.json();
+                    } catch (e) {
+                        console.warn('Failed to fetch company data:', e);
+                    }
+                }
+
+                // Merge company data into brand data
+                if (companyData && !companyData.error) {
+                    data.company = companyData;
+                }
+
                 // Store data globally for agentic checks
                 window.currentBrandData = data;
 
@@ -1197,7 +1222,8 @@
 
         function displayBrandIntelligence(data) {
             const b = data.brand || {};
-            const f = data.financials || {};
+            const comp = data.company || {};  // Company data (HQ, founded, financials)
+            const f = comp.financials || data.financials || {};  // Use company financials first
             const p = data.products || {};
             const c = data.competitors || {};
             const w = data.white_space || {};
@@ -1275,16 +1301,16 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="list-item">
                             <div class="list-item-title">Founded</div>
-                            <div class="list-item-meta">${b.founded || '—'}</div>
+                            <div class="list-item-meta">${comp.founded_year || b.founded || '—'}</div>
                         </div>
                         <div class="list-item">
                             <div class="list-item-title">Headquarters</div>
-                            <div class="list-item-meta">${b.headquarters || '—'}</div>
+                            <div class="list-item-meta">${comp.headquarters || b.headquarters || '—'}</div>
                         </div>
                     </div>
                     <div class="list-item">
                         <div class="list-item-title">Website</div>
-                        <div class="list-item-meta"><a href="https://${b.website}" target="_blank" style="color: #3b82f6;">${b.website || '—'}</a></div>
+                        <div class="list-item-meta"><a href="https://${comp.website || b.website}" target="_blank" style="color: #3b82f6;">${comp.website || b.website || '—'}</a></div>
                     </div>
                 </div>
             `;
@@ -1438,7 +1464,7 @@
                         <div class="competitor-card">
                             <div class="competitor-name">${comp.name}</div>
                             <div style="font-size: 12px; color: #64748b; margin-top: 8px;">
-                                ${comp.category || '—'}
+                                ${comp.description || comp.category || '—'}
                             </div>
                         </div>
                     `;
