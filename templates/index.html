@@ -3169,6 +3169,34 @@
               <button onclick="document.getElementById('commute-add-form').style.display='none'" style="padding:8px 14px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
             </div>
           </div>
+
+          <!-- Edit commute modal -->
+          <div id="commute-edit-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:8px">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Edit commute</div>
+            <input id="commute-edit-name" placeholder="Label" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:8px">
+
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;margin-bottom:8px">
+              <input type="checkbox" id="commute-edit-show-home" style="cursor:pointer;width:16px;height:16px">
+              <span>Show on home page</span>
+            </label>
+
+            <div style="margin-bottom:8px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Display time window</div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="time" id="commute-edit-time-start" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)">
+                <span style="color:var(--muted);font-size:12px">to</span>
+                <input type="time" id="commute-edit-time-end" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)">
+              </div>
+            </div>
+
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Show on these days</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px" id="commute-edit-days"></div>
+
+            <div style="display:flex;gap:6px">
+              <button id="commute-edit-save" style="flex:1;padding:8px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
+              <button onclick="document.getElementById('commute-edit-form').style.display='none'" style="padding:8px 14px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -6982,22 +7010,79 @@ function _hcAdd() {
     document.querySelectorAll('[id^="menu-"]').forEach(m => m.style.display = "none");
   }
 
+  let _commuteEditingId = null;
+
   async function _commuteEdit(id, currentLabel) {
-    const newLabel = prompt("Rename this commute:", currentLabel);
-    if (!newLabel || newLabel.trim() === currentLabel) return;
+    // Load commute data and show edit modal
+    const commutes = await _commuteLoad();
+    const commute = commutes.find(c => c.id === id);
+    if (!commute) return;
+
+    _commuteEditingId = id;
+    document.getElementById("commute-edit-name").value = commute.label || "";
+    document.getElementById("commute-edit-show-home").checked = commute.show_on_homepage !== false;
+    document.getElementById("commute-edit-time-start").value = commute.time_start || "07:00";
+    document.getElementById("commute-edit-time-end").value = commute.time_end || "09:00";
+
+    // Populate day checkboxes
+    const daysContainer = document.getElementById("commute-edit-days");
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const selectedDays = commute.days_of_week || ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+    daysContainer.innerHTML = days.map(day => `
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px">
+        <input type="checkbox" value="${day}" ${selectedDays.includes(day) ? 'checked' : ''} style="cursor:pointer">
+        <span>${day}</span>
+      </label>
+    `).join("");
+
+    // Update save button handler
+    document.getElementById("commute-edit-save").onclick = _commuteSaveEdits;
+    document.getElementById("commute-edit-form").style.display = "block";
+  }
+
+  async function _commuteSaveEdits() {
+    if (!_commuteEditingId) return;
+
+    const label = document.getElementById("commute-edit-name").value.trim();
+    const showHome = document.getElementById("commute-edit-show-home").checked;
+    const timeStart = document.getElementById("commute-edit-time-start").value;
+    const timeEnd = document.getElementById("commute-edit-time-end").value;
+
+    // Get selected days
+    const dayCheckboxes = document.querySelectorAll("#commute-edit-days input[type='checkbox']");
+    const daysOfWeek = Array.from(dayCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+
+    if (!label || daysOfWeek.length === 0) {
+      alert("Please fill in all fields");
+      return;
+    }
+
     try {
       const r = await fetch("/api/commute/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: id, label: newLabel.trim() }),
+        body: JSON.stringify({
+          id: _commuteEditingId,
+          label: label,
+          show_on_homepage: showHome,
+          time_start: timeStart,
+          time_end: timeEnd,
+          days_of_week: daysOfWeek,
+        }),
       });
       const d = await r.json();
       if (d.ok) {
+        document.getElementById("commute-edit-form").style.display = "none";
+        _commuteEditingId = null;
         _commuteRender();
         _hcRender();
+      } else {
+        alert("Error: " + d.error);
       }
     } catch(e) {
-      console.error("[commute-edit] Error:", e);
+      console.error("[commute-edit-save] Error:", e);
+      alert("Failed to save");
     }
   }
 
