@@ -475,6 +475,57 @@
             border-top-color: #1e293b;
             z-index: 1000;
         }
+
+        .narrative-section {
+            background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%);
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 24px 0;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #334155;
+        }
+
+        .story-accent {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .metric-highlight {
+            background: rgba(59, 130, 246, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #1e40af;
+        }
+
+        .opportunity-highlight {
+            background: rgba(16, 185, 129, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #065f46;
+        }
+
+        .section-number {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: 700;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .section h2 {
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -551,6 +602,11 @@
             <div class="data-note">✅ Data from Wikidata + Wikipedia (verified sources)</div>
         </div>
 
+        <!-- Act 1: The Playing Field -->
+        <div class="narrative-section">
+            <strong>🎬 The Story So Far:</strong> {{ brand.name }} was founded in {{ brand.founded }}, and it's now competing in the <span class="story-accent">{{ market or 'UK' }}</span> market. But what kind of battlefield is it? Let's understand the market dynamics first.
+        </div>
+
         <!-- Market Economics (Phase 2) -->
         {% if market_econ %}
         <div class="section">
@@ -593,6 +649,21 @@
                 </div>
                 {% endif %}
             </div>
+        </div>
+        {% endif %}
+
+        <!-- Act 2: How is the Brand Performing? -->
+        {% if market_score %}
+        <div class="narrative-section">
+            <strong>📊 The Verdict:</strong> So {{ brand.name }} operates in a
+            {% if market_score.brand_strength_score >= 7 %}
+            <span class="story-accent">well-established</span>
+            {% elif market_score.brand_strength_score >= 5 %}
+            <span class="story-accent">moderately-established</span>
+            {% else %}
+            <span class="story-accent">emerging</span>
+            {% endif %}
+            position here. But will this market make it grow, or are we fighting just to maintain? Here's how {{ brand.name }} stacks up:
         </div>
         {% endif %}
 
@@ -688,6 +759,13 @@
         </div>
         {% endif %}
 
+        <!-- Act 4: The Competition -->
+        {% if competitors %}
+        <div class="narrative-section">
+            <strong>⚔️ The Arena:</strong> But {{ brand.name }} isn't alone. Let's see who else is fighting for market share, and how {{ brand.name }}'s pricing strategy compares. Are they the premium choice? The value player? Or competing on features?
+        </div>
+        {% endif %}
+
         <!-- Competitive Positioning -->
         {% if competitors %}
         <div class="section">
@@ -750,6 +828,11 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- Act 3: How Are They Playing? -->
+        <div class="narrative-section">
+            <strong>🎪 The Strategy:</strong> Let's see how {{ brand.name }} is actually positioning itself. Who are they targeting? What price point? What does this tell us about their strategy?
+        </div>
 
         <!-- Positioning & Segment -->
         <div class="section">
@@ -965,6 +1048,22 @@
             </div>
             {% endif %}
         </div>
+
+        <!-- Act 5: The Conclusion -->
+        {% if market_score %}
+        <div class="narrative-section" style="border-left-color: #6366f1; background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);">
+            <strong>🎯 The Bottom Line:</strong>
+            {% if market_score.brand_strength_score >= 7 and market_score.growth_opportunity_score >= 7 %}
+            {{ brand.name }} is in an enviable position in {{ market or 'UK' }}: <span class="story-accent">strong and growing</span>. This is where you invest aggressively. The market is expanding, the brand is well-positioned, and competition is manageable relative to opportunity.
+            {% elif market_score.brand_strength_score >= 7 and market_score.growth_opportunity_score < 5 %}
+            {{ brand.name }} has built a <span class="story-accent">solid, defensible position</span> in {{ market or 'UK' }}, but the market itself is mature with limited growth. This is a "milk the cow" scenario—optimize operations, defend share, but don't expect explosive growth.
+            {% elif market_score.brand_strength_score < 5 and market_score.growth_opportunity_score >= 7 %}
+            {{ market or 'UK' }} is <span class="story-accent">ripe with opportunity</span>, but {{ brand.name }}'s current position is weak. This requires bold repositioning or strategic partnerships to capture the growth.
+            {% else %}
+            {{ brand.name }}'s position in {{ market or 'UK' }} faces headwinds: the brand needs work, and the market growth is limited. This requires either significant operational improvement or a clear exit strategy.
+            {% endif %}
+        </div>
+        {% endif %}
 
         <div style="text-align: center; margin-top: 40px; color: #94a3b8; font-size: 13px;">
             <p>Phase 1: Real Data Only</p>
