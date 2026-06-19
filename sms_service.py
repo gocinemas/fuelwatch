@@ -1159,9 +1159,10 @@ def brand_redirect():
     return render_template("intel_brand.html")
 
 
+@app.route("/")
 @app.route("/intel")
-def intel_search():
-    """Search interface for Phase 1 brands - can also redirect if ?search= provided"""
+def intel_home():
+    """Intel home page - search interface for Phase 1 brands"""
     search = request.args.get("search", "").strip()
     market = request.args.get("market", "UK").strip()
 
