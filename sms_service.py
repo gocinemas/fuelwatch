@@ -1158,6 +1158,12 @@ def brand_redirect():
     return render_template("intel_brand.html")
 
 
+@app.route("/intel")
+def intel_search():
+    """Search interface for Phase 1 brands"""
+    return render_template("intel_phase1_directory.html")
+
+
 @app.route("/brand/full")
 def brand_full_intelligence():
     """Brand Intelligence page - Phase 1: Real Data Only"""
