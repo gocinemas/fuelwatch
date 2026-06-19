@@ -1,17 +1,28 @@
 """
 Agentic Intelligence Service
-Generates AI-driven insights, personalized recommendations, and real-time intelligence.
-Uses Groq for fast AI analysis, background threads for non-blocking execution.
+Generates AI-driven insights with Groq caching to reduce token usage.
+Uses cache layer to avoid regenerating analyses for the same brand.
 """
 
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Groq setup (reuse from school_service)
 groq_client = None
+cache_db = None
+
+def _init_cache():
+    """Initialize Supabase cache on first use"""
+    global cache_db
+    if cache_db is None:
+        try:
+            import library as lib
+            cache_db = lib._sb()
+        except:
+            cache_db = None
 try:
     import groq as groq_module
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
@@ -25,6 +36,44 @@ except ImportError as e:
     print(f"[agentic] Failed to import groq module: {e}")
 except Exception as e:
     print(f"[agentic] Failed to initialize Groq: {e}")
+
+
+def _cache_get(brand_name: str, analysis_type: str) -> dict:
+    """Get cached analysis (7-day TTL)"""
+    _init_cache()
+    if not cache_db:
+        return None
+    try:
+        result = cache_db.table("ai_cache").select("*").eq("brand_name", brand_name).eq("analysis_type", analysis_type).execute().data
+        if result:
+            cached = result[0]
+            # Check TTL (7 days)
+            created = datetime.fromisoformat(cached["created_at"])
+            if datetime.now() - created < timedelta(days=7):
+                print(f"[cache] HIT: {brand_name}/{analysis_type}")
+                return json.loads(cached["result"])
+            else:
+                print(f"[cache] EXPIRED: {brand_name}/{analysis_type}")
+        return None
+    except Exception as e:
+        print(f"[cache] GET error: {e}")
+        return None
+
+def _cache_set(brand_name: str, analysis_type: str, result: dict):
+    """Cache analysis result"""
+    _init_cache()
+    if not cache_db:
+        return
+    try:
+        cache_db.table("ai_cache").upsert({
+            "brand_name": brand_name,
+            "analysis_type": analysis_type,
+            "result": json.dumps(result),
+            "created_at": datetime.now().isoformat()
+        }).execute()
+        print(f"[cache] SAVED: {brand_name}/{analysis_type}")
+    except Exception as e:
+        print(f"[cache] SET error: {e}")
 
 
 def generate_template_insight(brand_data: dict) -> dict:
@@ -137,9 +186,15 @@ def generate_strategic_insight(brand_data: dict) -> dict:
 
 def generate_health_score(brand_data: dict) -> dict:
     """
-    Generate brand health score (0-100) using Groq analysis.
-    Considers: growth, profitability, market position, opportunities.
+    Generate brand health score (0-100) using Groq analysis with caching.
     """
+    brand_name = brand_data.get("brand", {}).get("name", "Unknown")
+
+    # Check cache first
+    cached = _cache_get(brand_name, "health_score")
+    if cached:
+        return cached
+
     if not groq_client:
         return {"score": 75, "source": "default"}
 
@@ -192,21 +247,32 @@ def generate_health_score(brand_data: dict) -> dict:
         score = max(0, min(100, score))  # Clamp to 0-100
         print(f"[agentic] Parsed health score: {score}")
 
-        return {
+        result = {
             "score": score,
             "timestamp": datetime.now().isoformat(),
             "source": "groq"
         }
+        _cache_set(brand_name, "health_score", result)
+        return result
 
     except Exception as e:
         print(f"[agentic] Health score error: {e}")
-        return {"score": 75, "error": str(e)}
+        result = {"score": 75, "error": str(e)}
+        _cache_set(brand_name, "health_score", result)
+        return result
 
 
 def generate_risk_flags(brand_data: dict) -> dict:
     """
-    Identify top 3 risk flags for a brand using Groq analysis.
+    Identify top 3 risk flags for a brand using Groq analysis with caching.
     """
+    brand_name = brand_data.get("brand", {}).get("name", "Unknown")
+
+    # Check cache first
+    cached = _cache_get(brand_name, "risk_flags")
+    if cached:
+        return cached
+
     if not groq_client:
         print(f"[agentic] Risk flags: groq_client not available, returning empty")
         return {"risks": [], "source": "default"}
@@ -259,15 +325,19 @@ def generate_risk_flags(brand_data: dict) -> dict:
         risks_text = response.choices[0].message.content.strip()
         risks = [r.strip() for r in risks_text.split("|")][:3]
 
-        return {
+        result = {
             "risks": risks,
             "timestamp": datetime.now().isoformat(),
             "source": "groq"
         }
+        _cache_set(brand_name, "risk_flags", result)
+        return result
 
     except Exception as e:
         print(f"[agentic] Risk flags error: {e}")
-        return {"risks": [], "error": str(e)}
+        result = {"risks": [], "error": str(e)}
+        _cache_set(brand_name, "risk_flags", result)
+        return result
 
 
 def search_relevant_videos(brand_name: str, topics: list, max_results: int = 1) -> dict:
