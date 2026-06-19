@@ -1677,10 +1677,10 @@ def api_commute_list():
             if device_id:
                 sb.table("user_commutes").update({"phone": phone}) \
                   .eq("device_id", device_id).is_("phone", "null").execute()
-            rows = sb.table("user_commutes").select("id,label,dest,created_at") \
+            rows = sb.table("user_commutes").select("id,label,dest,created_at,show_on_homepage,time_start,time_end,days_of_week") \
                      .eq("phone", phone).order("created_at").execute().data
         else:
-            rows = sb.table("user_commutes").select("id,label,dest,created_at") \
+            rows = sb.table("user_commutes").select("id,label,dest,created_at,show_on_homepage,time_start,time_end,days_of_week") \
                      .eq("device_id", device_id).order("created_at").execute().data
         return jsonify({"commutes": rows})
     except Exception as e:
@@ -1729,11 +1729,11 @@ def api_commute_active():
         from datetime import datetime
         sb = lib._sb()
         if phone:
-            rows = sb.table("user_commutes").select("id,label,dest") \
-                     .eq("phone", phone).execute().data or []
+            rows = sb.table("user_commutes").select("id,label,dest,show_on_homepage,time_start,time_end,days_of_week") \
+                     .eq("phone", phone).eq("show_on_homepage", True).execute().data or []
         else:
-            rows = sb.table("user_commutes").select("id,label,dest") \
-                     .eq("device_id", device_id).execute().data or []
+            rows = sb.table("user_commutes").select("id,label,dest,show_on_homepage,time_start,time_end,days_of_week") \
+                     .eq("device_id", device_id).eq("show_on_homepage", True).execute().data or []
 
         # Filter by current day and time
         now = datetime.now()
@@ -1742,12 +1742,12 @@ def api_commute_active():
 
         active = []
         for row in rows:
-            days = row.get("days_of_week") or []
+            days = row.get("days_of_week") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
             if current_dow not in days:
                 continue
-            time_start = row.get("time_start")
-            time_end = row.get("time_end")
-            if time_start and time_end and not (time_start <= current_time <= time_end):
+            time_start = row.get("time_start", "00:00")
+            time_end = row.get("time_end", "23:59")
+            if not (time_start <= current_time <= time_end):
                 continue
             active.append(row)
 
