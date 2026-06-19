@@ -43,6 +43,7 @@ from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
 import analytics
 import library as lib
 import school_service
+from scoring_engine import MarketEntryScorer
 
 app = Flask(__name__)
 
@@ -1279,7 +1280,29 @@ def brand_full_intelligence():
                 app.logger.warning(f"[brand_full] Could not fetch market economics: {econ_err}")
                 market_econ = {}
 
-            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=competitors_list))
+            # Calculate market entry score (Phase 2)
+            market_entry_score = None
+            try:
+                scorer = MarketEntryScorer()
+                market_entry_score = scorer.score_market(
+                    brand_name=search,
+                    market_country=market,
+                    category=category,
+                    brand_data={
+                        "positioning_tier": row.get("positioning_tier"),
+                        "distribution_strategy": row.get("distribution_strategy"),
+                    },
+                    market_data=market_econ,
+                    competitive_data={
+                        "competitive_intensity": market_econ.get("competitive_intensity", "medium"),
+                        "direct_competitors": [c["name"] for c in competitors_list],
+                    },
+                )
+            except Exception as score_err:
+                app.logger.warning(f"[brand_full] Could not calculate market entry score: {score_err}")
+                market_entry_score = None
+
+            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=competitors_list, market_score=market_entry_score))
         else:
             resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[], market=market, market_econ={}))
     except Exception as e:
