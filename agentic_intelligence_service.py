@@ -180,8 +180,17 @@ def generate_health_score(brand_data: dict) -> dict:
         )
 
         score_text = response.choices[0].message.content.strip()
-        score = int(''.join(filter(str.isdigit, score_text.split()[0])))
+        print(f"[agentic] Groq health score response: '{score_text}'")
+
+        # Extract first number from response
+        digits = ''.join(filter(str.isdigit, score_text.split()[0] if score_text.split() else ''))
+        if not digits:
+            print(f"[agentic] No digits found, defaulting to 75")
+            return {"score": 75, "timestamp": datetime.now().isoformat(), "source": "groq_default"}
+
+        score = int(digits)
         score = max(0, min(100, score))  # Clamp to 0-100
+        print(f"[agentic] Parsed health score: {score}")
 
         return {
             "score": score,

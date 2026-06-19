@@ -1289,16 +1289,16 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                         <div class="list-item">
                             <div class="list-item-title">Founded</div>
-                            <div class="list-item-meta">${companyData.founded_year || b.founded || '—'}</div>
+                            <div class="list-item-meta">${b.founded || b._enriched?.founding_year || '—'}</div>
                         </div>
                         <div class="list-item">
                             <div class="list-item-title">Headquarters</div>
-                            <div class="list-item-meta">${companyData.headquarters || b.headquarters || '—'}</div>
+                            <div class="list-item-meta">${b.hq || b.headquarters || b._enriched?.headquarters || '—'}</div>
                         </div>
                     </div>
                     <div class="list-item">
                         <div class="list-item-title">Website</div>
-                        <div class="list-item-meta"><a href="https://${companyData.website || b.website}" target="_blank" style="color: #3b82f6;">${companyData.website || b.website || '—'}</a></div>
+                        <div class="list-item-meta"><a href="https://${b.website}" target="_blank" style="color: #3b82f6;">${b.website || '—'}</a></div>
                     </div>
                 </div>
             `;
