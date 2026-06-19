@@ -329,11 +329,16 @@
 
         <!-- Pricing -->
         <div class="section">
-            <h2>💰 Pricing</h2>
+            <h2>💰 Pricing (UK Market)</h2>
             <div class="fundamentals">
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Typical SKU</div>
+                    <div class="fundamental-value">Moisturizing Cream Bar Soap or Body Wash</div>
+                </div>
+
                 {% if brand.price_local %}
                 <div class="fundamental-item">
-                    <div class="fundamental-label">Local Price</div>
+                    <div class="fundamental-label">UK Price</div>
                     <div class="fundamental-value">{{ brand.price_currency }}{{ brand.price_local }}</div>
                 </div>
                 {% endif %}
@@ -376,33 +381,45 @@
 
         <!-- Distribution & Marketing -->
         <div class="section">
-            <h2>🚀 Distribution & Marketing</h2>
+            <h2>🚀 Distribution & Marketing (UK)</h2>
             <div class="fundamentals">
                 {% if brand.distribution_channels %}
                 <div class="fundamental-item">
-                    <div class="fundamental-label">Distribution Channels</div>
-                    <div class="fundamental-value">{{ brand.distribution_channels }}</div>
+                    <div class="fundamental-label">Where to Buy (UK)</div>
+                    <div class="fundamental-value">
+                        {% if brand.distribution_channels is string %}
+                            {{ brand.distribution_channels }}
+                        {% elif brand.distribution_channels is iterable %}
+                            {{ brand.distribution_channels | join(', ') | capitalize }}
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
 
                 {% if brand.distribution_strategy %}
                 <div class="fundamental-item">
                     <div class="fundamental-label">Distribution Strategy</div>
-                    <div class="fundamental-value">{{ brand.distribution_strategy }}</div>
+                    <div class="fundamental-value">{{ brand.distribution_strategy | replace('_', ' ') | title }}</div>
                 </div>
                 {% endif %}
 
                 {% if brand.marketing_channels %}
                 <div class="fundamental-item">
-                    <div class="fundamental-label">Marketing Channels</div>
-                    <div class="fundamental-value">{{ brand.marketing_channels }}</div>
+                    <div class="fundamental-label">How They Advertise (UK)</div>
+                    <div class="fundamental-value">
+                        {% if brand.marketing_channels is string %}
+                            {{ brand.marketing_channels }}
+                        {% elif brand.marketing_channels is iterable %}
+                            {{ brand.marketing_channels | join(', ') | capitalize }}
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
 
                 {% if brand.marketing_tone %}
                 <div class="fundamental-item">
-                    <div class="fundamental-label">Marketing Tone</div>
-                    <div class="fundamental-value">{{ brand.marketing_tone }}</div>
+                    <div class="fundamental-label">Brand Voice</div>
+                    <div class="fundamental-value">{{ brand.marketing_tone | capitalize }}</div>
                 </div>
                 {% endif %}
             </div>
