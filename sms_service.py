@@ -18774,12 +18774,13 @@ def _wa_send_proactive(to: str, body: str) -> None:
             print(f"[proactive] skipped — missing Twilio env vars (sid={bool(sid)} token={bool(token)} frm={bool(frm)})")
             return
         frm_clean = frm.replace("whatsapp:", "").strip()
+        print(f"[proactive] SENDING to={to} from={frm} len={len(body)}")
         msg = _TC(sid, token).messages.create(
             body=body, from_=f"whatsapp:{frm_clean}", to=to
         )
-        print(f"[proactive] sent to={to} sid={msg.sid}")
+        print(f"[proactive] ✅ to={to} sid={msg.sid} status={getattr(msg,'status','unknown')}")
     except Exception as _e:
-        print(f"[proactive] FAILED to={to} error={_e}")
+        print(f"[proactive] ❌ to={to} error={str(_e)[:200]}")
 
 
 # ── WA conversation thread ─────────────────────────────────────────────────────
