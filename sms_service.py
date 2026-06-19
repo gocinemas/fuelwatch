@@ -12612,6 +12612,7 @@ def api_home_brief():
     try:
         _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
         _is_saturday = now.weekday() == 5  # Saturday anytime
+        app.logger.info(f"[weekend-snippet] Fri evening: {_is_fri_evening}, Sat: {_is_saturday}, hour: {hour}, weekday: {now.weekday()}")
         if (_is_fri_evening or _is_saturday) and postcode:
             from miru.geo import postcode_to_latlon
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
@@ -12626,13 +12627,16 @@ def api_home_brief():
                             _cat_name = "beer" if cat == "pubs" else cat
                             _url = f"https://api.humanagency.co/places/nearby?lat={_lat}&lon={_lon}&cat={_cat_name}&limit=5"
                             _r = requests.get(_url, timeout=3)
+                            app.logger.info(f"[weekend-snippet] {cat}: status={_r.status_code}")
                             if _r.status_code == 200:
                                 _places = _r.json().get("places", [])
+                                app.logger.info(f"[weekend-snippet] {cat}: got {len(_places)} places, first: {_places[0] if _places else 'none'}")
                                 # Filter for 4.0+ rating, take top 2
                                 _filtered = [p for p in _places if p.get("rating", 0) >= 4.0][:2]
                                 _snippet_places[cat] = [{"name": p.get("name", ""), "dist": round(p.get("distance_mi", 0), 1), "rating": p.get("rating", 0)} for p in _filtered]
-                        except Exception:
-                            pass
+                                app.logger.info(f"[weekend-snippet] {cat}: filtered to {len(_snippet_places[cat])}")
+                        except Exception as _e:
+                            app.logger.error(f"[weekend-snippet] {cat} error: {_e}")
                 if any(_snippet_places.values()):
                     _weekend_snippet = {
                         "food": _snippet_places.get("food", []),
