@@ -931,6 +931,12 @@
         </div>
       </div>
 
+      <!-- Weekend snippet: Fri 5pm+ & Sat — Food/Pubs/Parks -->
+      <div id="weekend-snippet" style="display:none;margin-bottom:10px;background:#f5f3ff;border:1.5px solid #e0e7ff;border-radius:16px;padding:12px 14px;font-size:12px;font-family:monospace">
+        <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:8px">🎉 Weekend Out</div>
+        <div id="snippet-content" style="color:#4c1d95;line-height:1.6"></div>
+      </div>
+
       <div id="school-home-card" style="display:none;margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden">
         <!-- CTA state: no profile set up -->
         <div id="shc-cta" style="display:none;padding:18px 18px 16px;cursor:pointer" onclick="_schoolHomeOpen()">
@@ -17180,6 +17186,30 @@ let _savesAll = [];
                 commuteCard.style.display = "block";
               }
             })();
+          }
+
+          // Weekend snippet: show on Fri 5pm+ or Sat
+          var weekendCard = document.getElementById("weekend-snippet");
+          if (weekendCard && d.weekend_snippet) {
+            const snippet = d.weekend_snippet;
+            const hasAny = (snippet.food && snippet.food.length) || (snippet.pubs && snippet.pubs.length) || (snippet.parks && snippet.parks.length);
+            if (hasAny) {
+              let lines = [];
+              if (snippet.food && snippet.food.length) {
+                lines.push("🍽️  Food:");
+                snippet.food.forEach(p => lines.push("   " + p.name + " (" + p.dist + "km)"));
+              }
+              if (snippet.pubs && snippet.pubs.length) {
+                lines.push("🍺 Pubs:");
+                snippet.pubs.forEach(p => lines.push("   " + p.name + " (" + p.dist + "km)"));
+              }
+              if (snippet.parks && snippet.parks.length) {
+                lines.push("🌳 Parks:");
+                snippet.parks.forEach(p => lines.push("   " + p.name + " (" + p.dist + "km)"));
+              }
+              document.getElementById("snippet-content").innerHTML = lines.join("<br>");
+              weekendCard.style.display = "block";
+            }
           }
 
           // "Checked: ..." status line + brief card footer

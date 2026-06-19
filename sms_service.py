@@ -12605,6 +12605,39 @@ def api_home_brief():
         except Exception:
             pass
 
+    # Weekend snippet (Friday 5pm+ or Saturday)
+    _weekend_snippet = {}
+    try:
+        _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
+        _is_saturday = now.weekday() == 5  # Saturday anytime
+        if (_is_fri_evening or _is_saturday) and postcode:
+            from miru.geo import postcode_to_latlon
+            _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
+            if _ll:
+                _lat, _lon = _ll
+                # Fetch food, pubs, parks in parallel
+                _snippet_places = {"food": [], "pubs": [], "parks": []}
+                import concurrent.futures as _cf2
+                with _cf2.ThreadPoolExecutor(max_workers=3) as _pool2:
+                    for cat in ["food", "pubs", "parks"]:
+                        try:
+                            _cat_name = "beer" if cat == "pubs" else cat
+                            _url = f"https://api.humanagency.co/places/nearby?lat={_lat}&lon={_lon}&cat={_cat_name}&limit=3"
+                            _r = requests.get(_url, timeout=3)
+                            if _r.status_code == 200:
+                                _places = _r.json().get("places", [])[:2]  # Top 2 per category
+                                _snippet_places[cat] = [{"name": p.get("name", ""), "dist": round(p.get("distance_mi", 0), 1)} for p in _places]
+                        except Exception:
+                            pass
+                if any(_snippet_places.values()):
+                    _weekend_snippet = {
+                        "food": _snippet_places.get("food", []),
+                        "pubs": _snippet_places.get("pubs", []),
+                        "parks": _snippet_places.get("parks", []),
+                    }
+    except Exception:
+        pass
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
@@ -12629,6 +12662,7 @@ def api_home_brief():
         "active_trip":     _active_trip,
         "school_holiday":  _school_holiday_now,
         "school_upcoming": school_upcoming[:3],  # Next 3 school events
+        "weekend_snippet": _weekend_snippet,  # Food/Pubs/Parks for Fri evening & Sat
         "car_at_service":  _car_at_service,
     }
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
