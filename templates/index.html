@@ -6830,16 +6830,25 @@ function _hcAdd() {
   }
 
   async function _commuteLoad() {
-    if (_commuteCache !== null) return _commuteCache;
+    if (_commuteCache !== null) {
+      console.log("[commute-load] Returning cached:", _commuteCache);
+      return _commuteCache;
+    }
     try {
       const p  = _commuteApiParams();
       const qs = new URLSearchParams(p);
-      const r  = await fetch(`/api/commute/list?${qs}`);
+      const url = `/api/commute/list?${qs}`;
+      console.log("[commute-load] Fetching from:", url);
+      const r  = await fetch(url);
+      console.log("[commute-load] Response status:", r.status);
       const d  = await r.json();
+      console.log("[commute-load] API response:", d);
       let rows = d.commutes || [];
       if (!rows.length) {
+        console.log("[commute-load] No rows from API, checking localStorage");
         const local = JSON.parse(localStorage.getItem("miru_commutes") || "[]");
         if (local.length) {
+          console.log("[commute-load] Found local commutes, syncing to API");
           for (const c of local) {
             await fetch("/api/commute/save", {
               method: "POST", headers: { "Content-Type": "application/json" },
@@ -6852,8 +6861,10 @@ function _hcAdd() {
         }
       }
       _commuteCache = rows;
+      console.log("[commute-load] Final rows:", rows);
       return rows;
     } catch(e) {
+      console.error("[commute-load] Error:", e);
       return JSON.parse(localStorage.getItem("miru_commutes") || "[]");
     }
   }
