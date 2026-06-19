@@ -335,7 +335,14 @@
                 {% if market_econ.category_market_size_usd_millions %}
                 <div class="econ-item">
                     <div class="econ-label">Category Market Size</div>
-                    <div class="econ-value">${{ market_econ.category_market_size_usd_millions }}M</div>
+                    <div class="econ-value">
+                        {% set size_millions = market_econ.category_market_size_usd_millions %}
+                        {% if size_millions >= 1000 %}
+                            ${{ (size_millions / 1000) | round(1) }}B
+                        {% else %}
+                            ${{ size_millions }}M
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
 
