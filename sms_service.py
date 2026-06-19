@@ -1161,7 +1161,15 @@ def brand_redirect():
 
 @app.route("/intel")
 def intel_search():
-    """Search interface for Phase 1 brands"""
+    """Search interface for Phase 1 brands - can also redirect if ?search= provided"""
+    search = request.args.get("search", "").strip()
+    market = request.args.get("market", "UK").strip()
+
+    # If search parameter provided, redirect directly to brand page
+    if search:
+        return redirect(f"/brand/full?search={search}&market={market}")
+
+    # Otherwise show search interface
     return render_template("intel_phase1_directory.html")
 
 
