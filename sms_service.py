@@ -1229,12 +1229,24 @@ def brand_full_intelligence():
                 "confidence_score": row.get("confidence_score"),
             }
 
-            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[], market=market))
+            # Fetch market economics (Phase 2)
+            try:
+                econ_result = sb.table("brand_phase1_market_economics").select("*").eq(
+                    "market_country", market
+                ).eq(
+                    "category", category
+                ).execute()
+                market_econ = econ_result.data[0] if econ_result.data else {}
+            except Exception as econ_err:
+                app.logger.warning(f"[brand_full] Could not fetch market economics: {econ_err}")
+                market_econ = {}
+
+            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[], market=market, market_econ=market_econ))
         else:
-            resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[]))
+            resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[], market=market, market_econ={}))
     except Exception as e:
         app.logger.error(f"[brand_full] Error: {e}")
-        resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[]))
+        resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[], market=market, market_econ={}))
 
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
     return resp

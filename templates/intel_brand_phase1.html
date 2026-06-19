@@ -197,6 +197,33 @@
             border-top: 1px solid #e2e8f0;
         }
 
+        .market-economics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .econ-item {
+            padding: 16px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%);
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+        }
+
+        .econ-label {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .econ-value {
+            color: #1e293b;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 24px;
@@ -285,6 +312,42 @@
 
             <div class="data-note">✅ Data from Wikidata + Wikipedia (verified sources)</div>
         </div>
+
+        <!-- Market Economics (Phase 2) -->
+        {% if market_econ %}
+        <div class="section">
+            <h2>🌍 Market Economics ({{ market or 'UK' }})</h2>
+            <div class="market-economics">
+                {% if market_econ.country_gdp_usd_trillions %}
+                <div class="econ-item">
+                    <div class="econ-label">Country GDP</div>
+                    <div class="econ-value">${{ market_econ.country_gdp_usd_trillions }}T USD</div>
+                </div>
+                {% endif %}
+
+                {% if market_econ.ppp_index %}
+                <div class="econ-item">
+                    <div class="econ-label">PPP Index</div>
+                    <div class="econ-value">{{ market_econ.ppp_index }}</div>
+                </div>
+                {% endif %}
+
+                {% if market_econ.category_market_size_usd_millions %}
+                <div class="econ-item">
+                    <div class="econ-label">Category Market Size</div>
+                    <div class="econ-value">${{ market_econ.category_market_size_usd_millions }}M</div>
+                </div>
+                {% endif %}
+
+                {% if market_econ.category_cagr_3yr %}
+                <div class="econ-item">
+                    <div class="econ-label">Category Growth (3yr CAGR)</div>
+                    <div class="econ-value">{{ market_econ.category_cagr_3yr }}%</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Positioning & Segment -->
         <div class="section">
