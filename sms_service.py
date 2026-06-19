@@ -1333,6 +1333,79 @@ def brand_full_intelligence():
     return resp
 
 
+@app.route("/api/brand/debug-full")
+def brand_debug_full():
+    """Debug endpoint - shows full flow"""
+    search = request.args.get("search", "Dove").strip()
+    market = request.args.get("market", "UK").strip()
+
+    debug = {"search": search, "market": market, "steps": []}
+
+    try:
+        sb = lib._sb()
+
+        # Step 1: Query
+        debug["steps"].append({"step": "Query database", "status": "started"})
+        result = sb.table("brand_phase1_intelligence").select("*").eq("brand_name", search).eq("market_country", market).execute()
+
+        if not result.data:
+            debug["steps"][-1]["status"] = "FAILED - no data found"
+            return jsonify(debug)
+
+        debug["steps"][-1]["status"] = f"SUCCESS - found {len(result.data)} records"
+        row = result.data[0]
+
+        # Step 2: Transform
+        debug["steps"].append({"step": "Transform data", "status": "started"})
+        category = row.get("category", "").lower()
+        brand = {
+            "name": row.get("brand_name"),
+            "price_currency": row.get("price_currency"),
+            "price_local": row.get("price_local"),
+            "market_status": row.get("market_status"),
+        }
+        debug["steps"][-1]["status"] = f"SUCCESS - brand name: {brand.get('name')}"
+
+        # Step 3: Competitors
+        debug["steps"].append({"step": "Fetch competitors", "status": "started"})
+        competitors_list = []
+        comp_names = [row.get("direct_competitor_1"), row.get("direct_competitor_2"), row.get("direct_competitor_3")]
+        for comp_name in comp_names:
+            if comp_name:
+                comp_result = sb.table("brand_phase1_intelligence").select("*").eq("brand_name", comp_name).eq("market_country", market).execute()
+                if comp_result.data:
+                    competitors_list.append({"name": comp_name, "found": True})
+        debug["steps"][-1]["status"] = f"SUCCESS - found {len(competitors_list)} competitors"
+
+        # Step 4: Market economics
+        debug["steps"].append({"step": "Fetch market economics", "status": "started"})
+        econ_result = sb.table("brand_phase1_market_economics").select("*").eq("market_country", market).eq("category", category).execute()
+        market_econ = econ_result.data[0] if econ_result.data else None
+        debug["steps"][-1]["status"] = f"SUCCESS - data found: {bool(market_econ)}"
+
+        # Step 5: Scoring
+        debug["steps"].append({"step": "Calculate score", "status": "started"})
+        try:
+            from scoring_engine import MarketEntryScorer
+            scorer = MarketEntryScorer()
+            score = scorer.score_market(search, market, category,
+                {"positioning_tier": row.get("positioning_tier")},
+                market_econ or {},
+                {"competitive_intensity": "medium", "direct_competitors": [c["name"] for c in competitors_list]})
+            debug["steps"][-1]["status"] = f"SUCCESS - score: {score.get('score')}/10"
+        except Exception as score_err:
+            debug["steps"][-1]["status"] = f"WARNING - {str(score_err)[:100]}"
+
+        debug["final_status"] = "SUCCESS - All steps passed!"
+
+    except Exception as e:
+        import traceback
+        debug["final_status"] = f"FAILED - {str(e)}"
+        debug["traceback"] = traceback.format_exc()
+
+    return jsonify(debug)
+
+
 @app.route("/api/brands/search")
 def brands_search():
     """Search for brands by name - returns matching brands for autocomplete"""
