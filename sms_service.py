@@ -1177,14 +1177,36 @@ def brand_full_intelligence():
         ).execute()
 
         if result.data:
-            brand = result.data[0]
-            # Convert arrays from strings if needed
-            if isinstance(brand.get("distribution_channels"), str):
-                brand["distribution_channels"] = json.loads(brand["distribution_channels"])
-            if isinstance(brand.get("marketing_channels"), str):
-                brand["marketing_channels"] = json.loads(brand["marketing_channels"])
-            if isinstance(brand.get("sources_used"), str):
-                brand["sources_used"] = json.loads(brand["sources_used"])
+            row = result.data[0]
+            # Transform to match template expectations
+            brand = {
+                "name": row.get("brand_name"),
+                "description": row.get("positioning_summary"),
+                "founded": row.get("founded_year"),
+                "headquarters": f"{row.get('headquarters_city')}, {row.get('headquarters_country')}" if row.get('headquarters_city') else None,
+                "website": row.get("official_website"),
+                "parent_company": row.get("parent_company"),
+                "positioning_tier": row.get("positioning_tier"),
+                "tagline": row.get("brand_tagline"),
+                "primary_benefit": row.get("primary_benefit"),
+                "emotional_benefit": row.get("emotional_benefit"),
+                "competitive_claim": row.get("competitive_claim"),
+                "marketing_tone": row.get("marketing_tone"),
+                "target_demographic": row.get("target_demographic"),
+                "target_income_tier": row.get("target_income_tier"),
+                "segment_size_millions": row.get("segment_size_millions"),
+                "price_local": row.get("price_local"),
+                "price_currency": row.get("price_currency"),
+                "ppp_index": row.get("ppp_index"),
+                "price_usd_equivalent": row.get("price_usd_equivalent"),
+                "category_growth_cagr": row.get("category_growth_cagr_3yr"),
+                "market_status": row.get("market_status"),
+                "growth_driver": row.get("growth_driver"),
+                "distribution_channels": row.get("distribution_channels", []),
+                "distribution_strategy": row.get("distribution_strategy"),
+                "data_completeness": row.get("data_completeness"),
+                "confidence_score": row.get("confidence_score"),
+            }
 
             resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[]))
         else:
