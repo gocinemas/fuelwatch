@@ -115,28 +115,64 @@ class MarketEntryScorer:
         )
         factors["ppp_viability"] = ppp_score
 
-        # Calculate weighted overall score
-        weights = {
-            "market_growth": 0.25,  # Growth is most important
-            "affluence_match": 0.25,  # Market fit is critical
-            "competition": 0.20,  # Lower competition is good
-            "distribution_accessibility": 0.15,  # Distribution matters
-            "ppp_viability": 0.15,  # PPP adjustment matters
+        # Calculate Brand Strength Score (viability NOW)
+        # Factors: Can we operate here? How healthy would the brand be?
+        strength_weights = {
+            "distribution_accessibility": 0.30,  # Can we reach customers?
+            "affluence_match": 0.30,  # Do customers fit our positioning?
+            "ppp_viability": 0.25,  # Can we afford to be here?
+            "competition": 0.15,  # Can we compete?
         }
 
-        overall_score = sum(factors[key] * weights[key] for key in factors)
-        overall_score = round(overall_score, 1)
+        brand_strength = sum(factors[key] * strength_weights[key] for key in strength_weights)
+        brand_strength = round(brand_strength, 1)
 
-        # Recommendation logic
-        if overall_score >= 7.5:
+        # Calculate Growth Opportunity Score (upside potential)
+        # Factors: Should we invest/expand here? How much upside?
+        market_size_factor = min(10, (market_size / 5000) * 10)  # Normalize market size
+
+        # Market status: emerging > high_growth > mature
+        market_status_score = 2.0
+        if market_status == "high_growth":
+            market_status_score = 8.0
+        elif market_status == "emerging":
+            market_status_score = 7.0
+        elif market_status == "mature":
+            market_status_score = 4.0
+
+        growth_weights = {
+            "market_growth": 0.40,  # Most important: CAGR
+            "market_size": 0.25,  # Larger market = more opportunity (use normalized value)
+            "competition": 0.20,  # Lower competition = more upside
+            "market_status": 0.15,  # Status indicates stage
+        }
+
+        growth_factors = {
+            "market_growth": factors["market_growth"],
+            "market_size": market_size_factor,
+            "competition": factors["competition"],
+            "market_status": market_status_score,
+        }
+
+        growth_opportunity = sum(growth_factors[key] * growth_weights[key] for key in growth_weights)
+        growth_opportunity = round(growth_opportunity, 1)
+
+        # Generate recommendation based on BOTH scores
+        if brand_strength >= 7.0 and growth_opportunity >= 7.0:
             recommendation = "green"
-            recommendation_text = "🟢 High opportunity. Strong market fit, growth potential, and manageable competition."
-        elif overall_score >= 5.0:
+            recommendation_text = "🟢 Strong & Growing: Healthy brand + high-growth market. Invest aggressively."
+        elif brand_strength >= 7.0 and growth_opportunity >= 5.0:
+            recommendation = "green"
+            recommendation_text = "🟢 Strong Foundation: Well-positioned brand. Optimize & maintain."
+        elif brand_strength >= 5.0 and growth_opportunity >= 7.0:
             recommendation = "yellow"
-            recommendation_text = "🟡 Conditional entry. Requires strategic positioning adjustment or competitive differentiation."
+            recommendation_text = "🟡 Growth Opportunity: Market is attractive, brand needs work. Requires strategic positioning."
+        elif brand_strength >= 5.0 or growth_opportunity >= 5.0:
+            recommendation = "yellow"
+            recommendation_text = "🟡 Conditional: Either moderate viability or limited growth. Requires differentiation."
         else:
             recommendation = "red"
-            recommendation_text = "🔴 Not recommended at this time. Market challenges outweigh opportunities."
+            recommendation_text = "🔴 Not Recommended: Weak brand position + limited growth. Market challenges outweigh opportunities."
 
         # Generate insights
         insights = self._generate_insights(
@@ -149,10 +185,22 @@ class MarketEntryScorer:
         )
 
         return {
-            "score": overall_score,
+            "brand_strength_score": brand_strength,
+            "growth_opportunity_score": growth_opportunity,
             "recommendation": recommendation,
             "recommendation_text": recommendation_text,
-            "factors": factors,
+            "brand_strength_factors": {
+                "distribution": factors["distribution_accessibility"],
+                "affluence": factors["affluence_match"],
+                "ppp_viability": factors["ppp_viability"],
+                "competition": factors["competition"],
+            },
+            "growth_opportunity_factors": {
+                "market_growth": factors["market_growth"],
+                "market_size": market_size_factor,
+                "competition": factors["competition"],
+                "market_status": market_status_score,
+            },
             "insights": insights,
             "risks": risks,
             "market_opportunity": self._calculate_revenue_potential(market_size, market_country, positioning_tier),
