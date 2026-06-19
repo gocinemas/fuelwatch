@@ -1179,17 +1179,23 @@ def brand_full_intelligence():
     search = request.args.get("search", "").strip()
     market = request.args.get("market", "UK").strip()
 
+    print(f"\n[brand_full] DEBUG: search='{search}', market='{market}'")
+
     if not search:
+        print(f"[brand_full] ERROR: No search parameter provided")
         return render_template("intel_brand_phase1.html", brand=None, skus=[])
 
     try:
         sb = lib._sb()
         # Fetch brand data from Supabase
+        print(f"[brand_full] Querying: brand_name='{search}', market_country='{market}'")
         result = sb.table("brand_phase1_intelligence").select("*").eq(
             "brand_name", search
         ).eq(
             "market_country", market
         ).execute()
+
+        print(f"[brand_full] Query result: {len(result.data) if result.data else 0} records found")
 
         if result.data:
             row = result.data[0]
