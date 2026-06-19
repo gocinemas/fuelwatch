@@ -215,8 +215,22 @@
 <body>
     <header>
         <div class="header-content">
-            <h1>{{ brand.name }}</h1>
-            <p class="subtitle">🎯 Consumer Goods Intelligence — Real Data Only</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                <div>
+                    <h1>{{ brand.name }}</h1>
+                    <p class="subtitle">🎯 Consumer Goods Intelligence — Real Data Only</p>
+                </div>
+                {% if brand.name %}
+                <div style="background: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <label style="display: block; font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 6px; text-transform: uppercase;">Market</label>
+                    <select id="marketSelect" onchange="switchMarket(this.value)" style="font-size: 16px; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; background: white; color: #1e293b; font-weight: 600;">
+                        <option value="UK" {% if market == 'UK' %}selected{% endif %}>🇬🇧 UK</option>
+                        <option value="USA" {% if market == 'USA' %}selected{% endif %}>🇺🇸 USA</option>
+                        <option value="India" {% if market == 'India' %}selected{% endif %}>🇮🇳 India</option>
+                    </select>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </header>
 
@@ -492,6 +506,14 @@
     </div>
 
     <script>
+        function switchMarket(newMarket) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const brand = urlParams.get('search');
+            if (brand) {
+                window.location.href = `/brand/full?search=${encodeURIComponent(brand)}&market=${newMarket}`;
+            }
+        }
+
         function searchBrand() {
             const searchTerm = document.getElementById('searchInput').value.trim();
             if (searchTerm) {
