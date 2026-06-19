@@ -21576,7 +21576,7 @@ let _savesAll = [];
       const current = _ehActiveCuisine ? ` (showing ${_ehActiveCuisine})` : "";
       el.innerHTML = `<div style="margin-bottom:12px;font-size:12px;color:var(--muted);font-weight:600">Choose cuisine${current}:</div>` +
         `<div style="display:flex;flex-wrap:wrap;gap:8px">` +
-        cuisines.map(c => `<button onclick="_ehActiveCuisine='${c.key}';_ehCache={};_ehSetCat('food',document.querySelector('[data-cat=food]'))" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600;${_ehActiveCuisine===c.key?'background:#4338ca;color:white;border-color:#4338ca':''}">${c.emoji} ${c.name}</button>`).join("") +
+        cuisines.map(c => `<button onclick="(function(){_ehActiveCuisine='${c.key}';_ehCache.food=null;_ehPlaces=[];const url='/api/places/nearby?lat='+_ehLat+'&lon='+_ehLon+'&cat=food&cuisine=${c.key}';fetch(url).then(r=>r.json()).then(d=>{_ehCache.food=(d.places||[]).map(p=>Object.assign({},p,{_dist:(p.lat&&p.lon)?_distKm(_ehLat,_ehLon,p.lat,p.lon):999}));_ehCache.food.sort((a,b)=>a._dist-b._dist);_ehPlaces=_ehCache.food;_ehRender();});})();" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600;${_ehActiveCuisine===c.key?'background:#4338ca;color:white;border-color:#4338ca':''}">${c.emoji} ${c.name}</button>`).join("") +
         `</div>`;
       return;
     }
