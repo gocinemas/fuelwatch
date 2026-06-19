@@ -417,7 +417,7 @@
 
                 {% if brand.price_local %}
                 <div class="fundamental-item">
-                    <div class="fundamental-label">UK Price</div>
+                    <div class="fundamental-label">{{ market or 'UK' }} Price</div>
                     <div class="fundamental-value">{{ brand.price_currency }}{{ brand.price_local }}</div>
                 </div>
                 {% endif %}
