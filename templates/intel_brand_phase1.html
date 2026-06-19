@@ -431,6 +431,50 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .tooltip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            margin-left: 6px;
+            background: #e0e7ff;
+            color: #4f46e5;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: help;
+            position: relative;
+        }
+
+        .tooltip-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 400;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .tooltip-icon:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 117%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #1e293b;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -510,7 +554,9 @@
         <!-- Market Economics (Phase 2) -->
         {% if market_econ %}
         <div class="section">
-            <h2>🌍 Market Economics ({{ market or 'UK' }})</h2>
+            <h2>🌍 Market Economics ({{ market or 'UK' }})
+                <span class="tooltip-icon" data-tooltip="Market size, growth rate, purchasing power, and economic context">?</span>
+            </h2>
             <div class="market-economics">
                 {% if market_econ.country_gdp_usd_trillions %}
                 <div class="econ-item">
@@ -553,12 +599,17 @@
         <!-- Brand Health Score (Phase 2) -->
         {% if market_score %}
         <div class="section market-entry-score">
-            <h2 style="margin-bottom: 20px;">💪 Brand Health Score</h2>
+            <h2 style="margin-bottom: 20px;">💪 Brand Health Score
+                <span class="tooltip-icon" data-tooltip="Brand Strength = viability now; Growth Opportunity = upside potential">?</span>
+            </h2>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
                 <!-- Brand Strength Score -->
                 <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #3b82f6;">
-                    <div style="font-size: 13px; color: #64748b; margin-bottom: 8px; font-weight: 600;">BRAND STRENGTH</div>
+                    <div style="font-size: 13px; color: #64748b; margin-bottom: 8px; font-weight: 600;">
+                        BRAND STRENGTH
+                        <span class="tooltip-icon" data-tooltip="Can we operate here now? Distribution, pricing power, competitive viability">?</span>
+                    </div>
                     <div class="score-header" style="margin-bottom: 16px;">
                         <div class="score-number">{{ market_score.brand_strength_score }}/10</div>
                     </div>
@@ -577,7 +628,10 @@
 
                 <!-- Growth Opportunity Score -->
                 <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
-                    <div style="font-size: 13px; color: #64748b; margin-bottom: 8px; font-weight: 600;">GROWTH OPPORTUNITY</div>
+                    <div style="font-size: 13px; color: #64748b; margin-bottom: 8px; font-weight: 600;">
+                        GROWTH OPPORTUNITY
+                        <span class="tooltip-icon" data-tooltip="Market growth rate, size, and competitive dynamics. How much upside exists?">?</span>
+                    </div>
                     <div class="score-header" style="margin-bottom: 16px;">
                         <div class="score-number">{{ market_score.growth_opportunity_score }}/10</div>
                     </div>
@@ -637,7 +691,9 @@
         <!-- Competitive Positioning -->
         {% if competitors %}
         <div class="section">
-            <h2>🏆 How You Compare to Competitors</h2>
+            <h2>🏆 How You Compare to Competitors
+                <span class="tooltip-icon" data-tooltip="Price positioning vs direct competitors (% more or less expensive)">?</span>
+            </h2>
             <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">
                 Pricing, positioning, and market presence in {{ market or 'UK' }}
             </p>
@@ -697,7 +753,9 @@
 
         <!-- Positioning & Segment -->
         <div class="section">
-            <h2>🎯 Your Brand: Positioning & Segment</h2>
+            <h2>🎯 Your Brand: Positioning & Segment
+                <span class="tooltip-icon" data-tooltip="How brand is positioned (tier), who buys it, and market size">?</span>
+            </h2>
             <div class="fundamentals">
                 {% if brand.positioning_tier %}
                 <div class="fundamental-item">
