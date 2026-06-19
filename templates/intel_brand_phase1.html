@@ -272,6 +272,162 @@
             <div class="data-note">✅ Data from Wikidata + Wikipedia (verified sources)</div>
         </div>
 
+        <!-- Positioning & Segment -->
+        <div class="section">
+            <h2>🎯 Positioning & Segment</h2>
+            <div class="fundamentals">
+                {% if brand.positioning_tier %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Positioning Tier</div>
+                    <div class="fundamental-value">{{ brand.positioning_tier | title }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.tagline %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Tagline</div>
+                    <div class="fundamental-value">{{ brand.tagline }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.primary_benefit %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Primary Benefit</div>
+                    <div class="fundamental-value">{{ brand.primary_benefit }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.emotional_benefit %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Emotional Benefit</div>
+                    <div class="fundamental-value">{{ brand.emotional_benefit }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.target_demographic %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Target Demographic</div>
+                    <div class="fundamental-value">{{ brand.target_demographic }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.target_income_tier %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Income Tier</div>
+                    <div class="fundamental-value">{{ brand.target_income_tier }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.segment_size_millions %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Segment Size</div>
+                    <div class="fundamental-value">{{ brand.segment_size_millions }}M people</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="section">
+            <h2>💰 Pricing</h2>
+            <div class="fundamentals">
+                {% if brand.price_local %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Local Price</div>
+                    <div class="fundamental-value">{{ brand.price_currency }}{{ brand.price_local }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.price_usd_equivalent %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">USD Equivalent</div>
+                    <div class="fundamental-value">${{ brand.price_usd_equivalent }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Market & Growth -->
+        <div class="section">
+            <h2>📈 Market & Growth</h2>
+            <div class="fundamentals">
+                {% if brand.market_status %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Market Status</div>
+                    <div class="fundamental-value">{{ brand.market_status | title }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.category_growth_cagr %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Category Growth (3yr CAGR)</div>
+                    <div class="fundamental-value">{{ brand.category_growth_cagr }}%</div>
+                </div>
+                {% endif %}
+
+                {% if brand.growth_driver %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Growth Driver</div>
+                    <div class="fundamental-value">{{ brand.growth_driver }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Distribution & Marketing -->
+        <div class="section">
+            <h2>🚀 Distribution & Marketing</h2>
+            <div class="fundamentals">
+                {% if brand.distribution_channels %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Distribution Channels</div>
+                    <div class="fundamental-value">{{ brand.distribution_channels }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.distribution_strategy %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Distribution Strategy</div>
+                    <div class="fundamental-value">{{ brand.distribution_strategy }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.marketing_channels %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Marketing Channels</div>
+                    <div class="fundamental-value">{{ brand.marketing_channels }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.marketing_tone %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Marketing Tone</div>
+                    <div class="fundamental-value">{{ brand.marketing_tone }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Data Quality -->
+        <div class="section">
+            <h2>✅ Data Quality</h2>
+            <div class="fundamentals">
+                {% if brand.data_completeness %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Completeness</div>
+                    <div class="fundamental-value">{{ brand.data_completeness }}%</div>
+                </div>
+                {% endif %}
+
+                {% if brand.confidence_score %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Confidence</div>
+                    <div class="fundamental-value">{{ brand.confidence_score }}%</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- Top Performing SKUs -->
         <div class="section">
             <h2>📦 Top Performing SKUs</h2>

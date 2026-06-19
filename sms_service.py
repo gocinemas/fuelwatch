@@ -1210,6 +1210,7 @@ def brand_full_intelligence():
                 "growth_driver": row.get("growth_driver"),
                 "distribution_channels": row.get("distribution_channels", []),
                 "distribution_strategy": row.get("distribution_strategy"),
+                "marketing_channels": row.get("marketing_channels", []),
                 "data_completeness": row.get("data_completeness"),
                 "confidence_score": row.get("confidence_score"),
             }
