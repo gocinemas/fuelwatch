@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ brand.name }} - Brand Intelligence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 30px 0;
+            margin-bottom: 40px;
+            sticky: top;
+        }
+
+        .header-content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .search-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            height: 44px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .search-box button {
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            height: 44px;
+        }
+
+        .section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .section h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .fundamentals {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .fundamental-item {
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .fundamental-label {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .fundamental-value {
+            color: #1e293b;
+            font-size: 15px;
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .fundamental-value a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        .fundamental-value a:hover {
+            text-decoration: underline;
+        }
+
+        .skus {
+            display: grid;
+            gap: 16px;
+        }
+
+        .sku-card {
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .sku-name {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .sku-meta {
+            display: grid;
+            grid-template-columns: auto auto auto;
+            gap: 20px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .sku-meta span {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sku-meta-label {
+            font-weight: 600;
+            color: #475569;
+            font-size: 12px;
+        }
+
+        .sku-reason {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 13px;
+            color: #475569;
+            font-style: italic;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .data-note {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            .fundamentals {
+                grid-template-columns: 1fr;
+            }
+
+            .sku-meta {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>{{ brand.name }}</h1>
+            <p class="subtitle">🎯 Consumer Goods Intelligence — Real Data Only</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search another brand...">
+            <button onclick="searchBrand()">Search</button>
+        </div>
+
+        <!-- Brand Fundamentals -->
+        <div class="section">
+            <h2>📖 Brand Fundamentals</h2>
+
+            {% if brand.description %}
+            <div class="fundamental-item">
+                <div class="fundamental-label">Description</div>
+                <div class="fundamental-value">{{ brand.description }}</div>
+            </div>
+            {% endif %}
+
+            <div class="fundamentals">
+                {% if brand.founded %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Founded</div>
+                    <div class="fundamental-value">{{ brand.founded }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.headquarters %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Headquarters</div>
+                    <div class="fundamental-value">{{ brand.headquarters }}</div>
+                </div>
+                {% endif %}
+
+                {% if brand.website %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Website</div>
+                    <div class="fundamental-value">
+                        <a href="https://{{ brand.website }}" target="_blank">{{ brand.website }}</a>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if brand.parent_company %}
+                <div class="fundamental-item">
+                    <div class="fundamental-label">Parent Company</div>
+                    <div class="fundamental-value">{{ brand.parent_company }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="data-note">✅ Data from Wikidata + Wikipedia (verified sources)</div>
+        </div>
+
+        <!-- Top Performing SKUs -->
+        <div class="section">
+            <h2>📦 Top Performing SKUs</h2>
+
+            {% if skus and skus|length > 0 %}
+            <div class="skus">
+                {% for sku in skus %}
+                <div class="sku-card">
+                    <div class="sku-name">{{ sku.name }}</div>
+                    <div class="sku-meta">
+                        <span>
+                            <span class="sku-meta-label">Category</span>
+                            {{ sku.category }}
+                        </span>
+                        <span>
+                            <span class="sku-meta-label">Price (GBP)</span>
+                            {{ sku.price }}
+                        </span>
+                        <span>
+                            <span class="sku-meta-label">Available</span>
+                            {{ sku.availability }}
+                        </span>
+                    </div>
+                    {% if sku.reason %}
+                    <div class="sku-reason">{{ sku.reason }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="data-note">✅ Data from brand websites + Amazon + retail partners (real products)</div>
+            {% else %}
+            <div class="empty-state">
+                <p>No SKU data available yet for this brand.</p>
+                <p style="margin-top: 12px; font-size: 13px;">We're working on gathering real product data from official sources.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: #94a3b8; font-size: 13px;">
+            <p>Phase 1: Real Data Only</p>
+            <p style="margin-top: 8px;">All information verified from official sources. No AI hallucinations.</p>
+        </div>
+    </div>
+
+    <script>
+        function searchBrand() {
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            if (searchTerm) {
+                window.location.href = `/intel?search=${encodeURIComponent(searchTerm)}`;
+            }
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchBrand();
+        });
+    </script>
+</body>
+</html>
