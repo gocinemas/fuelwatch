@@ -1161,9 +1161,19 @@ def brand_redirect():
     return render_template("intel_brand.html")
 
 
+@app.route("/")
+def intel_root():
+    """Intel landing page - mission and explanation"""
+    return render_template("intel_landing.html")
+
 @app.route("/intel")
-def intel_home():
-    """Intel home page - search interface for Phase 1 brands"""
+def intel_legacy():
+    """Intel root (for backwards compatibility) - redirects to root"""
+    return redirect("/")
+
+@app.route("/brand")
+def brand_search():
+    """Brand search interface - Phase 1 brands"""
     search = request.args.get("search", "").strip()
     market = request.args.get("market", "UK").strip()
 
@@ -2781,10 +2791,6 @@ def test_places():
 @app.route("/doc/<share_id>")
 def doc_page(share_id):
     return render_template("index.html", prefill_company=None, prefill_doc=share_id)
-
-@app.route("/intel")
-def intel_page():
-    return render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=True)
 
 @app.route("/school")
 def school_root():
