@@ -61,16 +61,18 @@ def _validate_brief_text(text):
 
         # BLOCK: Personal imperatives and "you should/might/need" advice
         hard_blocks = [
-            # You-form direct advice
+            # You-form direct advice (anywhere in sentence)
             "you should", "you might", "you could", "you need",
             "you have", "you've got",
             # I-form inferences
             "i think", "i believe", "i know",
             # Imperative verbs targeting user (grab YOUR, get A, don't forget)
             "grab your", "get a ", "don't forget", "remember to",
+            "make sure", "ensure you", "consider",
         ]
 
-        if any(sent_lower.startswith(block) for block in hard_blocks):
+        # Check if ANY blocked phrase appears ANYWHERE in the sentence
+        if any(block in sent_lower for block in hard_blocks):
             app.logger.debug(f"[validate] Blocked advice: {sent[:50]}")
             continue
 
