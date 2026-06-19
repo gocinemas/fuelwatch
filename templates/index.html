@@ -7043,11 +7043,16 @@ function _hcAdd() {
     try {
       console.log("[commute-edit] Opening for id:", id);
 
-      // Load commute data and show edit modal
-      const commutes = await _commuteLoad();
-      const commute = commutes.find(c => c.id === id);
-      if (!commute) {
-        console.error("[commute-edit] Commute not found:", id);
+      // Get commute data from DOM element
+      const card = document.getElementById(`commute-card-${id}`);
+      if (!card) {
+        console.error("[commute-edit] Card element not found:", id);
+        return;
+      }
+
+      const commute = JSON.parse(card.getAttribute('data-commute') || '{}');
+      if (!commute.id) {
+        console.error("[commute-edit] Commute data not found:", id);
         return;
       }
 
@@ -7171,7 +7176,7 @@ function _hcAdd() {
     // Sort by type: Schools → Supermarkets → Restaurants → Other
     arr = arr.sort((a, b) => _getCommuteType(a.label) - _getCommuteType(b.label));
     el.innerHTML = arr.map(c => `
-      <div id="commute-card-${c.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;position:relative">
+      <div id="commute-card-${c.id}" data-commute='${JSON.stringify(c)}' style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;position:relative">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div style="font-size:13px;font-weight:800;color:var(--text);flex:1">🚗 <span id="label-${c.id}">${c.label}</span></div>
           <div style="position:relative">
