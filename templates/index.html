@@ -17188,7 +17188,7 @@ let _savesAll = [];
             })();
           }
 
-          // Weekend snippet: show on Fri 5pm+ or Sat
+          // Weekend snippet: show on Fri 5pm+ or Sat (4.0+ rated only)
           var weekendCard = document.getElementById("weekend-snippet");
           if (weekendCard && d.weekend_snippet) {
             const snippet = d.weekend_snippet;
@@ -17197,15 +17197,15 @@ let _savesAll = [];
               let lines = [];
               if (snippet.food && snippet.food.length) {
                 lines.push("🍽️  Food:");
-                snippet.food.forEach(p => lines.push("   " + p.name + " (" + p.dist + "km)"));
+                snippet.food.forEach(p => lines.push("   " + p.name + " ⭐" + (p.rating || 4.0).toFixed(1) + " (" + p.dist + "km)"));
               }
               if (snippet.pubs && snippet.pubs.length) {
                 lines.push("🍺 Pubs:");
-                snippet.pubs.forEach(p => lines.push("   " + p.name + " (" + p.dist + "km)"));
+                snippet.pubs.forEach(p => lines.push("   " + p.name + " ⭐" + (p.rating || 4.0).toFixed(1) + " (" + p.dist + "km)"));
               }
               if (snippet.parks && snippet.parks.length) {
                 lines.push("🌳 Parks:");
-                snippet.parks.forEach(p => lines.push("   " + p.name + " (" + p.dist + "km)"));
+                snippet.parks.forEach(p => lines.push("   " + p.name + " ⭐" + (p.rating || 4.0).toFixed(1) + " (" + p.dist + "km)"));
               }
               document.getElementById("snippet-content").innerHTML = lines.join("<br>");
               weekendCard.style.display = "block";

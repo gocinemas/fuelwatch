@@ -12622,11 +12622,13 @@ def api_home_brief():
                     for cat in ["food", "pubs", "parks"]:
                         try:
                             _cat_name = "beer" if cat == "pubs" else cat
-                            _url = f"https://api.humanagency.co/places/nearby?lat={_lat}&lon={_lon}&cat={_cat_name}&limit=3"
+                            _url = f"https://api.humanagency.co/places/nearby?lat={_lat}&lon={_lon}&cat={_cat_name}&limit=5"
                             _r = requests.get(_url, timeout=3)
                             if _r.status_code == 200:
-                                _places = _r.json().get("places", [])[:2]  # Top 2 per category
-                                _snippet_places[cat] = [{"name": p.get("name", ""), "dist": round(p.get("distance_mi", 0), 1)} for p in _places]
+                                _places = _r.json().get("places", [])
+                                # Filter for 4.0+ rating, take top 2
+                                _filtered = [p for p in _places if p.get("rating", 0) >= 4.0][:2]
+                                _snippet_places[cat] = [{"name": p.get("name", ""), "dist": round(p.get("distance_mi", 0), 1), "rating": p.get("rating", 0)} for p in _filtered]
                         except Exception:
                             pass
                 if any(_snippet_places.values()):
