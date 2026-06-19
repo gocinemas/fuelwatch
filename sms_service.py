@@ -1161,8 +1161,38 @@ def brand_redirect():
 @app.route("/brand/full")
 def brand_full_intelligence():
     """Brand Intelligence page - Phase 1: Real Data Only"""
-    # Use Phase 1 template (real data only, no fabrication)
-    resp = make_response(render_template("intel_brand_phase1.html"))
+    search = request.args.get("search", "").strip()
+    market = request.args.get("market", "UK").strip()
+
+    if not search:
+        return render_template("intel_brand_phase1.html", brand=None, skus=[])
+
+    try:
+        sb = lib._sb()
+        # Fetch brand data from Supabase
+        result = sb.table("brand_phase1_intelligence").select("*").eq(
+            "brand_name", search
+        ).eq(
+            "market_country", market
+        ).execute()
+
+        if result.data:
+            brand = result.data[0]
+            # Convert arrays from strings if needed
+            if isinstance(brand.get("distribution_channels"), str):
+                brand["distribution_channels"] = json.loads(brand["distribution_channels"])
+            if isinstance(brand.get("marketing_channels"), str):
+                brand["marketing_channels"] = json.loads(brand["marketing_channels"])
+            if isinstance(brand.get("sources_used"), str):
+                brand["sources_used"] = json.loads(brand["sources_used"])
+
+            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[]))
+        else:
+            resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[]))
+    except Exception as e:
+        app.logger.error(f"[brand_full] Error: {e}")
+        resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[]))
+
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
     return resp
 
