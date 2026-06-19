@@ -1607,22 +1607,29 @@ def admin_populate_brands():
 @app.route("/")
 @app.route("/company")
 def index():
-    if "space." in request.host:
+    _host = request.host.lower()
+    app.logger.info(f"[index] Host: {_host}, Path: {request.path}")
+
+    if "space." in _host:
         return render_template("space.html")
-    # New Intel standalone page (clean, no Miru entanglement)
-    if "intel.humanagency.co" in request.host:
+
+    # Exact match for Intel subdomain ONLY
+    if _host == "intel.humanagency.co" or _host.startswith("intel.humanagency.co:"):
         path = request.path.lower()
         if path == "/company" or path == "/company/":
             template = "intel_company.html"
         else:
             template = "intel_standalone.html"
+        app.logger.info(f"[index] Serving Intel: {template}")
         resp = make_response(render_template(template))
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
         resp.headers["Pragma"] = "no-cache"
         resp.headers["Expires"] = "0"
         return resp
-    # Legacy Intel mode (for /intelagent route)
-    intel_mode = "intel." in request.host or request.args.get("intel") == "1" or request.args.get("screen") == "intel"
+
+    # Miru mode (NOT Intel)
+    app.logger.info(f"[index] Serving Miru index.html")
+    intel_mode = False  # Explicitly False for Miru
     resp = make_response(render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=intel_mode))
     # Force no-cache at all levels to bypass edge caching
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
