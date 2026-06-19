@@ -1663,10 +1663,10 @@ def api_commute_list():
             if device_id:
                 sb.table("user_commutes").update({"phone": phone}) \
                   .eq("device_id", device_id).is_("phone", "null").execute()
-            rows = sb.table("user_commutes").select("id,label,dest,created_at") \
+            rows = sb.table("user_commutes").select("id,label,dest,created_at,show_on_homepage,time_start,time_end,days_of_week") \
                      .eq("phone", phone).order("created_at").execute().data
         else:
-            rows = sb.table("user_commutes").select("id,label,dest,created_at") \
+            rows = sb.table("user_commutes").select("id,label,dest,created_at,show_on_homepage,time_start,time_end,days_of_week") \
                      .eq("device_id", device_id).order("created_at").execute().data
         return jsonify({"commutes": rows})
     except Exception as e:
@@ -1677,12 +1677,67 @@ def api_commute_list():
 def api_commute_update():
     body = request.get_json(force=True, silent=True) or {}
     commute_id = body.get("id")
-    label = (body.get("label") or "").strip()
-    if not commute_id or not label:
-        return jsonify({"error": "id and label required"}), 400
+    if not commute_id:
+        return jsonify({"error": "id required"}), 400
     try:
-        lib._sb().table("user_commutes").update({"label": label}).eq("id", commute_id).execute()
+        update_data = {}
+        # Update label if provided
+        if body.get("label"):
+            update_data["label"] = body.get("label").strip()
+        # Update visibility and timing preferences
+        if "show_on_homepage" in body:
+            update_data["show_on_homepage"] = bool(body.get("show_on_homepage"))
+        if "time_start" in body:
+            update_data["time_start"] = body.get("time_start")  # HH:MM format
+        if "time_end" in body:
+            update_data["time_end"] = body.get("time_end")  # HH:MM format
+        if "days_of_week" in body:
+            # JSON array: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            update_data["days_of_week"] = body.get("days_of_week")
+
+        if not update_data:
+            return jsonify({"error": "no fields to update"}), 400
+
+        lib._sb().table("user_commutes").update(update_data).eq("id", commute_id).execute()
         return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/commute/active")
+def api_commute_active():
+    """Get commutes that should display now (show_on_homepage + matching time/day)."""
+    device_id = request.args.get("device_id", "").strip()
+    phone     = request.args.get("phone", "").strip()
+    if not device_id and not phone:
+        return jsonify({"error": "device_id or phone required"}), 400
+    try:
+        from datetime import datetime
+        sb = lib._sb()
+        if phone:
+            rows = sb.table("user_commutes").select("id,label,dest,show_on_homepage,time_start,time_end,days_of_week") \
+                     .eq("phone", phone).eq("show_on_homepage", True).execute().data or []
+        else:
+            rows = sb.table("user_commutes").select("id,label,dest,show_on_homepage,time_start,time_end,days_of_week") \
+                     .eq("device_id", device_id).eq("show_on_homepage", True).execute().data or []
+
+        # Filter by current day and time
+        now = datetime.now()
+        current_dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][now.weekday()]
+        current_time = now.strftime("%H:%M")
+
+        active = []
+        for row in rows:
+            days = row.get("days_of_week") or []
+            if current_dow not in days:
+                continue
+            time_start = row.get("time_start")
+            time_end = row.get("time_end")
+            if time_start and time_end and not (time_start <= current_time <= time_end):
+                continue
+            active.append(row)
+
+        return jsonify({"commutes": active})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
