@@ -1180,21 +1180,8 @@
                     parentCompany = ownedByMatch[1].trim();
                 }
 
-                // Fetch company data if parent company found
-                let companyData = null;
-                if (parentCompany) {
-                    try {
-                        const compResponse = await fetch(`/api/company/intelligence?name=${encodeURIComponent(parentCompany)}`);
-                        companyData = await compResponse.json();
-                    } catch (e) {
-                        console.warn('Failed to fetch company data:', e);
-                    }
-                }
-
-                // Merge company data into brand data
-                if (companyData && !companyData.error) {
-                    data.company = companyData;
-                }
+                // Note: Company data now provided by brand enricher (Wikidata + Groq)
+                // Skipping separate company API call since enricher already has HQ, website, founded
 
                 // Store data globally for agentic checks
                 window.currentBrandData = data;

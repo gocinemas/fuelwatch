@@ -3196,9 +3196,15 @@ def api_brand():
             generate_competitive_landscape_analysis
         )
 
-        # Health Score (expects flat data)
+        # Health Score (expects nested data structure)
         try:
-            health_score = generate_health_score(data)
+            nested_data = {
+                "brand": data,
+                "financials": data.get("financials", {}),
+                "competitors": {"direct_competitors": data.get("competitors", [])},
+                "white_space": {"market_gaps": data.get("market_gaps", [])}
+            }
+            health_score = generate_health_score(nested_data)
             if health_score.get("score") is not None:
                 data["health_score"] = health_score
                 app.logger.info(f"[api_brand] Generated health score for {name}")
