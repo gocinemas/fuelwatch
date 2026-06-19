@@ -1186,6 +1186,44 @@ def brand_full_intelligence():
             row = result.data[0]
             category = row.get("category", "").lower()
 
+            # Fetch competitor data
+            competitors_list = []
+            comp_names = [
+                row.get("direct_competitor_1"),
+                row.get("direct_competitor_2"),
+                row.get("direct_competitor_3"),
+            ]
+
+            for comp_name in comp_names:
+                if comp_name:
+                    try:
+                        comp_result = sb.table("brand_phase1_intelligence").select("*").eq(
+                            "brand_name", comp_name
+                        ).eq("market_country", market).execute()
+
+                        if comp_result.data:
+                            comp_row = comp_result.data[0]
+                            your_price_usd = float(row.get("price_usd_equivalent", 0))
+                            comp_price_usd = float(comp_row.get("price_usd_equivalent", 0))
+
+                            price_delta = 0
+                            if your_price_usd > 0:
+                                price_delta = round(((comp_price_usd - your_price_usd) / your_price_usd) * 100)
+
+                            competitors_list.append({
+                                "name": comp_row.get("brand_name"),
+                                "positioning_tier": comp_row.get("positioning_tier", "").lower(),
+                                "currency": comp_row.get("price_currency"),
+                                "price": comp_row.get("price_local"),
+                                "price_usd": round(comp_price_usd, 2),
+                                "target_demographic": comp_row.get("target_demographic"),
+                                "distribution_strategy": comp_row.get("distribution_strategy", "").replace("_", " ").title(),
+                                "price_delta": price_delta,
+                            })
+                    except Exception as comp_err:
+                        app.logger.warning(f"Could not fetch competitor {comp_name}: {comp_err}")
+                        continue
+
             # Category-based typical SKU descriptions
             sku_map = {
                 "skincare": "Bar Soap, Moisturizing Cream, or Facial Wash",
@@ -1241,7 +1279,7 @@ def brand_full_intelligence():
                 app.logger.warning(f"[brand_full] Could not fetch market economics: {econ_err}")
                 market_econ = {}
 
-            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[], market=market, market_econ=market_econ))
+            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=competitors_list))
         else:
             resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[], market=market, market_econ={}))
     except Exception as e:

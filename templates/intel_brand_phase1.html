@@ -224,6 +224,95 @@
             font-weight: 700;
         }
 
+        .competitors {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .competitor-card {
+            padding: 16px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .competitor-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        }
+
+        .competitor-name {
+            font-weight: 700;
+            font-size: 16px;
+            color: #1e293b;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .positioning-tier-badge {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .tier-economy { background: #dbeafe; color: #1e40af; }
+        .tier-mass-market { background: #ccfbf1; color: #134e4a; }
+        .tier-premium { background: #fce7f3; color: #831843; }
+        .tier-luxury { background: #fef3c7; color: #92400e; }
+
+        .competitor-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .detail-label {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        .price-comparison {
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .price-vs {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .price-delta {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .delta-lower { color: #16a34a; }
+        .delta-higher { color: #dc2626; }
+        .delta-equal { color: #0891b2; }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 24px;
@@ -356,9 +445,70 @@
         </div>
         {% endif %}
 
+        <!-- Competitive Positioning -->
+        {% if competitors %}
+        <div class="section">
+            <h2>🏆 How You Compare to Competitors</h2>
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">
+                Pricing, positioning, and market presence in {{ market or 'UK' }}
+            </p>
+            <div class="competitors">
+                {% for comp in competitors %}
+                <div class="competitor-card">
+                    <div class="competitor-name">
+                        {{ comp.name }}
+                        {% if comp.positioning_tier %}
+                        <span class="positioning-tier-badge tier-{{ comp.positioning_tier | replace('-', '') }}">
+                            {{ comp.positioning_tier }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="competitor-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Price ({{ comp.currency }})</span>
+                            <span class="detail-value">{{ comp.currency }}{{ comp.price }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">USD Equivalent</span>
+                            <span class="detail-value">${{ comp.price_usd }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Target Segment</span>
+                            <span class="detail-value">{{ comp.target_demographic }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Distribution</span>
+                            <span class="detail-value">{{ comp.distribution_strategy }}</span>
+                        </div>
+                    </div>
+
+                    {% if comp.price_delta %}
+                    <div class="price-comparison">
+                        <div class="price-vs">vs your brand</div>
+                        <div class="price-delta" style="{% if comp.price_delta > 0 %}color: #16a34a;{% elif comp.price_delta < 0 %}color: #dc2626;{% else %}color: #0891b2;{% endif %}">
+                            {% if comp.price_delta > 0 %}
+                                ↓ {{ comp.price_delta }}% cheaper
+                            {% elif comp.price_delta < 0 %}
+                                ↑ {{ comp.price_delta | abs }}% more expensive
+                            {% else %}
+                                = Same price
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Positioning & Segment -->
         <div class="section">
-            <h2>🎯 Positioning & Segment</h2>
+            <h2>🎯 Your Brand: Positioning & Segment</h2>
             <div class="fundamentals">
                 {% if brand.positioning_tier %}
                 <div class="fundamental-item">
