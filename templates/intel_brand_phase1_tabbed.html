@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ brand.name }} - Brand Intelligence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        /* Header */
+        header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header-left {
+            flex: 1;
+        }
+
+        .header-left a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: inline-block;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .market-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .market-selector label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .market-selector select {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: white;
+        }
+
+        /* Search Box */
+        .search-box {
+            max-width: 1200px;
+            margin: 16px auto;
+            padding: 0 20px;
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .search-box button {
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        #autocompleteList {
+            position: absolute;
+            top: 100%;
+            left: 20px;
+            right: 40px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .autocomplete-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .autocomplete-item:hover {
+            background: #f8fafc;
+        }
+
+        /* About Intel Banner */
+        .intel-banner {
+            max-width: 1200px;
+            margin: 16px auto;
+            padding: 0 20px;
+            background: linear-gradient(135deg, #eef2ff 0%, #f0fdf4 100%);
+            border: 1px solid #818cf8;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            font-size: 13px;
+        }
+
+        .intel-banner h3 {
+            color: #3b82f6;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .intel-banner p {
+            color: #475569;
+        }
+
+        .intel-banner a {
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            white-space: nowrap;
+            font-size: 12px;
+        }
+
+        /* Tabs */
+        .tabs-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            border-bottom: 2px solid #e2e8f0;
+            overflow-x: auto;
+            padding: 0 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            list-style: none;
+        }
+
+        .tab-button {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            color: #1e293b;
+        }
+
+        .tab-button.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        /* Content Area */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Card Styling */
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1e293b;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .score-pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .score-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .score-card.strength {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .score-card.growth {
+            border-left: 4px solid #10b981;
+        }
+
+        .score-card h4 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .score-number {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .score-number span {
+            font-size: 18px;
+            color: #64748b;
+        }
+
+        .factors-list {
+            list-style: none;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+            margin-top: 12px;
+        }
+
+        .factors-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 13px;
+        }
+
+        .factor-name {
+            color: #475569;
+        }
+
+        .factor-score {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Positioning */
+        .positioning-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+
+        .positioning-item {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        .positioning-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .positioning-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Competitors */
+        .competitor-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 12px;
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .competitor-row:first-child {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+
+        .price-delta {
+            font-weight: 600;
+        }
+
+        .price-delta.higher {
+            color: #dc2626;
+        }
+
+        .price-delta.lower {
+            color: #10b981;
+        }
+
+        /* Recommendation Badge */
+        .recommendation {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .recommendation.green {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+        }
+
+        .recommendation.yellow {
+            background: rgba(250, 204, 21, 0.1);
+            border-left: 4px solid #facc15;
+        }
+
+        .recommendation.red {
+            background: rgba(220, 38, 38, 0.1);
+            border-left: 4px solid #dc2626;
+        }
+
+        .recommendation-badge {
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .recommendation-text {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .market-selector {
+                align-self: flex-start;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .intel-banner {
+                flex-direction: column;
+                text-align: left;
+            }
+
+            .intel-banner a {
+                align-self: flex-start;
+            }
+
+            .tab-button {
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+
+            .score-pair {
+                grid-template-columns: 1fr;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .competitor-row {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 16px 16px;
+            }
+
+            .card {
+                padding: 16px;
+            }
+
+            .score-number {
+                font-size: 36px;
+            }
+
+            .metric-value {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <div class="header-left">
+                <a href="/">← Back to Intel Home</a>
+                <h1>{{ brand.name }}</h1>
+                <p class="subtitle">🎯 Consumer Goods Intelligence — Real Data Only</p>
+            </div>
+            <div class="market-selector">
+                <label>Market:</label>
+                <select id="marketSelect" onchange="switchMarket(this.value)">
+                    <option value="UK" {% if market == 'UK' %}selected{% endif %}>🇬🇧 UK</option>
+                    <option value="USA" {% if market == 'USA' %}selected{% endif %}>🇺🇸 USA</option>
+                    <option value="India" {% if market == 'India' %}selected{% endif %}>🇮🇳 India</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Intel Banner -->
+    <div class="intel-banner">
+        <div>
+            <h3>🎯 What is Intel?</h3>
+            <p>Real-time brand & market intelligence. Brand Health Score (viability now) + Growth Opportunity Score (upside potential). All verified data only.</p>
+        </div>
+        <a href="/">Learn More</a>
+    </div>
+
+    <!-- Search Box -->
+    <div class="search-box" style="position: relative;">
+        <input type="text" id="searchInput" placeholder="Search another brand..." autocomplete="off">
+        <div id="autocompleteList"></div>
+        <button onclick="searchBrand()">Search</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <ul class="tabs">
+            <li><button class="tab-button active" onclick="openTab(event, 'overview')">Overview</button></li>
+            <li><button class="tab-button" onclick="openTab(event, 'health')">Health</button></li>
+            <li><button class="tab-button" onclick="openTab(event, 'positioning')">Positioning</button></li>
+            <li><button class="tab-button" onclick="openTab(event, 'market')">Market</button></li>
+            <li><button class="tab-button" onclick="openTab(event, 'competitors')">Competitors</button></li>
+            <li><button class="tab-button" onclick="openTab(event, 'decision')">Decision</button></li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="card">
+                <div class="grid">
+                    <div class="metric">
+                        <div class="metric-value">{{ brand.founded }}</div>
+                        <div class="metric-label">Founded</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">{{ brand.headquarters }}</div>
+                        <div class="metric-label">Headquarters</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">{{ brand.parent_company }}</div>
+                        <div class="metric-label">Parent Company</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">{{ brand.market_status | upper }}</div>
+                        <div class="metric-label">Market Status</div>
+                    </div>
+                </div>
+            </div>
+
+            {% if brand.description %}
+            <div class="card">
+                <h3>About</h3>
+                <p style="color: #475569; line-height: 1.6;">{{ brand.description }}</p>
+            </div>
+            {% endif %}
+
+            {% if market_score %}
+            <div class="card">
+                <h3>Quick Verdict</h3>
+                <div class="recommendation {% if market_score.recommendation == 'green' %}green{% elif market_score.recommendation == 'yellow' %}yellow{% else %}red{% endif %}">
+                    <span class="recommendation-badge">{{ market_score.recommendation | upper }}</span>
+                    <span class="recommendation-text">{{ market_score.recommendation_text }}</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Health Tab -->
+        <div id="health" class="tab-content">
+            {% if market_score %}
+            <div class="card">
+                <h3>Brand Health Scores</h3>
+                <div class="score-pair">
+                    <!-- Brand Strength -->
+                    <div class="score-card strength">
+                        <h4>💪 Brand Strength</h4>
+                        <div class="score-number">{{ market_score.brand_strength_score }}<span>/10</span></div>
+                        <p style="font-size: 12px; color: #475569; margin-bottom: 12px;">How viable is {{ brand.name }} in {{ market or 'UK' }} now?</p>
+                        {% if market_score.brand_strength_factors %}
+                        <ul class="factors-list">
+                            {% for factor_name, factor_score in market_score.brand_strength_factors.items() %}
+                            <li>
+                                <span class="factor-name">{{ factor_name | replace('_', ' ') | title }}</span>
+                                <span class="factor-score">{{ factor_score }}/10</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+
+                    <!-- Growth Opportunity -->
+                    <div class="score-card growth">
+                        <h4>🚀 Growth Opportunity</h4>
+                        <div class="score-number">{{ market_score.growth_opportunity_score }}<span>/10</span></div>
+                        <p style="font-size: 12px; color: #475569; margin-bottom: 12px;">How much upside exists in {{ market or 'UK' }}?</p>
+                        {% if market_score.growth_opportunity_factors %}
+                        <ul class="factors-list">
+                            {% for factor_name, factor_score in market_score.growth_opportunity_factors.items() %}
+                            <li>
+                                <span class="factor-name">{{ factor_name | replace('_', ' ') | title }}</span>
+                                <span class="factor-score">{{ factor_score }}/10</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if market_score.insights or market_score.risks %}
+            <div class="card">
+                <h3>Insights & Risks</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    {% if market_score.insights %}
+                    <div>
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #10b981;">✅ Opportunities</h4>
+                        <ul style="list-style: none; font-size: 13px; color: #475569;">
+                            {% for insight in market_score.insights %}
+                            <li style="margin-bottom: 8px;">• {{ insight }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if market_score.risks %}
+                    <div>
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #dc2626;">⚠️ Risks</h4>
+                        <ul style="list-style: none; font-size: 13px; color: #475569;">
+                            {% for risk in market_score.risks %}
+                            <li style="margin-bottom: 8px;">• {{ risk }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Positioning Tab -->
+        <div id="positioning" class="tab-content">
+            <div class="card">
+                <h3>Brand Positioning</h3>
+                <div class="positioning-grid">
+                    {% if brand.positioning_tier %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Tier</div>
+                        <div class="positioning-value">{{ brand.positioning_tier | title }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if brand.target_demographic %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Target</div>
+                        <div class="positioning-value">{{ brand.target_demographic }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if brand.target_income_tier %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Income</div>
+                        <div class="positioning-value">{{ brand.target_income_tier }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if brand.segment_size_millions %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Segment Size</div>
+                        <div class="positioning-value">{{ brand.segment_size_millions }}M</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Pricing Strategy</h3>
+                <div class="positioning-grid">
+                    <div class="positioning-item">
+                        <div class="positioning-label">Local Price</div>
+                        <div class="positioning-value">{{ brand.price_currency }}{{ brand.price_local }}</div>
+                    </div>
+                    <div class="positioning-item">
+                        <div class="positioning-label">USD Equivalent</div>
+                        <div class="positioning-value">${{ brand.price_usd_equivalent }}</div>
+                    </div>
+                    <div class="positioning-item">
+                        <div class="positioning-label">PPP Index</div>
+                        <div class="positioning-value">{{ brand.ppp_index }}</div>
+                    </div>
+                    <div class="positioning-item">
+                        <div class="positioning-label">Typical SKU</div>
+                        <div class="positioning-value">{{ brand.typical_sku }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Marketing</h3>
+                <div class="positioning-grid">
+                    {% if brand.marketing_tone %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Tone</div>
+                        <div class="positioning-value">{{ brand.marketing_tone }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if brand.distribution_strategy %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Distribution</div>
+                        <div class="positioning-value">{{ brand.distribution_strategy | title }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Tab -->
+        <div id="market" class="tab-content">
+            {% if market_econ %}
+            <div class="card">
+                <h3>Market Economics</h3>
+                <div class="positioning-grid">
+                    {% if market_econ.country_gdp_usd_trillions %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Country GDP</div>
+                        <div class="positioning-value">${{ market_econ.country_gdp_usd_trillions }}T</div>
+                    </div>
+                    {% endif %}
+
+                    {% if market_econ.ppp_index %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">PPP Index</div>
+                        <div class="positioning-value">{{ market_econ.ppp_index }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if market_econ.category_market_size_usd_millions %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Market Size</div>
+                        <div class="positioning-value">
+                            {% set size_millions = market_econ.category_market_size_usd_millions %}
+                            {% if size_millions >= 1000 %}
+                                ${{ (size_millions / 1000) | round(1) }}B
+                            {% else %}
+                                ${{ size_millions }}M
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if market_econ.category_cagr_3yr %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">3yr Growth</div>
+                        <div class="positioning-value">{{ market_econ.category_cagr_3yr }}% CAGR</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card">
+                <h3>Brand Status</h3>
+                <div class="positioning-grid">
+                    <div class="positioning-item">
+                        <div class="positioning-label">Status</div>
+                        <div class="positioning-value">{{ brand.market_status | title }}</div>
+                    </div>
+                    {% if brand.category_growth_cagr %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Category Growth</div>
+                        <div class="positioning-value">{{ brand.category_growth_cagr }}%</div>
+                    </div>
+                    {% endif %}
+                    {% if brand.growth_driver %}
+                    <div class="positioning-item">
+                        <div class="positioning-label">Growth Driver</div>
+                        <div class="positioning-value">{{ brand.growth_driver }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Competitors Tab -->
+        <div id="competitors" class="tab-content">
+            {% if competitors %}
+            <div class="card">
+                <h3>Price Comparison</h3>
+                <div class="competitor-row">
+                    <div>Brand</div>
+                    <div>Positioning</div>
+                    <div>Local Price</div>
+                    <div>vs {{ brand.name }}</div>
+                </div>
+                {% for comp in competitors %}
+                <div class="competitor-row">
+                    <div>{{ comp.name }}</div>
+                    <div>{{ comp.positioning_tier | title }}</div>
+                    <div>{{ comp.currency }}{{ comp.price }}</div>
+                    <div>
+                        <span class="price-delta {% if comp.price_delta > 0 %}higher{% else %}lower{% endif %}">
+                            {% if comp.price_delta > 0 %}+{% endif %}{{ comp.price_delta }}%
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Decision Tab -->
+        <div id="decision" class="tab-content">
+            {% if market_score %}
+            <div class="card">
+                <h3>Strategic Decision</h3>
+
+                {% if market_score.brand_strength_score >= 7 and market_score.growth_opportunity_score >= 7 %}
+                <div class="recommendation green">
+                    <span class="recommendation-badge">🟢 INVEST</span>
+                    <span class="recommendation-text">
+                        <strong>Strong & Growing:</strong> {{ brand.name }} is healthy AND the market is expanding. This is where you invest aggressively. The brand is well-positioned, distribution is strong, and market growth creates real opportunity.
+                    </span>
+                </div>
+
+                {% elif market_score.brand_strength_score >= 7 and market_score.growth_opportunity_score < 5 %}
+                <div class="recommendation yellow">
+                    <span class="recommendation-badge">🟡 OPTIMIZE</span>
+                    <span class="recommendation-text">
+                        <strong>Strong but Mature:</strong> {{ brand.name }} has built a solid, defensible position in {{ market or 'UK' }}, but the market itself is mature with limited growth. This is a "milk the cow" scenario—optimize operations, defend market share, look for niche expansion.
+                    </span>
+                </div>
+
+                {% elif market_score.brand_strength_score < 5 and market_score.growth_opportunity_score >= 7 %}
+                <div class="recommendation yellow">
+                    <span class="recommendation-badge">🟡 REPOSITION</span>
+                    <span class="recommendation-text">
+                        <strong>Growing Market, Weak Position:</strong> {{ market or 'UK' }} is ripe with opportunity, but {{ brand.name }}'s current position is weak. This requires bold repositioning, strategic partnerships, or significant investment to capture the growth opportunity.
+                    </span>
+                </div>
+
+                {% else %}
+                <div class="recommendation red">
+                    <span class="recommendation-badge">🔴 RECONSIDER</span>
+                    <span class="recommendation-text">
+                        <strong>Challenging Position:</strong> {{ brand.name }}'s viability in {{ market or 'UK' }} faces headwinds: the brand position is weak AND market growth is limited. This requires either significant operational improvement or exit strategy consideration.
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if market_score.market_opportunity %}
+            <div class="card">
+                <h3>Revenue Potential</h3>
+                <div class="positioning-grid">
+                    <div class="positioning-item">
+                        <div class="positioning-label">Market Size</div>
+                        <div class="positioning-value">${{ "%.0f" | format(market_score.market_opportunity.usd_millions) }}M</div>
+                    </div>
+                    <div class="positioning-item">
+                        <div class="positioning-label">1% Market Share</div>
+                        <div class="positioning-value">${{ "%.0f" | format(market_score.market_opportunity.at_1_pct_share) }}M</div>
+                    </div>
+                    <div class="positioning-item">
+                        <div class="positioning-label">Realistic Target</div>
+                        <div class="positioning-value">${{ "%.0f" | format(market_score.market_opportunity.at_target_share) }}M</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            // Hide all tabs
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(tab => tab.classList.remove('active'));
+
+            // Remove active class from all buttons
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab and mark button as active
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
+        function switchMarket(newMarket) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const brand = urlParams.get('search');
+            if (brand) {
+                window.location.href = `/brand/full?search=${encodeURIComponent(brand)}&market=${newMarket}`;
+            }
+        }
+
+        function searchBrand() {
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            if (searchTerm) {
+                window.location.href = `/brand?search=${encodeURIComponent(searchTerm)}`;
+            }
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchBrand();
+        });
+
+        // Autocomplete
+        const searchInput = document.getElementById('searchInput');
+        const autocompleteList = document.getElementById('autocompleteList');
+
+        searchInput.addEventListener('input', async (e) => {
+            const query = e.target.value.trim();
+            if (query.length < 1) {
+                autocompleteList.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/brands/search?q=${encodeURIComponent(query)}`);
+                const suggestions = await response.json();
+
+                if (suggestions.length === 0) {
+                    autocompleteList.style.display = 'none';
+                    return;
+                }
+
+                autocompleteList.innerHTML = suggestions.map(brand => `
+                    <div class="autocomplete-item" onclick="selectBrand('${brand.name}')">
+                        <div style="font-weight: 600; color: #1e293b;">${brand.name}</div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">${brand.category}</div>
+                    </div>
+                `).join('');
+
+                autocompleteList.style.display = 'block';
+            } catch (error) {
+                console.error('Autocomplete error:', error);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target !== searchInput) {
+                autocompleteList.style.display = 'none';
+            }
+        });
+
+        function selectBrand(name) {
+            document.getElementById('searchInput').value = name;
+            autocompleteList.style.display = 'none';
+            searchBrand();
+        }
+    </script>
+</body>
+</html>

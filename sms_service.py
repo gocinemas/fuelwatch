@@ -1193,7 +1193,7 @@ def brand_full_intelligence():
 
     if not search:
         print(f"[brand_full] ERROR: No search parameter provided")
-        return render_template("intel_brand_phase1.html", brand=None, skus=[])
+        return render_template("intel_brand_phase1_tabbed.html", brand=None, skus=[])
 
     try:
         sb = lib._sb()
@@ -1329,15 +1329,15 @@ def brand_full_intelligence():
                 app.logger.warning(f"[brand_full] Could not calculate market entry score: {score_err}")
                 market_entry_score = None
 
-            resp = make_response(render_template("intel_brand_phase1.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=competitors_list, market_score=market_entry_score))
+            resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=competitors_list, market_score=market_entry_score))
         else:
-            resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[], market=market, market_econ={}))
+            resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=None, skus=[], market=market, market_econ={}))
     except Exception as e:
         import traceback
         error_msg = f"[brand_full] EXCEPTION: {str(e)}\n{traceback.format_exc()}"
         app.logger.error(error_msg)
         print(error_msg)  # Also print to stdout
-        resp = make_response(render_template("intel_brand_phase1.html", brand=None, skus=[], market=market, market_econ={}))
+        resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=None, skus=[], market=market, market_econ={}))
 
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
     return resp
