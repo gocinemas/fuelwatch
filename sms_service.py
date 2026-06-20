@@ -12619,14 +12619,14 @@ def api_home_brief():
         except Exception:
             pass
 
-    # Weekend snippet (Friday 5pm+ or Saturday)
+    # Weekend snippet (Friday 5pm+ or Saturday) — DISABLED for now (places API returns no ratings)
     _weekend_snippet = {}
-    try:
-        _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
-        _is_saturday = now.weekday() == 5  # Saturday anytime
-        _force_test = request.args.get("test_snippet") == "1"  # Allow force testing
-        app.logger.info(f"[weekend-snippet] Fri evening: {_is_fri_evening}, Sat: {_is_saturday}, hour: {hour}, weekday: {now.weekday()}, force: {_force_test}")
-        if (_is_fri_evening or _is_saturday or _force_test) and postcode:
+    if False:  # Disabled until we fix places API to return ratings
+        try:
+            _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
+            _is_saturday = now.weekday() == 5  # Saturday anytime
+            _force_test = request.args.get("test_snippet") == "1"  # Allow force testing
+            if (_is_fri_evening or _is_saturday or _force_test) and postcode:
             from miru.geo import postcode_to_latlon
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
             if _ll:
@@ -12646,15 +12646,15 @@ def api_home_brief():
                         app.logger.error(f"[weekend-snippet] {cat}: filtered to {len(_snippet_places[cat])}, data: {_snippet_places[cat]}")
                 except Exception as _e:
                     app.logger.error(f"[weekend-snippet] fetch error: {_e}")
-                app.logger.error(f"[weekend-snippet] FINAL: {_snippet_places}")
-                if any(_snippet_places.values()):
-                    _weekend_snippet = {
-                        "food": _snippet_places.get("food", []),
-                        "pubs": _snippet_places.get("pubs", []),
-                        "parks": _snippet_places.get("parks", []),
-                    }
-    except Exception:
-        pass
+                    app.logger.error(f"[weekend-snippet] FINAL: {_snippet_places}")
+                    if any(_snippet_places.values()):
+                        _weekend_snippet = {
+                            "food": _snippet_places.get("food", []),
+                            "pubs": _snippet_places.get("pubs", []),
+                            "parks": _snippet_places.get("parks", []),
+                        }
+        except Exception:
+            pass
 
     result = {
         "brief":        brief_text,
