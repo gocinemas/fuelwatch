@@ -12666,8 +12666,16 @@ def api_home_brief():
             pass
 
     # Weekend snippet (Friday 5pm+ or Saturday) — Restaurants + Pubs + Parks, 6 total, 4.0+ rating
-    # DISABLED: Rendering issue - data fetches OK but card doesn't display
-    _weekend_snippet = {}
+    _weekend_snippet = {
+        "places": [
+            {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8},
+            {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5},
+            {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2},
+            {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5},
+            {"name": "Central Park", "rating": 4.3, "distance_km": 2.1},
+            {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8},
+        ]
+    }
     if False:  # Disabled: real logic below (testing frontend first)
         print(f"🎯 SNIPPET DEBUG: postcode={postcode}, force=True")
     try:
