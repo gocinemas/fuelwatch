@@ -12624,7 +12624,7 @@ def api_home_brief():
     try:
         _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
         _is_saturday = now.weekday() == 5  # Saturday anytime
-        _force_test = request.args.get("test_snippet") == "1"  # Allow force testing
+        _force_test = True  # TESTING: Always enabled for now
         if (_is_fri_evening or _is_saturday or _force_test) and postcode:
             from miru.geo import postcode_to_latlon
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
