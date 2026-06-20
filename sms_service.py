@@ -1153,31 +1153,28 @@ def sms_reply():
     return str(resp)
 
 
-@app.route("/brand")
-@app.route("/brand/")
-def brand_redirect():
-    if "intel.humanagency.co" in request.host:
-        return redirect("/brand/full")
-    return render_template("intel_brand.html")
-
-
 @app.route("/intel")
 def intel_root():
     """Intel landing page - mission and explanation"""
     return render_template("intel_landing.html")
 
 @app.route("/brand")
+@app.route("/brand/")
 def brand_search():
-    """Brand search interface - Phase 1 brands"""
+    """Brand search interface - Phase 1 brands (Intel) or brand page (Miru)"""
     search = request.args.get("search", "").strip()
     market = request.args.get("market", "UK").strip()
 
-    # If search parameter provided, redirect directly to brand page
-    if search:
-        return redirect(f"/brand/full?search={search}&market={market}")
+    # Intel subdomain - show brand search interface
+    if "intel.humanagency.co" in request.host:
+        # If search parameter provided, redirect directly to brand page
+        if search:
+            return redirect(f"/brand/full?search={search}&market={market}")
+        # Otherwise show search interface
+        return render_template("intel_phase1_directory.html")
 
-    # Otherwise show search interface
-    return render_template("intel_phase1_directory.html")
+    # Miru subdomain - show brand page
+    return render_template("intel_brand.html")
 
 
 @app.route("/company")
@@ -1613,21 +1610,20 @@ def index():
     if "space." in _host:
         return render_template("space.html")
 
-    # Exact match for Intel subdomain ONLY
+    # Exact match for Intel subdomain ONLY - only handle root path
     if _host == "intel.humanagency.co" or _host.startswith("intel.humanagency.co:"):
         path = request.path.lower()
+        # Only intercept root path - let other routes (/brand, /brand/full, etc.) handle themselves
         if path == "/" or path == "":
             template = "intel_landing.html"  # Brand/Company choice landing page
-        elif path == "/company" or path == "/company/":
-            template = "intel_company_coming_soon.html"
-        else:
-            template = "intel_landing.html"  # Default to landing for Intel
-        app.logger.info(f"[index] Serving Intel: {template}")
-        resp = make_response(render_template(template))
-        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
-        resp.headers["Pragma"] = "no-cache"
-        resp.headers["Expires"] = "0"
-        return resp
+            app.logger.info(f"[index] Serving Intel landing page")
+            resp = make_response(render_template(template))
+            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+            resp.headers["Pragma"] = "no-cache"
+            resp.headers["Expires"] = "0"
+            return resp
+        # For /company, /brand, /brand/full, etc. - let those routes handle it
+        # Fall through to Miru so 404 can be returned (Flask will route to correct handler)
 
     # Miru mode (NOT Intel)
     app.logger.info(f"[index] Serving Miru index.html")
@@ -12666,54 +12662,50 @@ def api_home_brief():
             pass
 
     # Weekend snippet (Friday 5pm+ or Saturday) — Restaurants + Pubs + Parks, 6 total, 4.0+ rating
-    _weekend_snippet = {
-        "places": [
-            {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8},
-            {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5},
-            {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2},
-            {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5},
-            {"name": "Central Park", "rating": 4.3, "distance_km": 2.1},
-            {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8},
-        ]
-    }
-    if False:  # Disabled: real logic below (testing frontend first)
-        print(f"🎯 SNIPPET DEBUG: postcode={postcode}, force=True")
+    # Weekend snippet (Friday 5pm+ or Saturday) — Real Google Places recommendations
+    _weekend_snippet = {}
     try:
         _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
         _is_saturday = now.weekday() == 5  # Saturday anytime
-        _force_test = True  # TESTING: Always enabled for now
-        if (_is_fri_evening or _is_saturday or _force_test) and postcode:
-            print(f"🎯 SNIPPET: Proceeding with postcode")
+        if (_is_fri_evening or _is_saturday) and postcode:
             from miru.geo import postcode_to_latlon
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
             if _ll:
                 _lat, _lon = _ll
-                # Fetch places using internal function (not HTTP)
+                # Fetch real places from Google Places API
                 _all_places = []
-                _keywords = {
-                    "food": "restaurant",
-                    "beer": "pub craft beer real ale",
-                    "park": "park"
+                _category_map = {
+                    "restaurant": ("restaurant", "🍽️"),
+                    "bar": ("pub craft beer real ale", "🍺"),
+                    "park": ("park", "🌳"),
                 }
-                for _api_cat in ["food", "beer", "park"]:
+                for _type, (_keyword, _emoji) in _category_map.items():
                     try:
-                        _keyword = _keywords.get(_api_cat, _api_cat)
                         _places = _gplaces_nearby_search(_keyword, _lat, _lon, radius=3000) or []
-                        # Filter for 4.0+ rating
+                        # Filter 4.0+ rating, add category emoji
                         _filtered = [p for p in _places if p.get("rating", 0) >= 4.0]
+                        for p in _filtered:
+                            p["category_emoji"] = _emoji
+                            p["type"] = _type
                         _all_places.extend(_filtered)
-                        print(f"🎯 SNIPPET: {_api_cat} got {len(_places)}, filtered to {len(_filtered)}")
-                    except Exception as _e:
-                        print(f"🎯 SNIPPET: {_api_cat} error: {_e}")
+                    except Exception:
+                        pass
 
-                # Take top 6 total across all categories
+                # Top 6 total sorted by rating
                 _top_6 = sorted(_all_places, key=lambda p: p.get("rating", 0), reverse=True)[:6]
-                print(f"🎯 SNIPPET FINAL: {len(_top_6)} places")
                 if _top_6:
                     _weekend_snippet = {
-                        "places": [{"name": p.get("name", ""), "rating": p.get("rating", 0), "distance_km": round(p.get("distance_km", 0), 1)} for p in _top_6]
+                        "places": [
+                            {
+                                "name": p.get("name", ""),
+                                "rating": p.get("rating", 0),
+                                "distance_km": round(p.get("distance_km", 0), 1),
+                                "emoji": p.get("category_emoji", "📍"),
+                                "lat": p.get("lat"),
+                                "lon": p.get("lon")
+                            } for p in _top_6
+                        ]
                     }
-                    print(f"🎯 SNIPPET SUCCESS: Returning {len(_weekend_snippet['places'])} places")
     except Exception:
         pass
 
