@@ -17197,10 +17197,13 @@ let _savesAll = [];
           if (weekendCard && d.weekend_snippet && d.weekend_snippet.places && d.weekend_snippet.places.length > 0) {
             let html = '';
             d.weekend_snippet.places.forEach(p => {
-              html += `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);line-height:1.4">
-                <div style="flex:1;min-width:0;word-break:break-word">${p.name}</div>
+              const mapsUrl = p.lat && p.lon ? `https://maps.google.com/?q=${p.lat},${p.lon}` : '#';
+              html += `<a href="${mapsUrl}" target="_blank" style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);line-height:1.4;text-decoration:none;color:inherit;transition:background .15s;cursor:pointer" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='transparent'" onclick="event.stopPropagation()">
+                <div style="flex:1;min-width:0;word-break:break-word">
+                  <span style="margin-right:6px">${p.emoji}</span><span style="font-weight:600">${p.name}</span>
+                </div>
                 <div style="flex-shrink:0;white-space:nowrap;color:var(--muted);font-size:11px">⭐${p.rating.toFixed(1)} · ${p.distance_km}km</div>
-              </div>`;
+              </a>`;
             });
             document.getElementById("snippet-content").innerHTML = html;
             weekendCard.style.display = "block";
