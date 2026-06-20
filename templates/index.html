@@ -17218,7 +17218,8 @@ let _savesAll = [];
             if (d.context.weather && d.context.weather.temp !== undefined) _checkedParts.push("weather");
           }
           var _sl = document.getElementById("brief-status-line");
-          if (_sl && _checkedParts.length) { _sl.textContent = "· Miru checked " + _checkedParts.join(" · ") + " · just now"; _sl.style.display = "block"; }
+          // Hide "Miru checked" status line — kept for debug but not displayed
+          if (_sl) { _sl.style.display = "none"; }
           var _cfoot = document.getElementById("brief-checked-footer");
           if (_cfoot && _checkedParts.length) { _cfoot.textContent = "Checked: " + _checkedParts.join(" · "); _cfoot.style.display = "block"; }
 
