@@ -12641,13 +12641,14 @@ def api_home_brief():
                         _type_map = {"food": "restaurant", "pubs": "bar", "parks": "park"}
                         _ptype = _type_map.get(cat, cat)
                         _places = _places_nearby(_lat, _lon, _ptype, radius_m=5000, max_results=5) or []
-                        app.logger.info(f"[weekend-snippet] {cat}: got {len(_places)} places")
+                        app.logger.error(f"[weekend-snippet] {cat}: got {len(_places)} places, first: {_places[0] if _places else 'NONE'}")
                         # Filter for 4.0+ rating, take top 2
                         _filtered = [p for p in _places if p.get("rating", 0) >= 4.0][:2]
                         _snippet_places[cat] = [{"name": p.get("name", ""), "dist": round(p.get("distance_km", 0), 1), "rating": p.get("rating", 0)} for p in _filtered]
-                        app.logger.info(f"[weekend-snippet] {cat}: filtered to {len(_snippet_places[cat])}")
+                        app.logger.error(f"[weekend-snippet] {cat}: filtered to {len(_snippet_places[cat])}, data: {_snippet_places[cat]}")
                 except Exception as _e:
                     app.logger.error(f"[weekend-snippet] fetch error: {_e}")
+                app.logger.error(f"[weekend-snippet] FINAL: {_snippet_places}")
                 if any(_snippet_places.values()):
                     _weekend_snippet = {
                         "food": _snippet_places.get("food", []),
