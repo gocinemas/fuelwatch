@@ -17190,26 +17190,14 @@ let _savesAll = [];
 
           // Weekend snippet: show on Fri 5pm+ or Sat (4.0+ rated only)
           var weekendCard = document.getElementById("weekend-snippet");
-          if (weekendCard && d.weekend_snippet) {
-            const snippet = d.weekend_snippet;
-            const hasAny = (snippet.food && snippet.food.length) || (snippet.pubs && snippet.pubs.length) || (snippet.parks && snippet.parks.length);
-            if (hasAny) {
-              let lines = [];
-              if (snippet.food && snippet.food.length) {
-                lines.push("🍽️  Food:");
-                snippet.food.forEach(p => lines.push("   " + p.name + " ⭐" + (p.rating || 4.0).toFixed(1) + " (" + p.dist + "km)"));
-              }
-              if (snippet.pubs && snippet.pubs.length) {
-                lines.push("🍺 Pubs:");
-                snippet.pubs.forEach(p => lines.push("   " + p.name + " ⭐" + (p.rating || 4.0).toFixed(1) + " (" + p.dist + "km)"));
-              }
-              if (snippet.parks && snippet.parks.length) {
-                lines.push("🌳 Parks:");
-                snippet.parks.forEach(p => lines.push("   " + p.name + " ⭐" + (p.rating || 4.0).toFixed(1) + " (" + p.dist + "km)"));
-              }
-              document.getElementById("snippet-content").innerHTML = lines.join("<br>");
-              weekendCard.style.display = "block";
-            }
+          // Weekend snippet: Fri 5pm+ or Sat — nearby places 4.0+ rated (6 total: restaurants, pubs, parks)
+          if (weekendCard && d.weekend_snippet && d.weekend_snippet.places && d.weekend_snippet.places.length > 0) {
+            let lines = [];
+            d.weekend_snippet.places.forEach(p => {
+              lines.push(p.name + " ⭐" + p.rating.toFixed(1) + " (" + p.distance_km + "km)");
+            });
+            document.getElementById("snippet-content").innerHTML = lines.join("<br>");
+            weekendCard.style.display = "block";
           }
 
           // "Checked: ..." status line + brief card footer
