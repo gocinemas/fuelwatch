@@ -17190,14 +17190,19 @@ let _savesAll = [];
 
           // Weekend snippet: show on Fri 5pm+ or Sat (4.0+ rated only)
           var weekendCard = document.getElementById("weekend-snippet");
+          console.log("🎯 SNIPPET CHECK: card=", weekendCard, "data=", d.weekend_snippet);
           // Weekend snippet: Fri 5pm+ or Sat — nearby places 4.0+ rated (6 total: restaurants, pubs, parks)
           if (weekendCard && d.weekend_snippet && d.weekend_snippet.places && d.weekend_snippet.places.length > 0) {
+            console.log("🎯 SNIPPET: Rendering", d.weekend_snippet.places.length, "places");
             let lines = [];
             d.weekend_snippet.places.forEach(p => {
               lines.push(p.name + " ⭐" + p.rating.toFixed(1) + " (" + p.distance_km + "km)");
             });
             document.getElementById("snippet-content").innerHTML = lines.join("<br>");
             weekendCard.style.display = "block";
+            console.log("🎯 SNIPPET: Done rendering");
+          } else {
+            console.log("🎯 SNIPPET: Condition failed - card:", !!weekendCard, "snippet:", !!d.weekend_snippet, "places:", d.weekend_snippet ? !!d.weekend_snippet.places : 'N/A');
           }
 
           // "Checked: ..." status line + brief card footer
