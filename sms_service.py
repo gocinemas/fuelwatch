@@ -1161,15 +1161,10 @@ def brand_redirect():
     return render_template("intel_brand.html")
 
 
-@app.route("/")
+@app.route("/intel")
 def intel_root():
     """Intel landing page - mission and explanation"""
     return render_template("intel_landing.html")
-
-@app.route("/intel")
-def intel_legacy():
-    """Intel root (for backwards compatibility) - redirects to root"""
-    return redirect("/")
 
 @app.route("/brand")
 def brand_search():
@@ -1621,10 +1616,12 @@ def index():
     # Exact match for Intel subdomain ONLY
     if _host == "intel.humanagency.co" or _host.startswith("intel.humanagency.co:"):
         path = request.path.lower()
-        if path == "/company" or path == "/company/":
-            template = "intel_company.html"
+        if path == "/" or path == "":
+            template = "intel_landing.html"  # Brand/Company choice landing page
+        elif path == "/company" or path == "/company/":
+            template = "intel_company_coming_soon.html"
         else:
-            template = "intel_standalone.html"
+            template = "intel_landing.html"  # Default to landing for Intel
         app.logger.info(f"[index] Serving Intel: {template}")
         resp = make_response(render_template(template))
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
