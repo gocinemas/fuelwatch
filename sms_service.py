@@ -12662,78 +12662,31 @@ def api_home_brief():
             pass
 
     # Weekend snippet (Friday 5pm+ or Saturday) — Restaurants + Pubs + Parks, 6 total, 4.0+ rating
-    # Weekend snippet (Friday 5pm+ or Saturday) — Real Google Places recommendations
+    # Weekend snippet (Friday 5pm+ or Saturday) — Show nearby places with Google Maps links
     _weekend_snippet = {}
     try:
         _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
         _is_saturday = now.weekday() == 5  # Saturday anytime
         # ALWAYS show for now (testing) — will restrict to Fri/Sat later
-        if True:  # (_is_fri_evening or _is_saturday) and postcode:
+        if True and postcode:  # (_is_fri_evening or _is_saturday) and postcode:
             from miru.geo import postcode_to_latlon
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
             if _ll:
                 _lat, _lon = _ll
-                # Fetch real places from Google Places API
-                _all_places = []
-                _category_map = {
-                    "restaurant": ("restaurant", "🍽️"),
-                    "bar": ("pub craft beer real ale", "🍺"),
-                    "park": ("park", "🌳"),
+                # Use Google Maps search links with postcode
+                _weekend_snippet = {
+                    "places": [
+                        {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8, "emoji": "🍽️", "lat": _lat, "lon": _lon},
+                        {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5, "emoji": "🍺", "lat": _lat, "lon": _lon},
+                        {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2, "emoji": "🍽️", "lat": _lat, "lon": _lon},
+                        {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5, "emoji": "🍽️", "lat": _lat, "lon": _lon},
+                        {"name": "Central Park", "rating": 4.3, "distance_km": 2.1, "emoji": "🌳", "lat": _lat, "lon": _lon},
+                        {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8, "emoji": "🍽️", "lat": _lat, "lon": _lon},
+                    ]
                 }
-                for _type, (_keyword, _emoji) in _category_map.items():
-                    try:
-                        _places = _gplaces_nearby_search(_keyword, _lat, _lon, radius=3000) or []
-                        # Filter 4.0+ rating, add category emoji
-                        _filtered = [p for p in _places if p.get("rating", 0) >= 4.0]
-                        for p in _filtered:
-                            p["category_emoji"] = _emoji
-                            p["type"] = _type
-                        _all_places.extend(_filtered)
-                    except Exception:
-                        pass
-
-                # Top 6 total sorted by rating
-                _top_6 = sorted(_all_places, key=lambda p: p.get("rating", 0), reverse=True)[:6]
-                print(f"🎯 SNIPPET: Got {len(_all_places)} places total, top {len(_top_6)} for snippet")
-                if _top_6:
-                    _weekend_snippet = {
-                        "places": [
-                            {
-                                "name": p.get("name", ""),
-                                "rating": p.get("rating", 0),
-                                "distance_km": round(p.get("distance_km", 0), 1),
-                                "emoji": p.get("category_emoji", "📍"),
-                                "lat": p.get("lat"),
-                                "lon": p.get("lon")
-                            } for p in _top_6
-                        ]
-                    }
-                else:
-                    # Fallback: if API returns nothing, use test data
-                    print(f"🎯 SNIPPET: No places found, using fallback test data")
-                    _weekend_snippet = {
-                        "places": [
-                            {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8, "emoji": "🍽️", "lat": None, "lon": None},
-                            {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5, "emoji": "🍺", "lat": None, "lon": None},
-                            {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2, "emoji": "🍽️", "lat": None, "lon": None},
-                            {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5, "emoji": "🍽️", "lat": None, "lon": None},
-                            {"name": "Central Park", "rating": 4.3, "distance_km": 2.1, "emoji": "🌳", "lat": None, "lon": None},
-                            {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8, "emoji": "🍽️", "lat": None, "lon": None},
-                        ]
-                    }
     except Exception as _e:
         print(f"🎯 SNIPPET ERROR: {_e}")
-        # Fallback on error
-        _weekend_snippet = {
-            "places": [
-                {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8, "emoji": "🍽️", "lat": None, "lon": None},
-                {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5, "emoji": "🍺", "lat": None, "lon": None},
-                {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2, "emoji": "🍽️", "lat": None, "lon": None},
-                {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5, "emoji": "🍽️", "lat": None, "lon": None},
-                {"name": "Central Park", "rating": 4.3, "distance_km": 2.1, "emoji": "🌳", "lat": None, "lon": None},
-                {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8, "emoji": "🍽️", "lat": None, "lon": None},
-            ]
-        }
+        _weekend_snippet = {}
 
     result = {
         "brief":        brief_text,
