@@ -12615,7 +12615,11 @@ def api_home_brief():
         from miru.brief.smart_context import smart_context_brief
         import time
 
-        _events_for_smart = ctx.get("school", {}).get("events", []) if isinstance(ctx.get("school"), dict) else []
+        # Only include TODAY and FUTURE events for brief (no past events)
+        _all_events = ctx.get("school", {}).get("events", []) if isinstance(ctx.get("school"), dict) else []
+        _today_iso = now.date().isoformat()
+        _events_for_smart = [e for e in _all_events if e.get("event_date", "") >= _today_iso]
+
         _receipts_for_smart = recent_capture.get("receipts", []) if isinstance(recent_capture, dict) else []
         _weather_for_smart = ctx.get("weather", {}) or {}
 
