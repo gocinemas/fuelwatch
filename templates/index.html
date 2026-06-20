@@ -673,12 +673,6 @@
 
   <div id="app-main" class="max-w-xl mx-auto px-4 main-content">
 
-    <!-- Weekend snippet: OUTSIDE screen-home so it's not hidden by _init-brief -->
-    <div id="weekend-snippet" style="display:none;margin:10px;background:#ff0000;border:5px solid #000;border-radius:16px;padding:16px;font-size:14px;font-family:monospace">
-      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:10px">🎉 Weekend Out</div>
-      <div id="snippet-content" style="color:#fff;line-height:1.8;background:#000;padding:10px;border-radius:8px;font-size:13px"></div>
-    </div>
-
     <!-- ── HOME SCREEN ── -->
     <div id="screen-home" class="screen active">
 
@@ -2645,6 +2639,14 @@
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Trades &amp; services</div>
           </button>
         </div>
+      </div>
+
+      <!-- Weekend snippet: Receipt-style card (shown after LIVE NOW) -->
+      <div id="weekend-snippet" style="display:none;margin-bottom:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:14px;font-size:13px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+          🎉 Weekend Out
+        </div>
+        <div id="snippet-content" style="color:var(--text);line-height:1.7;font-family:monospace;font-size:12px;display:grid;gap:6px"></div>
       </div>
 
       <!-- WhatsApp — compact showcase card -->
@@ -17193,16 +17195,15 @@ let _savesAll = [];
           console.log("🎯 SNIPPET CHECK: card=", weekendCard, "data=", d.weekend_snippet);
           // Weekend snippet: Fri 5pm+ or Sat — nearby places 4.0+ rated (6 total: restaurants, pubs, parks)
           if (weekendCard && d.weekend_snippet && d.weekend_snippet.places && d.weekend_snippet.places.length > 0) {
-            console.log("🎯 SNIPPET: Rendering", d.weekend_snippet.places.length, "places");
-            let lines = [];
+            let html = '';
             d.weekend_snippet.places.forEach(p => {
-              lines.push(p.name + " ⭐" + p.rating.toFixed(1) + " (" + p.distance_km + "km)");
+              html += `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);line-height:1.4">
+                <div style="flex:1;min-width:0;word-break:break-word">${p.name}</div>
+                <div style="flex-shrink:0;white-space:nowrap;color:var(--muted);font-size:11px">⭐${p.rating.toFixed(1)} · ${p.distance_km}km</div>
+              </div>`;
             });
-            document.getElementById("snippet-content").innerHTML = lines.join("<br>");
+            document.getElementById("snippet-content").innerHTML = html;
             weekendCard.style.display = "block";
-            console.log("🎯 SNIPPET: Done rendering");
-          } else {
-            console.log("🎯 SNIPPET: Condition failed - card:", !!weekendCard, "snippet:", !!d.weekend_snippet, "places:", d.weekend_snippet ? !!d.weekend_snippet.places : 'N/A');
           }
 
           // "Checked: ..." status line + brief card footer
