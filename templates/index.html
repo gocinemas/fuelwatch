@@ -17605,17 +17605,19 @@ let _savesAll = [];
         console.log("[briefCard] Filter out (work meeting): " + e.title);
         return false;
       }
-      if (e.start) {
-        var eMins = _parseEventMins(e.start);
+      // Check event time (could be `start` or `event_time` field)
+      var eventTime = e.start || e.event_time;
+      if (eventTime) {
+        var eMins = _parseEventMins(eventTime);
         if (eMins !== null) {
           var cutoff;
-          if (e.end_time) {
-            var endMins = _parseEventMins(e.end_time);
+          if (e.end_time || e.event_end_time) {
+            var endMins = _parseEventMins(e.end_time || e.event_end_time);
             cutoff = endMins !== null ? endMins + 10 : eMins + 60;  // Default 1 hour if can't parse end
           } else if (e.personal) {
             cutoff = eMins + 120;  // 2 hours for personal
           } else {
-            cutoff = eMins + 60;  // Default 1 hour for regular events (was 15 mins - too short!)
+            cutoff = eMins + 60;  // Default 1 hour for regular events
           }
           if (nowMins > cutoff) {
             console.log("[briefCard] Filter out (past): " + e.title + " eMins=" + eMins + " cutoff=" + cutoff + " nowMins=" + nowMins);
