@@ -1640,6 +1640,49 @@ def index():
     return resp
 
 
+@app.route("/weekend")
+def weekend_snippet_debug():
+    """Debug endpoint: show weekend snippet data"""
+    postcode = request.args.get("postcode", "GU248SN").upper()
+    from datetime import datetime
+    now = datetime.now()
+
+    html = f"""
+    <html>
+    <head><title>Weekend Snippet Debug</title></head>
+    <style>
+      body {{ font-family: monospace; padding: 20px; background: #f5f5f5; }}
+      .card {{ background: #ff0000; color: white; padding: 20px; border-radius: 10px; margin: 20px 0; }}
+      .content {{ background: #000; color: #0f0; padding: 10px; border-radius: 5px; font-size: 14px; }}
+      .info {{ background: white; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+    </style>
+    <body>
+      <h1>🎉 Weekend Snippet Debug</h1>
+      <div class="info">
+        <p><strong>Time:</strong> {now.strftime('%A %H:%M')}</p>
+        <p><strong>Postcode:</strong> {postcode}</p>
+        <p><strong>Weekday:</strong> {now.weekday()} (0=Mon, 5=Sat, 6=Sun)</p>
+      </div>
+
+      <div class="card">
+        <h2>🎉 Weekend Out</h2>
+        <div class="content">
+          The Coffee House ⭐4.8 (0.8km)<br>
+          The Red Lion Pub ⭐4.6 (0.5km)<br>
+          Thai Palace ⭐4.2 (1.2km)<br>
+          Bella Pasta ⭐4.5 (1.5km)<br>
+          Central Park ⭐4.3 (2.1km)<br>
+          Borough Market ⭐4.7 (1.8km)
+        </div>
+      </div>
+
+      <p><small>If you see a red card above, the rendering works. Check miru.humanagency.co homepage to verify it displays there too.</small></p>
+    </body>
+    </html>
+    """
+    return html
+
+
 @app.route("/intelagent")
 @app.route("/intelagent/")
 def intel_agent():
