@@ -673,14 +673,14 @@
 
   <div id="app-main" class="max-w-xl mx-auto px-4 main-content">
 
+    <!-- Weekend snippet: OUTSIDE screen-home so it's not hidden by _init-brief -->
+    <div id="weekend-snippet" style="display:none;margin:10px;background:#ff0000;border:5px solid #000;border-radius:16px;padding:16px;font-size:14px;font-family:monospace">
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:10px">🎉 Weekend Out</div>
+      <div id="snippet-content" style="color:#fff;line-height:1.8;background:#000;padding:10px;border-radius:8px;font-size:13px"></div>
+    </div>
+
     <!-- ── HOME SCREEN ── -->
     <div id="screen-home" class="screen active">
-
-      <!-- Weekend snippet: Fri 5pm+ & Sat — Food/Pubs/Parks (working version) -->
-      <div id="weekend-snippet" style="display:none;margin:10px;background:#ff0000;border:5px solid #000;border-radius:16px;padding:16px;font-size:14px;font-family:monospace">
-        <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:10px">🎉 Weekend Out</div>
-        <div id="snippet-content" style="color:#fff;line-height:1.8;background:#000;padding:10px;border-radius:8px;font-size:13px"></div>
-      </div>
 
       <!-- Hero: tagline (new user) or greeting (returning) — populated by _homeHeroInit() -->
       <div id="home-hero-block" style="padding:24px 0 18px"></div>
