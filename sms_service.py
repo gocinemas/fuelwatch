@@ -12649,6 +12649,32 @@ def api_home_brief():
         elif smart_brief:
             brief_text = smart_brief
 
+        # Event location fuel hints — check if cheap fuel near upcoming events
+        try:
+            _fuel_hint = None
+            for ev in _events_for_smart[:1]:  # Check first event only to keep brief concise
+                _ev_location = ev.get("location", "").strip()
+                _ev_title = ev.get("event_title", "").strip()
+                if _ev_location and len(_ev_location) > 5:  # Has meaningful location
+                    # Extract postcode-like pattern from location (e.g., "KT15 2BD" from address)
+                    import re
+                    _pc_match = re.search(r'\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b', _ev_location)
+                    if _pc_match:
+                        _ev_postcode = _pc_match.group(0)
+                        # Get fuel price at event location
+                        _ev_price, _ev_station = _get_cheapest_fuel(_ev_postcode, "petrol", radius_miles=3)
+                        # Get fuel price at home
+                        _home_price, _home_station = _get_cheapest_fuel(postcode, "petrol", radius_miles=3) if postcode else (None, None)
+
+                        # If event fuel is cheaper, mention it
+                        if _ev_price and _home_price and _ev_price < _home_price - 1:  # More than 1p cheaper
+                            _fuel_hint = f"💡 Cheap petrol near {_ev_title}: {_ev_station.get('name', 'Local station')} ({_ev_price}p/L)"
+
+            if _fuel_hint:
+                brief_text = brief_text + " " + _fuel_hint
+        except Exception as _e:
+            pass  # Don't break brief if fuel lookup fails
+
         if smart_brief:
             app.logger.info(f"[brief] Smart context: {smart_brief[:80]}")
     except Exception as e:
