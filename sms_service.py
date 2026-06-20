@@ -12638,17 +12638,21 @@ def api_home_brief():
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
             if _ll:
                 _lat, _lon = _ll
-                # Fetch from /api/places/nearby — will have Google ratings
+                # Fetch places using internal function (not HTTP)
                 _all_places = []
+                _keywords = {
+                    "food": "restaurant",
+                    "beer": "pub craft beer real ale",
+                    "park": "park"
+                }
                 for _api_cat in ["food", "beer", "park"]:
                     try:
-                        _r = requests.get(f"http://127.0.0.1:5000/api/places/nearby?lat={_lat}&lon={_lon}&cat={_api_cat}&limit=8", timeout=3)
-                        if _r.status_code == 200:
-                            _places = _r.json().get("places", [])
-                            # Filter for 4.0+ rating
-                            _filtered = [p for p in _places if p.get("rating", 0) >= 4.0]
-                            _all_places.extend(_filtered)
-                            print(f"🎯 SNIPPET: {_api_cat} got {len(_places)}, filtered to {len(_filtered)}")
+                        _keyword = _keywords.get(_api_cat, _api_cat)
+                        _places = _gplaces_nearby_search(_keyword, _lat, _lon, radius=3000) or []
+                        # Filter for 4.0+ rating
+                        _filtered = [p for p in _places if p.get("rating", 0) >= 4.0]
+                        _all_places.extend(_filtered)
+                        print(f"🎯 SNIPPET: {_api_cat} got {len(_places)}, filtered to {len(_filtered)}")
                     except Exception as _e:
                         print(f"🎯 SNIPPET: {_api_cat} error: {_e}")
 
