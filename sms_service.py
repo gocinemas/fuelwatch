@@ -12623,8 +12623,19 @@ def api_home_brief():
             pass
 
     # Weekend snippet (Friday 5pm+ or Saturday) — Restaurants + Pubs + Parks, 6 total, 4.0+ rating
-    _weekend_snippet = {}
-    print(f"🎯 SNIPPET DEBUG: postcode={postcode}, force=True")
+    # TEMP: Return hardcoded test data to verify frontend works
+    _weekend_snippet = {
+        "places": [
+            {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8},
+            {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5},
+            {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2},
+            {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5},
+            {"name": "Central Park", "rating": 4.3, "distance_km": 2.1},
+            {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8},
+        ]
+    }
+    if False:  # Disabled: real logic below (testing frontend first)
+        print(f"🎯 SNIPPET DEBUG: postcode={postcode}, force=True")
     try:
         _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
         _is_saturday = now.weekday() == 5  # Saturday anytime
