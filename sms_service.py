@@ -1161,7 +1161,7 @@ def brand_redirect():
     return render_template("intel_brand.html")
 
 
-@app.route("/intel-landing")
+@app.route("/")
 def intel_root():
     """Intel landing page - mission and explanation"""
     return render_template("intel_landing.html")
@@ -12648,15 +12648,18 @@ def api_home_brief():
                             # Filter for 4.0+ rating
                             _filtered = [p for p in _places if p.get("rating", 0) >= 4.0]
                             _all_places.extend(_filtered)
-                    except Exception:
-                        pass
+                            print(f"🎯 SNIPPET: {_api_cat} got {len(_places)}, filtered to {len(_filtered)}")
+                    except Exception as _e:
+                        print(f"🎯 SNIPPET: {_api_cat} error: {_e}")
 
                 # Take top 6 total across all categories
                 _top_6 = sorted(_all_places, key=lambda p: p.get("rating", 0), reverse=True)[:6]
+                print(f"🎯 SNIPPET FINAL: {len(_top_6)} places")
                 if _top_6:
                     _weekend_snippet = {
                         "places": [{"name": p.get("name", ""), "rating": p.get("rating", 0), "distance_km": round(p.get("distance_km", 0), 1)} for p in _top_6]
                     }
+                    print(f"🎯 SNIPPET SUCCESS: Returning {len(_weekend_snippet['places'])} places")
     except Exception:
         pass
 
