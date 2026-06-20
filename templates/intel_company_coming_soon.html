@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Intelligence — Coming Soon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #34d399 0%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #cbd5e1;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .coming-soon-box {
+            background: rgba(30, 27, 75, 0.6);
+            border: 2px dashed #34d399;
+            padding: 40px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 40px;
+        }
+
+        .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .features-list {
+            text-align: left;
+            display: inline-block;
+            margin-bottom: 30px;
+        }
+
+        .feature-item {
+            padding: 12px 0;
+            color: #cbd5e1;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .feature-item::before {
+            content: "✓";
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            background: #34d399;
+            color: #0f172a;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(52, 211, 153, 0.2);
+            border: 1px solid #34d399;
+            border-radius: 20px;
+            color: #a7f3d0;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" style="position: absolute; top: 20px; left: 20px; color: #3b82f6; text-decoration: none; font-weight: 600;">← Back to Intel</a>
+
+        <div class="coming-soon-box">
+            <div class="icon">🏢</div>
+            <div class="status-badge">PHASE 2 — COMING SOON</div>
+            <h1>Company Intelligence</h1>
+            <p class="subtitle">Analyze parent companies, financials & market positioning</p>
+
+            <div class="features-list">
+                <div class="feature-item">Financial Health & Growth</div>
+                <div class="feature-item">Market Positioning & Strategy</div>
+                <div class="feature-item">Portfolio Analysis (Brand Portfolio)</div>
+                <div class="feature-item">Investment Potential</div>
+                <div class="feature-item">Competitive Landscape</div>
+                <div class="feature-item">Real Data Only — No AI Hallucinations</div>
+            </div>
+
+            <p style="color: #cbd5e1; font-size: 15px; line-height: 1.8; margin-bottom: 30px;">
+                While Company Intelligence is being built, explore our <strong>Phase 1 Brand Intelligence</strong> to analyze 60+ consumer brands across UK, USA, and India with Brand Health & Growth Opportunity scores.
+            </p>
+
+            <a href="/brand" class="back-button">Explore Brand Intelligence →</a>
+        </div>
+
+        <p style="color: #64748b; font-size: 13px;">
+            Company Intelligence will let you analyze parent companies like Unilever, PepsiCo, L'Oréal, and understand their market strategy, financial health, and competitive position across markets.
+        </p>
+    </div>
+</body>
+</html>

@@ -1185,6 +1185,12 @@ def brand_search():
     return render_template("intel_phase1_directory.html")
 
 
+@app.route("/company")
+def company_intelligence():
+    """Company intelligence - Phase 2 (coming soon)"""
+    return render_template("intel_company_coming_soon.html")
+
+
 @app.route("/brand/full")
 def brand_full_intelligence():
     """Brand Intelligence page - Phase 1: Real Data Only"""
@@ -12621,11 +12627,13 @@ def api_home_brief():
 
     # Weekend snippet (Friday 5pm+ or Saturday) — Restaurants + Pubs + Parks, 6 total, 4.0+ rating
     _weekend_snippet = {}
+    print(f"🎯 SNIPPET DEBUG: postcode={postcode}, force=True")
     try:
         _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
         _is_saturday = now.weekday() == 5  # Saturday anytime
         _force_test = True  # TESTING: Always enabled for now
         if (_is_fri_evening or _is_saturday or _force_test) and postcode:
+            print(f"🎯 SNIPPET: Proceeding with postcode")
             from miru.geo import postcode_to_latlon
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
             if _ll:
