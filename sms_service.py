@@ -12665,25 +12665,27 @@ def api_home_brief():
     # Weekend snippet (Friday 5pm+ or Saturday) — Show nearby places with Google Maps links
     _weekend_snippet = {}
     try:
-        _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
-        _is_saturday = now.weekday() == 5  # Saturday anytime
-        # ALWAYS show for now (testing) — will restrict to Fri/Sat later
-        if True and postcode:  # (_is_fri_evening or _is_saturday) and postcode:
-            from miru.geo import postcode_to_latlon
-            _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
-            if _ll:
-                _lat, _lon = _ll
-                # Use Google Maps search links with postcode
-                _weekend_snippet = {
-                    "places": [
-                        {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8, "emoji": "🍽️", "lat": _lat, "lon": _lon},
-                        {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5, "emoji": "🍺", "lat": _lat, "lon": _lon},
-                        {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2, "emoji": "🍽️", "lat": _lat, "lon": _lon},
-                        {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5, "emoji": "🍽️", "lat": _lat, "lon": _lon},
-                        {"name": "Central Park", "rating": 4.3, "distance_km": 2.1, "emoji": "🌳", "lat": _lat, "lon": _lon},
-                        {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8, "emoji": "🍽️", "lat": _lat, "lon": _lon},
-                    ]
-                }
+        _lat, _lon = 51.25, -0.56  # Default: Surrey area (GU24)
+        if postcode:
+            try:
+                from miru.geo import postcode_to_latlon
+                _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
+                if _ll:
+                    _lat, _lon = _ll
+            except Exception:
+                pass  # Use default if postcode conversion fails
+
+        # Always show snippet
+        _weekend_snippet = {
+            "places": [
+                {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8, "emoji": "🍽️", "lat": _lat, "lon": _lon},
+                {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5, "emoji": "🍺", "lat": _lat, "lon": _lon},
+                {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2, "emoji": "🍽️", "lat": _lat, "lon": _lon},
+                {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5, "emoji": "🍽️", "lat": _lat, "lon": _lon},
+                {"name": "Central Park", "rating": 4.3, "distance_km": 2.1, "emoji": "🌳", "lat": _lat, "lon": _lon},
+                {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8, "emoji": "🍽️", "lat": _lat, "lon": _lon},
+            ]
+        }
     except Exception as _e:
         print(f"🎯 SNIPPET ERROR: {_e}")
         _weekend_snippet = {}
