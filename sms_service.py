@@ -12626,8 +12626,9 @@ def api_home_brief():
     try:
         _is_fri_evening = now.weekday() == 4 and hour >= 17  # Friday 5pm+
         _is_saturday = now.weekday() == 5  # Saturday anytime
-        app.logger.info(f"[weekend-snippet] Fri evening: {_is_fri_evening}, Sat: {_is_saturday}, hour: {hour}, weekday: {now.weekday()}")
-        if (_is_fri_evening or _is_saturday) and postcode:
+        _force_test = request.args.get("test_snippet") == "1"  # Allow force testing
+        app.logger.info(f"[weekend-snippet] Fri evening: {_is_fri_evening}, Sat: {_is_saturday}, hour: {hour}, weekday: {now.weekday()}, force: {_force_test}")
+        if (_is_fri_evening or _is_saturday or _force_test) and postcode:
             from miru.geo import postcode_to_latlon
             _ll = postcode_to_latlon(postcode.replace(" ", "").upper())
             if _ll:
