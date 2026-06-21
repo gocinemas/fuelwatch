@@ -179,8 +179,9 @@ Recommend 1 specific strategy. JSON: {{"action": "...", "reasoning": "...", "pri
             result["source"] = "groq"
             result["cached_at"] = datetime.now().isoformat()
 
-            # OPTIMIZATION 4: Cache result
-            self._set_cache(cache_key, result)
+            # OPTIMIZATION 4: Cache result only if no error
+            if not result.get("error"):
+                self._set_cache(cache_key, result)
 
             return result
         except:
