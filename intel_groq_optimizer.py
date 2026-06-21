@@ -26,7 +26,7 @@ class IntelGroqOptimizer:
     def __init__(self):
         self.groq_key = os.environ.get("GROQ_API_KEY")
         self.groq_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.model = "llama-3.1-70b-versatile"  # Current Groq model (mixtral deprecated)
+        self.model = "llama-3.1-8b-instant"  # Fast + cheap model from Groq
 
         # Caching
         self.cache = {}  # In-memory cache (use Redis in production)
