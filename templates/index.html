@@ -17606,8 +17606,8 @@ let _savesAll = [];
         console.log("[briefCard] Filter out (work meeting): " + e.title);
         return false;
       }
-      // Check event time (could be `start` or `event_time` field)
-      var eventTime = e.start || e.event_time;
+      // Check event time (could be `start`, `event_time`, or `time` field for personal events)
+      var eventTime = e.start || e.event_time || e.time;
       if (eventTime) {
         var eMins = _parseEventMins(eventTime);
         if (eMins !== null) {
