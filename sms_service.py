@@ -10505,7 +10505,9 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
 
 
 def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
-    """Compute whether bins are due tonight or tomorrow based on prefs."""
+    """Compute whether bins are due tonight or tomorrow based on prefs.
+    Only show notification on day-before AFTER 1 PM (13:00).
+    """
     day = prefs.get("bin_collection_day")
     if day is None:
         return None
@@ -10517,31 +10519,35 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
     rot_week    = int(prefs.get("bin_rotation_week", 0))
     bin_types   = prefs.get("bin_types", ["general", "recycling"])
     today_dow   = now.weekday()  # Mon=0 … Sun=6
-    # Check today (tonight) and tomorrow
-    for offset, label in ((0, "tonight"), (1, "tomorrow")):
-        check_dow = (today_dow + offset) % 7
-        if check_dow != day:
-            continue
-        if rotation == "fortnightly":
-            from datetime import datetime as _ddt
-            iso_week = now.isocalendar()[1]
-            if offset == 1:
-                iso_week = (now + __import__("datetime").timedelta(days=1)).isocalendar()[1]
-            if (iso_week + rot_week) % 2 != 0:
-                continue
-            # Alternate general/recycling by week parity
-            bin_type = bin_types[iso_week % 2] if len(bin_types) > 1 else (bin_types[0] if bin_types else "general")
-        else:
-            bin_type = bin_types[0] if bin_types else "general"
-        day_names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-        check_date = now if offset == 0 else now + __import__("datetime").timedelta(days=1)
-        return {
-            "tonight":  offset == 0,
-            "tomorrow": offset == 1,
-            "bin_type": bin_type,
-            "day_name": day_names[day],
-        }
-    return None
+
+    # Only show notification on day-before collection, AFTER 1 PM
+    offset = 1
+    check_dow = (today_dow + offset) % 7
+    if check_dow != day:
+        return None
+
+    # Check time: only show if after 1 PM (13:00)
+    if now.hour < 13:
+        return None
+
+    if rotation == "fortnightly":
+        from datetime import datetime as _ddt
+        iso_week = now.isocalendar()[1]
+        iso_week = (now + __import__("datetime").timedelta(days=1)).isocalendar()[1]
+        if (iso_week + rot_week) % 2 != 0:
+            return None
+        # Alternate general/recycling by week parity
+        bin_type = bin_types[iso_week % 2] if len(bin_types) > 1 else (bin_types[0] if bin_types else "general")
+    else:
+        bin_type = bin_types[0] if bin_types else "general"
+
+    day_names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+    return {
+        "tonight":  False,
+        "tomorrow": True,
+        "bin_type": bin_type,
+        "day_name": day_names[day],
+    }
 
 
 def _v2_fetch_fuel(postcode: str) -> dict:

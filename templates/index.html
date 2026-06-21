@@ -3428,19 +3428,59 @@
           <div id="setup-pref-err" style="display:none;font-size:12px;color:#ef4444;text-align:center"></div>
           <div id="setup-pref-ok" style="display:none;font-size:12px;color:#059669;text-align:center">✅ Saved</div>
         </div>
-        <!-- Hidden inputs — required by _setupSavePrefs and _setupLoad JS -->
         <input id="setup-pref-pc" type="hidden" value="">
-        <div id="setup-bin-days" style="display:none">
-          <button type="button" data-setup-bin="0" onclick="_setupBinDay(0)">Mon</button>
-          <button type="button" data-setup-bin="1" onclick="_setupBinDay(1)">Tue</button>
-          <button type="button" data-setup-bin="2" onclick="_setupBinDay(2)">Wed</button>
-          <button type="button" data-setup-bin="3" onclick="_setupBinDay(3)">Thu</button>
-          <button type="button" data-setup-bin="4" onclick="_setupBinDay(4)">Fri</button>
-          <button type="button" data-setup-bin="5" onclick="_setupBinDay(5)">Sat</button>
-          <button type="button" data-setup-bin="6" onclick="_setupBinDay(6)">Sun</button>
+      </div>
+
+      <!-- ── BIN COLLECTION ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Bin Collection</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <!-- Collection day -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Collection day</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+              <button type="button" data-bin-day="0" onclick="window._setupBinSelectDay(0)" style="padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Mon</button>
+              <button type="button" data-bin-day="1" onclick="window._setupBinSelectDay(1)" style="padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Tue</button>
+              <button type="button" data-bin-day="2" onclick="window._setupBinSelectDay(2)" style="padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Wed</button>
+              <button type="button" data-bin-day="3" onclick="window._setupBinSelectDay(3)" style="padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Thu</button>
+              <button type="button" data-bin-day="4" onclick="window._setupBinSelectDay(4)" style="padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Fri</button>
+              <button type="button" data-bin-day="5" onclick="window._setupBinSelectDay(5)" style="padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Sat</button>
+              <button type="button" data-bin-day="6" onclick="window._setupBinSelectDay(6)" style="padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Sun</button>
+            </div>
+          </div>
+
+          <!-- Frequency -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Frequency</div>
+            <div style="display:flex;gap:8px">
+              <button type="button" id="setup-bin-weekly-btn" onclick="window._setupBinSelectFreq('weekly')" style="flex:1;padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Weekly</button>
+              <button type="button" id="setup-bin-fortnightly-btn" onclick="window._setupBinSelectFreq('fortnightly')" style="flex:1;padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Fortnightly</button>
+            </div>
+          </div>
+
+          <!-- Bin types -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Bin types (pick at least one)</div>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-general" style="cursor:pointer;width:16px;height:16px"> General Waste
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-garden" style="cursor:pointer;width:16px;height:16px"> Garden Waste
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-recycling" style="cursor:pointer;width:16px;height:16px"> Recycling
+            </label>
+          </div>
+
+          <!-- Save button -->
+          <button onclick="window._setupBinSave()"
+            style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer">
+            Save Bin Settings
+          </button>
+          <div id="setup-bin-err" style="display:none;font-size:12px;color:#ef4444;text-align:center"></div>
+          <div id="setup-bin-ok" style="display:none;font-size:12px;color:#059669;text-align:center">✅ Bin settings saved</div>
         </div>
-        <button type="button" id="setup-bin-weekly" style="display:none" onclick="_setupBinRotation('weekly')">Weekly</button>
-        <button type="button" id="setup-bin-fortnightly" style="display:none" onclick="_setupBinRotation('fortnightly')">Fortnightly</button>
       </div>
 
       <!-- ── MORNING BRIEF ── -->
@@ -8363,8 +8403,7 @@ function _hcAdd() {
           .then(function(d) { if (d && d.name && fromEl) fromEl.value = d.name; })
           .catch(function() {});
       }
-      if (prefs.bin_collection_day !== undefined) _setupBinDay(prefs.bin_collection_day);
-      if (prefs.bin_rotation) _setupBinRotation(prefs.bin_rotation);
+      // Bin preferences handled by _setupBinLoad()
       _setupPushEnabled = !!prefs.morning_push;
       var _pushBtn = document.getElementById("setup-push-toggle");
       if (_pushBtn) {
@@ -8381,6 +8420,8 @@ function _hcAdd() {
         .then(function(r){ return r.json(); })
         .then(function(d){
           _applyPrefs(d.prefs || {});
+          // Load bin settings
+          window._setupBinLoad();
           // Fetch both calendar statuses independently (dual-format safe)
           fetch("/api/calendar/status?token=" + encodeURIComponent(_sPhone))
             .then(function(cr){ return cr.json(); })
@@ -8474,6 +8515,132 @@ function _hcAdd() {
         if (typeof _briefInit === "function") _briefInit();
       }
     } catch(e) { if (errEl) { errEl.textContent = "Save failed."; errEl.style.display = "block"; } }
+  };
+
+  // ── Bin collection settings ────────────────────────────────────────────────
+  window._setupBinSelectDay = function(dayNum) {
+    // Update global state
+    window._setupBinDaySel = dayNum;
+    // Highlight selected day
+    var buttons = document.querySelectorAll('[data-bin-day]');
+    buttons.forEach(function(btn) {
+      var d = parseInt(btn.getAttribute('data-bin-day'), 10);
+      if (d === dayNum) {
+        btn.style.background = "#2563eb";
+        btn.style.color = "#fff";
+        btn.style.borderColor = "#2563eb";
+      } else {
+        btn.style.background = "var(--bg)";
+        btn.style.color = "var(--text)";
+        btn.style.borderColor = "var(--border)";
+      }
+    });
+  };
+
+  window._setupBinSelectFreq = function(freq) {
+    // Update global state
+    window._setupBinRotSel = freq;
+    // Highlight selected frequency
+    var weeklyBtn = document.getElementById("setup-bin-weekly-btn");
+    var fortnightlyBtn = document.getElementById("setup-bin-fortnightly-btn");
+    if (freq === "weekly") {
+      weeklyBtn.style.background = "#2563eb";
+      weeklyBtn.style.color = "#fff";
+      fortnightlyBtn.style.background = "var(--bg)";
+      fortnightlyBtn.style.color = "var(--text)";
+    } else {
+      fortnightlyBtn.style.background = "#2563eb";
+      fortnightlyBtn.style.color = "#fff";
+      weeklyBtn.style.background = "var(--bg)";
+      weeklyBtn.style.color = "var(--text)";
+    }
+  };
+
+  window._setupBinSave = async function() {
+    var token = _miruPhone() || "";
+    var errEl = document.getElementById("setup-bin-err");
+    var okEl = document.getElementById("setup-bin-ok");
+
+    if (!token) {
+      if (errEl) { errEl.textContent = "Link your phone first."; errEl.style.display = "block"; }
+      return;
+    }
+
+    // Collect bin types
+    var binTypes = [];
+    if (document.getElementById("setup-bin-general").checked) binTypes.push("general");
+    if (document.getElementById("setup-bin-garden").checked) binTypes.push("garden");
+    if (document.getElementById("setup-bin-recycling").checked) binTypes.push("recycling");
+
+    if (binTypes.length === 0) {
+      if (errEl) { errEl.textContent = "Select at least one bin type."; errEl.style.display = "block"; }
+      return;
+    }
+
+    if (window._setupBinDaySel === null || window._setupBinDaySel === undefined) {
+      if (errEl) { errEl.textContent = "Select a collection day."; errEl.style.display = "block"; }
+      return;
+    }
+
+    if (!window._setupBinRotSel) {
+      if (errEl) { errEl.textContent = "Select a frequency (weekly/fortnightly)."; errEl.style.display = "block"; }
+      return;
+    }
+
+    var payload = {
+      token: token,
+      bin_collection_day: window._setupBinDaySel,
+      bin_rotation: window._setupBinRotSel,
+      bin_types: binTypes,
+      bin_rotation_week: 0
+    };
+
+    try {
+      var r = await fetch("/api/v2/prefs", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({token: token, prefs: payload})
+      });
+      var d = await r.json();
+      if (d.ok || d.prefs) {
+        if (errEl) errEl.style.display = "none";
+        if (okEl) { okEl.style.display = "block"; setTimeout(function(){ okEl.style.display = "none"; }, 2000); }
+        if (typeof _briefInit === "function") _briefInit();
+      } else {
+        if (errEl) { errEl.textContent = d.error || "Save failed."; errEl.style.display = "block"; }
+      }
+    } catch(e) {
+      if (errEl) { errEl.textContent = "Save failed: " + e.message; errEl.style.display = "block"; }
+    }
+  };
+
+  window._setupBinLoad = async function() {
+    var token = _miruPhone();
+    if (!token) return;
+
+    try {
+      var r = await fetch("/api/v2/prefs?token=" + encodeURIComponent(token));
+      var d = await r.json();
+      var prefs = d.prefs || {};
+
+      // Load bin day
+      if (prefs.bin_collection_day !== undefined) {
+        window._setupBinSelectDay(prefs.bin_collection_day);
+      }
+
+      // Load frequency
+      if (prefs.bin_rotation) {
+        window._setupBinSelectFreq(prefs.bin_rotation);
+      }
+
+      // Load bin types
+      var binTypes = prefs.bin_types || [];
+      document.getElementById("setup-bin-general").checked = binTypes.includes("general");
+      document.getElementById("setup-bin-garden").checked = binTypes.includes("garden");
+      document.getElementById("setup-bin-recycling").checked = binTypes.includes("recycling");
+    } catch(e) {
+      // Silently fail — allow user to set new prefs
+    }
   };
 
   async function _setupLoadClubs() {
