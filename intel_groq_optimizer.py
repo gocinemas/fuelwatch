@@ -143,11 +143,9 @@ Recommend 1 specific strategy. JSON: {{"action": "...", "reasoning": "...", "pri
             if response.status_code == 200:
                 result = response.json()
                 return result["choices"][0]["message"]["content"]
-            elif response.status_code == 400:
-                # Try again without certain parameters
-                return json.dumps({"error": f"Groq 400: Check prompt format. Response: {response.text[:200]}"})
             else:
-                return json.dumps({"error": f"Groq error: {response.status_code}"})
+                error_detail = response.text[:500] if response.text else "No response"
+                return json.dumps({"error": f"Groq {response.status_code}: {error_detail}"})
 
         except Exception as e:
             return json.dumps({"error": str(e)})
