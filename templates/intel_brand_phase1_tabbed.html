@@ -535,6 +535,7 @@
             <li><button class="tab-button" onclick="openTab(event, 'market')">Market</button></li>
             <li><button class="tab-button" onclick="openTab(event, 'competitors')">Competitors</button></li>
             <li><button class="tab-button" onclick="openTab(event, 'decision')">Decision</button></li>
+            <li><button class="tab-button" onclick="openTab(event, 'insights')">✨ Insights</button></li>
         </ul>
     </div>
 
@@ -884,6 +885,25 @@
             </div>
             {% endif %}
             {% endif %}
+        </div>
+
+        <!-- PHASE 2: AI INSIGHTS -->
+        <div id="insights" class="tab-content">
+            <div style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">✨</div>
+                <h3 style="margin-bottom: 8px;">AI-Powered Insights</h3>
+                <p style="color: #64748b; margin-bottom: 24px;">Generate strategic recommendations powered by Groq</p>
+                <button onclick="loadInsights()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                    Generate Insights
+                </button>
+            </div>
+            <div id="insightsContainer" style="display: none;">
+                <div id="insightsContent"></div>
+            </div>
+            <div id="insightsLoading" style="display: none; text-align: center; padding: 40px;">
+                <div style="font-size: 24px; margin-bottom: 16px;">⏳</div>
+                <p style="color: #64748b;">Generating insights from market data...</p>
+            </div>
         </div>
     </div>
 

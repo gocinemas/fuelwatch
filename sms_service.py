@@ -8810,7 +8810,7 @@ def api_v2_prefs_post():
         return jsonify({"error": "token required"}), 401
     # Accept prefs as nested {"prefs":{...}} or top-level keys in the same body
     PREF_KEYS = {"train_from", "train_to", "fuel_postcode", "commute_mode",
-                 "bin_collection_day", "bin_types", "bin_rotation", "bin_rotation_week",
+                 "bin_collection_day", "bin_types", "bin_types_a", "bin_types_b", "bin_rotation", "bin_rotation_week",
                  "interests"}
     new_prefs = body.get("prefs") or {k: v for k, v in body.items() if k in PREF_KEYS}
     if not isinstance(new_prefs, dict):
@@ -10505,8 +10505,9 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
 
 
 def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
-    """Compute whether bins are due tonight or tomorrow based on prefs.
-    Only show notification on day-before AFTER 1 PM (13:00).
+    """Compute whether bins are due tomorrow based on prefs.
+    Shows notification on day-before collection, AFTER 1 PM (13:00).
+    Supports weekly and fortnightly (Week A/B) patterns.
     """
     day = prefs.get("bin_collection_day")
     if day is None:
@@ -10515,10 +10516,9 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
         day = int(day)
     except (TypeError, ValueError):
         return None
-    rotation    = prefs.get("bin_rotation", "weekly")
-    rot_week    = int(prefs.get("bin_rotation_week", 0))
-    bin_types   = prefs.get("bin_types", ["general", "recycling"])
-    today_dow   = now.weekday()  # Mon=0 … Sun=6
+
+    rotation = prefs.get("bin_rotation", "weekly")
+    today_dow = now.weekday()  # Mon=0 … Sun=6
 
     # Only show notification on day-before collection, AFTER 1 PM
     offset = 1
@@ -10530,16 +10530,30 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
     if now.hour < 13:
         return None
 
+    # Determine which bin types to show based on rotation pattern
     if rotation == "fortnightly":
-        from datetime import datetime as _ddt
-        iso_week = now.isocalendar()[1]
+        # For fortnightly, alternate between Week A and Week B based on week parity
         iso_week = (now + __import__("datetime").timedelta(days=1)).isocalendar()[1]
-        if (iso_week + rot_week) % 2 != 0:
+        bin_types_a = prefs.get("bin_types_a", [])
+        bin_types_b = prefs.get("bin_types_b", [])
+
+        # Odd weeks show Week A, even weeks show Week B
+        if iso_week % 2 == 1:
+            bin_types = bin_types_a if bin_types_a else bin_types_b
+        else:
+            bin_types = bin_types_b if bin_types_b else bin_types_a
+
+        if not bin_types:
             return None
-        # Alternate general/recycling by week parity
-        bin_type = bin_types[iso_week % 2] if len(bin_types) > 1 else (bin_types[0] if bin_types else "general")
+
+        # Combine types into string (e.g., "general + garden")
+        bin_type = " + ".join(bin_types)
     else:
-        bin_type = bin_types[0] if bin_types else "general"
+        # Weekly: show all selected types
+        bin_types = prefs.get("bin_types", [])
+        if not bin_types:
+            return None
+        bin_type = " + ".join(bin_types)
 
     day_names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
     return {

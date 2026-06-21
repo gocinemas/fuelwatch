@@ -3454,13 +3454,13 @@
           <div>
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Frequency</div>
             <div style="display:flex;gap:8px">
-              <button type="button" id="setup-bin-weekly-btn" onclick="window._setupBinSelectFreq('weekly')" style="flex:1;padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Weekly</button>
-              <button type="button" id="setup-bin-fortnightly-btn" onclick="window._setupBinSelectFreq('fortnightly')" style="flex:1;padding:10px;border:1px solid var(--border);background:var(--bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Fortnightly</button>
+              <button type="button" id="setup-bin-weekly-btn" onclick="window._setupBinSelectFreq('weekly')" style="flex:1;padding:10px;border:1px solid var(--border);background:#2563eb;color:#fff;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Weekly</button>
+              <button type="button" id="setup-bin-fortnightly-btn" onclick="window._setupBinSelectFreq('fortnightly')" style="flex:1;padding:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Fortnightly</button>
             </div>
           </div>
 
-          <!-- Bin types -->
-          <div>
+          <!-- Weekly bin types -->
+          <div id="setup-bin-weekly-section">
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Bin types (pick at least one)</div>
             <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer">
               <input type="checkbox" id="setup-bin-general" style="cursor:pointer;width:16px;height:16px"> General Waste
@@ -3470,6 +3470,31 @@
             </label>
             <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;cursor:pointer">
               <input type="checkbox" id="setup-bin-recycling" style="cursor:pointer;width:16px;height:16px"> Recycling
+            </label>
+          </div>
+
+          <!-- Fortnightly bin types (Week A + Week B) -->
+          <div id="setup-bin-fortnightly-section" style="display:none">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Week 1 (This week)</div>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-a-general" style="cursor:pointer;width:16px;height:16px"> General Waste
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-a-garden" style="cursor:pointer;width:16px;height:16px"> Garden Waste
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:12px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-a-recycling" style="cursor:pointer;width:16px;height:16px"> Recycling
+            </label>
+
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Week 2 (Next week)</div>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-b-general" style="cursor:pointer;width:16px;height:16px"> General Waste
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-b-garden" style="cursor:pointer;width:16px;height:16px"> Garden Waste
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:8px;cursor:pointer">
+              <input type="checkbox" id="setup-bin-b-recycling" style="cursor:pointer;width:16px;height:16px"> Recycling
             </label>
           </div>
 
@@ -8540,15 +8565,22 @@ function _hcAdd() {
   window._setupBinSelectFreq = function(freq) {
     // Update global state
     window._setupBinRotSel = freq;
-    // Highlight selected frequency
+    // Toggle visibility of weekly vs fortnightly sections
+    var weeklySection = document.getElementById("setup-bin-weekly-section");
+    var fortnightlySection = document.getElementById("setup-bin-fortnightly-section");
     var weeklyBtn = document.getElementById("setup-bin-weekly-btn");
     var fortnightlyBtn = document.getElementById("setup-bin-fortnightly-btn");
+
     if (freq === "weekly") {
+      weeklySection.style.display = "block";
+      fortnightlySection.style.display = "none";
       weeklyBtn.style.background = "#2563eb";
       weeklyBtn.style.color = "#fff";
       fortnightlyBtn.style.background = "var(--bg)";
       fortnightlyBtn.style.color = "var(--text)";
     } else {
+      weeklySection.style.display = "none";
+      fortnightlySection.style.display = "block";
       fortnightlyBtn.style.background = "#2563eb";
       fortnightlyBtn.style.color = "#fff";
       weeklyBtn.style.background = "var(--bg)";
@@ -8566,17 +8598,6 @@ function _hcAdd() {
       return;
     }
 
-    // Collect bin types
-    var binTypes = [];
-    if (document.getElementById("setup-bin-general").checked) binTypes.push("general");
-    if (document.getElementById("setup-bin-garden").checked) binTypes.push("garden");
-    if (document.getElementById("setup-bin-recycling").checked) binTypes.push("recycling");
-
-    if (binTypes.length === 0) {
-      if (errEl) { errEl.textContent = "Select at least one bin type."; errEl.style.display = "block"; }
-      return;
-    }
-
     if (window._setupBinDaySel === null || window._setupBinDaySel === undefined) {
       if (errEl) { errEl.textContent = "Select a collection day."; errEl.style.display = "block"; }
       return;
@@ -8591,9 +8612,42 @@ function _hcAdd() {
       token: token,
       bin_collection_day: window._setupBinDaySel,
       bin_rotation: window._setupBinRotSel,
-      bin_types: binTypes,
       bin_rotation_week: 0
     };
+
+    // Collect bin types based on frequency
+    if (window._setupBinRotSel === "weekly") {
+      var binTypes = [];
+      if (document.getElementById("setup-bin-general").checked) binTypes.push("general");
+      if (document.getElementById("setup-bin-garden").checked) binTypes.push("garden");
+      if (document.getElementById("setup-bin-recycling").checked) binTypes.push("recycling");
+
+      if (binTypes.length === 0) {
+        if (errEl) { errEl.textContent = "Select at least one bin type for weekly."; errEl.style.display = "block"; }
+        return;
+      }
+
+      payload.bin_types = binTypes;
+    } else {
+      // Fortnightly: collect Week A and Week B separately
+      var binTypesA = [];
+      if (document.getElementById("setup-bin-a-general").checked) binTypesA.push("general");
+      if (document.getElementById("setup-bin-a-garden").checked) binTypesA.push("garden");
+      if (document.getElementById("setup-bin-a-recycling").checked) binTypesA.push("recycling");
+
+      var binTypesB = [];
+      if (document.getElementById("setup-bin-b-general").checked) binTypesB.push("general");
+      if (document.getElementById("setup-bin-b-garden").checked) binTypesB.push("garden");
+      if (document.getElementById("setup-bin-b-recycling").checked) binTypesB.push("recycling");
+
+      if (binTypesA.length === 0 || binTypesB.length === 0) {
+        if (errEl) { errEl.textContent = "Select at least one bin type for each week."; errEl.style.display = "block"; }
+        return;
+      }
+
+      payload.bin_types_a = binTypesA;
+      payload.bin_types_b = binTypesB;
+    }
 
     try {
       var r = await fetch("/api/v2/prefs", {
@@ -8628,16 +8682,30 @@ function _hcAdd() {
         window._setupBinSelectDay(prefs.bin_collection_day);
       }
 
-      // Load frequency
+      // Load frequency and corresponding bin types
       if (prefs.bin_rotation) {
         window._setupBinSelectFreq(prefs.bin_rotation);
-      }
 
-      // Load bin types
-      var binTypes = prefs.bin_types || [];
-      document.getElementById("setup-bin-general").checked = binTypes.includes("general");
-      document.getElementById("setup-bin-garden").checked = binTypes.includes("garden");
-      document.getElementById("setup-bin-recycling").checked = binTypes.includes("recycling");
+        if (prefs.bin_rotation === "weekly") {
+          // Load weekly bin types
+          var binTypes = prefs.bin_types || [];
+          document.getElementById("setup-bin-general").checked = binTypes.includes("general");
+          document.getElementById("setup-bin-garden").checked = binTypes.includes("garden");
+          document.getElementById("setup-bin-recycling").checked = binTypes.includes("recycling");
+        } else {
+          // Load fortnightly bin types (Week A and Week B)
+          var binTypesA = prefs.bin_types_a || [];
+          var binTypesB = prefs.bin_types_b || [];
+
+          document.getElementById("setup-bin-a-general").checked = binTypesA.includes("general");
+          document.getElementById("setup-bin-a-garden").checked = binTypesA.includes("garden");
+          document.getElementById("setup-bin-a-recycling").checked = binTypesA.includes("recycling");
+
+          document.getElementById("setup-bin-b-general").checked = binTypesB.includes("general");
+          document.getElementById("setup-bin-b-garden").checked = binTypesB.includes("garden");
+          document.getElementById("setup-bin-b-recycling").checked = binTypesB.includes("recycling");
+        }
+      }
     } catch(e) {
       // Silently fail — allow user to set new prefs
     }
