@@ -2451,7 +2451,34 @@
       <!-- Personal event quick-add form — simplified with address autocomplete -->
       <div id="brief-event-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
         <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">＋ Add event</div>
-        <input id="brief-evt-title" type="text" placeholder="e.g. Go Ape Bracknell" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:6px">
+
+        <!-- Event type selector -->
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="brief-evt-type-personal-btn" onclick="window._briefSetEventType('personal')" style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer">Personal</button>
+          <button id="brief-evt-type-bin-btn" onclick="window._briefSetEventType('bin')" style="flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer">Bin Collection</button>
+        </div>
+
+        <!-- Personal event section -->
+        <div id="brief-evt-personal-section">
+          <input id="brief-evt-title" type="text" placeholder="e.g. Go Ape Bracknell" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:6px">
+          <input id="brief-evt-location" type="text" placeholder="📍 Location or address" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:2px">
+        </div>
+
+        <!-- Bin collection section (hidden) -->
+        <div id="brief-evt-bin-section" style="display:none;margin-bottom:12px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">This weekend?</div>
+          <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer;font-size:13px;color:var(--text)">
+            <input type="checkbox" id="brief-evt-bin-general" onchange="window._briefUpdateBinTitle()" style="cursor:pointer;width:16px;height:16px"> General Waste
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer;font-size:13px;color:var(--text)">
+            <input type="checkbox" id="brief-evt-bin-garden" onchange="window._briefUpdateBinTitle()" style="cursor:pointer;width:16px;height:16px"> Garden
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:6px;cursor:pointer;font-size:13px;color:var(--text)">
+            <input type="checkbox" id="brief-evt-bin-recycle" onchange="window._briefUpdateBinTitle()" style="cursor:pointer;width:16px;height:16px"> Recycling
+          </label>
+        </div>
+
+        <input id="brief-evt-title" type="text" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:6px;display:none">
         <input id="brief-evt-location" type="text" placeholder="📍 Location or address" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:2px">
         <div id="brief-evt-suggestions" style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 9px 9px;max-height:100px;overflow-y:auto;font-size:12px;margin-bottom:8px;display:none"></div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -19226,6 +19253,9 @@ let _savesAll = [];
   window._openBriefEventForm = function() {
     document.getElementById("brief-event-form").style.display = "block";
 
+    // Reset to personal event type (default)
+    window._briefSetEventType("personal");
+
     // Set date to today
     const dateEl = document.getElementById("brief-evt-date");
     if (dateEl && !dateEl.value) {
@@ -19292,6 +19322,73 @@ let _savesAll = [];
     document.getElementById("brief-evt-suggestions").style.display = "none";
   };
 
+  // Bin collection: toggle event type
+  window._briefSetEventType = function(type) {
+    var personalBtn = document.getElementById("brief-evt-type-personal-btn");
+    var binBtn = document.getElementById("brief-evt-type-bin-btn");
+    var personalSection = document.getElementById("brief-evt-personal-section");
+    var binSection = document.getElementById("brief-evt-bin-section");
+    var locationEl = document.getElementById("brief-evt-location");
+
+    window._briefEventType = type;
+
+    if (type === "personal") {
+      personalBtn.style.background = "#2563eb";
+      personalBtn.style.color = "#fff";
+      binBtn.style.background = "var(--bg)";
+      binBtn.style.color = "var(--text)";
+      personalSection.style.display = "block";
+      binSection.style.display = "none";
+      locationEl.style.display = "block";
+    } else {
+      binBtn.style.background = "#2563eb";
+      binBtn.style.color = "#fff";
+      personalBtn.style.background = "var(--bg)";
+      personalBtn.style.color = "var(--text)";
+      personalSection.style.display = "none";
+      binSection.style.display = "block";
+      locationEl.style.display = "none";
+
+      // Load and pre-select bins based on alternating pattern
+      var binWeek = parseInt(localStorage.getItem("_binWeek") || "0");
+      var binPattern = localStorage.getItem("_binPattern") || "general"; // "general" or "recycling"
+
+      // Determine what to show this week
+      var thisWeekType = (binWeek % 2 === 0) ? binPattern : (binPattern === "general" ? "recycling" : "general");
+
+      // Clear all checkboxes
+      document.getElementById("brief-evt-bin-general").checked = false;
+      document.getElementById("brief-evt-bin-garden").checked = false;
+      document.getElementById("brief-evt-bin-recycle").checked = false;
+
+      // Pre-select based on alternation
+      if (thisWeekType === "general") {
+        document.getElementById("brief-evt-bin-general").checked = true;
+        document.getElementById("brief-evt-bin-garden").checked = true;
+      } else {
+        document.getElementById("brief-evt-bin-recycle").checked = true;
+      }
+
+      window._briefUpdateBinTitle();
+    }
+  };
+
+  // Update bin event title based on checkbox selections
+  window._briefUpdateBinTitle = function() {
+    var title = "";
+    var parts = [];
+
+    if (document.getElementById("brief-evt-bin-general").checked) parts.push("General Waste");
+    if (document.getElementById("brief-evt-bin-garden").checked) parts.push("Garden");
+    if (document.getElementById("brief-evt-bin-recycle").checked) parts.push("Recycling");
+
+    if (parts.length > 0) {
+      title = "🗑️ " + parts.join(" + ");
+    }
+
+    document.getElementById("brief-evt-title").value = title;
+  };
+
   window._briefAddEvent = function() {
     var titleEl    = document.getElementById("brief-evt-title");
     var dateEl     = document.getElementById("brief-evt-date");
@@ -19323,6 +19420,15 @@ let _savesAll = [];
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.ok) {
+        // Track bin collection pattern for auto-alternation
+        if (window._briefEventType === "bin") {
+          var isRecycling = document.getElementById("brief-evt-bin-recycle").checked;
+          var binPattern = isRecycling ? "recycling" : "general";
+          localStorage.setItem("_binPattern", binPattern);
+          var binWeek = parseInt(localStorage.getItem("_binWeek") || "0");
+          localStorage.setItem("_binWeek", (binWeek + 1).toString());
+        }
+
         form.style.display = "none";
         document.getElementById("brief-evt-suggestions").style.display = "none";
         form.dataset.editIdx = "";
