@@ -197,21 +197,28 @@ Growth: {scores['growth_opportunity_score']}/10"""
         if cached:
             return {"insights": {"quick_verdict": cached}, "efficiency": "100% cached"}
 
-        prompt = f"""Return only valid JSON:
-{{"verdict": "INVEST or RECONSIDER", "reason": "one sentence why"}}
+        prompt = f"""Return this exact JSON structure:
+{{"verdict": "INVEST or RECONSIDER", "reason": "one sentence"}}
 
-{brand} in {market}
-Strength: {scores['brand_strength_score']}/10
-Growth: {scores['growth_opportunity_score']}/10"""
+{brand} in {market}. Health: {scores['brand_strength_score']}/10. Growth: {scores['growth_opportunity_score']}/10."""
 
         response_text = self._get_groq_insight(prompt)
 
         try:
-            text = response_text
-            if text.startswith("```"):
-                lines = text.split("\n")
-                json_lines = [l for l in lines if not l.startswith("```")]
-                text = "\n".join(json_lines)
+            # Strip markdown code blocks
+            text = response_text.strip()
+            if text.startswith("```json"):
+                text = text.replace("```json", "").replace("```", "")
+            elif text.startswith("```"):
+                text = text.replace("```", "")
+
+            text = text.strip()
+
+            # Find JSON in the response (in case there's text before/after)
+            import re
+            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            if json_match:
+                text = json_match.group()
 
             result = json.loads(text)
             result["source"] = "groq"
@@ -220,11 +227,13 @@ Growth: {scores['growth_opportunity_score']}/10"""
 
             return {
                 "insights": {"quick_verdict": result},
-                "efficiency": "1 API call (Quick Verdict only)"
+                "efficiency": "1 API call"
             }
-        except:
+        except Exception as e:
+            import traceback
+            error_msg = f"Parse error: {str(e)[:50]} | Response: {response_text[:100]}"
             return {
-                "insights": {"quick_verdict": {"error": "Could not parse Groq response"}},
+                "insights": {"quick_verdict": {"error": error_msg}},
                 "efficiency": "Failed"
             }
 
