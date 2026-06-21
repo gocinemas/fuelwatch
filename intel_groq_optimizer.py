@@ -191,42 +191,90 @@ Growth: {scores['growth_opportunity_score']}/10"""
         """
         OPTIMIZATION: Get all insights in ONE call instead of 4.
         Cuts API calls by 75%, saves tokens with combined prompt.
-
-        Returns:
-        {
-            "quick_verdict": {...},
-            "opportunities": [...],
-            "risks": [...],
-            "strategy": {...},
-            "api_calls": 1,
-            "cached": 2
-        }
         """
         results = {}
-        api_call_count = 0
-        cache_hit_count = 0
+        all_cached = True
 
-        # Check all insights in cache first
+        # Check if all are cached
         for insight_type in ["quick_verdict", "opportunities", "risks", "strategy"]:
             cache_key = self._get_cache_key(brand, market, insight_type)
             cached = self._check_cache(cache_key)
-
             if cached:
                 results[insight_type] = cached
-                cache_hit_count += 1
             else:
-                # Fetch uncached insights
-                result = self.get_insight(brand, market, scores, market_data, insight_type)
-                results[insight_type] = result
-                if result.get("source") == "groq":
-                    api_call_count += 1
+                all_cached = False
 
-        return {
-            "insights": results,
-            "api_calls": api_call_count,
-            "cache_hits": cache_hit_count,
-            "efficiency": f"{(cache_hit_count / 4) * 100:.0f}% cached"
-        }
+        # If all cached, return immediately
+        if all_cached:
+            return {
+                "insights": results,
+                "api_calls": 0,
+                "cache_hits": 4,
+                "efficiency": "100% cached"
+            }
+
+        # Build single batch prompt for ALL insights
+        batch_prompt = f"""Generate JSON only. Return all 4 insights in this exact format:
+
+{{
+  "quick_verdict": {{"verdict": "INVEST or RECONSIDER", "reason": "one sentence"}},
+  "opportunities": {{"opportunities": [{{"title": "string", "impact": "string"}}]}},
+  "risks": {{"risks": [{{"threat": "string", "severity": "HIGH or MEDIUM or LOW"}}]}},
+  "strategy": {{"strategy": {{"action": "string", "priority": "HIGH or MEDIUM or LOW"}}}}
+}}
+
+Brand: {brand} in {market}
+Strength: {scores['brand_strength_score']}/10
+Growth: {scores['growth_opportunity_score']}/10"""
+
+        # Make single API call for all
+        response_text = self._get_groq_insight(batch_prompt)
+
+        try:
+            # Strip markdown if present
+            text = response_text
+            if text.startswith("```"):
+                lines = text.split("\n")
+                json_lines = [l for l in lines if not l.startswith("```")]
+                text = "\n".join(json_lines)
+
+            batch_result = json.loads(text)
+
+            # Parse individual insights from batch result
+            if "quick_verdict" in batch_result:
+                results["quick_verdict"] = {"source": "groq", "cached_at": datetime.now().isoformat(), **batch_result.get("quick_verdict", {})}
+                self._set_cache(self._get_cache_key(brand, market, "quick_verdict"), results["quick_verdict"])
+
+            if "opportunities" in batch_result:
+                results["opportunities"] = {"source": "groq", "cached_at": datetime.now().isoformat(), **batch_result.get("opportunities", {})}
+                self._set_cache(self._get_cache_key(brand, market, "opportunities"), results["opportunities"])
+
+            if "risks" in batch_result:
+                results["risks"] = {"source": "groq", "cached_at": datetime.now().isoformat(), **batch_result.get("risks", {})}
+                self._set_cache(self._get_cache_key(brand, market, "risks"), results["risks"])
+
+            if "strategy" in batch_result:
+                results["strategy"] = {"source": "groq", "cached_at": datetime.now().isoformat(), **batch_result.get("strategy", {})}
+                self._set_cache(self._get_cache_key(brand, market, "strategy"), results["strategy"])
+
+            return {
+                "insights": results,
+                "api_calls": 1,
+                "cache_hits": sum(1 for v in results.values() if v.get("source") != "groq"),
+                "efficiency": f"1 API call for {len(results)} insights"
+            }
+        except Exception as batch_err:
+            # Fallback to individual calls if batch parsing fails
+            for insight_type in ["quick_verdict", "opportunities", "risks", "strategy"]:
+                if insight_type not in results:
+                    results[insight_type] = self.get_insight(brand, market, scores, market_data, insight_type)
+
+            return {
+                "insights": results,
+                "api_calls": 4,
+                "cache_hits": 0,
+                "efficiency": f"Batch failed, used 4 individual calls"
+            }
 
     def get_insights_async(self, brand: str, market: str, scores: Dict,
                           market_data: Dict):
