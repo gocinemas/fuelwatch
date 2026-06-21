@@ -889,20 +889,20 @@
 
         <!-- PHASE 2: AI INSIGHTS -->
         <div id="insights" class="tab-content">
-            <div style="text-align: center; padding: 40px 20px;">
+            <div id="insightsInitial" style="text-align: center; padding: 60px 20px;">
                 <div style="font-size: 48px; margin-bottom: 16px;">✨</div>
-                <h3 style="margin-bottom: 8px;">AI-Powered Insights</h3>
-                <p style="color: #64748b; margin-bottom: 24px;">Generate strategic recommendations powered by Groq</p>
-                <button onclick="loadInsights()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                <h3 style="margin-bottom: 8px; font-size: 20px; font-weight: 600;">AI-Powered Insights</h3>
+                <p style="color: #64748b; margin-bottom: 32px; font-size: 14px;">Generate strategic recommendations powered by Groq</p>
+                <button onclick="loadInsights()" style="padding: 12px 32px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; transition: background 0.2s;">
                     Generate Insights
                 </button>
             </div>
             <div id="insightsContainer" style="display: none;">
                 <div id="insightsContent"></div>
             </div>
-            <div id="insightsLoading" style="display: none; text-align: center; padding: 40px;">
-                <div style="font-size: 24px; margin-bottom: 16px;">⏳</div>
-                <p style="color: #64748b;">Generating insights from market data...</p>
+            <div id="insightsLoading" style="display: none; text-align: center; padding: 60px 20px;">
+                <div style="font-size: 36px; margin-bottom: 16px; animation: spin 1s linear infinite;">⏳</div>
+                <p style="color: #64748b; font-size: 14px;">Generating insights from market data...</p>
             </div>
         </div>
     </div>
@@ -992,10 +992,12 @@
             const brand = urlParams.get('search');
             const market = urlParams.get('market') || 'UK';
 
+            const initialDiv = document.getElementById('insightsInitial');
             const loadingDiv = document.getElementById('insightsLoading');
             const containerDiv = document.getElementById('insightsContainer');
             const contentDiv = document.getElementById('insightsContent');
 
+            initialDiv.style.display = 'none';
             loadingDiv.style.display = 'block';
             containerDiv.style.display = 'none';
 
@@ -1004,7 +1006,7 @@
                 const insights = await response.json();
 
                 if (insights.error) {
-                    contentDiv.innerHTML = `<div style="padding: 20px; color: #dc2626;"><strong>Error:</strong> ${insights.error}</div>`;
+                    contentDiv.innerHTML = `<div style="padding: 20px; color: #dc2626; text-align: center;"><strong>Error:</strong> ${insights.error}</div>`;
                 } else {
                     contentDiv.innerHTML = formatInsights(insights);
                 }
@@ -1012,7 +1014,7 @@
                 loadingDiv.style.display = 'none';
                 containerDiv.style.display = 'block';
             } catch (error) {
-                contentDiv.innerHTML = `<div style="padding: 20px; color: #dc2626;"><strong>Failed to load insights:</strong> ${error.message}</div>`;
+                contentDiv.innerHTML = `<div style="padding: 20px; color: #dc2626; text-align: center;"><strong>Failed to load insights:</strong> ${error.message}</div>`;
                 loadingDiv.style.display = 'none';
                 containerDiv.style.display = 'block';
             }
@@ -1021,76 +1023,84 @@
         function formatInsights(data) {
             const insights = data.insights || {};
             let html = '';
+            let hasContent = false;
 
             // Quick Verdict
             if (insights.quick_verdict && !insights.quick_verdict.error) {
+                hasContent = true;
                 const verdict = insights.quick_verdict;
+                const verdictColor = verdict.verdict === 'INVEST' ? '#10b981' : verdict.verdict === 'RECONSIDER' ? '#f59e0b' : '#ef4444';
                 html += `
                     <div class="card">
                         <h3>🎯 Strategic Verdict</h3>
-                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                            <div style="font-size: 16px; font-weight: 700; color: #3b82f6; margin-bottom: 8px;">${verdict.verdict || 'INVEST'}</div>
-                            <p style="color: #475569; line-height: 1.6;">${verdict.reason || ''}</p>
+                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid ${verdictColor};">
+                            <div style="font-size: 18px; font-weight: 700; color: ${verdictColor}; margin-bottom: 12px;">${verdict.verdict || 'ASSESS'}</div>
+                            <p style="color: #475569; line-height: 1.6; font-size: 14px;">${verdict.reason || ''}</p>
                         </div>
                     </div>
                 `;
             }
 
             // Opportunities
-            if (insights.opportunities && !insights.opportunities.error) {
-                const opps = insights.opportunities.opportunities || [];
-                html += `<div class="card"><h3>💡 Market Opportunities</h3>`;
-                opps.forEach(opp => {
-                    html += `
-                        <div style="margin-bottom: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #10b981;">
-                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">${opp.title || ''}</div>
-                            <div style="font-size: 13px; color: #475569; margin-bottom: 8px;">
-                                <strong>Why:</strong> ${opp.why || ''}<br>
-                                <strong>Action:</strong> ${opp.action || ''}<br>
-                                <strong>Timeline:</strong> ${opp.timeline || ''}<br>
-                                <strong>Impact:</strong> ${opp.impact || ''}
+            if (insights.opportunities && !insights.opportunities.error && insights.opportunities.opportunities) {
+                const opps = insights.opportunities.opportunities;
+                if (opps.length > 0) {
+                    hasContent = true;
+                    html += `<div class="card"><h3>💡 Market Opportunities</h3>`;
+                    opps.forEach(opp => {
+                        html += `
+                            <div style="margin-bottom: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #10b981;">
+                                <div style="font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 14px;">${opp.title || 'Opportunity'}</div>
+                                <div style="font-size: 13px; color: #475569; line-height: 1.5;">
+                                    ${opp.impact ? `<strong>Impact:</strong> ${opp.impact}<br>` : ''}
+                                </div>
                             </div>
-                        </div>
-                    `;
-                });
-                html += `</div>`;
+                        `;
+                    });
+                    html += `</div>`;
+                }
             }
 
             // Risks
-            if (insights.risks && !insights.risks.error) {
-                const risks = insights.risks.risks || [];
-                html += `<div class="card"><h3>⚠️ Risks & Threats</h3>`;
-                risks.forEach(risk => {
-                    html += `
-                        <div style="margin-bottom: 16px; padding: 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626;">
-                            <div style="font-weight: 600; color: #991b1b; margin-bottom: 4px;">${risk.risk || ''}</div>
-                            <div style="font-size: 13px; color: #7c2d12;">
-                                <strong>Threat:</strong> ${risk.threat || ''}<br>
-                                <strong>Impact:</strong> ${risk.impact || ''}<br>
-                                <strong>Mitigation:</strong> ${risk.mitigation || ''}
+            if (insights.risks && !insights.risks.error && insights.risks.risks) {
+                const risks = insights.risks.risks;
+                if (risks.length > 0) {
+                    hasContent = true;
+                    html += `<div class="card"><h3>⚠️ Risks & Threats</h3>`;
+                    risks.forEach(risk => {
+                        const severityColor = risk.severity === 'HIGH' ? '#dc2626' : risk.severity === 'MEDIUM' ? '#f59e0b' : '#3b82f6';
+                        html += `
+                            <div style="margin-bottom: 16px; padding: 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid ${severityColor};">
+                                <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px; font-size: 14px;">${risk.threat || 'Risk'}</div>
+                                <div style="font-size: 12px; color: #64748b;">
+                                    <strong>Severity:</strong> <span style="color: ${severityColor}; font-weight: 600;">${risk.severity || 'MEDIUM'}</span>
+                                </div>
                             </div>
-                        </div>
-                    `;
-                });
-                html += `</div>`;
+                        `;
+                    });
+                    html += `</div>`;
+                }
             }
 
             // Strategy
-            if (insights.strategy && !insights.strategy.error) {
-                const strategy = insights.strategy.strategy || {};
+            if (insights.strategy && !insights.strategy.error && insights.strategy.strategy) {
+                hasContent = true;
+                const strategy = insights.strategy.strategy;
+                const priorityColor = strategy.priority === 'HIGH' ? '#ef4444' : strategy.priority === 'MEDIUM' ? '#f59e0b' : '#3b82f6';
                 html += `
                     <div class="card">
-                        <h3>🎯 Strategic Roadmap</h3>
-                        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-                            <p><strong>Expected ROI:</strong> ${strategy.expected_roi || 'N/A'}</p>
-                            <p><strong>Break-even:</strong> ${strategy.break_even || 'N/A'}</p>
-                            <p><strong>Risk Level:</strong> ${strategy.risk_level || 'N/A'}</p>
+                        <h3>🎯 Recommended Action</h3>
+                        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid ${priorityColor};">
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 8px; font-size: 14px;">${strategy.action || 'Take action'}</div>
+                            <div style="font-size: 12px; color: #64748b;">
+                                <strong>Priority:</strong> <span style="color: ${priorityColor}; font-weight: 600;">${strategy.priority || 'MEDIUM'}</span>
+                            </div>
                         </div>
                     </div>
                 `;
             }
 
-            return html || '<div style="padding: 20px; color: #64748b;">No insights available. Try again.</div>';
+            return hasContent ? html : '<div style="padding: 40px 20px; text-align: center; color: #64748b;"><p style="font-size: 14px; margin-bottom: 16px;">No insights generated yet.</p><p style="font-size: 12px;">Click "Generate Insights" to get AI-powered recommendations.</p></div>';
         }
     </script>
 </body>

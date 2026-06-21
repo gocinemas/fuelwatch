@@ -21371,8 +21371,18 @@ def _wa_classify_intent(body: str) -> dict | None:
         return None
 
 
-def _wa_recipe_card(dish: str, from_number: str = "") -> str:
-    """Generate a compact recipe/cocktail card via Groq for WhatsApp."""
+def _wa_recipe_card(dish: str, from_number: str = "", return_dict: bool = False) -> str | dict:
+    """Generate a compact recipe/cocktail card via Groq for WhatsApp.
+
+    Args:
+        dish: Name of the dish or cocktail
+        from_number: WhatsApp number (to enable save intent)
+        return_dict: If True, return {recipe, explanation, dish_type} for API use
+
+    Returns:
+        str: WhatsApp formatted recipe (with save intent footer)
+        dict: {recipe, explanation, dish_type} if return_dict=True (for web)
+    """
     try:
         prompt = (
             f"Write a recipe for '{dish}'. Use this exact format:\n\n"
@@ -21394,11 +21404,46 @@ def _wa_recipe_card(dish: str, from_number: str = "") -> str:
             timeout=10,
         )
         text = r.json()["choices"][0]["message"]["content"].strip()
+
+        # Generate brief explanation (G11: Make clear WHY)
+        explain_prompt = (
+            f"One-line reason why this is a good recipe for '{dish}'. "
+            f"Be brief and friendly (under 60 chars). "
+            f"Examples: 'Classic & easy', 'Perfect for weeknights', 'Restaurant-quality at home', 'Tried & tested', 'Seasonal favourite'"
+        )
+        explain_r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 50, "temperature": 0.3,
+                  "messages": [{"role": "user", "content": explain_prompt}]},
+            timeout=8,
+        )
+        explanation = explain_r.json()["choices"][0]["message"]["content"].strip()
+
+        # Detect if cocktail or food recipe
+        dish_lower = dish.lower()
+        cocktail_keywords = ["cocktail", "martini", "spritz", "margarita", "negroni", "daiquiri", "mojito", "cosmopolitan", "whiskey", "vodka", "gin", "rum", "beer"]
+        is_cocktail = any(kw in dish_lower for kw in cocktail_keywords) or "glass" in text.lower() or "/" in text.lower()
+        dish_type = "cocktail" if is_cocktail else "recipe"
+
+        if return_dict:
+            return {
+                "recipe": text,
+                "explanation": explanation,
+                "dish_type": dish_type,
+                "dish_name": dish
+            }
+
         # Set pending intent so user can reply "save" to save it
         if from_number:
-            _set_wa_pending_intent(from_number, {"type": "recipe_save", "title": dish, "text": text})
-        return text + "\n\n_Reply *save* to keep this, or send another recipe name._"
-    except Exception:
+            _set_wa_pending_intent(from_number, {"type": "recipe_save", "title": dish, "text": text, "explanation": explanation, "dish_type": dish_type})
+
+        return text + f"\n\n_{explanation}_\n\n_Reply *save* to keep this, or send another recipe name._"
+    except Exception as e:
+        app.logger.debug(f"[recipe] Generation failed: {e}")
+        if return_dict:
+            return {"recipe": "", "explanation": "", "dish_type": "", "error": str(e)}
         return f"Couldn't fetch the recipe for *{dish}* right now — try again in a moment."
 
 
