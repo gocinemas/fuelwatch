@@ -166,7 +166,15 @@ Growth: {scores['growth_opportunity_score']}/10"""
         response_text = self._get_groq_insight(prompt)
 
         try:
-            result = json.loads(response_text)
+            # Strip markdown code blocks if present
+            text = response_text
+            if text.startswith("```"):
+                # Extract JSON from markdown code block
+                lines = text.split("\n")
+                json_lines = [l for l in lines if not l.startswith("```")]
+                text = "\n".join(json_lines)
+
+            result = json.loads(text)
             result["source"] = "groq"
             result["cached_at"] = datetime.now().isoformat()
 
@@ -176,7 +184,7 @@ Growth: {scores['growth_opportunity_score']}/10"""
 
             return result
         except Exception as parse_err:
-            return {"error": f"JSON parse failed: {str(parse_err)[:50]} | Response: {response_text[:100]}", "source": "error"}
+            return {"error": f"JSON parse failed: {str(parse_err)[:50]}", "source": "error"}
 
     def batch_insights(self, brand: str, market: str, scores: Dict,
                       market_data: Dict) -> Dict:
