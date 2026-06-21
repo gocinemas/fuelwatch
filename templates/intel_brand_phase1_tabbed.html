@@ -985,6 +985,113 @@
             autocompleteList.style.display = 'none';
             searchBrand();
         }
+
+        // PHASE 2: Load AI Insights
+        async function loadInsights() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const brand = urlParams.get('search');
+            const market = urlParams.get('market') || 'UK';
+
+            const loadingDiv = document.getElementById('insightsLoading');
+            const containerDiv = document.getElementById('insightsContainer');
+            const contentDiv = document.getElementById('insightsContent');
+
+            loadingDiv.style.display = 'block';
+            containerDiv.style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/brand/insights?brand=${encodeURIComponent(brand)}&market=${encodeURIComponent(market)}`);
+                const insights = await response.json();
+
+                if (insights.error) {
+                    contentDiv.innerHTML = `<div style="padding: 20px; color: #dc2626;"><strong>Error:</strong> ${insights.error}</div>`;
+                } else {
+                    contentDiv.innerHTML = formatInsights(insights);
+                }
+
+                loadingDiv.style.display = 'none';
+                containerDiv.style.display = 'block';
+            } catch (error) {
+                contentDiv.innerHTML = `<div style="padding: 20px; color: #dc2626;"><strong>Failed to load insights:</strong> ${error.message}</div>`;
+                loadingDiv.style.display = 'none';
+                containerDiv.style.display = 'block';
+            }
+        }
+
+        function formatInsights(data) {
+            const insights = data.insights || {};
+            let html = '';
+
+            // Quick Verdict
+            if (insights.quick_verdict && !insights.quick_verdict.error) {
+                const verdict = insights.quick_verdict;
+                html += `
+                    <div class="card">
+                        <h3>🎯 Strategic Verdict</h3>
+                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <div style="font-size: 16px; font-weight: 700; color: #3b82f6; margin-bottom: 8px;">${verdict.verdict || 'INVEST'}</div>
+                            <p style="color: #475569; line-height: 1.6;">${verdict.reason || ''}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Opportunities
+            if (insights.opportunities && !insights.opportunities.error) {
+                const opps = insights.opportunities.opportunities || [];
+                html += `<div class="card"><h3>💡 Market Opportunities</h3>`;
+                opps.forEach(opp => {
+                    html += `
+                        <div style="margin-bottom: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #10b981;">
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">${opp.title || ''}</div>
+                            <div style="font-size: 13px; color: #475569; margin-bottom: 8px;">
+                                <strong>Why:</strong> ${opp.why || ''}<br>
+                                <strong>Action:</strong> ${opp.action || ''}<br>
+                                <strong>Timeline:</strong> ${opp.timeline || ''}<br>
+                                <strong>Impact:</strong> ${opp.impact || ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            // Risks
+            if (insights.risks && !insights.risks.error) {
+                const risks = insights.risks.risks || [];
+                html += `<div class="card"><h3>⚠️ Risks & Threats</h3>`;
+                risks.forEach(risk => {
+                    html += `
+                        <div style="margin-bottom: 16px; padding: 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626;">
+                            <div style="font-weight: 600; color: #991b1b; margin-bottom: 4px;">${risk.risk || ''}</div>
+                            <div style="font-size: 13px; color: #7c2d12;">
+                                <strong>Threat:</strong> ${risk.threat || ''}<br>
+                                <strong>Impact:</strong> ${risk.impact || ''}<br>
+                                <strong>Mitigation:</strong> ${risk.mitigation || ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            // Strategy
+            if (insights.strategy && !insights.strategy.error) {
+                const strategy = insights.strategy.strategy || {};
+                html += `
+                    <div class="card">
+                        <h3>🎯 Strategic Roadmap</h3>
+                        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                            <p><strong>Expected ROI:</strong> ${strategy.expected_roi || 'N/A'}</p>
+                            <p><strong>Break-even:</strong> ${strategy.break_even || 'N/A'}</p>
+                            <p><strong>Risk Level:</strong> ${strategy.risk_level || 'N/A'}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return html || '<div style="padding: 20px; color: #64748b;">No insights available. Try again.</div>';
+        }
     </script>
 </body>
 </html>

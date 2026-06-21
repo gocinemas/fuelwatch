@@ -44,6 +44,7 @@ import analytics
 import library as lib
 import school_service
 from scoring_engine import MarketEntryScorer
+from intel_groq_optimizer import IntelGroqOptimizer
 
 app = Flask(__name__)
 
@@ -4305,6 +4306,87 @@ def api_brand_deep_research():
         result = deep_research(name)
         return jsonify(result)
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/insights", methods=["GET"])
+def api_brand_insights():
+    """Phase 2: Generate AI insights for a brand in a market using Groq"""
+    brand_name = request.args.get("brand", "").strip()
+    market = request.args.get("market", "UK").strip()
+
+    if not brand_name:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        sb = lib._sb()
+        scorer = MarketEntryScorer()
+        optimizer = IntelGroqOptimizer()
+
+        # Fetch brand data
+        brand_result = sb.table("brands").select("*").eq("name", brand_name).execute()
+        if not brand_result.data or len(brand_result.data) == 0:
+            return jsonify({"error": f"Brand '{brand_name}' not found"}), 404
+
+        brand_data = brand_result.data[0]
+        brand_id = brand_data.get("id")
+
+        # Fetch market data for this brand-market combo
+        market_result = sb.table("brand_markets").select("*").eq("brand_id", brand_id).eq("market", market).execute()
+        if not market_result.data or len(market_result.data) == 0:
+            return jsonify({"error": f"Market data for '{brand_name}' in {market} not found"}), 404
+
+        market_data = market_result.data[0]
+
+        # Fetch competitive data
+        competitors_result = sb.table("brand_competitors").select("*").eq("brand_id", brand_id).eq("market", market).execute()
+        competitors = competitors_result.data if competitors_result.data else []
+
+        competitive_data = {
+            "direct_competitors": [c.get("competitor_name", "") for c in competitors[:3]],
+            "competitive_intensity": market_data.get("competitive_intensity", "medium")
+        }
+
+        # Calculate scores
+        category = brand_data.get("category", "consumer_goods")
+        scores = scorer.score_market(
+            brand_name,
+            market,
+            category,
+            brand_data,
+            market_data,
+            competitive_data
+        )
+
+        # Generate insights using Groq
+        insights_result = optimizer.batch_insights(
+            brand_name,
+            market,
+            {
+                "brand_strength_score": scores.get("brand_strength_score", 5.0),
+                "growth_opportunity_score": scores.get("growth_opportunity_score", 5.0)
+            },
+            {
+                "category_status": market_data.get("category_status", "stable"),
+                "category_cagr_3yr": market_data.get("category_cagr_3yr", 3.0),
+                "category_market_size_usd_millions": market_data.get("category_market_size_usd_millions", 100),
+                "key_growth_drivers": market_data.get("key_growth_drivers", "N/A")
+            }
+        )
+
+        return jsonify({
+            "brand": brand_name,
+            "market": market,
+            "scores": {
+                "brand_strength": scores.get("brand_strength_score", 5.0),
+                "growth_opportunity": scores.get("growth_opportunity_score", 5.0)
+            },
+            "insights": insights_result.get("insights", {}),
+            "efficiency": insights_result.get("efficiency", "0% cached")
+        })
+
+    except Exception as e:
+        app.logger.error(f"Insights error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
