@@ -119,20 +119,22 @@ Recommend 1 specific strategy. JSON: {{"action": "...", "reasoning": "...", "pri
             return json.dumps({"error": "Rate limit reached"})
 
         try:
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": 300,
+                "top_p": 0.7,
+            }
+
+            # Try with response_format if supported, otherwise without
             response = requests.post(
                 self.groq_url,
                 headers={
                     "Authorization": f"Bearer {self.groq_key}",
                     "Content-Type": "application/json"
                 },
-                json={
-                    "model": self.model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": temperature,
-                    "max_tokens": 300,  # SHORT: Limit rambling
-                    "response_format": {"type": "json_object"},  # Force JSON
-                    "top_p": 0.7,  # More focused responses
-                },
+                json=payload,
                 timeout=10
             )
 
@@ -141,6 +143,9 @@ Recommend 1 specific strategy. JSON: {{"action": "...", "reasoning": "...", "pri
             if response.status_code == 200:
                 result = response.json()
                 return result["choices"][0]["message"]["content"]
+            elif response.status_code == 400:
+                # Try again without certain parameters
+                return json.dumps({"error": f"Groq 400: Check prompt format. Response: {response.text[:200]}"})
             else:
                 return json.dumps({"error": f"Groq error: {response.status_code}"})
 
