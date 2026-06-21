@@ -4329,7 +4329,20 @@ def api_brand_insights():
         ).eq("market_country", market).execute()
 
         if not brand_result.data or len(brand_result.data) == 0:
-            return jsonify({"error": f"Brand '{brand_name}' not found in {market}"}), 404
+            # Try to find similar brands for suggestions
+            try:
+                similar = sb.table("brand_phase1_intelligence").select("brand_name").eq(
+                    "market_country", market
+                ).ilike("brand_name", f"%{brand_name}%").limit(3).execute()
+
+                suggestions = ""
+                if similar.data:
+                    brands = [b.get("brand_name") for b in similar.data]
+                    suggestions = f" Similar: {', '.join(brands)}"
+
+                return jsonify({"error": f"Brand '{brand_name}' not found in {market}.{suggestions}"}), 404
+            except:
+                return jsonify({"error": f"Brand '{brand_name}' not found in {market}"}), 404
 
         brand_row = brand_result.data[0]
 
