@@ -19346,7 +19346,35 @@ let _savesAll = [];
     fetch("/api/v2/personal-events?token=" + encodeURIComponent(token))
       .then(function(r) { return r.json(); })
       .then(function(d) {
+        var now = new Date();
+        var todayStr = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+        var nowMins = now.getHours() * 60 + now.getMinutes();
+
+        // Filter: only show today's events that are in the future
         var evs = (d.events || []).slice().reverse(); // newest first
+        evs = evs.filter(function(ev) {
+          // Only show events from today
+          if (!ev.date || ev.date !== todayStr) return false;
+
+          // Only show future events
+          if (ev.time) {
+            var timeMatch = String(ev.time).match(/^(\d{1,2}):(\d{2})/);
+            if (timeMatch) {
+              var eMins = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+              var endTime = ev.end_time;
+              var cutoff;
+              if (endTime) {
+                var endMatch = String(endTime).match(/^(\d{1,2}):(\d{2})/);
+                cutoff = endMatch ? parseInt(endMatch[1], 10) * 60 + parseInt(endMatch[2], 10) : eMins + 120;
+              } else {
+                cutoff = eMins + 120; // 2 hours default for personal
+              }
+              if (nowMins > cutoff) return false; // Past event
+            }
+          }
+          return true;
+        });
+
         if (!evs.length) { container.style.display = "none"; return; }
         container.innerHTML = evs.map(function(ev, ri) {
           var idx = evs.length - 1 - ri;
