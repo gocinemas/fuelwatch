@@ -64,39 +64,30 @@ class IntelGroqOptimizer:
         """
 
         if insight_type == "quick_verdict":
-            # ~150 tokens vs 500+ for full explanation
-            return f"""Analyze: {brand} in {market}
-Health: {scores['brand_strength_score']}/10 | Growth: {scores['growth_opportunity_score']}/10
-Market: {market_data.get('category_status')} | CAGR: {market_data.get('category_cagr_3yr')}%
-Size: ${market_data.get('category_market_size_usd_millions')}M
+            return f"""Generate JSON only:
+{{"verdict": "INVEST or RECONSIDER", "reason": "one sentence why"}}
 
-Output JSON:
-{{"verdict": "INVEST|OPTIMIZE|REPOSITION|RECONSIDER", "reason": "1 sentence"}}"""
+Brand: {brand} in {market}
+Strength: {scores['brand_strength_score']}/10
+Growth: {scores['growth_opportunity_score']}/10"""
 
         elif insight_type == "opportunities":
-            # ~120 tokens - ultra-minimal
-            return f"""Brand: {brand} | Market: {market}
-Strength: {scores['brand_strength_score']} | Growth: {scores['growth_opportunity_score']}
-Status: {market_data.get('category_status')} | Drivers: {market_data.get('key_growth_drivers', 'N/A')}
+            return f"""Return only valid JSON:
+{{"opportunities": [{{"title": "string", "impact": "string"}}]}}
 
-List 3 specific opportunities as JSON array. Max 20 words each."""
+{brand} in {market}. 3 opportunities max."""
 
         elif insight_type == "risks":
-            # ~100 tokens
-            return f"""Brand: {brand} in {market}
-Strength: {scores['brand_strength_score']} | Competition: High
-CAGR: {market_data.get('category_cagr_3yr')}% | Maturity: {market_data.get('category_status')}
+            return f"""Return only valid JSON:
+{{"risks": [{{"threat": "string", "severity": "HIGH or MEDIUM or LOW"}}]}}
 
-List top 3 risks. JSON array, 15 words max each."""
+{brand} in {market}. Top 3 risks."""
 
         elif insight_type == "strategy":
-            # ~180 tokens - slightly longer for actual strategy
-            return f"""Brand: {brand} | Market: {market}
-Strength: {scores['brand_strength_score']}/10 | Growth: {scores['growth_opportunity_score']}/10
-Market Size: ${market_data.get('category_market_size_usd_millions')}M | Growth: {market_data.get('category_cagr_3yr')}%
-Status: {market_data.get('category_status')}
+            return f"""Return only valid JSON:
+{{"strategy": {{"action": "string", "priority": "HIGH or MEDIUM or LOW"}}}}
 
-Recommend 1 specific strategy. JSON: {{"action": "...", "reasoning": "...", "priority": "HIGH|MED|LOW"}}"""
+{brand} in {market}. One strategic recommendation."""
 
         else:
             return ""
@@ -184,8 +175,8 @@ Recommend 1 specific strategy. JSON: {{"action": "...", "reasoning": "...", "pri
                 self._set_cache(cache_key, result)
 
             return result
-        except:
-            return {"error": "Invalid response", "source": "error"}
+        except Exception as parse_err:
+            return {"error": f"JSON parse failed: {str(parse_err)[:50]} | Response: {response_text[:100]}", "source": "error"}
 
     def batch_insights(self, brand: str, market: str, scores: Dict,
                       market_data: Dict) -> Dict:
