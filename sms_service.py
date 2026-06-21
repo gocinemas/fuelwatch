@@ -4323,27 +4323,43 @@ def api_brand_insights():
         scorer = MarketEntryScorer()
         optimizer = IntelGroqOptimizer()
 
-        # Fetch brand data
-        brand_result = sb.table("brands").select("*").eq("name", brand_name).execute()
+        # Fetch brand data from brand_phase1_intelligence table
+        brand_result = sb.table("brand_phase1_intelligence").select("*").eq(
+            "brand_name", brand_name
+        ).eq("market_country", market).execute()
+
         if not brand_result.data or len(brand_result.data) == 0:
-            return jsonify({"error": f"Brand '{brand_name}' not found"}), 404
+            return jsonify({"error": f"Brand '{brand_name}' not found in {market}"}), 404
 
-        brand_data = brand_result.data[0]
-        brand_id = brand_data.get("id")
+        brand_row = brand_result.data[0]
 
-        # Fetch market data for this brand-market combo
-        market_result = sb.table("brand_markets").select("*").eq("brand_id", brand_id).eq("market", market).execute()
-        if not market_result.data or len(market_result.data) == 0:
-            return jsonify({"error": f"Market data for '{brand_name}' in {market} not found"}), 404
+        # Extract data for scoring
+        brand_data = {
+            "name": brand_row.get("brand_name"),
+            "category": brand_row.get("category", "consumer_goods"),
+            "positioning_tier": brand_row.get("positioning_tier", "mass_market"),
+            "distribution_strategy": brand_row.get("distribution_strategy", "mass_market")
+        }
 
-        market_data = market_result.data[0]
+        market_data = {
+            "category_status": brand_row.get("market_status", "stable"),
+            "category_cagr_3yr": float(brand_row.get("market_cagr_3yr", 3.0)),
+            "category_market_size_usd_millions": float(brand_row.get("market_size_millions", 100)),
+            "key_growth_drivers": brand_row.get("growth_drivers", "N/A"),
+            "ppp_index": float(brand_row.get("ppp_index", 1.0)),
+            "competitive_intensity": brand_row.get("competitive_intensity", "medium")
+        }
 
-        # Fetch competitive data
-        competitors_result = sb.table("brand_competitors").select("*").eq("brand_id", brand_id).eq("market", market).execute()
-        competitors = competitors_result.data if competitors_result.data else []
+        # Build competitive data from direct competitors
+        competitor_names = [
+            brand_row.get("direct_competitor_1"),
+            brand_row.get("direct_competitor_2"),
+            brand_row.get("direct_competitor_3")
+        ]
+        competitors = [c for c in competitor_names if c]
 
         competitive_data = {
-            "direct_competitors": [c.get("competitor_name", "") for c in competitors[:3]],
+            "direct_competitors": competitors,
             "competitive_intensity": market_data.get("competitive_intensity", "medium")
         }
 
