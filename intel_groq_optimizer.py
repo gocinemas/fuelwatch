@@ -186,6 +186,48 @@ Growth: {scores['growth_opportunity_score']}/10"""
         except Exception as parse_err:
             return {"error": f"JSON parse failed: {str(parse_err)[:50]}", "source": "error"}
 
+    def get_quick_verdict_only(self, brand: str, market: str, scores: Dict,
+                               market_data: Dict) -> Dict:
+        """
+        OPTIMIZATION: Get ONLY quick verdict (most valuable insight).
+        Respects Groq free tier 30 RPM limit: 1 call per request = ~30 requests/min.
+        """
+        cache_key = self._get_cache_key(brand, market, "quick_verdict")
+        cached = self._check_cache(cache_key)
+        if cached:
+            return {"insights": {"quick_verdict": cached}, "efficiency": "100% cached"}
+
+        prompt = f"""Return only valid JSON:
+{{"verdict": "INVEST or RECONSIDER", "reason": "one sentence why"}}
+
+{brand} in {market}
+Strength: {scores['brand_strength_score']}/10
+Growth: {scores['growth_opportunity_score']}/10"""
+
+        response_text = self._get_groq_insight(prompt)
+
+        try:
+            text = response_text
+            if text.startswith("```"):
+                lines = text.split("\n")
+                json_lines = [l for l in lines if not l.startswith("```")]
+                text = "\n".join(json_lines)
+
+            result = json.loads(text)
+            result["source"] = "groq"
+            result["cached_at"] = datetime.now().isoformat()
+            self._set_cache(cache_key, result)
+
+            return {
+                "insights": {"quick_verdict": result},
+                "efficiency": "1 API call (Quick Verdict only)"
+            }
+        except:
+            return {
+                "insights": {"quick_verdict": {"error": "Could not parse Groq response"}},
+                "efficiency": "Failed"
+            }
+
     def batch_insights(self, brand: str, market: str, scores: Dict,
                       market_data: Dict) -> Dict:
         """

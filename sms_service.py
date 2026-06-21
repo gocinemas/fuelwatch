@@ -4374,8 +4374,8 @@ def api_brand_insights():
             competitive_data
         )
 
-        # Generate insights using Groq
-        insights_result = optimizer.batch_insights(
+        # Generate insights using Groq (quick verdict only to respect 30 RPM free tier limit)
+        insights_result = optimizer.get_quick_verdict_only(
             brand_name,
             market,
             {
