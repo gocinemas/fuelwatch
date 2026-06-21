@@ -2451,7 +2451,27 @@
       <!-- Personal event quick-add form — simplified with address autocomplete -->
       <div id="brief-event-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
         <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">＋ Add event</div>
-        <input id="brief-evt-title" type="text" placeholder="e.g. Go Ape Bracknell" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:6px">
+
+        <!-- Event type selector -->
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button onclick="window._evtType='personal';document.getElementById('brief-evt-personal-wrap').style.display='block';document.getElementById('brief-evt-bin-wrap').style.display='none';document.getElementById('brief-evt-location').style.display='block';this.style.background='#2563eb';this.style.color='#fff';document.getElementById('brief-evt-type-bin').style.background='var(--bg)';document.getElementById('brief-evt-type-bin').style.color='var(--text)'" id="brief-evt-type-personal" style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer">Personal</button>
+          <button onclick="window._evtType='bin';document.getElementById('brief-evt-personal-wrap').style.display='none';document.getElementById('brief-evt-bin-wrap').style.display='block';document.getElementById('brief-evt-location').style.display='none';this.style.background='#2563eb';this.style.color='#fff';document.getElementById('brief-evt-type-personal').style.background='var(--bg)';document.getElementById('brief-evt-type-personal').style.color='var(--text)'" id="brief-evt-type-bin" style="flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer">Bin Collection</button>
+        </div>
+
+        <!-- Personal event form (default) -->
+        <div id="brief-evt-personal-wrap">
+          <input id="brief-evt-title" type="text" placeholder="e.g. Go Ape Bracknell" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:6px">
+        </div>
+
+        <!-- Bin collection form (hidden by default) -->
+        <div id="brief-evt-bin-wrap" style="display:none">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">What's this week?</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="document.getElementById('brief-evt-title').value='🗑️ General Waste + Garden';document.getElementById('brief-evt-bin-general').style.background='#2563eb';document.getElementById('brief-evt-bin-general').style.color='#fff';document.getElementById('brief-evt-bin-recycling').style.background='var(--bg)';document.getElementById('brief-evt-bin-recycling').style.color='var(--text)'" id="brief-evt-bin-general" style="flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">🗑️ General + Garden</button>
+            <button onclick="document.getElementById('brief-evt-title').value='♻️ Recycling Bin';document.getElementById('brief-evt-bin-recycling').style.background='#2563eb';document.getElementById('brief-evt-bin-recycling').style.color='#fff';document.getElementById('brief-evt-bin-general').style.background='var(--bg)';document.getElementById('brief-evt-bin-general').style.color='var(--text)'" id="brief-evt-bin-recycling" style="flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">♻️ Recycling</button>
+          </div>
+        </div>
+
         <input id="brief-evt-location" type="text" placeholder="📍 Location or address" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:2px">
         <div id="brief-evt-suggestions" style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 9px 9px;max-height:100px;overflow-y:auto;font-size:12px;margin-bottom:8px;display:none"></div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
