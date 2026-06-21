@@ -2496,7 +2496,7 @@
           <button onclick="_briefAskChip('What did I save this week?')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">What did I save this week?</button>
           <button onclick="_briefAskChip('What\'s the next school event?')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">Next school event?</button>
           <button onclick="_briefAskChip('How much have I spent this month?')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">How much did I spend?</button>
-          <button onclick="_briefAskChip('Next train to Waterloo?')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">Next train?</button>
+          <button onclick="_briefAskChip('Recipe for aperol spritz')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">🍳 Try a recipe</button>
         </div>
         <div id="brief-ask-thread" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -18970,6 +18970,7 @@ let _savesAll = [];
     } catch(_e) {}
 
     var answer = "";
+    var responseData = null;
     try {
       var r = await fetch("/api/home/ask", {
         method: "POST",
@@ -18977,6 +18978,7 @@ let _savesAll = [];
         body: JSON.stringify({question: q, ctx: ctx, thread: _briefAskThread.slice(-4), token: _miruPhone()||""})
       });
       var d = await r.json();
+      responseData = d;
       answer = (d.answer || "").trim() || "Not sure — try rephrasing.";
       _briefAskThread.push({q: q, a: answer});
     } catch(e) {
@@ -18986,13 +18988,66 @@ let _savesAll = [];
     // Replace typing indicator with answer
     typingDiv.remove();
     var aBubble = document.createElement("div");
-    aBubble.style.cssText = "background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:16px 16px 16px 4px;padding:9px 13px;font-size:14px;line-height:1.55;max-width:90%;word-break:break-word";
+    aBubble.style.cssText = "background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:14px;line-height:1.55;max-width:90%;word-break:break-word";
     aBubble.textContent = answer;
     thread.appendChild(aBubble);
+
+    // Add recipe feedback buttons if applicable (G15, G16)
+    if (responseData && responseData.meta && responseData.meta.type === "recipe") {
+      var feedbackDiv = document.createElement("div");
+      feedbackDiv.style.cssText = "display:flex;gap:8px;margin-top:8px;align-items:center";
+
+      var feedbackLabel = document.createElement("span");
+      feedbackLabel.style.cssText = "font-size:12px;color:var(--muted);font-weight:600";
+      feedbackLabel.textContent = "Helpful?";
+      feedbackDiv.appendChild(feedbackLabel);
+
+      var thumbsUp = document.createElement("button");
+      thumbsUp.textContent = "👍";
+      thumbsUp.style.cssText = "background:none;border:none;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:4px;hover{background:rgba(37,99,235,0.1)}";
+      thumbsUp.onclick = function() {
+        _recipeFeedback(responseData.meta.dish, "helpful");
+        thumbsUp.style.opacity = "0.4";
+        thumbsDown.style.opacity = "1";
+      };
+      feedbackDiv.appendChild(thumbsUp);
+
+      var thumbsDown = document.createElement("button");
+      thumbsDown.textContent = "👎";
+      thumbsDown.style.cssText = "background:none;border:none;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:4px";
+      thumbsDown.onclick = function() {
+        _recipeFeedback(responseData.meta.dish, "not_helpful");
+        thumbsDown.style.opacity = "0.4";
+        thumbsUp.style.opacity = "1";
+      };
+      feedbackDiv.appendChild(thumbsDown);
+
+      if (responseData.meta.explanation) {
+        var explanation = document.createElement("span");
+        explanation.style.cssText = "font-size:11px;color:var(--muted);font-style:italic;margin-left:auto";
+        explanation.textContent = responseData.meta.explanation;
+        feedbackDiv.appendChild(explanation);
+      }
+
+      thread.appendChild(feedbackDiv);
+    }
+
     thread.scrollTop = thread.scrollHeight;
 
     if (btn) { btn.disabled = false; btn.style.opacity = "1"; }
     inp.focus();
+  }
+
+  function _recipeFeedback(dish, rating) {
+    // Store recipe rating (G16: Convey consequences)
+    try {
+      var existing = JSON.parse(localStorage.getItem("_recipeFeedback") || "{}");
+      existing[dish] = rating;
+      localStorage.setItem("_recipeFeedback", JSON.stringify(existing));
+      console.log(`[recipe] Feedback recorded: ${dish} → ${rating}`);
+    } catch(e) {
+      console.log("[recipe] Feedback storage failed:", e);
+    }
   }
   window._briefAsk = _briefAsk;
 

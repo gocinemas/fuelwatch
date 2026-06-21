@@ -13099,6 +13099,33 @@ def api_home_ask():
     if q_lower in _GREETINGS:
         return jsonify({"answer": "Hey! What would you like to know?"})
 
+    # ── RECIPE / COCKTAIL RECIPE REQUEST ───────────────────────────────────────
+    # Detect: "recipe for X", "how to make X", "X recipe", "ingredients for X"
+    if re.search(r'\brecipe\b|\bhow\s+to\s+make\b|\bhow\s+do\s+i\s+make\b|\bingredients\s+for\b', q_lower):
+        import re as _re_recipe
+        _dish = _re_recipe.sub(r'\s*\brecipe\b.*', '', q_lower, flags=_re_recipe.I).strip()
+        _dish = _re_recipe.sub(r'^(how\s+to\s+make|how\s+do\s+i\s+make|ingredients\s+for|how\s+do\s+you\s+make)\s+', '', _dish, flags=_re_recipe.I).strip()
+        if not _dish:
+            _dish = q_lower.replace("recipe", "").strip()
+        if _dish and len(_dish) > 2:
+            try:
+                recipe_data = _wa_recipe_card(_dish, from_number, return_dict=True)
+                if recipe_data and recipe_data.get("recipe"):
+                    # Format for web: include rating buttons (G15, G16)
+                    return jsonify({
+                        "answer": f"🍳 {recipe_data.get('dish_name', _dish)}\n\n{recipe_data['recipe']}",
+                        "meta": {
+                            "type": "recipe",
+                            "dish": recipe_data.get("dish_name", _dish),
+                            "explanation": recipe_data.get("explanation", ""),
+                            "dish_type": recipe_data.get("dish_type", "recipe"),
+                            "can_save": True,
+                            "feedback_prompt": "Was this recipe helpful? Your feedback helps improve future suggestions."
+                        }
+                    })
+            except Exception as e:
+                app.logger.debug(f"[ask] Recipe generation failed: {e}")
+
     # ── SAVED PLACES LOOKUP — PRIORITY before LLM ──────────────────────────────────
     # Check if question mentions a place and user has it saved
     # This runs EARLY to avoid LLM doing nearby searches instead of returning saved place
