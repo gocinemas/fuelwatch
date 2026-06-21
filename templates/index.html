@@ -2451,8 +2451,25 @@
       <!-- Personal event quick-add form — simplified with address autocomplete -->
       <div id="brief-event-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
         <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">＋ Add event</div>
-        <input id="brief-evt-title" type="text" placeholder="e.g. Go Ape Bracknell" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:6px">
-        <input id="brief-evt-location" type="text" placeholder="📍 Location or address" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:2px">
+
+        <!-- Event type selector -->
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="evt-type-personal" onclick="window._setBriefEventType('personal')" style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer">Personal</button>
+          <button id="evt-type-bin" onclick="window._setBriefEventType('bin')" style="flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer">Bin Collection</button>
+        </div>
+
+        <!-- Bin collection - two simple buttons -->
+        <div id="brief-evt-bin-form" style="display:none;margin-bottom:12px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">This weekend?</div>
+          <button onclick="window._saveBinEvent('general')" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px">🗑️ General Waste + Garden</button>
+          <button onclick="window._saveBinEvent('recycling')" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">♻️ Recycling</button>
+        </div>
+
+        <!-- Personal event fields -->
+        <div id="brief-evt-personal-form">
+          <input id="brief-evt-title" type="text" placeholder="e.g. Go Ape Bracknell" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:6px">
+          <input id="brief-evt-location" type="text" placeholder="📍 Location or address" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:2px">
+        </div>
         <div id="brief-evt-suggestions" style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 9px 9px;max-height:100px;overflow-y:auto;font-size:12px;margin-bottom:8px;display:none"></div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <input id="brief-evt-date" type="date" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
@@ -19220,10 +19237,82 @@ let _savesAll = [];
       });
   };
 
+  // ── Bin collection (super simple) ─────────────────────────────────────────
+  window._setBriefEventType = function(type) {
+    var personalBtn = document.getElementById("evt-type-personal");
+    var binBtn = document.getElementById("evt-type-bin");
+    var personalForm = document.getElementById("brief-evt-personal-form");
+    var binForm = document.getElementById("brief-evt-bin-form");
+
+    if (type === "personal") {
+      personalBtn.style.background = "#2563eb";
+      personalBtn.style.color = "#fff";
+      binBtn.style.background = "var(--bg)";
+      binBtn.style.color = "var(--text)";
+      personalForm.style.display = "block";
+      binForm.style.display = "none";
+    } else {
+      binBtn.style.background = "#2563eb";
+      binBtn.style.color = "#fff";
+      personalBtn.style.background = "var(--bg)";
+      personalBtn.style.color = "var(--text)";
+      personalForm.style.display = "none";
+      binForm.style.display = "block";
+    }
+  };
+
+  window._saveBinEvent = function(binType) {
+    var token = _miruPhone() || "";
+    if (!token) {alert("Link WhatsApp first (My Area → Accounts)."); return;}
+
+    // Calculate this Sunday
+    var today = new Date();
+    var daysUntilSunday = (7 - today.getDay()) % 7 || 7;
+    var sunday = new Date(today);
+    sunday.setDate(today.getDate() + daysUntilSunday);
+    var sundayStr = sunday.toISOString().split('T')[0];
+
+    // Determine this week's bin type based on alternation
+    var lastBin = localStorage.getItem("_lastBinType") || "general";
+    var thisWeekBin = (lastBin === "general") ? "recycling" : "general";
+
+    // User selected which bin type - save that as "next week's" pattern
+    localStorage.setItem("_lastBinType", binType);
+
+    var title = (binType === "general") ? "🗑️ General Waste + Garden" : "♻️ Recycling Bin";
+
+    var saveBody = {
+      token: token,
+      title: title,
+      date: sundayStr,
+      time: "",
+      location: ""
+    };
+
+    fetch("/api/v2/personal-events", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(saveBody)
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        document.getElementById("brief-event-form").style.display = "none";
+        _briefLoadSavedEvents();
+        _briefInit();
+      } else {
+        alert(d.error || "Save failed.");
+      }
+    })
+    .catch(e => alert("Error: " + e));
+  };
+
   // ── Personal event quick-add ───────────────────────────────────────────────
   let _briefEventSearchDebounce;
 
   window._openBriefEventForm = function() {
+    // Reset to personal type on open
+    window._setBriefEventType("personal");
     document.getElementById("brief-event-form").style.display = "block";
 
     // Set date to today
