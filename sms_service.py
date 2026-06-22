@@ -12418,9 +12418,16 @@ def api_home_brief():
     elif time_mode == "evening_leisure":
         _tom_cal = [e for e in _cal_events if e.get("date") == _tomorrow_s]
         _today_cal2 = [e for e in _cal_events if e.get("date") == _today_s]
-        for e in (_today_cal2 + _tom_cal)[:3]:
+        _now_hhmm = f"{hour:02d}:{now.minute:02d}"
+        _today_cal2_future = []
+        for e in _today_cal2:
+            _es = (e.get("start") or "").strip()
+            if _es and _es < _now_hhmm:
+                continue
             if not e.get("personal") and _is_work_meeting(e.get("title","")):
                 continue
+            _today_cal2_future.append(e)
+        for e in (_today_cal2_future + _tom_cal)[:3]:
             _lbl = "Today" if e.get("date") == _today_s else "Tomorrow"
             _t = f" at {e['start']}" if e.get("start") else ""
             facts.append(f"📅 {_lbl}: {e['title']}{_t}")
