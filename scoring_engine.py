@@ -129,16 +129,23 @@ class MarketEntryScorer:
 
         # Calculate Growth Opportunity Score (upside potential)
         # Factors: Should we invest/expand here? How much upside?
+        # NOTE: market_size is category size (all skincare in market), not individual brand size
         market_size_factor = min(10, (market_size / 5000) * 10)  # Normalize market size
 
         # Market status: emerging > high_growth > mature
+        # BUT: Mature market leaders (strong brand + stable market) = good opportunity
         market_status_score = 2.0
         if market_status == "high_growth":
             market_status_score = 8.0
         elif market_status == "emerging":
             market_status_score = 7.0
         elif market_status == "mature":
-            market_status_score = 4.0
+            # Mature market: if brand is strong, it's a stable/profitable opportunity
+            # Don't penalize market leaders for being in mature markets
+            if brand_strength >= 7.0:
+                market_status_score = 7.0  # Leadership in mature market = good
+            else:
+                market_status_score = 4.0  # Weak position in mature market = risky
 
         growth_weights = {
             "market_growth": 0.40,  # Most important: CAGR
@@ -158,15 +165,24 @@ class MarketEntryScorer:
         growth_opportunity = round(growth_opportunity, 1)
 
         # Generate recommendation based on BOTH scores
+        # Market leaders (7.0+ strength) in mature markets get credit for stability
         if brand_strength >= 7.0 and growth_opportunity >= 7.0:
             recommendation = "green"
             recommendation_text = "🟢 Strong & Growing: Healthy brand + high-growth market. Invest aggressively."
+        elif brand_strength >= 7.0 and market_status == "mature":
+            # Market leaders in mature markets (stable, profitable)
+            recommendation = "green"
+            recommendation_text = "🟢 Market Leader: Dominant brand in stable market. Maintain & optimize for profitability."
         elif brand_strength >= 7.0 and growth_opportunity >= 5.0:
             recommendation = "green"
             recommendation_text = "🟢 Strong Foundation: Well-positioned brand. Optimize & maintain."
         elif brand_strength >= 5.0 and growth_opportunity >= 7.0:
             recommendation = "yellow"
             recommendation_text = "🟡 Growth Opportunity: Market is attractive, brand needs work. Requires strategic positioning."
+        elif brand_strength >= 7.0:
+            # Strong brand with moderate growth (common for mature market leaders)
+            recommendation = "yellow"
+            recommendation_text = "🟡 Stable Leader: Strong position but limited growth. Focus on retention & profitability."
         elif brand_strength >= 5.0 or growth_opportunity >= 5.0:
             recommendation = "yellow"
             recommendation_text = "🟡 Conditional: Either moderate viability or limited growth. Requires differentiation."
