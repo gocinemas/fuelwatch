@@ -18377,12 +18377,12 @@ let _savesAll = [];
         + '</div>';
     }
 
-    // ── Traffic — school run, weekday mornings only ──────────────────────────
+    // ── Traffic — school run & user commutes ──────────────────────────────
     var _traffic = ctx && ctx.traffic;
     var _trafficLegs = (_traffic && _traffic.legs && _traffic.legs.length) ? _traffic.legs : [];
-    // Filter to show ONLY school routes, not work commute
-    var _schoolTrafficLegs = _trafficLegs.filter(function(leg) { return leg.type === "school"; });
-    if (_schoolTrafficLegs.length && _isMorning && !_isWeekend && !_isOffHours) {
+    // Show school routes + user commutes (type=school or type=commute), exclude work commutes
+    var _schoolTrafficLegs = _trafficLegs.filter(function(leg) { return leg.type === "school" || leg.type === "commute"; });
+    if (_schoolTrafficLegs.length && !_isOffHours) {
       var _trRows = _schoolTrafficLegs.map(function(leg) {
         var _trBg  = leg.traffic === "heavy"    ? "#fee2e2" : leg.traffic === "moderate" ? "#fef9c3" : "#f0fdf4";
         var _trBdr = leg.traffic === "heavy"    ? "#fca5a5" : leg.traffic === "moderate" ? "#fde68a" : "#86efac";
