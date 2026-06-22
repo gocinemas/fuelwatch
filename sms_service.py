@@ -4309,6 +4309,35 @@ def api_brand_deep_research():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/brands/list", methods=["GET"])
+def api_brands_list():
+    """Get all available brands by market"""
+    try:
+        sb = lib._sb()
+        result = sb.table("brand_phase1_intelligence").select("brand_name, market_country").execute()
+
+        brands_by_market = {}
+        for row in result.data:
+            market = row.get("market_country")
+            brand = row.get("brand_name")
+            if market not in brands_by_market:
+                brands_by_market[market] = []
+            if brand not in brands_by_market[market]:
+                brands_by_market[market].append(brand)
+
+        # Sort each market's brands
+        for market in brands_by_market:
+            brands_by_market[market] = sorted(brands_by_market[market])
+
+        return jsonify({
+            "markets": sorted(brands_by_market.keys()),
+            "brands_by_market": brands_by_market,
+            "total_brands": sum(len(b) for b in brands_by_market.values())
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/insights", methods=["GET"])
 def api_brand_insights():
     """Phase 2: Generate AI insights for a brand in a market using Groq"""
