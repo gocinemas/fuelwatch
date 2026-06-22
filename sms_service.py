@@ -1218,6 +1218,54 @@ def brand_compare():
         if not brands_data or len(brands_data) < 2:
             return redirect(f"/brand/full?search={brand_names[0]}&market={market}")
 
+        # Fetch market economics to get category-level data (market size, CAGR)
+        market_econ = {}
+        if category:
+            try:
+                econ_result = sb.table("brand_phase1_market_economics").select("*").eq(
+                    "market_country", market
+                ).eq("category", category).execute()
+                if econ_result.data:
+                    market_econ = econ_result.data[0]
+            except Exception as econ_err:
+                app.logger.warning(f"[brand_compare] Could not fetch market economics: {econ_err}")
+
+        # Merge market economics into each brand for template access
+        # Also calculate market entry scores for each brand
+        for brand in brands_data:
+            brand["market_size_millions"] = market_econ.get("category_market_size_usd_millions")
+            brand["category_cagr_3yr"] = market_econ.get("category_cagr_3yr")
+
+            # Calculate market entry scores
+            try:
+                scorer = MarketEntryScorer()
+                score_result = scorer.score_market(
+                    brand_name=brand.get("brand_name"),
+                    market_country=market,
+                    category=category,
+                    brand_data={
+                        "positioning_tier": brand.get("positioning_tier", "mass-market"),
+                        "distribution_strategy": brand.get("distribution_strategy", "mass_market"),
+                    },
+                    market_data=market_econ,
+                    competitive_data={
+                        "competitive_intensity": market_econ.get("competitive_intensity", "medium"),
+                        "direct_competitors": [
+                            c for c in [
+                                brand.get("direct_competitor_1"),
+                                brand.get("direct_competitor_2"),
+                                brand.get("direct_competitor_3")
+                            ] if c
+                        ],
+                    },
+                )
+                brand["brand_strength_score"] = score_result.get("brand_strength_score", 5.0)
+                brand["growth_opportunity_score"] = score_result.get("growth_opportunity_score", 5.0)
+            except Exception as score_err:
+                app.logger.warning(f"[brand_compare] Could not calculate scores for {brand.get('brand_name')}: {score_err}")
+                brand["brand_strength_score"] = 5.0
+                brand["growth_opportunity_score"] = 5.0
+
         return render_template("intel_brand_compare.html",
                              brands=brands_data,
                              market=market,
