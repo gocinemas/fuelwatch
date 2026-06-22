@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Comparison - Intel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 16px;
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .brand-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .brand-card h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1e293b;
+        }
+
+        .metric {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .score {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .score-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .score-label {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 16px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="/" class="back-link">← Back to Intel Home</a>
+            <h1>⚖️ Brand Comparison</h1>
+            <p class="subtitle">Side-by-side analysis in {{ market }}</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="comparison-grid">
+            {% for brand in brands %}
+            <div class="brand-card">
+                <h2>{{ brand.brand_name }}</h2>
+
+                <div class="score-grid">
+                    <div class="score">
+                        <div class="score-value">{{ brand.brand_strength_score or 5.0 }}</div>
+                        <div class="score-label">Health</div>
+                    </div>
+                    <div class="score">
+                        <div class="score-value">{{ brand.growth_opportunity_score or 5.0 }}</div>
+                        <div class="score-label">Growth</div>
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Category</div>
+                    <div class="metric-value">{{ brand.category or 'N/A' }}</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Market Status</div>
+                    <div class="metric-value">{{ brand.market_status | title or 'Unknown' }}</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Market Size</div>
+                    <div class="metric-value">${{ brand.market_size_millions or 0 }}M</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Growth (3Y CAGR)</div>
+                    <div class="metric-value">{{ brand.category_cagr_3yr or 0 }}%</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Local Price</div>
+                    <div class="metric-value">{{ brand.price_currency or 'GBP' }} {{ brand.price_local or 'N/A' }}</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">Positioning</div>
+                    <div class="metric-value">{{ brand.positioning_tier | title or 'Mass Market' }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="text-align: center; color: #64748b; font-size: 13px;">
+            💡 <strong>Tip:</strong> Compare brand health, market growth, and positioning to identify expansion opportunities.
+        </div>
+    </div>
+</body>
+</html>

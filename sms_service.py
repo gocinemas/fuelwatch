@@ -1184,6 +1184,43 @@ def company_intelligence():
     return render_template("intel_company_coming_soon.html")
 
 
+@app.route("/brand/compare")
+def brand_compare():
+    """Compare 2-3 brands side by side"""
+    brands_param = request.args.get("brands", "").strip()
+    market = request.args.get("market", "UK").strip()
+
+    if not brands_param:
+        return render_template("intel_brand_phase1_tabbed.html", brand=None, skus=[])
+
+    try:
+        sb = lib._sb()
+        brand_names = [b.strip() for b in brands_param.split(",")][:3]
+
+        # Fetch all brand data
+        brands_data = []
+        for brand_name in brand_names:
+            result = sb.table("brand_phase1_intelligence").select("*").eq(
+                "brand_name", brand_name
+            ).eq("market_country", market).execute()
+
+            if result.data:
+                brands_data.append(result.data[0])
+
+        if not brands_data:
+            return redirect(f"/brand/full?search={brand_names[0]}&market={market}")
+
+        return render_template("intel_brand_compare.html",
+                             brands=brands_data,
+                             market=market,
+                             comparison=True)
+    except Exception as e:
+        app.logger.error(f"Compare error: {str(e)}")
+        if brand_names:
+            return redirect(f"/brand/full?search={brand_names[0]}&market={market}")
+        return redirect("/")
+
+
 @app.route("/brand/full")
 def brand_full_intelligence():
     """Brand Intelligence page - Phase 1: Real Data Only"""
