@@ -22086,7 +22086,7 @@ let _savesAll = [];
       btn.querySelector("div:last-child").style.color = "#4338ca";
     }
 
-    // Food: always show cuisine picker (allow switching anytime)
+    // Food: show cuisine picker + results
     if (cat === "food") {
       const el = document.getElementById("explore-here-results");
       const cuisines = [
@@ -22100,16 +22100,32 @@ let _savesAll = [];
         {emoji: "🍖", name: "British", key: "british"},
         {emoji: "🥙", name: "Middle East", key: "middleeastern"}
       ];
-      const current = _ehActiveCuisine ? ` (${_ehActiveCuisine})` : "";
-      let html = `<div style="margin-bottom:12px;font-size:12px;color:var(--muted);font-weight:600">Pick a cuisine${current}:</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">`;
+
+      let html = `<div style="position:sticky;top:0;background:var(--surface);padding:12px 0;margin-bottom:12px;border-bottom:1px solid var(--border);z-index:10">`;
+      html += `<div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">Cuisine:</div>`;
+      html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">`;
       for (let c of cuisines) {
         const isActive = _ehActiveCuisine === c.key;
-        html += `<button data-cuisine="${c.key}" style="font-size:13px;padding:10px 12px;border:2px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600;transition:all 0.2s;${isActive?'border-color:#4338ca;background:#4338ca;color:white':''}">${c.emoji} ${c.name}</button>`;
+        html += `<button data-cuisine="${c.key}" style="font-size:12px;padding:8px 10px;border:2px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-weight:600;transition:all 0.2s;${isActive?'border-color:#4338ca;background:#4338ca;color:white':''}">${c.emoji} ${c.name}</button>`;
       }
-      html += `</div>`;
+      html += `</div></div>`;
+
+      // Show results below
+      if (_ehPlaces && _ehPlaces.length) {
+        html += _ehPlaces.map((p, i) => {
+          const dist = _ehLat && p.lat && p.lon ? _distLabel(_distKm(_ehLat, _ehLon, p.lat, p.lon)) : "?";
+          return `<div onclick="_ehShowDetail(${i})" style="padding:12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:8px;transition:all 0.2s;background:var(--surface)">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${p.name || "?"}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${p.type || ""} · ${dist}</div>
+          </div>`;
+        }).join("");
+      } else {
+        html += `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Select a cuisine to browse</div>`;
+      }
+
       el.innerHTML = html;
 
-      // Add click handlers
+      // Add cuisine click handlers
       el.querySelectorAll('button[data-cuisine]').forEach(btn => {
         btn.addEventListener('click', function() {
           const cuisine = this.getAttribute('data-cuisine');
