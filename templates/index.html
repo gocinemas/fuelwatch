@@ -18686,8 +18686,13 @@ let _savesAll = [];
         for (var cat in spend.breakdown) {
           var cb = spend.breakdown[cat];
           var pct = spend.total > 0 ? (cb.total / spend.total) : 0;
-          pieData.push({cat: cat, pct: pct, total: cb.total, color: colors[colorIdx % colors.length]});
-          colorIdx++;
+          pieData.push({cat: cat, pct: pct, total: cb.total});
+        }
+        // Sort by percentage descending (max to min)
+        pieData.sort(function(a, b) { return b.pct - a.pct; });
+        // Assign colors after sorting
+        for (var i = 0; i < pieData.length; i++) {
+          pieData[i].color = colors[i % colors.length];
         }
 
         // Draw beautiful donut chart
@@ -18731,17 +18736,15 @@ let _savesAll = [];
           pieChartHtml = svg + legend;
         }
 
-        // Build breakdown list (always shown by default)
-        colorIdx = 0;
-        for (var cat in spend.breakdown) {
-          var cb = spend.breakdown[cat];
-          var pct = spend.total > 0 ? Math.round((cb.total / spend.total) * 100) : 0;
-          var col = colors[colorIdx % colors.length];
+        // Build breakdown list (sorted by percentage, max to min)
+        for (var i = 0; i < pieData.length; i++) {
+          var slice = pieData[i];
+          var pct = Math.round(slice.pct * 100);
+          var col = slice.color;
           breakdownHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-            + '<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:' + col + '"></span><div style="font-size:12px;color:var(--text)">' + cat + '</div></div>'
-            + '<div style="font-size:12px;font-weight:600;color:var(--accent)">£' + cb.total.toFixed(2) + ' (' + pct + '%)</div>'
+            + '<div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:' + col + '"></span><div style="font-size:12px;color:var(--text)">' + slice.cat + '</div></div>'
+            + '<div style="font-size:12px;font-weight:600;color:var(--accent)">£' + slice.total.toFixed(2) + ' (' + pct + '%)</div>'
             + '</div>';
-          colorIdx++;
         }
       }
 
@@ -18755,17 +18758,14 @@ let _savesAll = [];
         + '<div style="font-size:9px;color:#666;margin-top:2px;font-weight:600">' + (spend.month || "JUNE") + ' 2026</div>'
         + '</div>';
 
-      // Add items (categories)
-      colorIdx = 0;
-      for (var cat in spend.breakdown) {
-        var cb = spend.breakdown[cat];
-        var pct = spend.total > 0 ? Math.round((cb.total / spend.total) * 100) : 0;
-        var col = colors[colorIdx % colors.length];
+      // Add items (categories, sorted by percentage max to min)
+      for (var i = 0; i < pieData.length; i++) {
+        var slice = pieData[i];
+        var pct = Math.round(slice.pct * 100);
         receiptHtml += '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dotted #d4cec0">'
-          + '<div style="flex:1;font-weight:700;color:#1a1a1a">' + cat + ' <span style="color:#999;font-weight:600">(' + pct + '%)</span></div>'
-          + '<div style="text-align:right;font-weight:800;color:#1a1a1a;font-size:12px">£' + cb.total.toFixed(2) + '</div>'
+          + '<div style="flex:1;font-weight:700;color:#1a1a1a">' + slice.cat + ' <span style="color:#999;font-weight:600">(' + pct + '%)</span></div>'
+          + '<div style="text-align:right;font-weight:800;color:#1a1a1a;font-size:12px">£' + slice.total.toFixed(2) + '</div>'
           + '</div>';
-        colorIdx++;
       }
 
       // Total line
