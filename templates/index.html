@@ -18380,10 +18380,8 @@ let _savesAll = [];
     // ── Traffic — school run & user commutes ──────────────────────────────
     var _traffic = ctx && ctx.traffic;
     var _trafficLegs = (_traffic && _traffic.legs && _traffic.legs.length) ? _traffic.legs : [];
-    console.log("[traffic] _trafficLegs:", _trafficLegs, "_isOffHours:", _isOffHours);
     // Show school routes + user commutes (type=school or type=commute), exclude work commutes
     var _schoolTrafficLegs = _trafficLegs.filter(function(leg) { return leg.type === "school" || leg.type === "commute"; });
-    console.log("[traffic] _schoolTrafficLegs:", _schoolTrafficLegs);
     if (_schoolTrafficLegs.length && !_isOffHours) {
       var _trRows = _schoolTrafficLegs.map(function(leg) {
         var _trBg  = leg.traffic === "heavy"    ? "#fee2e2" : leg.traffic === "moderate" ? "#fef9c3" : "#f0fdf4";

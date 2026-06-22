@@ -10656,20 +10656,14 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 uc_rows = sb_uc.table("user_commutes").select("id,label,dest,time_start,time_end,days_of_week") \
                     .eq("phone", _fn_wa).eq("show_on_homepage", True).execute().data or []
 
-            print(f"🎯 COMMUTE DEBUG: phone={_fn_plain}, dow={current_dow}, time={current_time}, found={len(uc_rows)} commutes", flush=True)
             for uc in uc_rows:
-                print(f"  - {uc.get('label')}: {uc.get('dest')} | days={uc.get('days_of_week')} | time={uc.get('time_start')}-{uc.get('time_end')}", flush=True)
                 days = uc.get("days_of_week") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
                 if current_dow not in days:
-                    print(f"    ✗ Day mismatch: {current_dow} not in {days}", flush=True)
                     continue
                 time_start = uc.get("time_start", "00:00")
                 time_end = uc.get("time_end", "23:59")
                 if time_start <= current_time <= time_end:
-                    print(f"    ✓ Match! Adding to active_commutes", flush=True)
                     active_commutes.append(uc)
-                else:
-                    print(f"    ✗ Time mismatch: {current_time} not in {time_start}-{time_end}", flush=True)
         except Exception as e:
             print(f"🎯 COMMUTE ERROR: {e}", flush=True)
             pass  # Silently fail and fall back to school_profiles
@@ -10679,10 +10673,8 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
         label = (uc.get("label") or "").strip()
         dest = (uc.get("dest") or "").strip()
         if not dest:
-            print(f"    ✗ No destination for {label}", flush=True)
             continue
         try:
-            print(f"    📍 Fetching traffic: {label} → {dest}", flush=True)
             r = requests.get(
                 "https://maps.googleapis.com/maps/api/directions/json",
                 params={
@@ -10696,7 +10688,6 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 timeout=8,
             )
             d = r.json()
-            print(f"    API response: {d.get('status')}", flush=True)
             if d.get("status") == "OK":
                 try:
                     leg       = d["routes"][0]["legs"][0]
@@ -10715,14 +10706,11 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                         "traffic":     traffic,
                         "emoji":       emoji,
                     })
-                    print(f"    ✓ Added: {dur_live // 60}min, {traffic} traffic", flush=True)
                     seen.add(label or dest)
-                except (KeyError, IndexError, TypeError) as parse_err:
-                    print(f"    ✗ Parse error: {parse_err}, response keys: {list(d.keys())}", flush=True)
-            else:
-                print(f"    ✗ API error: {d.get('status')} - {d.get('error_message', d)}", flush=True)
-        except Exception as e:
-            print(f"    ✗ TRAFFIC ERROR for {label}: {e}", flush=True)
+                except (KeyError, IndexError, TypeError):
+                    pass
+        except Exception:
+            pass
 
     # Then: school runs — only if no active user commutes configured
     for p in school_profiles[:3]:
