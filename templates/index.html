@@ -22098,7 +22098,8 @@ let _savesAll = [];
         {emoji: "🍣", name: "Japanese", key: "japanese"},
         {emoji: "🇪🇸", name: "Spanish", key: "spanish"},
         {emoji: "🍖", name: "British", key: "british"},
-        {emoji: "🥙", name: "Middle East", key: "middleeastern"}
+        {emoji: "🥙", name: "Middle East", key: "middleeastern"},
+        {emoji: "🍽️", name: "All", key: null}
       ];
 
       let html = `<div style="position:sticky;top:0;background:var(--surface);padding:12px 0;margin-bottom:12px;border-bottom:1px solid var(--border);z-index:10">`;
@@ -22106,7 +22107,8 @@ let _savesAll = [];
       html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">`;
       for (let c of cuisines) {
         const isActive = _ehActiveCuisine === c.key;
-        html += `<button data-cuisine="${c.key}" style="font-size:12px;padding:8px 10px;border:2px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-weight:600;transition:all 0.2s;${isActive?'border-color:#4338ca;background:#4338ca;color:white':''}">${c.emoji} ${c.name}</button>`;
+        const key = c.key || "all";
+        html += `<button data-cuisine="${key}" style="font-size:12px;padding:8px 10px;border:2px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;font-weight:600;transition:all 0.2s;${isActive?'border-color:#4338ca;background:#4338ca;color:white':''}">${c.emoji} ${c.name}</button>`;
       }
       html += `</div></div>`;
 
@@ -22128,11 +22130,13 @@ let _savesAll = [];
       // Add cuisine click handlers
       el.querySelectorAll('button[data-cuisine]').forEach(btn => {
         btn.addEventListener('click', function() {
-          const cuisine = this.getAttribute('data-cuisine');
+          const key = this.getAttribute('data-cuisine');
+          const cuisine = key === "all" ? null : key;
           _ehActiveCuisine = cuisine;
           _ehCache.food = null;
           _ehPlaces = [];
-          const url = `/api/places/nearby?lat=${_ehLat}&lon=${_ehLon}&cat=food&cuisine=${cuisine}`;
+          let url = `/api/places/nearby?lat=${_ehLat}&lon=${_ehLon}&cat=food`;
+          if (cuisine) url += `&cuisine=${cuisine}`;
           fetch(url).then(r => r.json()).then(d => {
             _ehCache.food = (d.places || []).map(p => Object.assign({}, p, {_dist: (p.lat && p.lon) ? _distKm(_ehLat, _ehLon, p.lat, p.lon) : 999}));
             _ehCache.food.sort((a, b) => a._dist - b._dist);
