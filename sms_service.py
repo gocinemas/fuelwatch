@@ -11842,19 +11842,17 @@ def api_home_brief():
     ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)
 
     # Traffic — user's active commutes (show_on_homepage=true) + school/work anchors
-    _tr_hour = now.hour
-    _tr_wday = now.weekday()
-    if 7 <= _tr_hour <= 8 and _tr_wday < 5:
-        _tr_pc      = postcode or prefs.get("fuel_postcode", "")
-        _tr_schl    = (ctx.get("school") or {}).get("schools") or []
-        _tr_work    = _loc_profile.get("work") or {}  # Work anchor from My Area location profile
-        _tr_school  = _loc_profile.get("school_run") or {}  # School run anchor from My Area location profile
-        # Fetch traffic if school routes exist OR if work/school commute is set
-        if _tr_pc and (_tr_schl or _tr_work or _tr_school):
-            try:
-                ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl, _tr_work, _tr_school, from_number)
-            except Exception:
-                pass
+    # Always check for active commutes (time filtering happens inside _v2_fetch_traffic)
+    _tr_pc      = postcode or prefs.get("fuel_postcode", "")
+    _tr_schl    = (ctx.get("school") or {}).get("schools") or []
+    _tr_work    = _loc_profile.get("work") or {}  # Work anchor from My Area location profile
+    _tr_school  = _loc_profile.get("school_run") or {}  # School run anchor from My Area location profile
+    # Fetch traffic if any routes configured — function handles time/day filtering
+    if _tr_pc:
+        try:
+            ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl, _tr_work, _tr_school, from_number)
+        except Exception:
+            pass
 
     # WhatsApp thread signals — suppress irrelevant brief facts based on recent conversation
     _wa_thread = ctx.get("thread", [])
