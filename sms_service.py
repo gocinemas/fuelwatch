@@ -10679,8 +10679,10 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
         label = (uc.get("label") or "").strip()
         dest = (uc.get("dest") or "").strip()
         if not dest:
+            print(f"    ✗ No destination for {label}", flush=True)
             continue
         try:
+            print(f"    📍 Fetching traffic: {label} → {dest}", flush=True)
             r = requests.get(
                 "https://maps.googleapis.com/maps/api/directions/json",
                 params={
@@ -10694,6 +10696,7 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 timeout=8,
             )
             d = r.json()
+            print(f"    API response: {d.get('status')}", flush=True)
             if d.get("status") == "OK":
                 leg       = d["routes"][0]["legs"][0]
                 dur_live  = leg.get("duration_in_traffic", leg["duration"])["value"]
@@ -10712,8 +10715,8 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                     "emoji":       emoji,
                 })
                 seen.add(label or dest)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"    ✗ TRAFFIC ERROR for {label}: {e}", flush=True)
 
     # Then: school runs — only if no active user commutes configured
     for p in school_profiles[:3]:
