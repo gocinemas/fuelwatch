@@ -10698,23 +10698,29 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
             d = r.json()
             print(f"    API response: {d.get('status')}", flush=True)
             if d.get("status") == "OK":
-                leg       = d["routes"][0]["legs"][0]
-                dur_live  = leg.get("duration_in_traffic", leg["duration"])["value"]
-                dur_norm  = leg["duration"]["value"]
-                delay     = max(0, dur_live - dur_norm)
-                traffic   = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
-                emoji     = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
-                legs.append({
-                    "child":       None,
-                    "school":      label or dest,
-                    "type":        "commute",
-                    "mins":        dur_live // 60,
-                    "normal_mins": dur_norm  // 60,
-                    "delay_mins":  delay     // 60,
-                    "traffic":     traffic,
-                    "emoji":       emoji,
-                })
-                seen.add(label or dest)
+                try:
+                    leg       = d["routes"][0]["legs"][0]
+                    dur_live  = leg.get("duration_in_traffic", leg["duration"])["value"]
+                    dur_norm  = leg["duration"]["value"]
+                    delay     = max(0, dur_live - dur_norm)
+                    traffic   = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
+                    emoji     = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
+                    legs.append({
+                        "child":       None,
+                        "school":      label or dest,
+                        "type":        "commute",
+                        "mins":        dur_live // 60,
+                        "normal_mins": dur_norm  // 60,
+                        "delay_mins":  delay     // 60,
+                        "traffic":     traffic,
+                        "emoji":       emoji,
+                    })
+                    print(f"    ✓ Added: {dur_live // 60}min, {traffic} traffic", flush=True)
+                    seen.add(label or dest)
+                except (KeyError, IndexError, TypeError) as parse_err:
+                    print(f"    ✗ Parse error: {parse_err}, response keys: {list(d.keys())}", flush=True)
+            else:
+                print(f"    ✗ API error: {d.get('status')} - {d.get('error_message', d)}", flush=True)
         except Exception as e:
             print(f"    ✗ TRAFFIC ERROR for {label}: {e}", flush=True)
 
