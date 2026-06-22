@@ -10570,8 +10570,8 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
         except Exception:
             pass
 
-    # Then: school runs — ONLY those marked show_on_homepage in user_commutes
-    active_commute_dests = set()
+    # First: Active user commutes (show_on_homepage=true, matching current day/time)
+    active_commutes = []
     if from_number:
         try:
             from datetime import datetime as _dt_uc
@@ -10582,7 +10582,7 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
             current_dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][now_uc.weekday()]
             current_time = now_uc.strftime("%H:%M")
 
-            uc_rows = sb_uc.table("user_commutes").select("dest,time_start,time_end,days_of_week") \
+            uc_rows = sb_uc.table("user_commutes").select("id,label,dest,time_start,time_end,days_of_week") \
                 .in_("phone", [_fn_plain, _fn_wa]).eq("show_on_homepage", True).execute().data or []
             for uc in uc_rows:
                 days = uc.get("days_of_week") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
@@ -10591,10 +10591,54 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 time_start = uc.get("time_start", "00:00")
                 time_end = uc.get("time_end", "23:59")
                 if time_start <= current_time <= time_end:
-                    active_commute_dests.add((uc.get("dest") or "").lower().strip())
-        except Exception:
-            pass  # Fall back to showing all school profiles if lookup fails
+                    active_commutes.append(uc)
+            print(f"🎯 TRAFFIC: from_number={from_number}, dow={current_dow}, time={current_time}, active_count={len(active_commutes)}")
+        except Exception as e:
+            print(f"🎯 TRAFFIC ERROR: {e}")
+            active_commutes = []
 
+    # Fetch traffic for active user commutes
+    for uc in active_commutes:
+        label = (uc.get("label") or "").strip()
+        dest = (uc.get("dest") or "").strip()
+        if not dest:
+            continue
+        try:
+            r = requests.get(
+                "https://maps.googleapis.com/maps/api/directions/json",
+                params={
+                    "origin":         home_postcode,
+                    "destination":    dest,
+                    "mode":           "driving",
+                    "departure_time": "now",
+                    "traffic_model":  "best_guess",
+                    "key":            gm_key,
+                },
+                timeout=8,
+            )
+            d = r.json()
+            if d.get("status") == "OK":
+                leg       = d["routes"][0]["legs"][0]
+                dur_live  = leg.get("duration_in_traffic", leg["duration"])["value"]
+                dur_norm  = leg["duration"]["value"]
+                delay     = max(0, dur_live - dur_norm)
+                traffic   = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
+                emoji     = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
+                legs.append({
+                    "child":       None,
+                    "school":      label or dest,
+                    "type":        "commute",
+                    "mins":        dur_live // 60,
+                    "normal_mins": dur_norm  // 60,
+                    "delay_mins":  delay     // 60,
+                    "traffic":     traffic,
+                    "emoji":       emoji,
+                })
+                seen.add(label or dest)
+        except Exception:
+            pass
+
+    # Then: school runs — only if no active user commutes configured
     for p in school_profiles[:3]:
         school = (p.get("school_name") or "").strip()
         child  = (p.get("child_name")  or "").strip()
@@ -10602,12 +10646,9 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
         if not school or school in seen:
             continue
 
-        # If user has active commutes configured, only show those
-        if active_commute_dests:
-            school_lower = school.lower()
-            addr_lower = addr.lower() if addr else ""
-            if not any(d in school_lower or d in addr_lower for d in active_commute_dests):
-                continue
+        # Only show school profiles if user hasn't set up My Commute preferences
+        if active_commutes:
+            continue
 
         seen.add(school)
         dest = addr if addr else f"{school}, Surrey, UK"
