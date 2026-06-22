@@ -1367,7 +1367,15 @@ def brand_full_intelligence():
                 app.logger.warning(f"[brand_full] Could not calculate market entry score: {score_err}")
                 market_entry_score = None
 
-            resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=competitors_list, market_score=market_entry_score))
+            # Deduplicate competitors (remove duplicates by name)
+            seen_competitors = set()
+            unique_competitors = []
+            for comp in competitors_list:
+                if comp["name"] not in seen_competitors:
+                    seen_competitors.add(comp["name"])
+                    unique_competitors.append(comp)
+
+            resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=unique_competitors, market_score=market_entry_score))
         else:
             resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=None, skus=[], market=market, market_econ={}))
     except Exception as e:
