@@ -1069,6 +1069,10 @@
           <span class="tool-icon-emoji">📝</span>
           <span class="tool-icon-label">Notes</span>
         </button>
+        <button class="tool-icon-btn" onclick="showScreen('kb')">
+          <span class="tool-icon-emoji">🧠</span>
+          <span class="tool-icon-label">Knowledge Base</span>
+        </button>
         <button class="tool-icon-btn" onclick="showScreen('music')">
           <span class="tool-icon-emoji">🎵</span>
           <span class="tool-icon-label">Music</span>
@@ -24391,6 +24395,101 @@ function notesView(i) {
 
 // Load notes on init
 setTimeout(notesLoad, 100);
+
+// ── KNOWLEDGE BASE ──
+let _kbFolders = [];
+let _kbCurrentFolder = null;
+
+function kbLoad() {
+  _kbFolders = JSON.parse(localStorage.getItem('_kb_folders') || '[]');
+  const list = document.getElementById('kb-folders');
+  const empty = document.getElementById('kb-empty');
+
+  if (_kbFolders.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  list.innerHTML = _kbFolders.map((f, i) => `
+    <div onclick="kbOpenFolder(${i})" style="padding:16px;border:1px solid var(--border);border-radius:12px;cursor:pointer;background:var(--surface);transition:all 0.2s;text-align:center">
+      <div style="font-size:24px;margin-bottom:8px">${f.emoji || '📁'}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${f.name}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${f.items ? f.items.length : 0} items</div>
+    </div>
+  `).join('');
+}
+
+function kbShowNewFolder() {
+  const name = prompt('Folder name:');
+  if (!name) return;
+  const emoji = prompt('Emoji (optional):', '📁');
+  _kbFolders.push({ name, emoji: emoji || '📁', items: [] });
+  localStorage.setItem('_kb_folders', JSON.stringify(_kbFolders));
+  kbLoad();
+}
+
+function kbOpenFolder(i) {
+  _kbCurrentFolder = i;
+  document.getElementById('kb-folders').parentElement.style.display = 'none';
+  document.getElementById('kb-folder-view').style.display = 'block';
+
+  const f = _kbFolders[i];
+  document.getElementById('kb-folder-title').textContent = f.name;
+
+  const itemsList = document.getElementById('kb-items-list');
+  itemsList.innerHTML = (f.items || []).map((item, idx) => `
+    <div style="padding:10px;background:var(--border);border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;color:var(--text)">${item.type === 'note' ? '📝' : '📌'} ${item.title}</div>
+      <button onclick="kbRemoveItem(${idx})" style="background:none;border:none;color:var(--muted);cursor:pointer">✕</button>
+    </div>
+  `).join('');
+
+  const available = (_notesAll || []).filter(n => !(f.items || []).find(i => i.id === n.id));
+  const availList = document.getElementById('kb-available-items');
+  availList.innerHTML = available.map(item => `
+    <div draggable="true" ondragstart="event.dataTransfer.setData('item', JSON.stringify({type:'note',title:'${item.title}',id:Date.now()}))"
+      style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:grab;background:var(--surface);font-size:12px;color:var(--text)">
+      📝 ${item.title}
+    </div>
+  `).join('');
+}
+
+function kbDropItem(e) {
+  e.preventDefault();
+  const item = JSON.parse(e.dataTransfer.getData('item'));
+  const f = _kbFolders[_kbCurrentFolder];
+  if (!f.items) f.items = [];
+  if (!f.items.find(i => i.title === item.title)) {
+    f.items.push(item);
+    localStorage.setItem('_kb_folders', JSON.stringify(_kbFolders));
+    kbOpenFolder(_kbCurrentFolder);
+  }
+}
+
+function kbRemoveItem(idx) {
+  const f = _kbFolders[_kbCurrentFolder];
+  f.items.splice(idx, 1);
+  localStorage.setItem('_kb_folders', JSON.stringify(_kbFolders));
+  kbOpenFolder(_kbCurrentFolder);
+}
+
+function kbBackToFolders() {
+  document.getElementById('kb-folders').parentElement.style.display = 'block';
+  document.getElementById('kb-folder-view').style.display = 'none';
+  _kbCurrentFolder = null;
+  kbLoad();
+}
+
+function kbDeleteFolder() {
+  if (!confirm('Delete this folder?')) return;
+  _kbFolders.splice(_kbCurrentFolder, 1);
+  localStorage.setItem('_kb_folders', JSON.stringify(_kbFolders));
+  kbBackToFolders();
+}
+
+setTimeout(kbLoad, 100);
 </script>
 
 <!-- ── NOTES SCREEN ── -->
@@ -24453,6 +24552,42 @@ setTimeout(notesLoad, 100);
 
       <!-- Save button -->
       <button onclick="notesSave()" style="width:100%;padding:12px;background:#4338ca;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── KNOWLEDGE BASE SCREEN ── -->
+<div id="screen-kb" class="screen pt-5" style="max-width:600px;margin:0 auto;padding:6px 16px 40px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px">🧠 Knowledge Base</h2>
+    <button onclick="kbShowNewFolder()" style="background:#4338ca;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:14px;font-weight:700;cursor:pointer">+ Folder</button>
+  </div>
+
+  <!-- Folders grid -->
+  <div id="kb-folders" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px"></div>
+  <div id="kb-empty" style="text-align:center;padding:40px 16px;color:var(--muted)">
+    <div style="font-size:32px;margin-bottom:8px">🧠</div>
+    <div style="font-size:13px">Create a folder to organize your knowledge</div>
+  </div>
+
+  <!-- Folder contents (shown when folder selected) -->
+  <div id="kb-folder-view" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <button onclick="kbBackToFolders()" style="background:none;border:none;font-size:20px;cursor:pointer">←</button>
+      <h3 id="kb-folder-title" style="font-size:16px;font-weight:800;color:var(--text);flex:1"></h3>
+      <button onclick="kbDeleteFolder()" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--muted)">🗑️</button>
+    </div>
+
+    <!-- Items in folder (drag-drop zone) -->
+    <div id="kb-folder-items" style="border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;min-height:200px;background:var(--surface)" ondrop="kbDropItem(event)" ondragover="event.preventDefault()">
+      <div style="font-size:13px;color:var(--muted)">Drag clippings or notes here</div>
+      <div id="kb-items-list" style="margin-top:12px;text-align:left"></div>
+    </div>
+
+    <!-- Available items to add (from clippings & notes) -->
+    <div style="margin-top:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">Drag from below:</div>
+      <div id="kb-available-items" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
   </div>
 </div>
