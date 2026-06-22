@@ -1065,6 +1065,10 @@
           <span class="tool-icon-emoji">📚</span>
           <span class="tool-icon-label">Library</span>
         </button>
+        <button class="tool-icon-btn" onclick="showScreen('notes')">
+          <span class="tool-icon-emoji">📝</span>
+          <span class="tool-icon-label">Notes</span>
+        </button>
         <button class="tool-icon-btn" onclick="showScreen('music')">
           <span class="tool-icon-emoji">🎵</span>
           <span class="tool-icon-label">Music</span>
@@ -24278,7 +24282,180 @@ window.spotifyLike = function(trackId, title, artist) {
   window.open(url, '_blank', 'noopener');
 };
 window.spotifyAddTrack = window.spotifyLike;
+
+// ── NOTES MODULE ──
+let _notesType = 'text';
+let _notesSelectedTags = [];
+let _notesAll = [];
+
+function notesLoad() {
+  _notesAll = JSON.parse(localStorage.getItem('_notes') || '[]');
+  const list = document.getElementById('notes-list');
+  const empty = document.getElementById('notes-empty');
+
+  if (_notesAll.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  list.innerHTML = _notesAll.map((n, i) => `
+    <div onclick="notesView(${i})" style="padding:12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface);transition:all 0.2s">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${n.title || 'Untitled'}</div>
+      ${n.type === 'image' ? `<div style="margin-top:8px;border-radius:6px;overflow:hidden;max-height:100px;background:var(--border)"><img src="${n.image}" style="width:100%;height:100%;object-fit:cover"></div>` : `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4">${n.content.substring(0, 50)}${n.content.length > 50 ? '...' : ''}</div>`}
+      <div style="font-size:10px;color:var(--muted);margin-top:6px">${new Date(n.date).toLocaleDateString()}</div>
+    </div>
+  `).join('');
+}
+
+function notesShowAdd() {
+  _notesType = 'text';
+  _notesSelectedTags = [];
+  document.getElementById('notes-add-modal').style.display = 'flex';
+  document.getElementById('notes-title').value = '';
+  document.getElementById('notes-content').value = '';
+  document.getElementById('notes-image-title').value = '';
+  document.getElementById('notes-image-preview').innerHTML = '';
+  notesSetType('text');
+}
+
+function notesHideAdd() {
+  document.getElementById('notes-add-modal').style.display = 'none';
+}
+
+function notesSetType(t) {
+  _notesType = t;
+  document.getElementById('notes-type-text').style.background = t === 'text' ? '#4338ca' : 'transparent';
+  document.getElementById('notes-type-text').style.borderColor = t === 'text' ? '#4338ca' : 'var(--border)';
+  document.getElementById('notes-type-text').style.color = t === 'text' ? '#fff' : 'var(--text)';
+  document.getElementById('notes-type-image').style.background = t === 'image' ? '#4338ca' : 'transparent';
+  document.getElementById('notes-type-image').style.borderColor = t === 'image' ? '#4338ca' : 'var(--border)';
+  document.getElementById('notes-type-image').style.color = t === 'image' ? '#fff' : 'var(--text)';
+  document.getElementById('notes-text-form').style.display = t === 'text' ? 'block' : 'none';
+  document.getElementById('notes-image-form').style.display = t === 'image' ? 'block' : 'none';
+}
+
+function notesToggleTag(btn, tag) {
+  if (_notesSelectedTags.includes(tag)) {
+    _notesSelectedTags = _notesSelectedTags.filter(t => t !== tag);
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--text)';
+  } else {
+    _notesSelectedTags.push(tag);
+    btn.style.background = '#4338ca';
+    btn.style.color = '#fff';
+  }
+}
+
+function notesFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = document.createElement('img');
+    img.src = ev.target.result;
+    img.style.width = '100%';
+    img.style.borderRadius = '10px';
+    img.style.marginBottom = '10px';
+    document.getElementById('notes-image-preview').innerHTML = '';
+    document.getElementById('notes-image-preview').appendChild(img);
+    document.getElementById('notes-file-input').dataset.data = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function notesSave() {
+  let note;
+  if (_notesType === 'text') {
+    const title = document.getElementById('notes-title').value.trim();
+    const content = document.getElementById('notes-content').value.trim();
+    if (!title && !content) { alert('Add some content!'); return; }
+    note = { type: 'text', title: title || 'Untitled', content, tags: _notesSelectedTags, date: new Date().toISOString() };
+  } else {
+    const title = document.getElementById('notes-image-title').value.trim();
+    const image = document.getElementById('notes-file-input').dataset.data;
+    if (!image) { alert('Select an image!'); return; }
+    note = { type: 'image', title: title || 'Untitled', image, tags: _notesSelectedTags, date: new Date().toISOString() };
+  }
+  _notesAll.push(note);
+  localStorage.setItem('_notes', JSON.stringify(_notesAll));
+  notesHideAdd();
+  notesLoad();
+}
+
+function notesView(i) {
+  const n = _notesAll[i];
+  alert(`📝 ${n.title}\n\n${n.type === 'text' ? n.content : '[Image note]'}`);
+}
+
+// Load notes on init
+setTimeout(notesLoad, 100);
 </script>
+
+<!-- ── NOTES SCREEN ── -->
+<div id="screen-notes" class="screen pt-5" style="max-width:480px;margin:0 auto;padding:6px 16px 40px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px">📝 Notes</h2>
+    <button onclick="notesShowAdd()" style="background:#4338ca;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:14px;font-weight:700;cursor:pointer">+ Add</button>
+  </div>
+
+  <!-- Notes list -->
+  <div id="notes-list" style="display:flex;flex-direction:column;gap:10px"></div>
+  <div id="notes-empty" style="text-align:center;padding:40px 16px;color:var(--muted)">
+    <div style="font-size:32px;margin-bottom:8px">📝</div>
+    <div style="font-size:13px">No notes yet. Create your first note!</div>
+  </div>
+
+  <!-- Add note modal -->
+  <div id="notes-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:flex-end">
+    <div style="width:100%;background:var(--surface);border-radius:20px 20px 0 0;padding:20px;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:800;color:var(--text)">New Note</h3>
+        <button onclick="notesHideAdd()" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button>
+      </div>
+
+      <!-- Note type tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button id="notes-type-text" onclick="notesSetType('text')" style="flex:1;padding:10px;border:2px solid #4338ca;background:#4338ca;color:#fff;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px">📝 Text</button>
+        <button id="notes-type-image" onclick="notesSetType('image')" style="flex:1;padding:10px;border:2px solid var(--border);background:transparent;color:var(--text);border-radius:10px;font-weight:700;cursor:pointer;font-size:13px">📸 Image</button>
+      </div>
+
+      <!-- Text note -->
+      <div id="notes-text-form" style="display:block">
+        <input id="notes-title" type="text" placeholder="Note title…" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:var(--surface);color:var(--text);margin-bottom:10px;box-sizing:border-box">
+        <textarea id="notes-content" placeholder="Write your notes here…" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--surface);color:var(--text);min-height:120px;resize:none;box-sizing:border-box;margin-bottom:10px;font-family:inherit"></textarea>
+      </div>
+
+      <!-- Image note -->
+      <div id="notes-image-form" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button onclick="document.getElementById('notes-file-input').click()" style="flex:1;padding:12px;border:2px dashed var(--border);background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font-weight:600;font-size:13px">📁 Upload image</button>
+          <button onclick="notesStartCamera()" style="flex:1;padding:12px;border:2px dashed var(--border);background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font-weight:600;font-size:13px">📷 Camera</button>
+        </div>
+        <input id="notes-file-input" type="file" accept="image/*" style="display:none" onchange="notesFileSelected(event)">
+        <canvas id="notes-camera-canvas" style="display:none"></canvas>
+        <video id="notes-camera-video" style="width:100%;border-radius:10px;margin-bottom:10px;display:none" playsinline></video>
+        <div id="notes-image-preview" style="margin-bottom:10px"></div>
+        <input id="notes-image-title" type="text" placeholder="Image title…" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:var(--surface);color:var(--text);margin-bottom:10px;box-sizing:border-box">
+      </div>
+
+      <!-- Tags -->
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">Tags (optional):</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px" id="notes-tags">
+          <button onclick="notesToggleTag(this,'📚 Book')" style="padding:6px 10px;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:20px;font-size:11px;font-weight:600;cursor:pointer">📚 Book</button>
+          <button onclick="notesToggleTag(this,'🍽️ Recipe')" style="padding:6px 10px;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:20px;font-size:11px;font-weight:600;cursor:pointer">🍽️ Recipe</button>
+          <button onclick="notesToggleTag(this,'📍 Place')" style="padding:6px 10px;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:20px;font-size:11px;font-weight:600;cursor:pointer">📍 Place</button>
+          <button onclick="notesToggleTag(this,'💡 Idea')" style="padding:6px 10px;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:20px;font-size:11px;font-weight:600;cursor:pointer">💡 Idea</button>
+        </div>
+      </div>
+
+      <!-- Save button -->
+      <button onclick="notesSave()" style="width:100%;padding:12px;background:#4338ca;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px">Save Note</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── TRAINS SCREEN ── -->
 <div id="screen-trains" class="screen pt-5" style="max-width:480px;margin:0 auto;padding:6px 16px 40px">
