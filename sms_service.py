@@ -10483,8 +10483,8 @@ out body 20;
         return {}
 
 
-def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: dict = None, school_anchor: dict = None) -> dict:
-    """Live drive times for school run + work commute. Called on weekday mornings only.
+def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: dict = None, school_anchor: dict = None, from_number: str = None) -> dict:
+    """Live drive times for active user commutes (show_on_homepage=true only). Called on weekday mornings only.
     Returns {"legs": [{child, school, mins, normal_mins, delay_mins, traffic, emoji}, ...]}"""
     gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY")
                or os.environ.get("GOOGLE_PLACES_KEY")
@@ -10570,13 +10570,45 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
         except Exception:
             pass
 
-    # Then: school runs
+    # Then: school runs — ONLY those marked show_on_homepage in user_commutes
+    active_commute_dests = set()
+    if from_number:
+        try:
+            from datetime import datetime as _dt_uc
+            sb_uc = lib._sb()
+            _fn_plain = from_number.replace("whatsapp:", "").strip()
+            _fn_wa = f"whatsapp:{_fn_plain}"
+            now_uc = _dt_uc.now()
+            current_dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][now_uc.weekday()]
+            current_time = now_uc.strftime("%H:%M")
+
+            uc_rows = sb_uc.table("user_commutes").select("dest,time_start,time_end,days_of_week") \
+                .in_("phone", [_fn_plain, _fn_wa]).eq("show_on_homepage", True).execute().data or []
+            for uc in uc_rows:
+                days = uc.get("days_of_week") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
+                if current_dow not in days:
+                    continue
+                time_start = uc.get("time_start", "00:00")
+                time_end = uc.get("time_end", "23:59")
+                if time_start <= current_time <= time_end:
+                    active_commute_dests.add((uc.get("dest") or "").lower().strip())
+        except Exception:
+            pass  # Fall back to showing all school profiles if lookup fails
+
     for p in school_profiles[:3]:
         school = (p.get("school_name") or "").strip()
         child  = (p.get("child_name")  or "").strip()
         addr   = (p.get("address")     or "").strip()
         if not school or school in seen:
             continue
+
+        # If user has active commutes configured, only show those
+        if active_commute_dests:
+            school_lower = school.lower()
+            addr_lower = addr.lower() if addr else ""
+            if not any(d in school_lower or d in addr_lower for d in active_commute_dests):
+                continue
+
         seen.add(school)
         dest = addr if addr else f"{school}, Surrey, UK"
         try:
@@ -11691,7 +11723,7 @@ def api_home_brief():
     # Bin day — cheap compute from prefs, no network call needed
     ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)
 
-    # Traffic — school run drive times, morning weekdays only
+    # Traffic — user's active commutes (show_on_homepage=true) + school/work anchors
     _tr_hour = now.hour
     _tr_wday = now.weekday()
     if 7 <= _tr_hour <= 8 and _tr_wday < 5:
@@ -11702,7 +11734,7 @@ def api_home_brief():
         # Fetch traffic if school routes exist OR if work/school commute is set
         if _tr_pc and (_tr_schl or _tr_work or _tr_school):
             try:
-                ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl, _tr_work, _tr_school)
+                ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl, _tr_work, _tr_school, from_number)
             except Exception:
                 pass
 
