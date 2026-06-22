@@ -694,11 +694,11 @@
                 <div class="positioning-grid">
                     <div class="positioning-item">
                         <div class="positioning-label">Local Price</div>
-                        <div class="positioning-value">{{ brand.price_currency }}{{ brand.price_local }}</div>
+                        <div class="positioning-value">{{ brand.price_currency }} {{ brand.price_local }}</div>
                     </div>
                     <div class="positioning-item">
                         <div class="positioning-label">USD Equivalent</div>
-                        <div class="positioning-value">${{ brand.price_usd_equivalent }}</div>
+                        <div class="positioning-value">$ {{ brand.price_usd_equivalent }}</div>
                     </div>
                     <div class="positioning-item">
                         <div class="positioning-label">PPP Index</div>
@@ -813,7 +813,7 @@
                 <div class="competitor-row">
                     <div>{{ comp.name }}</div>
                     <div>{{ comp.positioning_tier | title }}</div>
-                    <div>{{ comp.currency }}{{ comp.price }}</div>
+                    <div>{{ comp.currency }} {{ comp.price }}</div>
                     <div>
                         <span class="price-delta {% if comp.price_delta > 0 %}higher{% else %}lower{% endif %}">
                             {% if comp.price_delta > 0 %}+{% endif %}{{ comp.price_delta }}%
