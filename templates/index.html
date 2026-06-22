@@ -2616,6 +2616,9 @@
         <!-- Spend card container — rendered by JavaScript -->
         <div id="brief-spend-card-container" style="margin-bottom:12px"></div>
 
+        <!-- My Commute card container — rendered by JavaScript -->
+        <div id="brief-commute-card-container" style="margin-bottom:12px"></div>
+
         <div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Tools</div>
 
         <!-- Small tools: 3-col grid -->
@@ -18852,6 +18855,30 @@ let _savesAll = [];
             }
           })
           .catch(err => { console.log('[receipt-fetch] Error:', err); });
+      }
+    }
+
+    // My Commutes card — show active commutes from traffic data
+    var traffic = ctx && ctx.traffic;
+    var commuteLegs = (traffic && traffic.legs) ? traffic.legs.filter(function(leg) { return leg.type === "commute"; }) : [];
+    if (commuteLegs.length > 0) {
+      var commuteRows = commuteLegs.map(function(leg) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+          + '<div><div style="font-size:13px;font-weight:600;color:var(--text)">' + leg.school + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + leg.mins + ' min drive</div></div>'
+          + '<div style="text-align:right"><div style="font-size:14px;font-weight:900">' + leg.emoji + '</div>'
+          + '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + leg.traffic + '</div></div>'
+          + '</div>';
+      }).join("");
+
+      var commuteHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚗 My Commute</div>'
+        + commuteRows
+        + '</div>';
+
+      var commuteContainer = document.getElementById("brief-commute-card-container");
+      if (commuteContainer) {
+        commuteContainer.innerHTML = commuteHtml;
       }
     }
 
