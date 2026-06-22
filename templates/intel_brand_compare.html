@@ -185,12 +185,24 @@
 
                 <div class="metric">
                     <div class="metric-label">Market Size</div>
-                    <div class="metric-value">${{ brand.market_size_millions or 0 }}M</div>
+                    <div class="metric-value">
+                        {% if brand.market_size_millions and brand.market_size_millions > 0 %}
+                            ${{ brand.market_size_millions }}M
+                        {% else %}
+                            <span style="color: #94a3b8; font-size: 13px;">Data pending</span>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div class="metric">
                     <div class="metric-label">Growth (3Y CAGR)</div>
-                    <div class="metric-value">{{ brand.category_cagr_3yr or 0 }}%</div>
+                    <div class="metric-value">
+                        {% if brand.category_cagr_3yr and brand.category_cagr_3yr > 0 %}
+                            {{ brand.category_cagr_3yr }}%
+                        {% else %}
+                            <span style="color: #94a3b8; font-size: 13px;">Data pending</span>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div class="metric">
