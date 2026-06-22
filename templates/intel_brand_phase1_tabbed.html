@@ -994,7 +994,39 @@
             const urlParams = new URLSearchParams(window.location.search);
             const brand = urlParams.get('search');
             if (brand) {
-                window.location.href = `/brand/full?search=${encodeURIComponent(brand)}&market=${newMarket}`;
+                // Show loading indicator
+                document.body.style.opacity = '0.6';
+                document.body.style.pointerEvents = 'none';
+
+                // Add loading spinner
+                const spinner = document.createElement('div');
+                spinner.id = 'marketLoadingSpinner';
+                spinner.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 24px;
+                    z-index: 9999;
+                    animation: spin 1s linear infinite;
+                `;
+                spinner.innerHTML = '🔄';
+                document.body.appendChild(spinner);
+
+                // Add animation
+                const style = document.createElement('style');
+                style.innerHTML = `
+                    @keyframes spin {
+                        0% { transform: translate(-50%, -50%) rotate(0deg); }
+                        100% { transform: translate(-50%, -50%) rotate(360deg); }
+                    }
+                `;
+                document.head.appendChild(style);
+
+                // Navigate
+                setTimeout(() => {
+                    window.location.href = `/brand/full?search=${encodeURIComponent(brand)}&market=${newMarket}`;
+                }, 300);
             }
         }
 
