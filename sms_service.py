@@ -1270,23 +1270,25 @@ def brand_full_intelligence():
 
                         if comp_result.data:
                             comp_row = comp_result.data[0]
-                            your_price_usd = float(row.get("price_usd_equivalent", 0))
-                            comp_price_usd = float(comp_row.get("price_usd_equivalent", 0))
+                            # Only add if same category (prevents cross-category competitors)
+                            if comp_row.get("category", "").lower() == row.get("category", "").lower():
+                                your_price_usd = float(row.get("price_usd_equivalent", 0))
+                                comp_price_usd = float(comp_row.get("price_usd_equivalent", 0))
 
-                            price_delta = 0
-                            if your_price_usd > 0:
-                                price_delta = round(((comp_price_usd - your_price_usd) / your_price_usd) * 100)
+                                price_delta = 0
+                                if your_price_usd > 0:
+                                    price_delta = round(((comp_price_usd - your_price_usd) / your_price_usd) * 100)
 
-                            competitors_list.append({
-                                "name": comp_row.get("brand_name"),
-                                "positioning_tier": comp_row.get("positioning_tier", "").lower(),
-                                "currency": comp_row.get("price_currency"),
-                                "price": comp_row.get("price_local"),
-                                "price_usd": round(comp_price_usd, 2),
-                                "target_demographic": comp_row.get("target_demographic"),
-                                "distribution_strategy": comp_row.get("distribution_strategy", "").replace("_", " ").title(),
-                                "price_delta": price_delta,
-                            })
+                                competitors_list.append({
+                                    "name": comp_row.get("brand_name"),
+                                    "positioning_tier": comp_row.get("positioning_tier", "").lower(),
+                                    "currency": comp_row.get("price_currency"),
+                                    "price": comp_row.get("price_local"),
+                                    "price_usd": round(comp_price_usd, 2),
+                                    "target_demographic": comp_row.get("target_demographic"),
+                                    "distribution_strategy": comp_row.get("distribution_strategy", "").replace("_", " ").title(),
+                                    "price_delta": price_delta,
+                                })
                     except Exception as comp_err:
                         app.logger.warning(f"Could not fetch competitor {comp_name}: {comp_err}")
                         continue
