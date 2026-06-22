@@ -10577,13 +10577,19 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
             from datetime import datetime as _dt_uc
             sb_uc = lib._sb()
             _fn_plain = from_number.replace("whatsapp:", "").strip()
-            _fn_wa = f"whatsapp:{_fn_plain}"
             now_uc = _dt_uc.now()
             current_dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][now_uc.weekday()]
             current_time = now_uc.strftime("%H:%M")
 
+            # Query by phone (try both with and without whatsapp: prefix)
             uc_rows = sb_uc.table("user_commutes").select("id,label,dest,time_start,time_end,days_of_week") \
-                .in_("phone", [_fn_plain, _fn_wa]).eq("show_on_homepage", True).execute().data or []
+                .eq("phone", _fn_plain).eq("show_on_homepage", True).execute().data or []
+            if not uc_rows:
+                # Try with whatsapp: prefix
+                _fn_wa = f"whatsapp:{_fn_plain}"
+                uc_rows = sb_uc.table("user_commutes").select("id,label,dest,time_start,time_end,days_of_week") \
+                    .eq("phone", _fn_wa).eq("show_on_homepage", True).execute().data or []
+
             for uc in uc_rows:
                 days = uc.get("days_of_week") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
                 if current_dow not in days:
@@ -10592,10 +10598,8 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 time_end = uc.get("time_end", "23:59")
                 if time_start <= current_time <= time_end:
                     active_commutes.append(uc)
-            print(f"🎯 TRAFFIC: from_number={from_number}, dow={current_dow}, time={current_time}, active_count={len(active_commutes)}")
         except Exception as e:
-            print(f"🎯 TRAFFIC ERROR: {e}")
-            active_commutes = []
+            pass  # Silently fail and fall back to school_profiles
 
     # Fetch traffic for active user commutes
     for uc in active_commutes:
