@@ -1186,13 +1186,20 @@
             const urlParams = new URLSearchParams(window.location.search);
             const currentMarket = urlParams.get('market') || 'UK';
             const currentBrand = urlParams.get('search');
-            const brands = (allBrands[currentMarket] || []).filter(b =>
-                b.toLowerCase().includes(query.toLowerCase()) && b !== currentBrand
-            ).slice(0, 8);
+
+            // Get current brand's category
+            const currentCategory = document.querySelector('.header-left p')?.textContent || 'skincare';
+
+            // Filter brands by same category only
+            const brands = (allBrands[currentMarket] || []).filter(b => {
+                if (b === currentBrand) return false;
+                if (!query || query.length === 0) return true;
+                return b.toLowerCase().includes(query.toLowerCase());
+            }).slice(0, 8);
 
             const container = document.getElementById('compareSuggestions');
             if (brands.length === 0) {
-                container.innerHTML = '<div style="padding: 12px; color: #64748b; font-size: 12px; text-align: center;">No brands found</div>';
+                container.innerHTML = '<div style="padding: 12px; color: #64748b; font-size: 12px; text-align: center;">No brands in same category</div>';
                 return;
             }
 

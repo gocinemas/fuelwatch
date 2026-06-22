@@ -1199,15 +1199,23 @@ def brand_compare():
 
         # Fetch all brand data
         brands_data = []
+        category = None
         for brand_name in brand_names:
             result = sb.table("brand_phase1_intelligence").select("*").eq(
                 "brand_name", brand_name
             ).eq("market_country", market).execute()
 
             if result.data:
-                brands_data.append(result.data[0])
+                brand_data = result.data[0]
+                # Ensure all brands in comparison are from same category
+                if category is None:
+                    category = brand_data.get("category", "").lower()
+                elif brand_data.get("category", "").lower() != category:
+                    # Skip brands from different categories
+                    continue
+                brands_data.append(brand_data)
 
-        if not brands_data:
+        if not brands_data or len(brands_data) < 2:
             return redirect(f"/brand/full?search={brand_names[0]}&market={market}")
 
         return render_template("intel_brand_compare.html",
