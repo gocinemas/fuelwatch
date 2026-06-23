@@ -12530,10 +12530,18 @@ def api_home_brief():
         _pe_t          = (pe.get("time")       or "").strip()
         _pe_leave      = (pe.get("leave_time") or "").strip()
 
+        # FILTER: Skip events from the past (older than today)
+        if _pe_date and _pe_date < _today_s:
+            continue  # Past event — skip
+
         # Handle recurring events (no date, but has weekday or frequency)
         _is_recurring = not _pe_date and (pe.get("weekday") is not None or pe.get("frequency"))
         if _is_recurring:
-            # Add recurring events that happen today
+            # Add recurring events ONLY if they match TODAY's weekday
+            _pe_weekday = pe.get("weekday")
+            if _pe_weekday is None or _pe_weekday != now.weekday():
+                continue  # Not today — skip this recurring event
+            # Only add if it matches today
             _pe_date = _today_s
             app.logger.info(f"[brief] Recurring event: {pe.get('title')} on today ({_today_s})")
 
@@ -12615,6 +12623,13 @@ def api_home_brief():
     _recurring_today = ctx.get("recurring") or []
     if _school_holiday_now.get("on_holiday"):
         _recurring_today = [r for r in _recurring_today if r.get("all_year")]
+
+    # FILTER: Only include recurring events from today onwards
+    # Prevents stale events (from days ago) appearing in brief narrative
+    _recurring_today = [r for r in _recurring_today if (
+        not r.get("date") or  # No date = assume today
+        r.get("date") >= _today_s  # Or date is today or later
+    )]
     _origin_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
     if _recurring_today and _origin_pc:
         from concurrent.futures import ThreadPoolExecutor as _TPEX
