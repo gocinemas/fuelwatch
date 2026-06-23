@@ -1166,15 +1166,15 @@ def brand_search():
     search = request.args.get("search", "").strip()
     market = request.args.get("market", "UK").strip()
 
-    # Intel subdomain - show company directory
+    # Intel subdomain - show brand directory with multiple search modes
     if "intel.humanagency.co" in request.host:
         # If brand name provided, go directly to brand page
         name = request.args.get("name", "").strip()
         if name or search:
             brand_name = name or search
             return redirect(f"/brand/full?search={brand_name}&market={market}")
-        # Otherwise show company directory
-        return render_template("intel_company_directory.html")
+        # Otherwise show directory (company, category, or brand search)
+        return render_template("intel_directory_v2.html")
 
     # Miru subdomain - show brand page
     return render_template("intel_brand.html")
@@ -9104,6 +9104,58 @@ def api_intel_companies():
             "total_companies": 0,
             "debug_error": str(e)
         })
+
+
+@app.route("/api/intel/category/<category_name>")
+def api_intel_category_brands(category_name):
+    """Get all brands for a specific category"""
+    try:
+        sb = lib._sb()
+        result = sb.table("brand_phase1_intelligence").select(
+            "brand_name, category, positioning_tier, market_country, parent_company"
+        ).eq("category", category_name).execute()
+
+        # Safely handle result
+        data = result.data if result and hasattr(result, 'data') else []
+        if not data:
+            return jsonify({
+                "success": True,
+                "category": category_name,
+                "brands": [],
+                "brand_count": 0
+            })
+
+        # Group by brand
+        brands_dict = {}
+        for row in data:
+            if not row or not isinstance(row, dict):
+                continue
+            brand = row.get("brand_name", "").strip()
+            if brand:
+                if brand not in brands_dict:
+                    brands_dict[brand] = {
+                        "name": brand,
+                        "category": row.get("category", ""),
+                        "positioning_tier": row.get("positioning_tier", ""),
+                        "parent_company": row.get("parent_company", ""),
+                        "markets": []
+                    }
+                market = row.get("market_country", "").strip()
+                if market and market not in brands_dict[brand]["markets"]:
+                    brands_dict[brand]["markets"].append(market)
+
+        # Sort by brand name
+        brands = sorted(brands_dict.values(), key=lambda x: x["name"])
+
+        return jsonify({
+            "success": True,
+            "category": category_name,
+            "brands": brands,
+            "brand_count": len(brands)
+        })
+    except Exception as e:
+        app.logger.error(f"❌ Category brands error: {type(e).__name__}: {e}")
+        return jsonify({"success": False, "error": str(e)})
 
 
 @app.route("/api/intel/company/<company_name>")
