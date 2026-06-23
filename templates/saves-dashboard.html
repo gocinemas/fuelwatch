@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📍 My Saves — Miru</title>
+  <style>
+    :root {
+      --text: #1f2937;
+      --muted: #6b7280;
+      --surface: #f9fafb;
+      --border: #e5e7eb;
+      --bg: #ffffff;
+      --accent: #4338ca;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    input[type="text"],
+    select {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    input[type="text"]::placeholder {
+      color: var(--muted);
+    }
+
+    select {
+      min-width: 120px;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .clear-btn {
+      background: var(--surface);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .saves-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .save-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .save-card:hover {
+      background: #f3f4f6;
+      border-color: var(--accent);
+    }
+
+    .save-info {
+      flex: 1;
+    }
+
+    .save-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .save-meta {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .save-category {
+      background: var(--bg);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .save-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: 12px;
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: var(--border);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .empty-text {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .empty-hint {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab {
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .save-detail-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: flex-end;
+    }
+
+    .save-detail-modal.open {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 20px 20px 0 0;
+      padding: 24px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--surface);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .modal-section {
+      margin-bottom: 20px;
+    }
+
+    .modal-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .modal-value {
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      background: var(--surface);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .pagination button {
+      min-width: 40px;
+    }
+
+    .page-info {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span style="font-size: 28px">📍</span>
+    <div>
+      <h1>My Saves</h1>
+      <div style="font-size: 12px; color: var(--muted)">Organize & rediscover what matters</div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search saves...">
+    <select id="category">
+      <option value="">All categories</option>
+      <option value="dining">🍽️ Dining</option>
+      <option value="service">🔧 Service</option>
+      <option value="place">📍 Place</option>
+      <option value="event">📅 Event</option>
+      <option value="receipt">🧾 Receipt</option>
+      <option value="health">⚕️ Health</option>
+      <option value="fitness">💪 Fitness</option>
+      <option value="education">📚 Education</option>
+      <option value="entertainment">🎬 Entertainment</option>
+    </select>
+    <select id="sort">
+      <option value="recent">Recent</option>
+      <option value="visited">Most visited</option>
+      <option value="relevance">Relevance</option>
+    </select>
+    <button id="clearBtn" class="clear-btn">Clear filters</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="all">All</button>
+    <button class="tab" data-tab="recent">Recent</button>
+    <button class="tab" data-tab="dining">🍽️ Dining</button>
+    <button class="tab" data-tab="service">🔧 Services</button>
+    <button class="tab" data-tab="event">📅 Events</button>
+  </div>
+
+  <div id="loading" class="loading" style="display: none">
+    <div class="spinner"></div>
+  </div>
+
+  <div id="savesList" class="saves-list"></div>
+
+  <div id="emptyState" class="empty-state">
+    <div class="empty-icon">📌</div>
+    <div class="empty-text">No saves yet</div>
+    <div class="empty-hint">Save places, events, and receipts from Miru brief to see them here</div>
+  </div>
+
+  <div id="pagination" class="pagination"></div>
+
+  <!-- Modal for save details -->
+  <div id="detailModal" class="save-detail-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle"></div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-label">Category</div>
+        <div class="modal-value" id="modalCategory"></div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-label">Location</div>
+        <div class="modal-value" id="modalLocation"></div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-label">Saved</div>
+        <div class="modal-value" id="modalDate"></div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-label">Stats</div>
+        <div class="modal-value" id="modalStats"></div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-label">Your notes</div>
+        <textarea class="modal-input" id="modalNotes" placeholder="Add a personal note..."></textarea>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-label">AI Tags</div>
+        <div class="tags" id="modalTags"></div>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 24px">
+        <button onclick="saveSaveNotes()" style="flex: 1">💾 Save notes</button>
+        <button class="clear-btn" onclick="deleteSave()" style="flex: 1">🗑️ Archive</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSaves = [];
+    let currentPage = 0;
+    const pageSize = 20;
+    let selectedSaveId = null;
+
+    // Get auth token from localStorage
+    function getToken() {
+      return localStorage.getItem('miru_saves_token') || localStorage.getItem('miru_saves_phone') || '';
+    }
+
+    // Load saves from API
+    async function loadSaves() {
+      const token = getToken();
+      if (!token) {
+        showEmptyState();
+        return;
+      }
+
+      showLoading(true);
+
+      try {
+        const params = new URLSearchParams({
+          token: token,
+          category: document.getElementById('category').value,
+          search: document.getElementById('search').value,
+          sort: document.getElementById('sort').value,
+          limit: pageSize,
+          offset: currentPage * pageSize
+        });
+
+        const response = await fetch(`/api/saves/list?${params}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          showEmptyState();
+          return;
+        }
+
+        currentSaves = data.saves || [];
+
+        if (currentSaves.length === 0) {
+          showEmptyState();
+        } else {
+          renderSaves();
+          renderPagination(data.total);
+        }
+      } catch (err) {
+        console.error('Load error:', err);
+        showEmptyState();
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function renderSaves() {
+      const list = document.getElementById('savesList');
+      document.getElementById('emptyState').style.display = 'none';
+
+      list.innerHTML = currentSaves.map(save => `
+        <div class="save-card" onclick="openSaveModal(${save.id})">
+          <div class="save-info">
+            <div class="save-title">${escapeHtml(save.title)}</div>
+            <div class="save-meta">
+              <span class="save-category">${save.category}</span>
+              ${save.location ? `<span>📍 ${escapeHtml(save.location)}</span>` : ''}
+              <span>${formatDate(save.created_at)}</span>
+            </div>
+          </div>
+          <div class="save-actions">
+            <button class="icon-btn" title="Save details" onclick="event.stopPropagation()">🔗</button>
+            <button class="icon-btn" title="Delete" onclick="event.stopPropagation(); deleteSaveId(${save.id})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showEmptyState() {
+      document.getElementById('savesList').innerHTML = '';
+      document.getElementById('emptyState').style.display = 'block';
+    }
+
+    function showLoading(show) {
+      document.getElementById('loading').style.display = show ? 'block' : 'none';
+    }
+
+    function renderPagination(total) {
+      const pages = Math.ceil(total / pageSize);
+      const container = document.getElementById('pagination');
+
+      if (pages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      for (let i = 0; i < pages; i++) {
+        html += `
+          <button onclick="goToPage(${i})" ${i === currentPage ? 'disabled style="opacity:0.5"' : ''}>
+            ${i + 1}
+          </button>
+        `;
+      }
+      html += `<div class="page-info" style="width: 100%; text-align: center">Page ${currentPage + 1} of ${pages}</div>`;
+
+      container.innerHTML = html;
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      loadSaves();
+      window.scrollTo(0, 0);
+    }
+
+    function openSaveModal(saveId) {
+      const save = currentSaves.find(s => s.id === saveId);
+      if (!save) return;
+
+      selectedSaveId = saveId;
+      document.getElementById('modalTitle').textContent = save.title;
+      document.getElementById('modalCategory').textContent = save.category || 'Uncategorized';
+      document.getElementById('modalLocation').textContent = save.location || 'No location';
+      document.getElementById('modalDate').textContent = formatDateFull(save.created_at);
+      document.getElementById('modalStats').textContent = `Visits: ${save.visit_count || 0}`;
+      document.getElementById('modalNotes').value = save.user_notes || '';
+      document.getElementById('modalTags').innerHTML = (save.ai_tags || [])
+        .map(tag => `<span class="tag">#${tag}</span>`)
+        .join('');
+
+      document.getElementById('detailModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').classList.remove('open');
+      selectedSaveId = null;
+    }
+
+    async function saveSaveNotes() {
+      const token = getToken();
+      const notes = document.getElementById('modalNotes').value;
+
+      try {
+        const response = await fetch(`/api/saves/${selectedSaveId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, user_notes: notes })
+        });
+
+        if (response.ok) {
+          alert('Notes saved!');
+          closeModal();
+          loadSaves();
+        }
+      } catch (err) {
+        console.error('Save notes error:', err);
+      }
+    }
+
+    async function deleteSave() {
+      if (!confirm('Archive this save?')) return;
+
+      const token = getToken();
+      try {
+        const response = await fetch(`/api/saves/${selectedSaveId}?token=${token}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          closeModal();
+          loadSaves();
+        }
+      } catch (err) {
+        console.error('Delete error:', err);
+      }
+    }
+
+    function deleteSaveId(id) {
+      selectedSaveId = id;
+      deleteSave();
+    }
+
+    // Event listeners
+    document.getElementById('search').addEventListener('input', () => {
+      currentPage = 0;
+      loadSaves();
+    });
+
+    document.getElementById('category').addEventListener('change', () => {
+      currentPage = 0;
+      loadSaves();
+    });
+
+    document.getElementById('sort').addEventListener('change', () => {
+      currentPage = 0;
+      loadSaves();
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.getElementById('search').value = '';
+      document.getElementById('category').value = '';
+      document.getElementById('sort').value = 'recent';
+      currentPage = 0;
+      loadSaves();
+    });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const tabValue = tab.dataset.tab;
+        document.getElementById('category').value = tabValue === 'all' || tabValue === 'recent' ? '' : tabValue;
+        currentPage = 0;
+        loadSaves();
+      });
+    });
+
+    // Close modal on backdrop click
+    document.getElementById('detailModal').addEventListener('click', (e) => {
+      if (e.target.id === 'detailModal') closeModal();
+    });
+
+    // Helpers
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      if (d.toDateString() === today.toDateString()) return 'Today';
+      if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+
+      return d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+    }
+
+    function formatDateFull(dateStr) {
+      return new Date(dateStr).toLocaleDateString('en-GB', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    // Load on init
+    loadSaves();
+  </script>
+</body>
+</html>

@@ -31778,6 +31778,11 @@ def api_save_interact():
         print(f"❌ Interact save error: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
+@app.route("/saves")
+def saves_dashboard():
+    """Context Memory web dashboard — search and organize saved items."""
+    return render_template("saves-dashboard.html")
+
 @app.route("/library")
 def library_page():
     """Full-featured library page with book search, scanner, and tracking."""
