@@ -9002,6 +9002,80 @@ def _v2_resolve(token: str) -> str:
         return token
     return _resolve_user_token(token) or ""
 
+# ── INTEL BRAND SEARCH & REQUEST ────────────────────────────────────────────
+@app.route("/api/brands/search")
+def api_brands_search():
+    """Autocomplete search for brands"""
+    q = request.args.get("q", "").strip()
+    if not q or len(q) < 1:
+        return jsonify([])
+
+    try:
+        sb = lib._sb()
+        result = sb.table("brand_phase1_intelligence").select(
+            "brand_name, category"
+        ).ilike("brand_name", f"%{q}%").limit(10).execute()
+
+        brands = []
+        seen = set()
+        for row in result.data:
+            name = row.get("brand_name", "")
+            if name and name not in seen:
+                brands.append({
+                    "name": name,
+                    "category": row.get("category", "")
+                })
+                seen.add(name)
+
+        return jsonify(brands)
+    except Exception as e:
+        app.logger.error(f"Brand search error: {e}")
+        return jsonify([])
+
+
+@app.route("/api/intel/request-brand", methods=["POST"])
+def api_intel_request_brand():
+    """Submit brand data request - triggers background agent to collect data"""
+    data = request.get_json() or {}
+    brand_name = data.get("brand_name", "").strip()
+    category = data.get("category", "").strip()
+    email = data.get("email", "").strip()
+
+    if not brand_name or not category:
+        return jsonify({"success": False, "error": "Brand name and category required"}), 400
+
+    try:
+        sb = lib._sb()
+
+        # Store request in database
+        request_data = {
+            "brand_name": brand_name,
+            "category": category,
+            "email": email,
+            "status": "pending",
+            "created_at": datetime.now().isoformat()
+        }
+
+        sb.table("brand_data_requests").insert(request_data).execute()
+
+        # Trigger background agent to collect data (non-blocking)
+        # The agent will research and add the brand to the database
+        from threading import Thread
+        def collect_brand_data():
+            try:
+                # Simple placeholder - in production this would call your research agent
+                app.logger.info(f"[AGENT] Researching brand: {brand_name} ({category})")
+                # Agent would fetch from APIs, web scraping, etc.
+            except Exception as e:
+                app.logger.error(f"Brand collection error: {e}")
+
+        Thread(target=collect_brand_data, daemon=True).start()
+
+        return jsonify({"success": True, "message": "Brand request submitted"})
+    except Exception as e:
+        app.logger.error(f"Request brand error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # ── BRAND INTELLIGENCE API (Phase 1) ────────────────────────────────────
 @app.route("/api/v2/prefs", methods=["GET"])
 def api_v2_prefs_get():

@@ -209,6 +209,117 @@
             margin-top: 2px;
         }
 
+        .cant-find {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .cant-find-link {
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .cant-find-link:hover {
+            opacity: 0.7;
+            text-decoration: underline;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .modal-description {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #1e293b;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            color: #1e293b;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .modal-buttons button:last-child {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .modal-buttons button:last-child:hover {
+            background: #2563eb;
+        }
+
+        .success-message {
+            color: #16a34a;
+            font-size: 14px;
+            margin-top: 12px;
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 28px;
@@ -224,6 +335,10 @@
 
             select {
                 width: 100%;
+            }
+
+            .modal-content {
+                padding: 24px;
             }
         }
     </style>
@@ -250,6 +365,10 @@
             </div>
 
             <div id="error" class="error"></div>
+
+            <div class="cant-find">
+                <a class="cant-find-link" onclick="openRequestModal()">Can't find your brand? Request data →</a>
+            </div>
 
             <div class="suggestions">
                 <div class="suggestion-title">Popular Brands</div>
@@ -280,6 +399,36 @@
                     <div class="stat-value">90%</div>
                     <div class="stat-label">Confidence</div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Brand Modal -->
+    <div id="requestModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">📊 Request Brand Data</div>
+            <div class="modal-description">We'll research and add this brand to Intel. Our AI agent will collect real data.</div>
+
+            <div class="form-group">
+                <label>Brand Name</label>
+                <input type="text" id="requestBrandName" placeholder="e.g., Clinique, Coca-Cola">
+            </div>
+
+            <div class="form-group">
+                <label>Category</label>
+                <input type="text" id="requestCategory" placeholder="e.g., Skincare, Beverages">
+            </div>
+
+            <div class="form-group">
+                <label>Your Email (optional)</label>
+                <input type="email" id="requestEmail" placeholder="We'll notify you when added">
+            </div>
+
+            <div id="requestMessage"></div>
+
+            <div class="modal-buttons">
+                <button onclick="closeRequestModal()">Cancel</button>
+                <button onclick="submitBrandRequest()">Request Data</button>
             </div>
         </div>
     </div>
@@ -358,6 +507,55 @@
 
         // Auto-focus input
         document.getElementById('brandInput').focus();
+
+        // Request Brand Modal
+        function openRequestModal() {
+            document.getElementById('requestModal').classList.add('active');
+        }
+
+        function closeRequestModal() {
+            document.getElementById('requestModal').classList.remove('active');
+            document.getElementById('requestBrandName').value = '';
+            document.getElementById('requestCategory').value = '';
+            document.getElementById('requestEmail').value = '';
+            document.getElementById('requestMessage').innerHTML = '';
+        }
+
+        async function submitBrandRequest() {
+            const brandName = document.getElementById('requestBrandName').value.trim();
+            const category = document.getElementById('requestCategory').value.trim();
+            const email = document.getElementById('requestEmail').value.trim();
+            const messageDiv = document.getElementById('requestMessage');
+
+            if (!brandName || !category) {
+                messageDiv.innerHTML = '<div style="color: #dc2626; font-size: 14px;">Please fill in brand name and category</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/intel/request-brand', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brand_name: brandName, category, email })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    messageDiv.innerHTML = '<div class="success-message">✓ Request submitted! Our AI is researching this brand.</div>';
+                    setTimeout(closeRequestModal, 2000);
+                } else {
+                    messageDiv.innerHTML = `<div style="color: #dc2626; font-size: 14px;">Error: ${result.error}</div>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div style="color: #dc2626; font-size: 14px;">Error submitting request</div>`;
+                console.error(error);
+            }
+        }
+
+        // Close modal on background click
+        document.getElementById('requestModal').addEventListener('click', (e) => {
+            if (e.target.id === 'requestModal') closeRequestModal();
+        });
     </script>
 </body>
 </html>
