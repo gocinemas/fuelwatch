@@ -24463,6 +24463,14 @@ function kbDeleteFolder() {
 }
 
 setTimeout(kbLoad, 100);
+
+// Keyboard shortcut: Cmd+Shift+K to open Knowledge Base (private development)
+document.addEventListener('keydown', function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'K') {
+    e.preventDefault();
+    showScreen('kb');
+  }
+});
 </script>
 
 <!-- ── NOTES SCREEN ── -->
