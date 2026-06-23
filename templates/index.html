@@ -18904,12 +18904,12 @@ let _savesAll = [];
 
       var spendHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">💳 Spend · ' + (spend.month || "") + '</div>'
-        + '<button id="' + cardId + '-btn" onclick="var btn=document.getElementById(\'' + cardId + '-btn\');var chart=document.getElementById(\'' + cardId + '-chart\');var receipt=document.getElementById(\'' + cardId + '-receipt\');var isChart=chart.style.display!==\'none\';chart.style.display=isChart?\'none\':\'block\';receipt.style.display=isChart?\'block\':\'none\';btn.textContent=isChart?\'📊 View\':\'📄 Text\'" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600">📊 View</button>'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🔒 Spend · ' + (spend.month || "") + '</div>'
+        + '<button id="' + cardId + '-btn" onclick="var btn=document.getElementById(\'' + cardId + '-btn\');var chart=document.getElementById(\'' + cardId + '-chart\');var receipt=document.getElementById(\'' + cardId + '-receipt\');var isChart=chart.style.display!==\'none\';chart.style.display=isChart?\'none\':\'block\';receipt.style.display=isChart?\'block\':\'none\';btn.textContent=isChart?\'📊 View\':\'📄 Text\'" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600">▾ Show</button>'
         + '</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
-        + '<div id="' + cardId + '-receipt" style="margin-top:8px">' + receiptHtml + '</div>'
+        + '<div id="' + cardId + '-receipt" style="display:none;margin-top:8px">' + receiptHtml + '</div>'
         + '<div id="' + cardId + '-chart" style="display:none;margin-top:8px">' + pieChartHtml + '</div>'
         + '<div id="brief-spend-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
         + '</div>';
