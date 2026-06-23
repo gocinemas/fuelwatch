@@ -19514,18 +19514,11 @@ let _savesAll = [];
           if (p.open_now === true)       openBadge = '<span style="font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;border-radius:99px;padding:2px 7px;margin-left:6px">Open</span>';
           else if (p.open_now === false) openBadge = '<span style="font-size:10px;font-weight:700;color:#6b7280;background:#f3f4f6;border-radius:99px;padding:2px 7px;margin-left:6px">Closed</span>';
           var rowStyle = p.open_now === false ? 'opacity:0.5;' : '';
-          var btnId = 'save-' + Date.now() + Math.random();
-          var saveBtn = '<button id="' + btnId + '" data-title="' + (p.name||'').replace(/"/g, '&quot;') + '" data-location="' + (p.vicinity||'').replace(/"/g, '&quot;') + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:0.7">💾</button>';
-          // Attach click handler after button is rendered
-          setTimeout(function() {
-            var btn = document.getElementById(btnId);
-            if (btn) {
-              btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                _saveContent(this.dataset.title, 'dining', this.dataset.location, parseFloat(this.dataset.lat), parseFloat(this.dataset.lng), '', '');
-              });
-            }
-          }, 10);
+          // Simple direct onclick with JSON parameter
+          window._savePlaceData = window._savePlaceData || {};
+          var saveKey = 'place_' + Date.now() + Math.random().toString(36).substr(2, 9);
+          window._savePlaceData[saveKey] = { title: p.name, location: p.vicinity, lat: p.lat, lng: p.lng };
+          var saveBtn = '<button onclick="if(window._savePlaceData[\'' + saveKey + '\']){var d=window._savePlaceData[\'' + saveKey + '\'];_saveContent(d.title,\'dining\',d.location,d.lat,d.lng,\'\',\'\')}" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:0.7">💾</button>';
           return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;' + rowStyle + '">'
             + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'
             + '<span style="font-size:15px">' + icon + '</span>'
