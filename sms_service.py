@@ -9064,6 +9064,7 @@ def api_intel_request_brand():
         sb = lib._sb()
 
         # Store request in database
+        # Background worker (brand_worker.py) will pick it up and process
         request_data = {
             "brand_name": brand_name,
             "category": category,
@@ -9074,30 +9075,11 @@ def api_intel_request_brand():
 
         sb.table("brand_data_requests").insert(request_data).execute()
 
-        # Trigger background agent to collect data (non-blocking)
-        from threading import Thread
-        def collect_brand_data():
-            try:
-                from brand_research_agent import BrandResearchAgent
-                agent = BrandResearchAgent()
-                agent.process_request(
-                    brand_name=brand_name,
-                    category_hint=category,
-                    email=email
-                )
-            except Exception as e:
-                app.logger.error(f"Brand collection error: {e}")
-                try:
-                    sb = lib._sb()
-                    sb.table("brand_data_requests").update(
-                        {"status": "failed"}
-                    ).eq("brand_name", brand_name).eq("category", category).execute()
-                except:
-                    pass
-
-        Thread(target=collect_brand_data, daemon=True).start()
-
-        return jsonify({"success": True, "message": "Brand request submitted"})
+        return jsonify({
+            "success": True,
+            "message": "Brand request submitted",
+            "note": "Request queued for processing. Check status in 1-2 minutes."
+        })
     except Exception as e:
         app.logger.error(f"Request brand error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
