@@ -11820,6 +11820,15 @@ def api_home_brief():
                     .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
                 _loc_profile = _lp[0]["data"] if _lp else {}
             except Exception: pass
+            # Also try loading user_commutes for traffic
+            try:
+                _fn_plain = from_number.replace("whatsapp:", "").strip()
+                _uc = lib._sb().table("user_commutes").select("*").eq("phone", _fn_plain).limit(10).execute().data or []
+                if not _uc:
+                    _uc = lib._sb().table("user_commutes").select("*").eq("phone", from_number).limit(10).execute().data or []
+                if _uc and "user_commutes" not in prefs:
+                    prefs["user_commutes"] = _uc
+            except Exception: pass
             try:
                 _atp = from_number.replace("whatsapp:", "").strip()
                 _atr = lib._sb().table("ma_details").select("data").eq("device_id", _atp) \
