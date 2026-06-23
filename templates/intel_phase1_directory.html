@@ -278,12 +278,23 @@
             color: #1e293b;
         }
 
-        .form-group input {
+        .form-group input,
+        .form-group select {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #e2e8f0;
             border-radius: 6px;
             font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-group select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231e293b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 32px;
         }
 
         .modal-buttons {
@@ -460,8 +471,16 @@
             </div>
 
             <div class="form-group">
-                <label>Category</label>
-                <input type="text" id="requestCategory" placeholder="e.g., Skincare, Beverages">
+                <label>Category (optional)</label>
+                <select id="requestCategory">
+                    <option value="">— I'm not sure, let AI guess —</option>
+                    <option value="skincare">Skincare</option>
+                    <option value="beverages">Beverages</option>
+                    <option value="snacks">Snacks</option>
+                    <option value="qsr">QSR (Fast Food)</option>
+                    <option value="other">Other</option>
+                </select>
+                <input type="text" id="requestCategoryOther" placeholder="Or type your own..." style="margin-top: 8px; display: none;">
             </div>
 
             <div class="form-group">
@@ -562,20 +581,40 @@
             document.getElementById('requestModal').classList.remove('active');
             document.getElementById('requestBrandName').value = '';
             document.getElementById('requestCategory').value = '';
+            document.getElementById('requestCategoryOther').value = '';
             document.getElementById('requestEmail').value = '';
             document.getElementById('requestMessage').innerHTML = '';
         }
 
+        // Show "Other" text input when selected
+        document.getElementById('requestCategory').addEventListener('change', (e) => {
+            const otherInput = document.getElementById('requestCategoryOther');
+            if (e.target.value === 'other') {
+                otherInput.style.display = 'block';
+            } else {
+                otherInput.style.display = 'none';
+                otherInput.value = '';
+            }
+        });
+
         async function submitBrandRequest() {
             const brandName = document.getElementById('requestBrandName').value.trim();
-            const category = document.getElementById('requestCategory').value.trim();
+            let category = document.getElementById('requestCategory').value.trim();
+            const categoryOther = document.getElementById('requestCategoryOther').value.trim();
             const email = document.getElementById('requestEmail').value.trim();
             const messageDiv = document.getElementById('requestMessage');
 
-            if (!brandName || !category) {
-                messageDiv.innerHTML = '<div style="color: #dc2626; font-size: 14px;">Please fill in brand name and category</div>';
+            if (!brandName) {
+                messageDiv.innerHTML = '<div style="color: #dc2626; font-size: 14px;">Brand name is required</div>';
                 return;
             }
+
+            // If "Other" selected, use the custom text
+            if (category === 'other') {
+                category = categoryOther || 'unknown';
+            }
+
+            // Category is now optional - AI can guess
 
             try {
                 const response = await fetch('/api/intel/request-brand', {

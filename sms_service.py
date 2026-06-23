@@ -9041,11 +9041,11 @@ def api_intel_request_brand():
     """Submit brand data request - triggers background agent to collect data"""
     data = request.get_json() or {}
     brand_name = data.get("brand_name", "").strip()
-    category = data.get("category", "").strip()
+    category = data.get("category", "").strip() or "unknown"  # Optional, AI can guess
     email = data.get("email", "").strip()
 
-    if not brand_name or not category:
-        return jsonify({"success": False, "error": "Brand name and category required"}), 400
+    if not brand_name:
+        return jsonify({"success": False, "error": "Brand name is required"}), 400
 
     try:
         sb = lib._sb()
