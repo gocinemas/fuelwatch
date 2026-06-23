@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intel — Brand Directory by Company</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        header {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Search Section */
+        .search-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        /* Companies Grid */
+        .companies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .company-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .company-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .company-card.active {
+            background: #eff6ff;
+            border-color: #3b82f6;
+        }
+
+        .company-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+
+        .brand-count {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        /* Brands Section */
+        .brands-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .brands-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #1e293b;
+        }
+
+        .brands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .brand-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .brand-item:hover {
+            background: white;
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+
+        .brand-name {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #1e293b;
+        }
+
+        .brand-meta {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .brand-markets {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 40px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🏢 Intel Company Directory</h1>
+        <p class="subtitle">Explore brands by parent company</p>
+    </header>
+
+    <div class="container">
+        <!-- Search -->
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" id="companySearch" placeholder="Search companies... (Mars, Nestlé, PepsiCo)">
+                <button onclick="filterCompanies()">Search</button>
+            </div>
+        </div>
+
+        <!-- Companies -->
+        <div id="companiesContainer"></div>
+
+        <!-- Brands for Selected Company -->
+        <div id="brandsSection" style="display: none;">
+            <div class="brands-section">
+                <div class="brands-title" id="brandsTitle"></div>
+                <div class="brands-grid" id="brandsList"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            💡 Select a company to see all its brands | Next phase: relevancy scores & positioning comparison
+        </div>
+    </div>
+
+    <script>
+        let allCompanies = [];
+        let selectedCompany = null;
+
+        async function loadCompanies() {
+            const container = document.getElementById('companiesContainer');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div> Loading companies...</div>';
+
+            try {
+                const response = await fetch('/api/intel/companies');
+                const data = await response.json();
+
+                if (!data.success) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Failed to load companies</p></div>';
+                    return;
+                }
+
+                allCompanies = data.companies;
+
+                if (allCompanies.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No companies found</p></div>';
+                    return;
+                }
+
+                displayCompanies(allCompanies);
+            } catch (error) {
+                console.error('Error loading companies:', error);
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><p>Error loading companies</p></div>';
+            }
+        }
+
+        function displayCompanies(companies) {
+            const container = document.getElementById('companiesContainer');
+            container.innerHTML = `
+                <div class="search-section">
+                    <div style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                        📊 ${companies.length} companies · ${companies.reduce((sum, c) => sum + c.brand_count, 0)} total brands
+                    </div>
+                    <div class="companies-grid">
+                        ${companies.map(company => `
+                            <div class="company-card" onclick="selectCompany('${company.name.replace(/'/g, "\\'")}')">
+                                <div class="company-name">${escapeHtml(company.name)}</div>
+                                <div class="brand-count">🏷️ ${company.brand_count} brands</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function selectCompany(companyName) {
+            selectedCompany = companyName;
+            const brandsSection = document.getElementById('brandsSection');
+            brandsSection.style.display = 'none';
+
+            const brandsTitle = document.getElementById('brandsTitle');
+            brandsTitle.innerHTML = `<div class="loading"><div class="spinner"></div> Loading brands...</div>`;
+            brandsSection.style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/intel/company/${encodeURIComponent(companyName)}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    brandsTitle.innerHTML = '❌ Failed to load brands';
+                    return;
+                }
+
+                brandsTitle.innerHTML = `${escapeHtml(companyName)} — ${data.brand_count} brands`;
+
+                const brandsList = document.getElementById('brandsList');
+                if (data.brands.length === 0) {
+                    brandsList.innerHTML = '<div class="empty-state"><p>No brands found</p></div>';
+                    return;
+                }
+
+                brandsList.innerHTML = data.brands.map(brand => `
+                    <div class="brand-item" onclick="viewBrand('${brand.name.replace(/'/g, "\\'")}', '${selectedCompany.replace(/'/g, "\\'")}')">
+                        <div class="brand-name">${escapeHtml(brand.name)}</div>
+                        <div class="brand-meta">
+                            📁 ${brand.category}
+                            ${brand.positioning_tier ? '<br>🎯 ' + brand.positioning_tier : ''}
+                        </div>
+                        <div class="brand-markets">📍 ${brand.markets.join(', ')}</div>
+                    </div>
+                `).join('');
+
+                // Scroll to brands section
+                setTimeout(() => {
+                    document.getElementById('brandsSection').scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+
+            } catch (error) {
+                console.error('Error loading brands:', error);
+                brandsTitle.innerHTML = '❌ Error loading brands';
+            }
+        }
+
+        function filterCompanies() {
+            const query = document.getElementById('companySearch').value.toLowerCase();
+            const filtered = allCompanies.filter(c => c.name.toLowerCase().includes(query));
+            displayCompanies(filtered);
+        }
+
+        function viewBrand(brandName, companyName) {
+            window.location.href = `/brand?name=${encodeURIComponent(brandName)}&market=UK`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load on page load
+        window.addEventListener('DOMContentLoaded', loadCompanies);
+
+        // Search on Enter
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('companySearch').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') filterCompanies();
+            });
+        });
+    </script>
+</body>
+</html>

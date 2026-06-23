@@ -1166,13 +1166,15 @@ def brand_search():
     search = request.args.get("search", "").strip()
     market = request.args.get("market", "UK").strip()
 
-    # Intel subdomain - show brand search interface
+    # Intel subdomain - show company directory
     if "intel.humanagency.co" in request.host:
-        # If search parameter provided, redirect directly to brand page
-        if search:
-            return redirect(f"/brand/full?search={search}&market={market}")
-        # Otherwise show search interface
-        return render_template("intel_phase1_directory.html")
+        # If brand name provided, go directly to brand page
+        name = request.args.get("name", "").strip()
+        if name or search:
+            brand_name = name or search
+            return redirect(f"/brand/full?search={brand_name}&market={market}")
+        # Otherwise show company directory
+        return render_template("intel_company_directory.html")
 
     # Miru subdomain - show brand page
     return render_template("intel_brand.html")
@@ -9047,6 +9049,80 @@ def api_brands_search():
     except Exception as e:
         app.logger.error(f"Brand search error: {e}")
         return jsonify([])
+
+
+@app.route("/api/intel/companies")
+def api_intel_companies():
+    """Get all parent companies with brand counts"""
+    try:
+        sb = lib._sb()
+        result = sb.table("brand_phase1_intelligence").select(
+            "parent_company"
+        ).execute()
+
+        # Count brands per company
+        companies = {}
+        for row in result.data:
+            company = row.get("parent_company", "").strip()
+            if company and company.lower() != "unknown":
+                if company not in companies:
+                    companies[company] = {"count": 0, "brands": []}
+                companies[company]["count"] += 1
+
+        # Sort by brand count descending
+        sorted_companies = sorted(
+            [{"name": c, "brand_count": v["count"]} for c, v in companies.items()],
+            key=lambda x: x["brand_count"],
+            reverse=True
+        )
+
+        return jsonify({
+            "success": True,
+            "companies": sorted_companies,
+            "total_companies": len(sorted_companies)
+        })
+    except Exception as e:
+        app.logger.error(f"Companies list error: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/intel/company/<company_name>")
+def api_intel_company_brands(company_name):
+    """Get all brands for a specific parent company"""
+    try:
+        sb = lib._sb()
+        result = sb.table("brand_phase1_intelligence").select(
+            "brand_name, category, positioning_tier, market_country"
+        ).eq("parent_company", company_name).execute()
+
+        # Group by brand
+        brands_dict = {}
+        for row in result.data:
+            brand = row.get("brand_name", "")
+            if brand:
+                if brand not in brands_dict:
+                    brands_dict[brand] = {
+                        "name": brand,
+                        "category": row.get("category", ""),
+                        "positioning_tier": row.get("positioning_tier", ""),
+                        "markets": []
+                    }
+                market = row.get("market_country", "")
+                if market and market not in brands_dict[brand]["markets"]:
+                    brands_dict[brand]["markets"].append(market)
+
+        # Sort by brand name
+        brands = sorted(brands_dict.values(), key=lambda x: x["name"])
+
+        return jsonify({
+            "success": True,
+            "company": company_name,
+            "brands": brands,
+            "brand_count": len(brands)
+        })
+    except Exception as e:
+        app.logger.error(f"Company brands error: {e}")
+        return jsonify({"success": False, "error": str(e)})
 
 
 @app.route("/api/intel/request-brand", methods=["POST"])
