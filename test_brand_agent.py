@@ -18,7 +18,7 @@ TEST_BRANDS = [
     {"brand_name": "Airbnb", "category": "hospitality", "email": "test5@example.com"},
 ]
 
-BASE_URL = "http://localhost:5000"  # Change if running on Railway
+BASE_URL = "https://miru.humanagency.co"  # Change to http://localhost:5000 for local testing
 
 def submit_brand_request(brand_name, category, email):
     """Submit a brand request"""

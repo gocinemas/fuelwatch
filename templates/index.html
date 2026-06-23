@@ -18716,12 +18716,18 @@ let _savesAll = [];
             }).join("")
           + '</div>';
       }
-      html += '<div onclick="showScreen(\'saves\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">💳 Spend · ' + (spend.month || "") + '</div>'
+      var spendId = 'spend-' + Date.now();
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🔒 Spend · ' + (spend.month || "") + '</div>'
+        + '<button onclick="var el = document.getElementById(\'' + spendId + '\'); el.style.display = el.style.display === \'none\' ? \'block\' : \'none\'; this.textContent = el.style.display === \'none\' ? \'▾ Show\' : \'▴ Hide\'" style="font-size:11px;font-weight:700;background:none;border:none;color:var(--accent);cursor:pointer;padding:0">▾ Show</button>'
+        + '</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
+        + '<div id="' + spendId + '" style="display:none;margin-top:12px">'
         + breakdownHtml
         + '<div id="brief-spend-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
+        + '</div>'
         + '</div>';
 
       // Fetch and show last receipt
