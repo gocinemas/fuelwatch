@@ -23,10 +23,15 @@ class BrandResearchAgent:
     """Researches brands using Groq LLM and adds to Intel database"""
 
     def __init__(self):
-        self.groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        groq_key = os.environ.get("GROQ_API_KEY")
+        if not groq_key:
+            print("⚠️  [AGENT] WARNING: GROQ_API_KEY not set!")
+        self.groq_client = Groq(api_key=groq_key)
         self.model = "llama-3.1-8b-instant"
         self.sb_url = os.environ.get("SUPABASE_URL")
         self.sb_key = os.environ.get("SUPABASE_KEY")
+        if not self.sb_url or not self.sb_key:
+            print("⚠️  [AGENT] WARNING: Supabase credentials not set!")
 
     def research_brand(self, brand_name: str, category_hint: str = "") -> dict:
         """
@@ -194,7 +199,7 @@ Thanks for helping us build a more complete Intel database!
         4. Send email
         """
 
-        print(f"\n[AGENT] Processing request for {brand_name}...")
+        print(f"\n🤖 [AGENT] Starting process_request: {brand_name} (category={category_hint}, email={email})")
 
         # 1. Research
         print(f"[AGENT] Researching {brand_name}...")
