@@ -9062,15 +9062,25 @@ def api_intel_request_brand():
         sb.table("brand_data_requests").insert(request_data).execute()
 
         # Trigger background agent to collect data (non-blocking)
-        # The agent will research and add the brand to the database
         from threading import Thread
         def collect_brand_data():
             try:
-                # Simple placeholder - in production this would call your research agent
-                app.logger.info(f"[AGENT] Researching brand: {brand_name} ({category})")
-                # Agent would fetch from APIs, web scraping, etc.
+                from brand_research_agent import BrandResearchAgent
+                agent = BrandResearchAgent()
+                agent.process_request(
+                    brand_name=brand_name,
+                    category_hint=category,
+                    email=email
+                )
             except Exception as e:
                 app.logger.error(f"Brand collection error: {e}")
+                try:
+                    sb = lib._sb()
+                    sb.table("brand_data_requests").update(
+                        {"status": "failed"}
+                    ).eq("brand_name", brand_name).eq("category", category).execute()
+                except:
+                    pass
 
         Thread(target=collect_brand_data, daemon=True).start()
 
