@@ -31543,6 +31543,241 @@ def debug_personal_events():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── CONTEXT MEMORY ENDPOINTS ──────────────────────────────────────────────────
+# Persistent, context-aware retrieval of saved life admin data
+# Flows: Save from brief, Proactive surfacing, Web dashboard, Feedback loop, Patterns
+
+@app.route("/api/save/from-brief", methods=["POST"])
+def api_save_from_brief():
+    """Save content from brief to user's context memory."""
+    try:
+        token = request.json.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        # Extract save data
+        title = (request.json.get("title") or "").strip()
+        category = (request.json.get("category") or "").strip()
+        location = (request.json.get("location") or "").strip()
+        lat = request.json.get("lat")
+        lng = request.json.get("lng")
+        url = request.json.get("url", "")
+        source = request.json.get("source", "web")
+        user_notes = request.json.get("user_notes", "")
+
+        if not title or not category:
+            return jsonify({"error": "Missing title or category"}), 400
+
+        # Clean phone number
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Insert into user_saves_v2
+        sb = lib._sb()
+        result = sb.table("user_saves_v2").insert({
+            "user_phone": phone_clean,
+            "title": title,
+            "category": category,
+            "location": location,
+            "lat": lat,
+            "lng": lng,
+            "url": url,
+            "source": source,
+            "user_notes": user_notes,
+            "ai_tags": [],
+            "user_tags": [],
+            "relevance_score": 0.5,
+            "archived": False
+        }).execute()
+
+        save_id = result.data[0]["id"] if result.data else None
+
+        return jsonify({
+            "success": True,
+            "save_id": save_id,
+            "message": "Saved! I'll mention it when you're nearby."
+        })
+
+    except Exception as e:
+        print(f"❌ Save error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/saves/list", methods=["GET"])
+def api_saves_list():
+    """Retrieve user's saved items with filtering."""
+    try:
+        token = request.args.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Query parameters
+        category = request.args.get("category", "")
+        search = request.args.get("search", "").strip()
+        date_from = request.args.get("date_from", "")
+        date_to = request.args.get("date_to", "")
+        sort = request.args.get("sort", "recent")  # recent|visited|relevance
+        limit = int(request.args.get("limit", 20))
+        offset = int(request.args.get("offset", 0))
+
+        # Build query
+        sb = lib._sb()
+        query = sb.table("user_saves_v2").select("*") \
+            .eq("user_phone", phone_clean) \
+            .eq("archived", False) \
+            .is_("deleted_at", "null")
+
+        if category:
+            query = query.eq("category", category)
+
+        if date_from:
+            query = query.gte("created_at", date_from)
+        if date_to:
+            query = query.lte("created_at", date_to)
+
+        # Apply sorting
+        if sort == "visited":
+            query = query.order("visit_count", desc=True)
+        elif sort == "relevance":
+            query = query.order("relevance_score", desc=True)
+        else:  # recent
+            query = query.order("created_at", desc=True)
+
+        # Execute with pagination
+        result = query.limit(limit).offset(offset).execute()
+        total_result = sb.table("user_saves_v2").select("id", count="exact") \
+            .eq("user_phone", phone_clean) \
+            .eq("archived", False) \
+            .is_("deleted_at", "null").execute()
+
+        saves = result.data or []
+
+        # Apply text search if provided (post-query filtering)
+        if search:
+            saves = [s for s in saves if search.lower() in s["title"].lower()
+                     or (s.get("description") and search.lower() in s["description"].lower())]
+
+        return jsonify({
+            "total": total_result.count if hasattr(total_result, 'count') else len(saves),
+            "limit": limit,
+            "offset": offset,
+            "saves": saves
+        })
+
+    except Exception as e:
+        print(f"❌ List saves error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/saves/<int:save_id>", methods=["PUT"])
+def api_save_update(save_id):
+    """Update a save (notes, tags, etc.)."""
+    try:
+        token = request.json.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Verify ownership
+        sb = lib._sb()
+        existing = sb.table("user_saves_v2").select("id").eq("id", save_id) \
+            .eq("user_phone", phone_clean).execute()
+
+        if not existing.data:
+            return jsonify({"error": "Not found or not authorized"}), 404
+
+        # Update allowed fields
+        update_data = {}
+        if "user_notes" in request.json:
+            update_data["user_notes"] = request.json["user_notes"]
+        if "user_tags" in request.json:
+            update_data["user_tags"] = request.json["user_tags"]
+        if "archived" in request.json:
+            update_data["archived"] = request.json["archived"]
+
+        result = sb.table("user_saves_v2").update(update_data).eq("id", save_id).execute()
+
+        return jsonify({"success": True, "save": result.data[0] if result.data else None})
+
+    except Exception as e:
+        print(f"❌ Update save error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/saves/<int:save_id>", methods=["DELETE"])
+def api_save_delete(save_id):
+    """Archive a save (soft delete)."""
+    try:
+        token = request.args.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Verify ownership
+        sb = lib._sb()
+        existing = sb.table("user_saves_v2").select("id").eq("id", save_id) \
+            .eq("user_phone", phone_clean).execute()
+
+        if not existing.data:
+            return jsonify({"error": "Not found or not authorized"}), 404
+
+        # Soft delete
+        result = sb.table("user_saves_v2").update({"deleted_at": "NOW()"}).eq("id", save_id).execute()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print(f"❌ Delete save error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/save/interact", methods=["POST"])
+def api_save_interact():
+    """Log interaction with a save (for analytics & pattern detection)."""
+    try:
+        token = request.json.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        save_id = request.json.get("save_id")
+        event_type = request.json.get("event_type")  # surfaced|clicked|visited|feedback
+        context = request.json.get("context", {})
+
+        if not save_id or not event_type:
+            return jsonify({"error": "Missing save_id or event_type"}), 400
+
+        # Log interaction
+        sb = lib._sb()
+        result = sb.table("save_interactions").insert({
+            "save_id": save_id,
+            "user_phone": phone_clean,
+            "event_type": event_type,
+            "context": context,
+            "action_taken": request.json.get("action_taken"),
+            "latency_mins": request.json.get("latency_mins")
+        }).execute()
+
+        # Update visit_count if action taken
+        if event_type in ("clicked", "visited"):
+            sb.table("user_saves_v2").update({"visit_count": "visit_count + 1"}) \
+                .eq("id", save_id).execute()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print(f"❌ Interact save error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/library")
 def library_page():
     """Full-featured library page with book search, scanner, and tracking."""
