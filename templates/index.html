@@ -24420,12 +24420,13 @@ function kbOpenFolder(i) {
 
   const available = (_notesAll || []).filter(n => !(f.items || []).find(i => i.id === n.id));
   const availList = document.getElementById('kb-available-items');
-  availList.innerHTML = available.map(item => `
-    <div draggable="true" ondragstart="event.dataTransfer.setData('item', JSON.stringify({type:'note',title:'${item.title}',id:Date.now()}))"
+  availList.innerHTML = available.map((item, idx) => {
+    const itemJson = JSON.stringify({type:'note',title:item.title,id:idx});
+    return `<div draggable="true" ondragstart="event.dataTransfer.setData('item', '${itemJson.replace(/'/g, "&apos;")}')"
       style="padding:10px;border:1px solid var(--border);border-radius:8px;cursor:grab;background:var(--surface);font-size:12px;color:var(--text)">
       📝 ${item.title}
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function kbDropItem(e) {
