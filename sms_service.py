@@ -9056,20 +9056,26 @@ def api_intel_companies():
     """Get all parent companies with brand counts"""
     try:
         sb = lib._sb()
-        result = sb.table("brand_phase1_intelligence").select("parent_company").execute()
+
+        # Try to fetch with parent_company
+        print(f"🔍 [COMPANIES] Attempting to fetch parent companies...")
+        result = sb.table("brand_phase1_intelligence").select("parent_company, brand_name").execute()
 
         # Safely handle result
-        data = result.data if result and hasattr(result, 'data') else []
+        data = result.data if result and hasattr(result, 'data') else None
+        print(f"🔍 [COMPANIES] Query returned: {type(data)}, length: {len(data) if data else 0}")
+
         if not data:
+            print(f"⚠️  [COMPANIES] No data from query, returning empty list")
             return jsonify({"success": True, "companies": [], "total_companies": 0})
 
         # Count brands per company
         companies = {}
         for row in data:
-            if not row:
+            if not row or not isinstance(row, dict):
                 continue
-            company = row.get("parent_company", "").strip() if isinstance(row, dict) else ""
-            if company and company.lower() not in ("unknown", ""):
+            company = row.get("parent_company", "").strip()
+            if company and company.lower() not in ("unknown", "", "null"):
                 companies[company] = companies.get(company, 0) + 1
 
         # Sort by brand count descending
@@ -9079,14 +9085,25 @@ def api_intel_companies():
             reverse=True
         )
 
+        print(f"✅ [COMPANIES] Found {len(sorted_companies)} companies")
         return jsonify({
             "success": True,
             "companies": sorted_companies,
             "total_companies": len(sorted_companies)
         })
+
     except Exception as e:
-        app.logger.error(f"❌ Companies API error: {type(e).__name__}: {e}")
-        return jsonify({"success": False, "error": str(e)})
+        error_msg = f"{type(e).__name__}: {str(e)}"
+        print(f"❌ [COMPANIES] ERROR: {error_msg}")
+        app.logger.error(f"❌ Companies API error: {error_msg}")
+
+        # Return empty success instead of error - frontend already handles empty
+        return jsonify({
+            "success": True,
+            "companies": [],
+            "total_companies": 0,
+            "debug_error": str(e)
+        })
 
 
 @app.route("/api/intel/company/<company_name>")

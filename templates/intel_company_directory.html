@@ -262,22 +262,28 @@
                 const response = await fetch('/api/intel/companies');
                 const data = await response.json();
 
-                if (!data.success) {
-                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Failed to load companies</p></div>';
-                    return;
-                }
+                console.log('API Response:', data);
 
-                allCompanies = data.companies;
+                allCompanies = data.companies || [];
 
                 if (allCompanies.length === 0) {
-                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No companies found</p></div>';
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No companies found in database</p>
+                            <p style="font-size: 12px; color: #94a3b8; margin-top: 12px;">
+                                This might mean parent_company data hasn't been loaded yet.
+                                ${data.debug_error ? '<br>Debug: ' + data.debug_error : ''}
+                            </p>
+                        </div>
+                    `;
                     return;
                 }
 
                 displayCompanies(allCompanies);
             } catch (error) {
                 console.error('Error loading companies:', error);
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><p>Error loading companies</p></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><p>Error loading companies: ' + error.message + '</p></div>';
             }
         }
 
