@@ -9077,7 +9077,8 @@ def api_intel_companies():
                 sample_rows.append(row)
             if not row or not isinstance(row, dict):
                 continue
-            company = row.get("parent_company", "").strip()
+            # Handle NULL parent_company values
+            company = (row.get("parent_company") or "").strip()
             print(f"  Row {i}: company='{company}'")
             if company and company.lower() not in ("unknown", "", "null"):
                 companies[company] = companies.get(company, 0) + 1
