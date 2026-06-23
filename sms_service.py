@@ -9071,12 +9071,20 @@ def api_intel_companies():
 
         # Count brands per company
         companies = {}
-        for row in data:
+        sample_rows = []
+        for i, row in enumerate(data):
+            if i < 5:  # Show first 5 for debugging
+                sample_rows.append(row)
             if not row or not isinstance(row, dict):
                 continue
             company = row.get("parent_company", "").strip()
+            print(f"  Row {i}: company='{company}'")
             if company and company.lower() not in ("unknown", "", "null"):
                 companies[company] = companies.get(company, 0) + 1
+
+        print(f"🔍 [COMPANIES] Sample rows: {sample_rows}")
+        print(f"🔍 [COMPANIES] Unique companies found: {len(companies)}")
+        print(f"🔍 [COMPANIES] Company list: {list(companies.keys())[:10]}")
 
         # Sort by brand count descending
         sorted_companies = sorted(
@@ -9085,7 +9093,7 @@ def api_intel_companies():
             reverse=True
         )
 
-        print(f"✅ [COMPANIES] Found {len(sorted_companies)} companies")
+        print(f"✅ [COMPANIES] Returning {len(sorted_companies)} companies")
         return jsonify({
             "success": True,
             "companies": sorted_companies,
