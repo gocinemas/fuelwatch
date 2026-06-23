@@ -583,6 +583,7 @@
             <li><button class="tab-button" onclick="openTab(event, 'competitors')">Competitors</button></li>
             <li><button class="tab-button" onclick="openTab(event, 'decision')">Decision</button></li>
             <li><button class="tab-button" onclick="openTab(event, 'insights')">✨ Insights</button></li>
+            <li><button class="tab-button" onclick="openTab(event, 'social')">📱 Social & Ads</button></li>
         </ul>
     </div>
 
@@ -956,6 +957,55 @@
             <div id="insightsLoading" style="display: none; text-align: center; padding: 30px 20px;">
                 <div style="font-size: 24px; margin-bottom: 12px;">⏳</div>
                 <p style="color: #64748b; font-size: 13px;">Generating insights...</p>
+            </div>
+        </div>
+
+        <!-- Social & Ads Tab -->
+        <div id="social" class="tab-content">
+            <div style="padding: 20px;">
+                <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">📱 Social Media & Campaigns</h3>
+
+                {% if social_media %}
+                    <div style="margin-bottom: 30px;">
+                        <h4 style="font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 16px;">Social Presence</h4>
+                        <div style="display: grid; gap: 16px;">
+                            {% for platform in social_media %}
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+                                <div style="font-weight: 600; color: #1e293b; margin-bottom: 8px;">{{ platform.platform }}</div>
+                                <div style="font-size: 13px; color: #64748b; margin-bottom: 6px;">📊 Followers: <strong>{{ platform.followers }}</strong></div>
+                                <div style="font-size: 13px; color: #64748b; margin-bottom: 6px;">📈 Reach: <strong>{{ platform.reach }}</strong></div>
+                                <div style="font-size: 13px; color: #64748b; margin-bottom: 6px;">💰 Monthly Ad Spend: <strong>{{ platform.estimated_monthly_ad_spend }}</strong></div>
+                                <div style="font-size: 13px; color: #64748b;">🔥 Engagement: <strong>{{ platform.engagement_rate }}%</strong></div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div style="background: #f1f5f9; border-radius: 8px; padding: 20px; text-align: center; color: #64748b; font-size: 13px;">
+                        No social media data available
+                    </div>
+                {% endif %}
+
+                {% if brand_news %}
+                    <div style="margin-top: 30px;">
+                        <h4 style="font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 16px;">📰 Recent Campaigns & News</h4>
+                        <div style="display: grid; gap: 12px;">
+                            {% for news in brand_news %}
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                                <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">
+                                    {{ news.published_date | default('Date pending') }}
+                                </div>
+                                <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">{{ news.title }}</div>
+                                <div style="font-size: 12px; color: #64748b;">{{ news.source | default('Source') }} · {{ news.category }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div style="background: #f1f5f9; border-radius: 8px; padding: 20px; text-align: center; color: #64748b; font-size: 13px; margin-top: 20px;">
+                        No recent news available
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>

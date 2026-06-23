@@ -1456,7 +1456,27 @@ def brand_full_intelligence():
                     seen_competitors.add(comp["name"])
                     unique_competitors.append(comp)
 
-            resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=unique_competitors, market_score=market_entry_score))
+            # Fetch social media data
+            social_media = []
+            try:
+                social_result = sb.table("brand_social_media").select("*").eq(
+                    "brand_name", search
+                ).execute()
+                social_media = social_result.data if social_result.data else []
+            except Exception as social_err:
+                app.logger.warning(f"[brand_full] Could not fetch social for {search}: {social_err}")
+
+            # Fetch recent news/campaigns
+            news = []
+            try:
+                news_result = sb.table("brand_news").select("*").eq(
+                    "brand_name", search
+                ).order("published_date", desc=True).limit(5).execute()
+                news = news_result.data if news_result.data else []
+            except Exception as news_err:
+                app.logger.warning(f"[brand_full] Could not fetch news for {search}: {news_err}")
+
+            resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=brand, skus=[], market=market, market_econ=market_econ, competitors=unique_competitors, market_score=market_entry_score, social_media=social_media, brand_news=news))
         else:
             resp = make_response(render_template("intel_brand_phase1_tabbed.html", brand=None, skus=[], market=market, market_econ={}))
     except Exception as e:
