@@ -19514,7 +19514,18 @@ let _savesAll = [];
           if (p.open_now === true)       openBadge = '<span style="font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;border-radius:99px;padding:2px 7px;margin-left:6px">Open</span>';
           else if (p.open_now === false) openBadge = '<span style="font-size:10px;font-weight:700;color:#6b7280;background:#f3f4f6;border-radius:99px;padding:2px 7px;margin-left:6px">Closed</span>';
           var rowStyle = p.open_now === false ? 'opacity:0.5;' : '';
-          var saveBtn = '<button onclick="_saveContent(\'' + p.name.replace(/'/g, "\\'") + '\', \'dining\', \'' + (p.vicinity||'').replace(/'/g, "\\'") + '\', ' + p.lat + ', ' + p.lng + ')" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:0.7">💾</button>';
+          var btnId = 'save-' + Date.now() + Math.random();
+          var saveBtn = '<button id="' + btnId + '" data-title="' + (p.name||'').replace(/"/g, '&quot;') + '" data-location="' + (p.vicinity||'').replace(/"/g, '&quot;') + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:0.7">💾</button>';
+          // Attach click handler after button is rendered
+          setTimeout(function() {
+            var btn = document.getElementById(btnId);
+            if (btn) {
+              btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                _saveContent(this.dataset.title, 'dining', this.dataset.location, parseFloat(this.dataset.lat), parseFloat(this.dataset.lng), '', '');
+              });
+            }
+          }, 10);
           return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;' + rowStyle + '">'
             + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'
             + '<span style="font-size:15px">' + icon + '</span>'
