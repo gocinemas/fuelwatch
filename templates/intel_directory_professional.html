@@ -202,40 +202,6 @@
             color: #1e293b;
         }
 
-        .results-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .action-btn {
-            padding: 10px 18px;
-            font-size: 13px;
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-
-        .action-btn:hover {
-            background: #e2e8f0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .action-btn.primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-            border: none;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        .action-btn.primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
-        }
-
         .brands-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -384,71 +350,6 @@
             margin-top: 4px;
         }
 
-        .email-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .email-modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 16px;
-            padding: 40px;
-            max-width: 400px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        .modal-title {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: #1e293b;
-        }
-
-        .modal-input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 14px;
-            margin-bottom: 16px;
-            transition: all 0.3s;
-        }
-
-        .modal-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .modal-actions button {
-            flex: 1;
-            padding: 12px 16px;
-        }
-
-        .modal-actions button:last-child {
-            background: #e2e8f0;
-            color: #1e293b;
-            box-shadow: none;
-        }
     </style>
 </head>
 <body>
@@ -509,10 +410,6 @@
         <div id="resultsSection" class="results-section">
             <div class="results-header">
                 <div class="results-title" id="resultsTitle"></div>
-                <div class="results-actions">
-                    <button class="action-btn" onclick="downloadPDF()">📥 PDF</button>
-                    <button class="action-btn primary" onclick="showEmailModal()">📧 Email</button>
-                </div>
             </div>
 
             <div id="statsBar" class="stats-bar" style="display: none;">
@@ -535,21 +432,10 @@
 
         <!-- Footer -->
         <div class="footer">
-            ✨ Download results as PDF or email them to yourself for later review
+            💡 Search and explore brands | PDF & email options available on brand detail pages
         </div>
     </div>
 
-    <!-- Email Modal -->
-    <div id="emailModal" class="email-modal">
-        <div class="modal-content">
-            <div class="modal-title">📧 Email Results</div>
-            <input type="email" id="emailInput" class="modal-input" placeholder="Enter your email address">
-            <div class="modal-actions">
-                <button onclick="sendEmail()">Send</button>
-                <button onclick="closeEmailModal()">Cancel</button>
-            </div>
-        </div>
-    </div>
 
     <script>
         let allCompanies = [];
