@@ -9341,6 +9341,45 @@ def api_intel_email_brands():
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route("/api/intel/test-scraper")
+def test_scraper():
+    """Test the price scraper - returns results without saving"""
+    import subprocess
+    import sys
+
+    try:
+        print("🚀 Starting scraper test...")
+
+        # Run scraper
+        result = subprocess.run(
+            [sys.executable, "scraper_india_prices.py"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd="/app"  # Railway app directory
+        )
+
+        output = result.stdout + result.stderr
+
+        return jsonify({
+            "success": True,
+            "status": "Scraper ran successfully",
+            "output": output.split('\n')[-20:],  # Last 20 lines
+            "return_code": result.returncode
+        })
+
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "error": "Scraper timed out (60s)"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
+
 @app.route("/api/intel/request-brand", methods=["POST"])
 def api_intel_request_brand():
     """Submit brand data request - triggers background agent to collect data"""
