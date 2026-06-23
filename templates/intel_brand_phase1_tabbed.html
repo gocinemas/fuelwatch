@@ -255,6 +255,59 @@
             border-bottom-color: #3b82f6;
         }
 
+        /* Help Tooltip Styling */
+        .help-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            background: #cbd5e1;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 18px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 6px;
+            vertical-align: middle;
+            position: relative;
+        }
+
+        .help-icon:hover {
+            background: #64748b;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #1e293b;
+            color: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            line-height: 1.4;
+        }
+
+        .help-icon:hover .tooltip {
+            display: block;
+        }
+
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1e293b;
+        }
+
         /* Content Area */
         .container {
             max-width: 1200px;
@@ -636,7 +689,11 @@
         <div id="health" class="tab-content">
             {% if market_score %}
             <div class="card">
-                <h3>Brand Health Scores</h3>
+                <h3>Brand Health Scores
+                    <span class="help-icon">?
+                        <span class="tooltip">Measures current viability: distribution reach, customer fit, pricing power, competition</span>
+                    </span>
+                </h3>
                 <div class="score-pair">
                     <!-- Brand Strength -->
                     <div class="score-card strength">
@@ -708,7 +765,11 @@
         <!-- Positioning Tab -->
         <div id="positioning" class="tab-content">
             <div class="card">
-                <h3>Brand Positioning</h3>
+                <h3>Brand Positioning
+                    <span class="help-icon">?
+                        <span class="tooltip">How the brand positions itself: tier level (economy→luxury), target demographic, and competitive claim</span>
+                    </span>
+                </h3>
                 <div class="positioning-grid">
                     {% if brand.positioning_tier %}
                     <div class="positioning-item">
@@ -786,7 +847,11 @@
         <div id="market" class="tab-content">
             {% if market_econ %}
             <div class="card">
-                <h3>Market Economics</h3>
+                <h3>Market Economics
+                    <span class="help-icon">?
+                        <span class="tooltip">Category-wide market data: total size, growth rate (CAGR), maturity stage, and consumer segments</span>
+                    </span>
+                </h3>
                 <div class="positioning-grid">
                     {% if market_econ.country_gdp_usd_trillions %}
                     <div class="positioning-item">
@@ -853,7 +918,11 @@
         <div id="competitors" class="tab-content">
             {% if competitors %}
             <div class="card">
-                <h3>Price Comparison</h3>
+                <h3>Price Comparison
+                    <span class="help-icon">?
+                        <span class="tooltip">Direct competitors and their pricing in this market. Real data from verified sources.</span>
+                    </span>
+                </h3>
                 <div class="competitor-row">
                     <div>Brand</div>
                     <div>Positioning</div>
@@ -880,7 +949,11 @@
         <div id="decision" class="tab-content">
             {% if market_score %}
             <div class="card">
-                <h3>Strategic Decision</h3>
+                <h3>Strategic Decision
+                    <span class="help-icon">?
+                        <span class="tooltip">AI-powered recommendation combining brand viability (now) and growth upside (potential)</span>
+                    </span>
+                </h3>
 
                 {% if market_score.brand_strength_score >= 7 and market_score.growth_opportunity_score >= 7 %}
                 <div class="recommendation green">
@@ -944,7 +1017,11 @@
                 <div style="max-width: 600px; margin: 0 auto;">
                     <div style="text-align: center; margin-bottom: 24px;">
                         <div style="font-size: 32px; margin-bottom: 12px;">✨</div>
-                        <h3 style="font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">AI-Powered Insights</h3>
+                        <h3 style="font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">AI-Powered Insights
+                            <span class="help-icon" style="font-size: 11px; width: 16px; height: 16px; line-height: 16px;">?
+                                <span class="tooltip" style="white-space: normal; width: 200px;">LLM-generated strategic recommendations. Real data only. Confidence level shown.</span>
+                            </span>
+                        </h3>
                         <p style="color: #64748b; font-size: 13px; margin: 0;">Generate strategic recommendations powered by Groq</p>
                     </div>
                     <div style="text-align: center;">
@@ -966,7 +1043,11 @@
         <!-- Social & Ads Tab -->
         <div id="social" class="tab-content">
             <div style="padding: 20px;">
-                <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">📱 Social Media & Campaigns</h3>
+                <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">📱 Social Media & Campaigns
+                    <span class="help-icon" style="font-size: 11px; width: 16px; height: 16px; line-height: 16px;">?
+                        <span class="tooltip" style="white-space: normal; width: 180px;">Real social metrics: followers, engagement rates, ad spend. Recent campaigns and announcements.</span>
+                    </span>
+                </h3>
 
                 {% if social_media %}
                     <div style="margin-bottom: 30px;">
