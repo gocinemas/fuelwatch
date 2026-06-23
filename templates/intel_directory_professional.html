@@ -563,8 +563,15 @@
                 const response = await fetch('/api/intel/companies');
                 const data = await response.json();
                 allCompanies = data.companies || [];
+                console.log('✅ Companies loaded:', allCompanies.length, allCompanies);
+
+                // Debug: Show loading status
+                if (allCompanies.length === 0) {
+                    console.warn('⚠️ No companies found!', data);
+                }
             } catch (error) {
-                console.error('Error loading companies:', error);
+                console.error('❌ Error loading companies:', error);
+                alert('Failed to load companies. Check browser console.');
             }
         }
 
@@ -593,11 +600,20 @@
         }
 
         function showAllCompanies() {
+            console.log('🔍 showAllCompanies called, allCompanies count:', allCompanies.length);
             const list = document.getElementById('companyList');
-            if (allCompanies.length === 0) return;
+
+            if (allCompanies.length === 0) {
+                console.warn('⚠️ No companies to show');
+                list.innerHTML = '<div class="autocomplete-item" style="color: #64748b;">Loading companies...</div>';
+                list.classList.add('active');
+                return;
+            }
 
             // Show all companies, sorted by brand count
             const sorted = allCompanies.slice().sort((a, b) => b.brand_count - a.brand_count);
+            console.log('📊 Showing', sorted.length, 'companies');
+
             list.innerHTML = sorted.map(c => `
                 <div class="autocomplete-item" onclick="selectCompany('${c.name.replace(/'/g, "\\'")}')">
                     <div class="autocomplete-item-main">${escapeHtml(c.name)}</div>
