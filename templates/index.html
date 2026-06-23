@@ -4147,6 +4147,45 @@
     }
   }
 
+  // ── CONTEXT MEMORY: Save content ──
+  async function _saveContent(title, category, location, lat, lng, url, userNotes) {
+    const token = localStorage.getItem('miru_saves_token') || localStorage.getItem('miru_saves_phone') || '';
+    if (!token) {
+      alert('Please log in to save content');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/save/from-brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          title: title,
+          category: category,
+          location: location,
+          lat: lat,
+          lng: lng,
+          url: url,
+          source: 'brief',
+          user_notes: userNotes || ''
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        // Show success toast
+        alert(`✅ Saved! Check /saves to view`);
+        return data.save_id;
+      } else {
+        alert('❌ Save failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Save error:', err);
+      alert('❌ Save error: ' + err.message);
+    }
+  }
+
   function showScreen(name) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     const screenEl = document.getElementById("screen-" + name);
@@ -19412,12 +19451,16 @@ let _savesAll = [];
           if (p.open_now === true)       openBadge = '<span style="font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;border-radius:99px;padding:2px 7px;margin-left:6px">Open</span>';
           else if (p.open_now === false) openBadge = '<span style="font-size:10px;font-weight:700;color:#6b7280;background:#f3f4f6;border-radius:99px;padding:2px 7px;margin-left:6px">Closed</span>';
           var rowStyle = p.open_now === false ? 'opacity:0.5;' : '';
+          var saveBtn = '<button onclick="_saveContent(\'' + p.name.replace(/'/g, "\\'") + '\', \'dining\', \'' + (p.vicinity||'').replace(/'/g, "\\'") + '\', ' + p.lat + ', ' + p.lng + ')" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:0.7">💾</button>';
           return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;' + rowStyle + '">'
             + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'
             + '<span style="font-size:15px">' + icon + '</span>'
             + '<span style="font-size:13px;font-weight:700;color:var(--text)">' + p.name + '</span>'
             + openBadge + '</div>'
-            + (dist ? '<span style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;margin-left:8px">' + dist + '</span>' : '')
+            + '<div style="display:flex;gap:8px;align-items:center">'
+            + saveBtn
+            + (dist ? '<span style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">' + dist + '</span>' : '')
+            + '</div>'
             + '</div>';
         }).join("") + radiusLabel;
       })
