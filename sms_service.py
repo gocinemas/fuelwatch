@@ -9341,43 +9341,45 @@ def api_intel_email_brands():
         return jsonify({"success": False, "error": str(e)})
 
 
-@app.route("/api/intel/test-scraper")
+@app.route("/api/intel/scraper/test")
 def test_scraper():
-    """Test the price scraper - returns results without saving"""
-    import subprocess
-    import sys
+    """Quick test: Check if scraper can connect to e-commerce sites"""
+    import requests
+    from datetime import datetime
 
-    try:
-        print("🚀 Starting scraper test...")
+    print("🔍 Testing e-commerce connectivity...")
 
-        # Run scraper
-        result = subprocess.run(
-            [sys.executable, "scraper_india_prices.py"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            cwd="/app"  # Railway app directory
-        )
+    test_urls = {
+        "Amazon India": "https://www.amazon.in/s?k=Gatorade",
+        "BigBasket": "https://www.bigbasket.com/ps/?q=Gatorade",
+        "Nykaa": "https://www.nykaa.com/search/result?q=Gatorade"
+    }
 
-        output = result.stdout + result.stderr
+    results = {}
+    for platform, url in test_urls.items():
+        try:
+            response = requests.get(url, timeout=5)
+            results[platform] = {
+                "status": "✅ OK" if response.status_code == 200 else f"⚠️ {response.status_code}",
+                "code": response.status_code,
+                "timestamp": datetime.now().isoformat()
+            }
+            print(f"✅ {platform}: {response.status_code}")
+        except Exception as e:
+            results[platform] = {
+                "status": f"❌ Error: {str(e)[:50]}",
+                "code": 0,
+                "timestamp": datetime.now().isoformat()
+            }
+            print(f"❌ {platform}: {e}")
 
-        return jsonify({
-            "success": True,
-            "status": "Scraper ran successfully",
-            "output": output.split('\n')[-20:],  # Last 20 lines
-            "return_code": result.returncode
-        })
-
-    except subprocess.TimeoutExpired:
-        return jsonify({
-            "success": False,
-            "error": "Scraper timed out (60s)"
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        })
+    return jsonify({
+        "success": True,
+        "message": "Scraper connectivity test",
+        "timestamp": datetime.now().isoformat(),
+        "results": results,
+        "next_step": "If all OK, scraper can run. Run: python3 scraper_india_prices.py"
+    })
 
 
 @app.route("/api/intel/request-brand", methods=["POST"])
