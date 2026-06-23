@@ -4147,16 +4147,33 @@
     }
   }
 
-  // ── CONTEXT MEMORY: Save content ──
+  // ── CONTEXT MEMORY: Load saved Clippings for nearby display ──
+  function _loadSavedClippingsForContext() {
+    const token = localStorage.getItem('miru_saves_token') || localStorage.getItem('miru_saves_phone') || '';
+    if (!token) return;
+
+    // Fetch all saved Clippings from wa_saves
+    fetch('/api/clippings-all?token=' + encodeURIComponent(token))
+      .then(r => r.json())
+      .then(d => {
+        // Store globally so Nearby can show them
+        window._briefSavedClippings = d.saves || [];
+        console.log('Loaded', window._briefSavedClippings.length, 'saved Clippings for Context Memory');
+      })
+      .catch(e => console.error('Failed to load saved Clippings:', e));
+  }
+
+  // ── CONTEXT MEMORY: Save to both Clippings + Context Memory ──
   async function _saveContent(title, category, location, lat, lng, url, userNotes) {
     const token = localStorage.getItem('miru_saves_token') || localStorage.getItem('miru_saves_phone') || '';
     if (!token) {
-      alert('Please log in to save content');
+      alert('Please log in to save');
       return;
     }
 
     try {
-      const response = await fetch('/api/save/from-brief', {
+      // 1. Save to Context Memory (user_saves_v2)
+      const cmResponse = await fetch('/api/save/from-brief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4172,17 +4189,37 @@
         })
       });
 
-      const data = await response.json();
-      if (response.ok) {
-        // Show success toast
-        alert(`✅ Saved! Check /saves to view`);
-        return data.save_id;
+      const cmData = await cmResponse.json();
+      if (!cmResponse.ok) {
+        console.error('Context Memory save failed:', cmData.error);
+      }
+
+      // 2. Also save to Clippings (wa_saves) for immediate visibility
+      const clipsResponse = await fetch('/api/saves-clip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          title: title,
+          category: category,
+          location: location,
+          lat: lat,
+          lng: lng,
+          url: url,
+          source: 'brief'
+        })
+      });
+
+      const clipsData = await clipsResponse.json();
+      if (clipsResponse.ok) {
+        alert('✅ Saved to My Saves!');
+        return cmData.save_id || clipsData.id;
       } else {
-        alert('❌ Save failed: ' + (data.error || 'Unknown error'));
+        alert('❌ Save failed');
       }
     } catch (err) {
       console.error('Save error:', err);
-      alert('❌ Save error: ' + err.message);
+      alert('❌ Error: ' + err.message);
     }
   }
 
@@ -19444,7 +19481,27 @@ let _savesAll = [];
           return;
         }
         var radiusLabel = radius > 1500 ? '<div style="font-size:10px;color:var(--muted);padding:4px 0">Results within ' + (radius/1000).toFixed(1) + 'km</div>' : '';
-        res.innerHTML = places.map(function(p) {
+
+        // Show saved Clippings first (your saves nearby)
+        var savedHtml = '';
+        if (window._briefSavedClippings && window._briefSavedClippings.length) {
+          var nearby = window._briefSavedClippings.filter(s => {
+            if (!s.latitude || !s.longitude) return false;
+            var dist = Math.sqrt(Math.pow(s.latitude - lat, 2) + Math.pow(s.longitude - lng, 2)) * 111; // rough km
+            return dist < (radius / 1000);
+          });
+          if (nearby.length) {
+            savedHtml = '<div style="margin-bottom:12px">'
+              + '<div style="font-size:10px;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">💾 Your Saves Nearby</div>'
+              + nearby.map(s => '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:8px 12px;margin-bottom:6px">'
+                + '<div style="font-size:12px;font-weight:700;color:#166534">' + s.title + '</div>'
+                + (s.address ? '<div style="font-size:10px;color:#047857">' + s.address + '</div>' : '')
+                + '</div>').join('')
+              + '</div>';
+          }
+        }
+
+        res.innerHTML = savedHtml + places.map(function(p) {
           var dist = p.dist_m ? (p.dist_m < 1000 ? p.dist_m + "m" : (p.dist_m/1000).toFixed(1) + "km") : "";
           var icon = {cafe:"☕", coffee_shop:"☕", bakery:"🥐", restaurant:"🍽️", fast_food:"🍔", pub:"🍺", bar:"🍸"}[p.type] || "📍";
           var openBadge = "";
@@ -20568,6 +20625,8 @@ let _savesAll = [];
           .then(d => {
             _briefData = d;
             _renderSchoolSummary(_briefData);
+            // Load saved Clippings for Context Memory (show in Nearby)
+            _loadSavedClippingsForContext();
           })
           .catch(() => {});
       }

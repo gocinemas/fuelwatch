@@ -31547,6 +31547,83 @@ def debug_personal_events():
 # Persistent, context-aware retrieval of saved life admin data
 # Flows: Save from brief, Proactive surfacing, Web dashboard, Feedback loop, Patterns
 
+@app.route("/api/clippings-all", methods=["GET"])
+def api_clippings_all():
+    """Fetch all saved Clippings for a user — for Context Memory nearby display."""
+    try:
+        token = request.args.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Fetch all saved Clippings
+        sb = lib._sb()
+        result = sb.table("wa_saves").select("id,title,url,address,latitude,longitude,category,created_at") \
+            .eq("phone", phone_clean) \
+            .order("created_at", desc=True) \
+            .execute()
+
+        saves = result.data or []
+
+        return jsonify({
+            "success": True,
+            "saves": saves
+        })
+
+    except Exception as e:
+        print(f"❌ Fetch Clippings error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/saves-clip", methods=["POST"])
+def api_saves_to_clippings():
+    """Save to Clippings (wa_saves) — mirrors Context Memory save."""
+    try:
+        token = request.json.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        title = (request.json.get("title") or "").strip()
+        url = request.json.get("url") or ""
+        location = (request.json.get("location") or "").strip()
+        lat = request.json.get("lat")
+        lng = request.json.get("lng")
+
+        if not title:
+            return jsonify({"error": "Missing title"}), 400
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Insert into wa_saves (Clippings table)
+        sb = lib._sb()
+        result = sb.table("wa_saves").insert({
+            "phone": phone_clean,
+            "title": title,
+            "url": url,
+            "category": request.json.get("category", "place"),
+            "source": "brief",
+            "latitude": lat,
+            "longitude": lng,
+            "address": location,
+            "created_at": "NOW()"
+        }).execute()
+
+        save_id = result.data[0]["id"] if result.data else None
+
+        return jsonify({
+            "success": True,
+            "id": save_id,
+            "message": "Saved to Clippings"
+        })
+
+    except Exception as e:
+        print(f"❌ Clippings save error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/save/from-brief", methods=["POST"])
 def api_save_from_brief():
     """Save content from brief to user's context memory."""
