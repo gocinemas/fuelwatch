@@ -1207,13 +1207,16 @@ def brand_compare():
 
             if result.data:
                 brand_data = result.data[0]
+                brand_category = brand_data.get("category", "").strip().lower()
+
                 # Ensure all brands in comparison are from same category
                 if category is None:
-                    category = brand_data.get("category", "").lower()
-                elif brand_data.get("category", "").lower() != category:
-                    # Skip brands from different categories
-                    continue
-                brands_data.append(brand_data)
+                    category = brand_category
+                    brands_data.append(brand_data)
+                elif brand_category == category:
+                    brands_data.append(brand_data)
+                else:
+                    app.logger.warning(f"[brand_compare] Skipping {brand_name}: category '{brand_category}' != '{category}'")
 
         if not brands_data or len(brands_data) < 2:
             return redirect(f"/brand/full?search={brand_names[0]}&market={market}")

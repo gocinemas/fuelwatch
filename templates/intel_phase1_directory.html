@@ -320,6 +320,45 @@
             margin-top: 12px;
         }
 
+        footer {
+            background: #f1f5f9;
+            border-top: 1px solid #e2e8f0;
+            padding: 30px 20px;
+            margin-top: 60px;
+            text-align: center;
+        }
+
+        .footer-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .footer-stat {
+            padding: 12px;
+        }
+
+        .footer-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .footer-stat-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .footer-text {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 20px;
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 28px;
@@ -374,34 +413,40 @@
                 <div class="suggestion-title">Popular Brands</div>
                 <div class="suggestion-grid">
                     <button class="suggestion-btn" onclick="searchBrand('Dove')">Dove</button>
-                    <button class="suggestion-btn" onclick="searchBrand('Pepsi')">Pepsi</button>
+                    <button class="suggestion-btn" onclick="searchBrand('Coca-Cola')">Coca-Cola</button>
                     <button class="suggestion-btn" onclick="searchBrand('Olay')">Olay</button>
-                    <button class="suggestion-btn" onclick="searchBrand('Sprite')">Sprite</button>
+                    <button class="suggestion-btn" onclick="searchBrand('McDonald''s')">McDonald's</button>
                     <button class="suggestion-btn" onclick="searchBrand('CeraVe')">CeraVe</button>
-                    <button class="suggestion-btn" onclick="searchBrand('Monster')">Monster</button>
-                </div>
-            </div>
-
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-value">73</div>
-                    <div class="stat-label">Records</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">25</div>
-                    <div class="stat-label">Brands</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">3</div>
-                    <div class="stat-label">Markets</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">90%</div>
-                    <div class="stat-label">Confidence</div>
+                    <button class="suggestion-btn" onclick="searchBrand('Red Bull')">Red Bull</button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Footer Stats -->
+    <footer>
+        <div class="footer-stats">
+            <div class="footer-stat">
+                <div class="footer-stat-value">190+</div>
+                <div class="footer-stat-label">Records</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">85+</div>
+                <div class="footer-stat-label">Brands</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">3</div>
+                <div class="footer-stat-label">Markets</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-stat-value">92%</div>
+                <div class="footer-stat-label">Confidence</div>
+            </div>
+        </div>
+        <div class="footer-text">
+            Real data only. No AI fabrication. Verified across UK, USA, India.
+        </div>
+    </footer>
 
     <!-- Request Brand Modal -->
     <div id="requestModal" class="modal">
