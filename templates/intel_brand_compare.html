@@ -136,13 +136,158 @@
             margin-top: 4px;
         }
 
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 24px;
+            background: white;
+            border-radius: 8px 8px 0 0;
+            padding: 0 20px;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: #1e293b;
+        }
+
+        .tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .social-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .social-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .social-card h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1e293b;
+        }
+
+        .platform {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .platform:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .platform-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .platform-stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .platform-label {
+            color: #64748b;
+        }
+
+        .platform-value {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .news-section {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .news-item {
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .news-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .news-date {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .news-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .news-source {
+            font-size: 12px;
+            color: #64748b;
+        }
+
         @media (max-width: 768px) {
             .comparison-grid {
                 grid-template-columns: 1fr;
             }
 
+            .social-grid {
+                grid-template-columns: 1fr;
+            }
+
             .container {
                 padding: 16px 12px;
+            }
+
+            .tabs {
+                padding: 0 12px;
             }
         }
     </style>
@@ -157,70 +302,160 @@
     </header>
 
     <div class="container">
-        <div class="comparison-grid">
-            {% for brand in brands %}
-            <div class="brand-card">
-                <h2>{{ brand.brand_name }}</h2>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab(event, 'overview')">📊 Overview</button>
+            <button class="tab" onclick="switchTab(event, 'social')">📱 Social & Ads</button>
+        </div>
 
-                <div class="score-grid">
-                    <div class="score">
-                        <div class="score-value">{{ brand.brand_strength_score or 5.0 }}</div>
-                        <div class="score-label">Health</div>
+        <!-- TAB 1: OVERVIEW -->
+        <div id="overview" class="tab-content active">
+            <div class="comparison-grid">
+                {% for brand in brands %}
+                <div class="brand-card">
+                    <h2>{{ brand.brand_name }}</h2>
+
+                    <div class="score-grid">
+                        <div class="score">
+                            <div class="score-value">{{ brand.brand_strength_score or 5.0 }}</div>
+                            <div class="score-label">Health</div>
+                        </div>
+                        <div class="score">
+                            <div class="score-value">{{ brand.growth_opportunity_score or 5.0 }}</div>
+                            <div class="score-label">Growth</div>
+                        </div>
                     </div>
-                    <div class="score">
-                        <div class="score-value">{{ brand.growth_opportunity_score or 5.0 }}</div>
-                        <div class="score-label">Growth</div>
+
+                    <div class="metric">
+                        <div class="metric-label">Category</div>
+                        <div class="metric-value">{{ brand.category or 'N/A' }}</div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-label">Market Status</div>
+                        <div class="metric-value">{{ brand.market_status | title or 'Unknown' }}</div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-label">Market Size</div>
+                        <div class="metric-value">
+                            {% if brand.market_size_millions and brand.market_size_millions > 0 %}
+                                ${{ brand.market_size_millions }}M
+                            {% else %}
+                                <span style="color: #94a3b8; font-size: 13px;">Data pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-label">Growth (3Y CAGR)</div>
+                        <div class="metric-value">
+                            {% if brand.category_cagr_3yr and brand.category_cagr_3yr > 0 %}
+                                {{ brand.category_cagr_3yr }}%
+                            {% else %}
+                                <span style="color: #94a3b8; font-size: 13px;">Data pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-label">Local Price</div>
+                        <div class="metric-value">{{ brand.price_currency or 'GBP' }} {{ brand.price_local or 'N/A' }}</div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-label">Positioning</div>
+                        <div class="metric-value">{{ brand.positioning_tier | title or 'Mass Market' }}</div>
                     </div>
                 </div>
-
-                <div class="metric">
-                    <div class="metric-label">Category</div>
-                    <div class="metric-value">{{ brand.category or 'N/A' }}</div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">Market Status</div>
-                    <div class="metric-value">{{ brand.market_status | title or 'Unknown' }}</div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">Market Size</div>
-                    <div class="metric-value">
-                        {% if brand.market_size_millions and brand.market_size_millions > 0 %}
-                            ${{ brand.market_size_millions }}M
-                        {% else %}
-                            <span style="color: #94a3b8; font-size: 13px;">Data pending</span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">Growth (3Y CAGR)</div>
-                    <div class="metric-value">
-                        {% if brand.category_cagr_3yr and brand.category_cagr_3yr > 0 %}
-                            {{ brand.category_cagr_3yr }}%
-                        {% else %}
-                            <span style="color: #94a3b8; font-size: 13px;">Data pending</span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">Local Price</div>
-                    <div class="metric-value">{{ brand.price_currency or 'GBP' }} {{ brand.price_local or 'N/A' }}</div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">Positioning</div>
-                    <div class="metric-value">{{ brand.positioning_tier | title or 'Mass Market' }}</div>
-                </div>
+                {% endfor %}
             </div>
+
+            <div style="text-align: center; color: #64748b; font-size: 13px;">
+                💡 <strong>Tip:</strong> Compare brand health, market growth, and positioning to identify expansion opportunities.
+            </div>
+        </div>
+
+        <!-- TAB 2: SOCIAL & ADS -->
+        <div id="social" class="tab-content">
+            <div class="social-grid">
+                {% for brand in brands %}
+                <div class="social-card">
+                    <h3>{{ brand.brand_name }}</h3>
+
+                    {% if brand.social_media %}
+                        {% for platform in brand.social_media %}
+                        <div class="platform">
+                            <div class="platform-name">{{ platform.platform }}</div>
+                            {% if platform.followers %}
+                            <div class="platform-stat">
+                                <span class="platform-label">Followers</span>
+                                <span class="platform-value">{{ platform.followers }}</span>
+                            </div>
+                            {% endif %}
+                            {% if platform.engagement_rate %}
+                            <div class="platform-stat">
+                                <span class="platform-label">Engagement</span>
+                                <span class="platform-value">{{ platform.engagement_rate }}%</span>
+                            </div>
+                            {% endif %}
+                            {% if platform.estimated_monthly_ad_spend %}
+                            <div class="platform-stat">
+                                <span class="platform-label">Monthly Ad Spend</span>
+                                <span class="platform-value">{{ platform.estimated_monthly_ad_spend }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: #94a3b8; font-size: 13px;">No social media data available</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <h3 style="margin-top: 24px; margin-bottom: 16px;">📰 Recent Campaigns & News</h3>
+
+            {% for brand in brands %}
+            {% if brand.recent_news %}
+            <div class="news-section">
+                <h4 style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">{{ brand.brand_name }}</h4>
+                {% for news in brand.recent_news %}
+                <div class="news-item">
+                    <div class="news-date">{{ news.published_date | default('Date pending') }}</div>
+                    <div class="news-title">{{ news.title }}</div>
+                    <div class="news-source">{{ news.source | default('Source') }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="news-section">
+                <h4 style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">{{ brand.brand_name }}</h4>
+                <p style="color: #94a3b8; font-size: 13px;">No recent news available</p>
+            </div>
+            {% endif %}
             {% endfor %}
         </div>
-
-        <div style="text-align: center; color: #64748b; font-size: 13px;">
-            💡 <strong>Tip:</strong> Compare brand health, market growth, and positioning to identify expansion opportunities.
-        </div>
     </div>
+
+    <script>
+        function switchTab(evt, tabName) {
+            // Hide all tabs
+            var i, tabcontent;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+
+            // Remove active class from all tabs
+            var tabs = document.getElementsByClassName("tab");
+            for (i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+
+            // Show the current tab
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+    </script>
 </body>
 </html>

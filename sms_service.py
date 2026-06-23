@@ -1266,6 +1266,26 @@ def brand_compare():
                 brand["brand_strength_score"] = 5.0
                 brand["growth_opportunity_score"] = 5.0
 
+            # Fetch social media data
+            try:
+                social_result = sb.table("brand_social_media").select("*").eq(
+                    "brand_name", brand.get("brand_name")
+                ).execute()
+                brand["social_media"] = social_result.data if social_result.data else []
+            except Exception as social_err:
+                app.logger.warning(f"[brand_compare] Could not fetch social for {brand.get('brand_name')}: {social_err}")
+                brand["social_media"] = []
+
+            # Fetch recent news/campaigns
+            try:
+                news_result = sb.table("brand_news").select("*").eq(
+                    "brand_name", brand.get("brand_name")
+                ).order("published_date", desc=True).limit(5).execute()
+                brand["recent_news"] = news_result.data if news_result.data else []
+            except Exception as news_err:
+                app.logger.warning(f"[brand_compare] Could not fetch news for {brand.get('brand_name')}: {news_err}")
+                brand["recent_news"] = []
+
         return render_template("intel_brand_compare.html",
                              brands=brands_data,
                              market=market,
