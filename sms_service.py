@@ -9056,22 +9056,25 @@ def api_intel_companies():
     """Get all parent companies with brand counts"""
     try:
         sb = lib._sb()
-        result = sb.table("brand_phase1_intelligence").select(
-            "parent_company"
-        ).execute()
+        result = sb.table("brand_phase1_intelligence").select("parent_company").execute()
+
+        # Safely handle result
+        data = result.data if result and hasattr(result, 'data') else []
+        if not data:
+            return jsonify({"success": True, "companies": [], "total_companies": 0})
 
         # Count brands per company
         companies = {}
-        for row in result.data:
-            company = row.get("parent_company", "").strip()
-            if company and company.lower() != "unknown":
-                if company not in companies:
-                    companies[company] = {"count": 0, "brands": []}
-                companies[company]["count"] += 1
+        for row in data:
+            if not row:
+                continue
+            company = row.get("parent_company", "").strip() if isinstance(row, dict) else ""
+            if company and company.lower() not in ("unknown", ""):
+                companies[company] = companies.get(company, 0) + 1
 
         # Sort by brand count descending
         sorted_companies = sorted(
-            [{"name": c, "brand_count": v["count"]} for c, v in companies.items()],
+            [{"name": c, "brand_count": count} for c, count in companies.items()],
             key=lambda x: x["brand_count"],
             reverse=True
         )
@@ -9082,7 +9085,7 @@ def api_intel_companies():
             "total_companies": len(sorted_companies)
         })
     except Exception as e:
-        app.logger.error(f"Companies list error: {e}")
+        app.logger.error(f"❌ Companies API error: {type(e).__name__}: {e}")
         return jsonify({"success": False, "error": str(e)})
 
 
@@ -9095,10 +9098,22 @@ def api_intel_company_brands(company_name):
             "brand_name, category, positioning_tier, market_country"
         ).eq("parent_company", company_name).execute()
 
+        # Safely handle result
+        data = result.data if result and hasattr(result, 'data') else []
+        if not data:
+            return jsonify({
+                "success": True,
+                "company": company_name,
+                "brands": [],
+                "brand_count": 0
+            })
+
         # Group by brand
         brands_dict = {}
-        for row in result.data:
-            brand = row.get("brand_name", "")
+        for row in data:
+            if not row or not isinstance(row, dict):
+                continue
+            brand = row.get("brand_name", "").strip()
             if brand:
                 if brand not in brands_dict:
                     brands_dict[brand] = {
@@ -9107,7 +9122,7 @@ def api_intel_company_brands(company_name):
                         "positioning_tier": row.get("positioning_tier", ""),
                         "markets": []
                     }
-                market = row.get("market_country", "")
+                market = row.get("market_country", "").strip()
                 if market and market not in brands_dict[brand]["markets"]:
                     brands_dict[brand]["markets"].append(market)
 
@@ -9121,7 +9136,7 @@ def api_intel_company_brands(company_name):
             "brand_count": len(brands)
         })
     except Exception as e:
-        app.logger.error(f"Company brands error: {e}")
+        app.logger.error(f"❌ Company brands error: {type(e).__name__}: {e}")
         return jsonify({"success": False, "error": str(e)})
 
 
