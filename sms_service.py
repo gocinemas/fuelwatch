@@ -1173,8 +1173,8 @@ def brand_search():
         if name or search:
             brand_name = name or search
             return redirect(f"/brand/full?search={brand_name}&market={market}")
-        # Otherwise show directory (company, category, or brand search)
-        return render_template("intel_directory_v2.html")
+        # Otherwise show professional directory (company, category, or brand search)
+        return render_template("intel_directory_professional.html")
 
     # Miru subdomain - show brand page
     return render_template("intel_brand.html")
@@ -9206,6 +9206,129 @@ def api_intel_company_brands(company_name):
         })
     except Exception as e:
         app.logger.error(f"❌ Company brands error: {type(e).__name__}: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/intel/email-brands", methods=["POST"])
+def api_intel_email_brands():
+    """Email brand results to user"""
+    data = request.get_json() or {}
+    email = data.get("email", "").strip()
+    query = data.get("query", "").strip()
+    brands = data.get("brands", [])
+    count = data.get("count", 0)
+
+    if not email:
+        return jsonify({"success": False, "error": "Email required"}), 400
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        sender_email = os.environ.get("SENDER_EMAIL")
+        sender_password = os.environ.get("SENDER_PASSWORD")
+
+        if not sender_email or not sender_password:
+            return jsonify({"success": False, "error": "Email service not configured"}), 500
+
+        # Build brand table HTML
+        brand_rows = "".join([
+            f"""
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 12px; color: #1e293b;"><strong>{b.get('name', 'N/A')}</strong></td>
+                <td style="padding: 12px; color: #64748b;">{b.get('category', 'N/A')}</td>
+                <td style="padding: 12px; color: #64748b;">{b.get('parent_company', 'N/A')}</td>
+                <td style="padding: 12px; color: #64748b;">{', '.join(b.get('markets', []))}</td>
+            </tr>
+            """
+            for b in brands[:50]  # Limit to 50 brands per email
+        ])
+
+        html_body = f"""
+        <html>
+            <head>
+                <style>
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; }}
+                    .header {{ background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 30px; text-align: center; }}
+                    .content {{ padding: 30px; }}
+                    .stats {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }}
+                    .stat-box {{ background: #f8fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center; }}
+                    .stat-value {{ font-size: 28px; font-weight: 700; color: #3b82f6; }}
+                    .stat-label {{ font-size: 12px; color: #64748b; text-transform: uppercase; margin-top: 8px; }}
+                    table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                    th {{ background: #f1f5f9; padding: 12px; text-align: left; font-weight: 600; color: #1e293b; border-bottom: 2px solid #e2e8f0; }}
+                    .footer {{ text-align: center; color: #64748b; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }}
+                    .cta {{ text-align: center; margin: 30px 0; }}
+                    .cta-button {{ display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; }}
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1 style="margin: 0; font-size: 32px;">📊 Intel Brand Report</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">Brand Intelligence for: <strong>{query}</strong></p>
+                </div>
+
+                <div class="content">
+                    <h2 style="color: #1e293b; margin-bottom: 20px;">Search Results</h2>
+
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="stat-value">{count}</div>
+                            <div class="stat-label">Brands Found</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">{len(set(b.get('category', '') for b in brands))}</div>
+                            <div class="stat-label">Categories</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">{len(set(m for b in brands for m in b.get('markets', [])))}</div>
+                            <div class="stat-label">Markets</div>
+                        </div>
+                    </div>
+
+                    <h3 style="color: #1e293b; margin-top: 30px;">Brand Details</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Brand Name</th>
+                                <th>Category</th>
+                                <th>Parent Company</th>
+                                <th>Markets</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {brand_rows}
+                        </tbody>
+                    </table>
+
+                    <div class="cta">
+                        <a href="https://intel.humanagency.co/brand" class="cta-button">View Full Report →</a>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <p>📧 Intel Brand Intelligence | Generated {datetime.now().strftime('%d/%m/%Y at %H:%M')}</p>
+                    <p>This email was generated from your search results. Do not reply to this email.</p>
+                </div>
+            </body>
+        </html>
+        """
+
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"Intel Brand Report: {query}"
+        message["From"] = sender_email
+        message["To"] = email
+        message.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(message)
+
+        return jsonify({"success": True, "message": f"Report sent to {email}"})
+
+    except Exception as e:
+        app.logger.error(f"❌ Email send error: {type(e).__name__}: {e}")
         return jsonify({"success": False, "error": str(e)})
 
 
