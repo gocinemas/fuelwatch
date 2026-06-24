@@ -32038,12 +32038,10 @@ def api_clippings_search():
         if not query:
             return jsonify({"error": "query required"}), 400
 
-        phone_clean = from_number.replace("whatsapp:", "").strip()
-
         # Fetch user's clippings
         sb = lib._sb()
         result = sb.table("wa_saves").select("id,title,url,category,created_at") \
-            .eq("phone", phone_clean) \
+            .eq("from_number", from_number) \
             .order("created_at", desc=True) \
             .limit(100) \
             .execute()
@@ -32072,12 +32070,10 @@ def api_clippings_ask():
         if not question:
             return jsonify({"error": "question required"}), 400
 
-        phone_clean = from_number.replace("whatsapp:", "").strip()
-
         # Fetch user's clippings
         sb = lib._sb()
         result = sb.table("wa_saves").select("id,title,url,category,created_at") \
-            .eq("phone", phone_clean) \
+            .eq("from_number", from_number) \
             .order("created_at", desc=True) \
             .limit(50) \
             .execute()
