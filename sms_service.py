@@ -12025,6 +12025,12 @@ def api_v2_personal_events():
     ev_leave_time = (body.get("leave_time") or "").strip()
     ev_location   = (body.get("location")   or "").strip()
     ev_notes      = (body.get("notes")      or "").strip()
+
+    # VALIDATION: Events MUST have a date to prevent stale events from appearing
+    # (recurring events without dates use "weekday" instead, handled separately)
+    if not ev_date:
+        return jsonify({"error": "date required for personal events"}), 400
+
     evs = _v2_fetch_personal_events(from_number)
     ev_obj = {"title": title, "date": ev_date, "time": ev_time, "notes": ev_notes}
     if ev_end_time:
