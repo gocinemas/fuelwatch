@@ -16648,6 +16648,19 @@ _bkBadge();
       </button>
     </div>
 
+    <!-- Smart Ask Card -->
+    <div style="background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border:1px solid #fcd34d;border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:6px;text-transform:uppercase">🤖 Ask About Your Clippings</div>
+      <div style="display:flex;gap:8px">
+        <input id="saves-ask-input" type="text" placeholder="e.g. 'What did I order at Renaissance?' or 'Show me recipes with eggs'"
+          style="flex:1;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:13px;outline:none;background:white;color:var(--text)"
+          onkeydown="if(event.key==='Enter') savesAskClippings()" />
+        <button onclick="savesAskClippings()" id="saves-ask-btn"
+          style="background:#92400e;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Ask</button>
+      </div>
+      <div id="saves-ask-result" style="display:none;margin-top:10px;padding:10px;background:white;border-radius:8px;font-size:12px;color:#78350f;border-left:3px solid #92400e"></div>
+    </div>
+
     <!-- Search & View Toggle -->
     <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
       <div style="position:relative;flex:1">
@@ -21826,6 +21839,45 @@ let _savesAll = [];
         _savesAll = prev2;
       }
     } catch(_) {}
+  };
+
+  window.savesAskClippings = async function() {
+    const question = document.getElementById("saves-ask-input").value.trim();
+    if (!question) return;
+
+    const btn = document.getElementById("saves-ask-btn");
+    const result = document.getElementById("saves-ask-result");
+
+    btn.textContent = "…";
+    btn.disabled = true;
+    result.style.display = "none";
+
+    try {
+      const r = await fetch("/api/clippings/ask", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          token: _miruPhone() || "",
+          question: question
+        })
+      });
+
+      const d = await r.json();
+      if (d.success && d.answer) {
+        result.textContent = d.answer;
+        result.style.display = "block";
+        document.getElementById("saves-ask-input").value = "";
+      } else {
+        result.textContent = "Couldn't answer that. Try rephrasing your question.";
+        result.style.display = "block";
+      }
+    } catch(e) {
+      result.textContent = "Error: " + e.message;
+      result.style.display = "block";
+    } finally {
+      btn.textContent = "Ask";
+      btn.disabled = false;
+    }
   };
 
   window.saveOpenBrandIntel = function(brandName) {
