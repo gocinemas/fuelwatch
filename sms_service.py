@@ -11995,6 +11995,10 @@ def api_v2_personal_events():
 
     if request.method == "GET":
         evs = _v2_fetch_personal_events(from_number)
+        # Filter out past events (before today) — prevents stale events from showing in UI
+        from datetime import date as _pe_date_type
+        _today = _pe_date_type.today().isoformat()
+        evs = [e for e in evs if not e.get("date") or e.get("date") >= _today]
         return jsonify({"events": evs})
 
     body  = request.get_json(silent=True) or {}
@@ -12050,7 +12054,7 @@ def api_menu():
     return jsonify({"menu": result, "name": name})
 
 
-_v2_brief_cache: dict = {}   # from_number -> {ts, brief}
+_v2_brief_cache: dict = {}   # from_number -> {ts, brief} — automatically cleared on startup
 
 
 @app.route("/api/v2/learn-patterns", methods=["POST"])
