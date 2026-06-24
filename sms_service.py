@@ -31951,6 +31951,74 @@ def api_clippings_all():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/clippings/search", methods=["POST"])
+def api_clippings_search():
+    """Smart search across clippings using AI understanding."""
+    try:
+        token = request.json.get("token", "").strip()
+        query = request.json.get("query", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+        if not query:
+            return jsonify({"error": "query required"}), 400
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Fetch user's clippings
+        sb = lib._sb()
+        result = sb.table("wa_saves").select("id,title,url,address,latitude,longitude,category,created_at,data") \
+            .eq("phone", phone_clean) \
+            .order("created_at", desc=True) \
+            .limit(100) \
+            .execute()
+
+        clippings = result.data or []
+
+        # Use smart search
+        from smart_clippings import search_clippings
+        matching = search_clippings(clippings, query)
+
+        return jsonify({"success": True, "results": matching, "count": len(matching)})
+    except Exception as e:
+        print(f"❌ Clippings search error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/clippings/ask", methods=["POST"])
+def api_clippings_ask():
+    """Ask questions about your clippings conversationally."""
+    try:
+        token = request.json.get("token", "").strip()
+        question = request.json.get("question", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+        if not question:
+            return jsonify({"error": "question required"}), 400
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Fetch user's clippings
+        sb = lib._sb()
+        result = sb.table("wa_saves").select("id,title,url,address,latitude,longitude,category,created_at,data") \
+            .eq("phone", phone_clean) \
+            .order("created_at", desc=True) \
+            .limit(50) \
+            .execute()
+
+        clippings = result.data or []
+
+        # Use conversational AI
+        from smart_clippings import ask_about_clippings
+        answer = ask_about_clippings(clippings, question)
+
+        return jsonify({"success": True, "answer": answer})
+    except Exception as e:
+        print(f"❌ Clippings ask error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/saves-clip", methods=["POST"])
 def api_saves_to_clippings():
     """Save to Clippings (wa_saves) — mirrors Context Memory save."""
