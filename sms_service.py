@@ -11996,8 +11996,11 @@ def api_v2_personal_events():
     if request.method == "GET":
         evs = _v2_fetch_personal_events(from_number)
         # Filter out past events (before today) — prevents stale events from showing in UI
-        from datetime import date as _pe_date_type
-        _today = _pe_date_type.today().isoformat()
+        # Use London timezone to match user's location
+        from datetime import datetime as _pe_dt
+        import zoneinfo as _pe_zi
+        _pe_ldn = _pe_zi.ZoneInfo("Europe/London")
+        _today = _pe_dt.now(_pe_ldn).date().isoformat()
         evs = [e for e in evs if not e.get("date") or e.get("date") >= _today]
         return jsonify({"events": evs})
 
