@@ -17998,9 +17998,17 @@ let _savesAll = [];
     // Today's events — filter to future non-work events
     var events = (todayEvents || []).filter(function(e) {
       var eDate = (e.date || "").slice(0, 10);
-      if (eDate && eDate !== todayStr) {
-        console.log("[briefCard] Filter out (wrong date): " + e.title + " date=" + eDate + " vs " + todayStr);
-        return false;
+      // STRICT: If event has a date, it MUST be today. No past or future events.
+      if (eDate) {
+        if (eDate < todayStr) {
+          console.log("[briefCard] Filter out (past event): " + e.title + " date=" + eDate + " before today " + todayStr);
+          return false;
+        }
+        if (eDate > todayStr) {
+          console.log("[briefCard] Filter out (future event): " + e.title + " date=" + eDate + " after today " + todayStr);
+          return false;
+        }
+        console.log("[briefCard] Keep (today): " + e.title + " date=" + eDate);
       }
       if (isWorkMeeting(e.title)) {
         console.log("[briefCard] Filter out (work meeting): " + e.title);
