@@ -18933,8 +18933,13 @@ let _savesAll = [];
       var spendHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
         + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🔒 Spend · ' + (spend.month || "") + '</div>'
-        + '<button id="' + cardId + '-btn" onclick="var btn=document.getElementById(\'' + cardId + '-btn\');var chart=document.getElementById(\'' + cardId + '-chart\');var receipt=document.getElementById(\'' + cardId + '-receipt\');var isChart=chart.style.display!==\'none\';chart.style.display=isChart?\'none\':\'block\';receipt.style.display=isChart?\'block\':\'none\';btn.textContent=isChart?\'📊 View\':\'📄 Text\'" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600">▾ Show</button>'
+        + '<div style="display:flex;gap:6px">'
+        + '<button id="' + cardId + '-toggle" onclick="var body=document.getElementById(\'' + cardId + '-body\');var isHidden=body.style.display===\'none\';body.style.display=isHidden?\'block\':\'none\';this.textContent=isHidden?\'▾ Hide\':\'▴ Show\'" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600">▾ Hide</button>'
+        + '<input id="' + cardId + '-pdf" type="file" accept=".pdf" style="display:none" onchange="spendUploadPDF(this)" />'
+        + '<button onclick="document.getElementById(\'' + cardId + '-pdf\').click()" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600;padding:0">+ PDF</button>'
         + '</div>'
+        + '</div>'
+        + '<div id="' + cardId + '-body">'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
         + '<div id="' + cardId + '-receipt" style="display:none;margin-top:8px">' + receiptHtml + '</div>'
@@ -21888,6 +21893,41 @@ let _savesAll = [];
     if (_bq) _bq.value = brandName;
     blookupTab("brand");
     searchBrand();
+  };
+
+  window.spendUploadPDF = async function(input) {
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append("pdf", file);
+    formData.append("token", _miruPhone() || "");
+
+    const btn = input.previousElementSibling;
+    btn.textContent = "…";
+    btn.disabled = true;
+
+    try {
+      const r = await fetch("/api/v2/spend/upload-pdf", {
+        method: "POST",
+        body: formData
+      });
+
+      const d = await r.json();
+      if (d.success) {
+        _miruToast(`✅ Extracted ${d.count} transaction${d.count !== 1 ? 's' : ''} from PDF`, "success");
+        // Refresh spend data
+        await _briefInit();
+      } else {
+        _miruToast(`Error: ${d.error || "Failed to extract transactions"}`, "error");
+      }
+    } catch(e) {
+      _miruToast(`Error: ${e.message}`, "error");
+    } finally {
+      btn.textContent = "+ PDF";
+      btn.disabled = false;
+      input.value = "";  // Reset file input
+    }
   };
 
   window.savesUpdate = async function(id, status, btn) {
