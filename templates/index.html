@@ -55,22 +55,17 @@
       document.documentElement.setAttribute('data-theme', t);
       localStorage.setItem('miru-theme', t);
     };
-    document.addEventListener('keydown', function(e) {
-      // Don't intercept keyboard shortcuts when typing in input fields
-      var activeElement = document.activeElement;
-      var activeTag = activeElement && activeElement.tagName ? activeElement.tagName.toLowerCase() : '';
-      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'contenteditable') {
-        return;
-      }
-
-      if (e.key === 'd' || e.key === 'D') {
-        e.preventDefault();
-        window._setTheme('light');
-      } else if (e.key === 'n' || e.key === 'N') {
-        e.preventDefault();
-        window._setTheme('dark');
-      }
-    });
+    // Theme hotkeys disabled - was blocking D/N typing in input fields
+    // Users can toggle theme via UI settings instead
+    // document.addEventListener('keydown', function(e) {
+    //   if (e.key === 'd' || e.key === 'D') {
+    //     e.preventDefault();
+    //     window._setTheme('light');
+    //   } else if (e.key === 'n' || e.key === 'N') {
+    //     e.preventDefault();
+    //     window._setTheme('dark');
+    //   }
+    // });
   })();
   </script>
   <!-- Stub functions to prevent "undefined" errors on buttons before real functions load -->
