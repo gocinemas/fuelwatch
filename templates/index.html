@@ -18492,14 +18492,21 @@ let _savesAll = [];
       }
     } else if (!wfh && !out && !_noTrainsDay && trains && trains.departures && trains.departures.length) {  // Show trains card
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
-      var futureDeps = trains.departures.filter(function(d) {
-        var t = (d.departs || d.time || "").trim();
-        if (!t || t.indexOf(":") < 0) return true;
-        var p = t.split(":");
-        var dm = parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
-        return dm >= _nowMins - 1;
-      });
-      if (futureDeps.length > 0) {
+      // Commute window: 7:00am - 8:30am only (when you typically leave)
+      var _commuteWindowStart = 7 * 60;      // 7:00am = 420 mins
+      var _commuteWindowEnd = 8 * 60 + 30;   // 8:30am = 510 mins
+      var _inCommuteWindow = _nowMins >= _commuteWindowStart && _nowMins < _commuteWindowEnd;
+
+      if (_inCommuteWindow) {
+        var futureDeps = trains.departures.filter(function(d) {
+          var t = (d.departs || d.time || "").trim();
+          if (!t || t.indexOf(":") < 0) return true;
+          var p = t.split(":");
+          var dm = parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+          return dm >= _nowMins - 1;
+        });
+      }
+      if (_inCommuteWindow && futureDeps && futureDeps.length > 0) {
         var deps = futureDeps.slice(0, 3).map(function(d) {
           var st = d.status || "On time";
           var stCol = st === "On time" ? "#16a34a" : st === "Cancelled" ? "#dc2626" : "#d97706";
