@@ -57,8 +57,11 @@
     };
     document.addEventListener('keydown', function(e) {
       // Don't intercept keyboard shortcuts when typing in input fields
-      var activeTag = document.activeElement?.tagName?.toLowerCase();
-      if (activeTag === 'input' || activeTag === 'textarea') return;
+      var activeElement = document.activeElement;
+      var activeTag = activeElement && activeElement.tagName ? activeElement.tagName.toLowerCase() : '';
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'contenteditable') {
+        return;
+      }
 
       if (e.key === 'd' || e.key === 'D') {
         e.preventDefault();
