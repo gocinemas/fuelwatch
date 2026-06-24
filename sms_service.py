@@ -9477,6 +9477,81 @@ def api_v2_spend():
         return jsonify({"total": 0, "count": 0, "period": "", "breakdown": {}, "error": str(e)})
 
 
+@app.route("/api/v2/spend/upload-pdf", methods=["POST"])
+def api_v2_spend_upload_pdf():
+    """Upload and extract transactions from a PDF (bank statement, receipt, or invoice)."""
+    try:
+        token = request.form.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        if "pdf" not in request.files:
+            return jsonify({"error": "pdf file required"}), 400
+
+        pdf_file = request.files["pdf"]
+        if not pdf_file.filename.lower().endswith(".pdf"):
+            return jsonify({"error": "Only PDF files allowed"}), 400
+
+        # Read PDF bytes
+        pdf_bytes = pdf_file.read()
+        if not pdf_bytes:
+            return jsonify({"error": "Empty file"}), 400
+
+        # Extract transactions using AI vision
+        from spend_pdf_extractor import extract_transactions_from_pdf
+        result = extract_transactions_from_pdf(pdf_bytes)
+
+        if not result["success"]:
+            return jsonify(result), 400
+
+        # Store extracted transactions in spend data
+        if result["transactions"]:
+            try:
+                sb = lib._sb()
+                phone_clean = from_number.replace("whatsapp:", "").strip()
+
+                # Get existing spend data
+                rows = sb.table("ma_details").select("id,data") \
+                    .eq("device_id", phone_clean).eq("type", "spend_transactions").limit(1).execute().data or []
+
+                existing = (rows[0]["data"] if rows else []) or []
+
+                # Add new transactions
+                for txn in result["transactions"]:
+                    existing.append({
+                        **txn,
+                        "source": "PDF Upload",
+                        "added_at": __import__("datetime").datetime.now().isoformat(),
+                    })
+
+                # Save back
+                if rows:
+                    sb.table("ma_details").update({"data": existing}).eq("id", rows[0]["id"]).execute()
+                else:
+                    sb.table("ma_details").insert({
+                        "device_id": phone_clean,
+                        "type": "spend_transactions",
+                        "label": "spend_transactions",
+                        "data": existing,
+                    }).execute()
+
+                app.logger.info(f"[spend] Extracted {result['count']} transactions from PDF")
+            except Exception as e:
+                app.logger.warning(f"[spend] Failed to store transactions: {e}")
+
+        return jsonify({
+            "success": True,
+            "count": result["count"],
+            "transactions": result["transactions"],
+            "message": f"Extracted {result['count']} transactions from PDF",
+        })
+
+    except Exception as e:
+        app.logger.error(f"[spend] PDF upload error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/v2/prefs", methods=["POST"])
 def api_v2_prefs_post():
     """Save V2 preferences. Merges with existing — send only changed keys."""
