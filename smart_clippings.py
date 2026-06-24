@@ -136,19 +136,19 @@ def ask_about_clippings(clippings: list, question: str) -> str:
         for c in clippings[:30]  # Include more clippings for better context
     ])
 
-    prompt = f"""You have access to the user's saved clippings (articles, menus, recipes, receipts, links they've clipped):
+    prompt = f"""You have access to the user's saved clippings (articles, menus, recipes, receipts, links, etc):
 
 {clippings_text}
 
 User question: "{question}"
 
-Answer based on what they've saved. Be helpful and specific.
-- If asking about restaurants/menus, tell them which ones they saved
-- If asking about recipes, tell them what they've clipped
-- If asking "what did I save about X", find matching items
-- If no relevant items found, say "I don't see anything about that in your clippings"
+Answer based on what they've saved. Be very helpful and try hard to find relevant matches.
+- List items that match their question
+- If asking about a category (restaurants, recipes, etc), list what they have
+- If no exact match, suggest similar things they've saved
+- If truly nothing matches, say "You haven't saved anything about that topic"
 
-Keep answer under 3 sentences."""
+Be conversational and helpful. Keep answer brief (1-2 sentences)."""
 
     try:
         response = client.messages.create(
