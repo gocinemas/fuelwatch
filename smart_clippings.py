@@ -130,20 +130,24 @@ def ask_about_clippings(clippings: list, question: str) -> str:
     if not clippings:
         return "You haven't saved any clippings yet."
 
-    # Build context
+    # Build context from available clipping data
     clippings_text = "\n".join([
-        f"• {c.get('title')} - {c.get('summary', '')} [Tags: {', '.join(c.get('tags', []))}]"
-        for c in clippings[:20]
+        f"• {c.get('title', 'Untitled')} (Category: {c.get('category', 'general')}, Saved: {c.get('created_at', 'date unknown')[:10]})"
+        for c in clippings[:30]  # Include more clippings for better context
     ])
 
-    prompt = f"""You have access to the user's saved clippings (their personal memory):
+    prompt = f"""You have access to the user's saved clippings (articles, menus, recipes, receipts, links they've clipped):
 
 {clippings_text}
 
 User question: "{question}"
 
-Answer based on their clippings. Be helpful and specific. If they ask about a restaurant/recipe,
-tell them what they saved and extracted details (prices, ingredients, etc.).
+Answer based on what they've saved. Be helpful and specific.
+- If asking about restaurants/menus, tell them which ones they saved
+- If asking about recipes, tell them what they've clipped
+- If asking "what did I save about X", find matching items
+- If no relevant items found, say "I don't see anything about that in your clippings"
+
 Keep answer under 3 sentences."""
 
     try:
@@ -154,4 +158,4 @@ Keep answer under 3 sentences."""
         )
         return response.content[0].text
     except Exception as e:
-        return f"Error: {e}"
+        return f"Error analyzing clippings: {e}"
