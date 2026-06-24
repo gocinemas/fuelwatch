@@ -132,7 +132,7 @@ def ask_about_clippings(clippings: list, question: str) -> str:
 
     # Build context from available clipping data
     clippings_text = "\n".join([
-        f"• {c.get('title', 'Untitled')} (Category: {c.get('category', 'general')}, Saved: {c.get('created_at', 'date unknown')[:10]})"
+        f"• {c.get('title', 'Untitled')} - {c.get('summary', '')} {f'(£{c.get(\"amount\")})' if c.get('amount') else ''} [Category: {c.get('category', 'general')}, Saved: {c.get('created_at', 'date unknown')[:10]}]"
         for c in clippings[:30]  # Include more clippings for better context
     ])
 

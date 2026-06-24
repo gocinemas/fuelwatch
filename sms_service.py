@@ -32070,9 +32070,9 @@ def api_clippings_ask():
         if not question:
             return jsonify({"error": "question required"}), 400
 
-        # Fetch user's clippings
+        # Fetch user's clippings with all available detail fields
         sb = lib._sb()
-        result = sb.table("wa_saves").select("id,title,url,category,created_at") \
+        result = sb.table("wa_saves").select("id,title,url,category,created_at,summary,amount") \
             .eq("from_number", from_number) \
             .order("created_at", desc=True) \
             .limit(50) \
