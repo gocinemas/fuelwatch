@@ -32060,17 +32060,17 @@ def api_clippings_search():
 
 @app.route("/api/clippings/ask", methods=["POST"])
 def api_clippings_ask():
-    """Ask questions about your clippings conversationally."""
+    """Unified smart search + AI ask for clippings. Fast keywords, intelligent analysis."""
     try:
         token = request.json.get("token", "").strip()
-        question = request.json.get("question", "").strip()
+        query = request.json.get("question", "").strip()
         from_number = _v2_resolve(token)
         if not from_number:
             return jsonify({"error": "Unauthorized"}), 401
-        if not question:
+        if not query:
             return jsonify({"error": "question required"}), 400
 
-        # Fetch user's clippings with all available detail fields
+        # Fetch user's clippings
         sb = lib._sb()
         result = sb.table("wa_saves").select("id,title,url,category,created_at,summary,amount") \
             .eq("from_number", from_number) \
@@ -32079,12 +32079,29 @@ def api_clippings_ask():
             .execute()
 
         clippings = result.data or []
+        if not clippings:
+            return jsonify({"success": True, "answer": "You haven't saved any clippings yet."})
 
-        # Use conversational AI
+        # Detect query type: simple keywords or complex question?
+        is_complex = (
+            len(query) > 30 or
+            '?' in query or
+            any(word in query.lower() for word in ['what', 'show', 'how', 'did', 'have', 'tell', 'find', 'which'])
+        )
+
+        # Fast path: keyword search for simple queries
+        if not is_complex:
+            from smart_clippings import search_clippings
+            matches = search_clippings(clippings, query)
+            if matches:
+                matches_text = "\n".join([f"• {m.get('title')} - {m.get('summary', '')}" for m in matches[:5]])
+                return jsonify({"success": True, "answer": f"Found {len(matches)} match(es):\n\n{matches_text}", "type": "search"})
+
+        # Smart path: AI analysis for complex queries
         from smart_clippings import ask_about_clippings
-        answer = ask_about_clippings(clippings, question)
+        answer = ask_about_clippings(clippings, query)
 
-        return jsonify({"success": True, "answer": answer})
+        return jsonify({"success": True, "answer": answer, "type": "ai"})
     except Exception as e:
         print(f"❌ Clippings ask error: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
