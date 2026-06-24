@@ -56,6 +56,10 @@
       localStorage.setItem('miru-theme', t);
     };
     document.addEventListener('keydown', function(e) {
+      // Don't intercept keyboard shortcuts when typing in input fields
+      var activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
+
       if (e.key === 'd' || e.key === 'D') {
         e.preventDefault();
         window._setTheme('light');
