@@ -32042,7 +32042,7 @@ def api_clippings_search():
 
         # Fetch user's clippings
         sb = lib._sb()
-        result = sb.table("wa_saves").select("id,title,url,address,latitude,longitude,category,created_at,data") \
+        result = sb.table("wa_saves").select("id,title,url,category,created_at") \
             .eq("phone", phone_clean) \
             .order("created_at", desc=True) \
             .limit(100) \
@@ -32076,7 +32076,7 @@ def api_clippings_ask():
 
         # Fetch user's clippings
         sb = lib._sb()
-        result = sb.table("wa_saves").select("id,title,url,address,latitude,longitude,category,created_at,data") \
+        result = sb.table("wa_saves").select("id,title,url,category,created_at") \
             .eq("phone", phone_clean) \
             .order("created_at", desc=True) \
             .limit(50) \
