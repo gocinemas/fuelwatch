@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campaign Creative Tracker - Rexona x FIFA World Cup 2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,11 +23,17 @@
         .header-right { display: flex; gap: 20px; align-items: center; font-size: 13px; }
         .header-right a { text-decoration: none; color: #2563eb; }
         .status-badge { display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; margin-right: 6px; }
+        .last-updated { font-size: 11px; color: #999; }
 
         .container { max-width: 1400px; margin: 0 auto; padding: 30px 40px; }
 
         .section { background: white; border-radius: 8px; padding: 24px; margin-bottom: 24px; border: 1px solid #e5e7eb; }
         .section h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+
+        /* Loading states */
+        .loading { color: #999; font-size: 14px; padding: 20px; text-align: center; }
+        .shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
         /* Creative Gallery */
         .creative-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
@@ -45,8 +52,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            color: #666;
         }
-        .creative-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
         .youtube-badge {
             position: absolute;
             top: 10px;
@@ -78,9 +85,31 @@
         .chart-container h3 { font-size: 15px; font-weight: 600; margin-bottom: 20px; }
         .chart-wrapper { position: relative; height: 300px; }
 
-        @media (max-width: 1024px) {
-            .charts-grid { grid-template-columns: 1fr; }
+        /* Tweets Section */
+        .tweets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .tweet-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
         }
+        .tweet-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .tweet-author { font-weight: 600; font-size: 14px; }
+        .tweet-sentiment { font-size: 12px; padding: 2px 6px; border-radius: 3px; background: #e8f5e9; color: #2e7d32; }
+        .tweet-text { font-size: 14px; line-height: 1.5; margin: 10px 0; }
+        .tweet-meta { font-size: 12px; color: #999; }
+
+        /* Metrics */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .metric-box {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+        }
+        .metric-value { font-size: 24px; font-weight: 700; color: #2563eb; margin-bottom: 4px; }
+        .metric-label { font-size: 12px; color: #666; }
 
         /* Regional Variants */
         .variants-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
@@ -94,21 +123,12 @@
         .variant-region { font-size: 12px; color: #2563eb; font-weight: 600; }
         .variant-desc { font-size: 12px; color: #666; margin-top: 8px; line-height: 1.4; }
 
-        /* Metrics Section */
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .metric-box {
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            text-align: center;
-        }
-        .metric-value { font-size: 24px; font-weight: 700; color: #2563eb; margin-bottom: 4px; }
-        .metric-label { font-size: 12px; color: #666; }
-
-        /* Navigation Links */
         .nav-links { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
         .nav-links a { display: inline-block; margin-right: 20px; color: #2563eb; text-decoration: none; font-size: 14px; }
+
+        @media (max-width: 1024px) {
+            .charts-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -119,137 +139,26 @@
         </div>
         <div class="header-right">
             <span><span class="status-badge"></span>Live</span>
+            <span class="last-updated">Updated: <span id="last-update-time">—</span></span>
             <a href="/intel/world-cup">← World Cup 2026</a>
             <a href="/intel">Intel Home</a>
         </div>
     </div>
 
     <div class="container">
-        <!-- Key Metrics -->
-        <div class="metrics-grid">
-            <div class="metric-box">
-                <div class="metric-value">1.4M</div>
-                <div class="metric-label">Total Views</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-value">39K</div>
-                <div class="metric-label">Total Likes</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-value">2K</div>
-                <div class="metric-label">Total Comments</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-value">+0.72</div>
-                <div class="metric-label">Avg Sentiment</div>
-            </div>
+        <!-- Metrics -->
+        <div class="metrics-grid" id="metrics-container">
+            <div class="metric-box shimmer" style="height: 80px;"></div>
+            <div class="metric-box shimmer" style="height: 80px;"></div>
+            <div class="metric-box shimmer" style="height: 80px;"></div>
+            <div class="metric-box shimmer" style="height: 80px;"></div>
         </div>
 
         <!-- Creative Gallery -->
         <div class="section">
             <h2>Campaign Creatives</h2>
-            <div class="creative-gallery">
-                <div class="creative-card">
-                    <div class="creative-thumbnail">
-                        <div class="youtube-badge">YOUTUBE</div>
-                        <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #065f46 0%, #10b981 100%);"></div>
-                    </div>
-                    <div class="creative-info">
-                        <div class="creative-region">MALAYSIA / ASIA</div>
-                        <div class="creative-title">Rexona x FIFA World Cup 2026™</div>
-                        <div class="creative-stats">
-                            <div class="stat">👁 1.4M</div>
-                            <div class="stat">👍 39K</div>
-                            <div class="stat">💬 2K</div>
-                        </div>
-                        <div class="creative-meta">5 Nov 2025 • 40s</div>
-                    </div>
-                </div>
-
-                <div class="creative-card">
-                    <div class="creative-thumbnail">
-                        <div class="youtube-badge">YOUTUBE</div>
-                        <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #7c2d12 0%, #ea580c 100%);"></div>
-                    </div>
-                    <div class="creative-info">
-                        <div class="creative-region">BRAZIL</div>
-                        <div class="creative-title">Rexona Pro Performance Campaign</div>
-                        <div class="creative-stats">
-                            <div class="stat">👁 980K</div>
-                            <div class="stat">👍 28K</div>
-                            <div class="stat">💬 1.2K</div>
-                        </div>
-                        <div class="creative-meta">8 Nov 2025 • 45s</div>
-                    </div>
-                </div>
-
-                <div class="creative-card">
-                    <div class="creative-thumbnail">
-                        <div class="youtube-badge">YOUTUBE</div>
-                        <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);"></div>
-                    </div>
-                    <div class="creative-info">
-                        <div class="creative-region">USA / NORTH AMERICA</div>
-                        <div class="creative-title">Degree Pro Strength World Cup</div>
-                        <div class="creative-stats">
-                            <div class="stat">👁 850K</div>
-                            <div class="stat">👍 24K</div>
-                            <div class="stat">💬 1.1K</div>
-                        </div>
-                        <div class="creative-meta">10 Nov 2025 • 50s</div>
-                    </div>
-                </div>
-
-                <div class="creative-card">
-                    <div class="creative-thumbnail">
-                        <div class="youtube-badge">YOUTUBE</div>
-                        <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #6b21a8 0%, #d946ef 100%);"></div>
-                    </div>
-                    <div class="creative-info">
-                        <div class="creative-region">UK / EUROPE</div>
-                        <div class="creative-title">Sure Women's Championship Series</div>
-                        <div class="creative-stats">
-                            <div class="stat">👁 420K</div>
-                            <div class="stat">👍 16K</div>
-                            <div class="stat">💬 890</div>
-                        </div>
-                        <div class="creative-meta">12 Nov 2025 • 35s</div>
-                    </div>
-                </div>
-
-                <div class="creative-card">
-                    <div class="creative-thumbnail">
-                        <div class="youtube-badge">YOUTUBE</div>
-                        <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #831843 0%, #ec4899 100%);"></div>
-                    </div>
-                    <div class="creative-info">
-                        <div class="creative-region">INDIA</div>
-                        <div class="creative-title">Rexona Cricket Fusion Campaign</div>
-                        <div class="creative-stats">
-                            <div class="stat">👁 680K</div>
-                            <div class="stat">👍 31K</div>
-                            <div class="stat">💬 1.5K</div>
-                        </div>
-                        <div class="creative-meta">6 Nov 2025 • 55s</div>
-                    </div>
-                </div>
-
-                <div class="creative-card">
-                    <div class="creative-thumbnail">
-                        <div class="youtube-badge">YOUTUBE</div>
-                        <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #4c0519 0%, #f43f5e 100%);"></div>
-                    </div>
-                    <div class="creative-info">
-                        <div class="creative-region">GLOBAL</div>
-                        <div class="creative-title">World Cup Pressure Campaign</div>
-                        <div class="creative-stats">
-                            <div class="stat">👁 2.1M</div>
-                            <div class="stat">👍 94K</div>
-                            <div class="stat">💬 5.2K</div>
-                        </div>
-                        <div class="creative-meta">1 Nov 2025 • 60s</div>
-                    </div>
-                </div>
+            <div class="creative-gallery" id="creative-gallery">
+                <div class="loading">Loading creatives...</div>
             </div>
         </div>
 
@@ -270,41 +179,20 @@
             </div>
         </div>
 
+        <!-- Tweets -->
+        <div class="section">
+            <h2>Campaign Sentiment — Live Tweets & Social</h2>
+            <div class="tweets-grid" id="tweets-container">
+                <div class="loading">Loading tweets...</div>
+            </div>
+        </div>
+
         <!-- Regional Variants -->
         <div class="section">
             <h2>Regional Variant Comparison</h2>
             <p style="font-size: 13px; color: #666; margin-bottom: 16px;">One brand, three names — how messaging differs by market</p>
-            <div class="variants-container">
-                <div class="variant-card">
-                    <div class="variant-brand">Rexona</div>
-                    <div class="variant-region">BRAZIL</div>
-                    <div class="variant-desc">High-intensity sports positioning, passion-driven messaging</div>
-                </div>
-                <div class="variant-card">
-                    <div class="variant-brand">Adidas</div>
-                    <div class="variant-region">BRAZIL</div>
-                    <div class="variant-desc">Performance apparel focus, athlete partnerships</div>
-                </div>
-                <div class="variant-card">
-                    <div class="variant-brand">Axe</div>
-                    <div class="variant-region">BRAZIL</div>
-                    <div class="variant-desc">Lifestyle and confidence angle, cultural relevance</div>
-                </div>
-                <div class="variant-card">
-                    <div class="variant-brand">Visa</div>
-                    <div class="variant-region">GLOBAL</div>
-                    <div class="variant-desc">Payment solutions, access and inclusion narrative</div>
-                </div>
-                <div class="variant-card">
-                    <div class="variant-brand">Dove</div>
-                    <div class="variant-region">GLOBAL</div>
-                    <div class="variant-desc">Self-esteem and body confidence messaging</div>
-                </div>
-                <div class="variant-card">
-                    <div class="variant-brand">Degree</div>
-                    <div class="variant-region">USA</div>
-                    <div class="variant-desc">Strength and endurance positioning, performance tech</div>
-                </div>
+            <div class="variants-container" id="variants-container">
+                <div class="loading">Loading variants...</div>
             </div>
 
             <div class="nav-links">
@@ -315,56 +203,253 @@
     </div>
 
     <script>
-        // Sentiment Timeline Chart
-        const sentimentCtx = document.getElementById('sentimentChart').getContext('2d');
-        new Chart(sentimentCtx, {
-            type: 'line',
-            data: {
-                labels: ['17 Jun', '18 Jun', '19 Jun', '20 Jun', '21 Jun', '22 Jun', '23 Jun', '24 Jun'],
-                datasets: [{
-                    label: 'Sentiment Score',
-                    data: [0.85, 0.78, 0.92, 0.45, 0.55, 0.88, 0.72, 0.68],
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.05)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#2563eb'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { min: -1, max: 1, beginAtZero: true, title: { display: true, text: 'Sentiment' } },
-                    x: { title: { display: true, text: 'Date' } }
-                }
-            }
-        });
+        const SUPABASE_URL = 'https://uqwidlptkgmbxgaivafi.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat';
 
-        // Regional Performance Chart
-        const regionCtx = document.getElementById('regionChart').getContext('2d');
-        new Chart(regionCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Global', 'India', 'USA', 'Brazil', 'UK'],
-                datasets: [{
-                    data: [45, 22, 18, 10, 5],
-                    backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'],
-                    borderColor: '#fff',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'right' }
-                }
+        let supabase;
+        let sentimentChart, regionChart;
+
+        async function initSupabase() {
+            const { createClient } = window.supabase;
+            supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+            await loadAllData();
+        }
+
+        async function loadAllData() {
+            try {
+                const [creatives, sentiment, metrics, variants] = await Promise.all([
+                    loadCreatives(),
+                    loadSentiment(),
+                    loadMetrics(),
+                    loadVariants()
+                ]);
+
+                updateMetrics(creatives, sentiment);
+                displayCreatives(creatives);
+                displaySentiment(sentiment);
+                displayCharts(metrics);
+                displayVariants(variants);
+                updateTimestamp();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('metrics-container').innerHTML = '<div class="loading">Error loading data. Please refresh.</div>';
             }
-        });
+        }
+
+        async function loadCreatives() {
+            const { data, error } = await supabase
+                .from('campaign_creatives')
+                .select('*')
+                .eq('brand', 'Rexona')
+                .order('upload_date', { ascending: false })
+                .limit(6);
+            return data || [];
+        }
+
+        async function loadSentiment() {
+            const { data, error } = await supabase
+                .from('campaign_sentiment')
+                .select('*')
+                .eq('brand_name', 'Rexona')
+                .order('timestamp', { ascending: false })
+                .limit(20);
+            return data || [];
+        }
+
+        async function loadMetrics() {
+            const { data, error } = await supabase
+                .from('campaign_metrics')
+                .select('*')
+                .eq('brand_variant', 'Rexona')
+                .order('date', { ascending: true });
+            return data || [];
+        }
+
+        async function loadVariants() {
+            const { data, error } = await supabase
+                .from('campaign_variants')
+                .select('*')
+                .eq('brand_name', 'Rexona');
+            return data || [];
+        }
+
+        function updateMetrics(creatives, sentiment) {
+            const totalViews = creatives.reduce((sum, c) => sum + (c.views || 0), 0);
+            const totalLikes = creatives.reduce((sum, c) => sum + (c.likes || 0), 0);
+            const totalComments = creatives.reduce((sum, c) => sum + (c.comments || 0), 0);
+            const avgSentiment = sentiment.length > 0
+                ? (sentiment.reduce((sum, s) => sum + (s.sentiment_score || 0), 0) / sentiment.length).toFixed(2)
+                : 0;
+
+            const metrics = [
+                { label: 'Total Views', value: formatNumber(totalViews) },
+                { label: 'Total Likes', value: formatNumber(totalLikes) },
+                { label: 'Total Comments', value: formatNumber(totalComments) },
+                { label: 'Avg Sentiment', value: avgSentiment }
+            ];
+
+            document.getElementById('metrics-container').innerHTML = metrics.map(m => `
+                <div class="metric-box">
+                    <div class="metric-value">${m.value}</div>
+                    <div class="metric-label">${m.label}</div>
+                </div>
+            `).join('');
+        }
+
+        function displayCreatives(creatives) {
+            const gallery = document.getElementById('creative-gallery');
+            if (creatives.length === 0) {
+                gallery.innerHTML = '<div class="loading">No creatives found</div>';
+                return;
+            }
+
+            gallery.innerHTML = creatives.map(c => `
+                <div class="creative-card">
+                    <div class="creative-thumbnail">
+                        <div class="youtube-badge">YOUTUBE</div>
+                        <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #065f46 0%, #10b981 100%);"></div>
+                    </div>
+                    <div class="creative-info">
+                        <div class="creative-region">${c.variant || 'GLOBAL'}</div>
+                        <div class="creative-title">${c.title}</div>
+                        <div class="creative-stats">
+                            <div class="stat">👁 ${formatNumber(c.views || 0)}</div>
+                            <div class="stat">👍 ${formatNumber(c.likes || 0)}</div>
+                            <div class="stat">💬 ${formatNumber(c.comments || 0)}</div>
+                        </div>
+                        <div class="creative-meta">${formatDate(c.upload_date)} • ${c.duration_seconds}s</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displaySentiment(sentiment) {
+            const container = document.getElementById('tweets-container');
+            if (sentiment.length === 0) {
+                container.innerHTML = '<div class="loading">No sentiment data yet</div>';
+                return;
+            }
+
+            container.innerHTML = sentiment.map(s => {
+                const sentimentClass = s.sentiment_score > 0.5 ? 'positive' : s.sentiment_score < -0.5 ? 'negative' : 'neutral';
+                const sentimentLabel = s.sentiment_score > 0.5 ? 'Positive' : s.sentiment_score < -0.5 ? 'Negative' : 'Neutral';
+                return `
+                    <div class="tweet-card">
+                        <div class="tweet-header">
+                            <span class="tweet-author">${s.author}</span>
+                            <span class="tweet-sentiment">${sentimentLabel}</span>
+                        </div>
+                        <div class="tweet-text">"${s.text}"</div>
+                        <div class="tweet-meta">${s.source_platform} • ${formatDate(s.timestamp)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function displayCharts(metrics) {
+            if (metrics.length === 0) return;
+
+            // Sentiment timeline
+            const sentimentData = metrics
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .slice(-15);
+
+            const sentimentCtx = document.getElementById('sentimentChart').getContext('2d');
+            sentimentChart = new Chart(sentimentCtx, {
+                type: 'line',
+                data: {
+                    labels: sentimentData.map(m => formatDate(m.date)),
+                    datasets: [{
+                        label: 'Sentiment Score',
+                        data: sentimentData.map(m => m.sentiment_avg || 0),
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.05)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#2563eb'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { min: -1, max: 1, beginAtZero: true },
+                        x: { title: { display: true, text: 'Date' } }
+                    }
+                }
+            });
+
+            // Regional performance
+            const regionMetrics = metrics.filter(m => m.region && m.impressions);
+            const regionGroups = {};
+            regionMetrics.forEach(m => {
+                if (!regionGroups[m.region]) regionGroups[m.region] = 0;
+                regionGroups[m.region] += m.impressions;
+            });
+
+            const regionCtx = document.getElementById('regionChart').getContext('2d');
+            regionChart = new Chart(regionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(regionGroups),
+                    datasets: [{
+                        data: Object.values(regionGroups),
+                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right' } }
+                }
+            });
+        }
+
+        function displayVariants(variants) {
+            const container = document.getElementById('variants-container');
+            if (variants.length === 0) {
+                container.innerHTML = '<div class="loading">No variants found</div>';
+                return;
+            }
+
+            container.innerHTML = variants.map(v => `
+                <div class="variant-card">
+                    <div class="variant-brand">${v.brand_name}</div>
+                    <div class="variant-region">${v.region}</div>
+                    <div class="variant-desc">${v.messaging_angle}</div>
+                </div>
+            `).join('');
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+        }
+
+        function updateTimestamp() {
+            const now = new Date();
+            const formatted = now.toLocaleString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('last-update-time').textContent = formatted;
+        }
+
+        // Initialize and refresh every 60 seconds
+        document.addEventListener('DOMContentLoaded', initSupabase);
+        setInterval(loadAllData, 60000);
     </script>
 </body>
 </html>
