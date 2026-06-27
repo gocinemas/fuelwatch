@@ -206,12 +206,12 @@
         const SUPABASE_URL = 'https://uqwidlptkgmbxgaivafi.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat';
 
-        let supabase;
         let sentimentChart, regionChart;
+        let supabaseClient;
 
         async function initSupabase() {
             const { createClient } = window.supabase;
-            supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+            supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
             await loadAllData();
         }
 
@@ -237,7 +237,7 @@
         }
 
         async function loadCreatives() {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('campaign_creatives')
                 .select('*')
                 .eq('brand', 'Rexona')
@@ -247,7 +247,7 @@
         }
 
         async function loadSentiment() {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('campaign_sentiment')
                 .select('*')
                 .order('timestamp', { ascending: false })
@@ -256,7 +256,7 @@
         }
 
         async function loadMetrics() {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('campaign_metrics')
                 .select('*')
                 .eq('brand_variant', 'Rexona')
@@ -265,7 +265,7 @@
         }
 
         async function loadVariants() {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('campaign_variants')
                 .select('*')
                 .eq('brand_name', 'Rexona');
