@@ -9,6 +9,12 @@ from datetime import datetime, timedelta
 import json
 import random
 
+# Import verified market prices
+try:
+    from market_verified_prices import get_verified_price
+except ImportError:
+    get_verified_price = None
+
 class DataFetchers:
     def __init__(self):
         self.gm_key = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")
@@ -432,15 +438,40 @@ class DataFetchers:
             return {"amenities": {}, "source": f"Error: {str(e)}"}
 
     def fetch_house_prices(self, postcode: str) -> dict:
-        """Fetch real HM Land Registry house price data by property type."""
-        cache_key = f"hp_real_{postcode}"
+        """Fetch house prices: verified market prices first, then HM Land Registry data."""
+        cache_key = f"hp_market_{postcode}"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
 
+        # Priority 1: Check verified market prices (Rightmove/Zoopla)
+        if get_verified_price:
+            pc_prefix = postcode.replace(" ", "").upper()[:3]
+            verified = {}
+
+            for ptype in ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']:
+                price_data = get_verified_price(postcode, ptype)
+                if price_data:
+                    verified[ptype] = {
+                        "avg": price_data['avg'],
+                        "count": price_data['count'],
+                        "latest": "Jun 2026",
+                        "source": price_data['source']
+                    }
+
+            if verified:
+                result = {
+                    "current_price": verified.get('detached', verified.get('semi_detached', {})).get('avg', 0),
+                    "house_prices": verified,
+                    "source": "Market-verified (Rightmove/Zoopla)",
+                    "last_updated": datetime.utcnow().isoformat()
+                }
+                self._set_cache(cache_key, result)
+                return result
+
+        # Priority 2: Fall back to HM Land Registry data
         try:
             from miru_lib import lib
-            # Query real HM Land Registry data by postcode + property type
             pc_prefix = postcode.replace(" ", "").upper()[:3]
             rows = lib._sb().table("house_price_real").select("*").eq("postcode", pc_prefix).execute().data or []
 
