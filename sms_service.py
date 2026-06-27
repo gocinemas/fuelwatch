@@ -1159,6 +1159,20 @@ def intel_root():
     """Intel landing page - mission and explanation"""
     return render_template("intel_landing.html")
 
+@app.route("/intel/world-cup")
+def intel_world_cup():
+    """FIFA World Cup 2026 sponsorship intelligence"""
+    return render_template("intel_world_cup.html")
+
+@app.route("/intel/campaign/<brand>")
+def intel_campaign(brand):
+    """Campaign intelligence for a specific brand"""
+    # Route Rexona to dedicated template
+    if brand.lower() == "rexona":
+        return render_template("intel_campaign_rexona.html")
+    # Default campaign template for other brands (future expansion)
+    return render_template("intel_campaign_brand.html", brand=brand)
+
 @app.route("/brand")
 @app.route("/brand/")
 def brand_search():
