@@ -432,60 +432,56 @@ class DataFetchers:
             return {"amenities": {}, "source": f"Error: {str(e)}"}
 
     def fetch_house_prices(self, postcode: str) -> dict:
-        """Fetch 12-month house price history and trend."""
-        cache_key = f"hp_history_{postcode}"
+        """Fetch real HM Land Registry house price data by property type."""
+        cache_key = f"hp_real_{postcode}"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
 
         try:
             from miru_lib import lib
-            # Query last 13 months of data to calculate YoY trend
-            rows = lib._sb().table("house_price_history").select("year_month,avg_price,median_price,trend_percent").eq("postcode", postcode).order("year_month", desc=True).limit(13).execute().data or []
+            # Query real HM Land Registry data by postcode + property type
+            pc_prefix = postcode.replace(" ", "").upper()[:3]
+            rows = lib._sb().table("house_price_real").select("*").eq("postcode", pc_prefix).execute().data or []
 
             if not rows:
-                return self._get_historical_fallback(postcode)
+                return self._get_hml_fallback(postcode)
 
-            # Sort chronologically (ascending)
-            rows.sort(key=lambda x: x["year_month"])
-
-            current = rows[-1]  # Latest month
-            prev_year = rows[0] if len(rows) > 12 else None  # 12 months ago
-
-            trend_percent = 0
-            if prev_year and prev_year["avg_price"]:
-                trend_percent = ((current["avg_price"] - prev_year["avg_price"]) / prev_year["avg_price"]) * 100
-
-            # Extract postcode district for property type lookup
-            pc_dist = postcode.replace(" ", "").upper()[:3]
-
-            # Property type breakdown (realistic data by postcode district)
-            property_types = self._get_property_type_prices(pc_dist, current["avg_price"])
-
+            # Build response from real HM Land Registry data
             result = {
-                "current_price": current["avg_price"],
-                "median_price": current["median_price"],
-                "trend_percent_12m": round(trend_percent, 1),
-                "price_history": [
-                    {
-                        "month": row["year_month"],
-                        "avg_price": row["avg_price"],
-                        "median_price": row["median_price"]
-                    }
-                    for row in rows
-                ],
-                "source": "ONS House Price Index",
+                "current_price": 0,
+                "source": "HM Land Registry (2018-2026, 7.4M sales)",
                 "last_updated": datetime.utcnow().isoformat(),
-                **property_types
+                "property_types": {}
             }
+
+            # Organize by property type
+            for row in rows:
+                prop_type = row.get("property_type", "")
+                if prop_type:
+                    result["property_types"][prop_type] = {
+                        "avg": row.get("avg_price", 0),
+                        "median": row.get("median_price", 0),
+                        "count": row.get("count", 0),
+                        "min": row.get("min_price", 0),
+                        "max": row.get("max_price", 0)
+                    }
+                    # Use detached as current_price if available
+                    if prop_type == "detached" and not result["current_price"]:
+                        result["current_price"] = row.get("avg_price", 0)
+
+            # Fallback to average of all types if detached not available
+            if not result["current_price"] and result["property_types"]:
+                all_avgs = [v["avg"] for v in result["property_types"].values()]
+                result["current_price"] = int(sum(all_avgs) / len(all_avgs)) if all_avgs else 0
 
             self._set_cache(cache_key, result)
             return result
 
         except Exception as e:
             print(f"[house_prices] Error: {e}")
-            # Fallback to 24-month historical data
-            return self._get_historical_fallback(postcode)
+            # Fallback to HM Land Registry tier data
+            return self._get_hml_fallback(postcode)
 
     def _get_property_type_prices(self, postcode_dist: str, avg_price: float) -> dict:
         """Return property type price breakdown for a postcode."""
