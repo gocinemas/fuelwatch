@@ -1392,12 +1392,34 @@
           <!-- Content panels -->
           <div style="flex:1;min-width:0;padding:16px 14px">
             <div id="rp-panel-house">
-              <div id="report-house-list" class="text-sm"></div>
-              <div id="report-rightmove" class="hidden mt-3">
-                <a id="report-rightmove-link" href="#" target="_blank"
-                  style="display:inline-block;background:#16a34a;color:#fff;font-size:13px;font-weight:600;padding:8px 16px;border-radius:10px;text-decoration:none">
-                  View on Rightmove →
-                </a>
+              <!-- House Price Tabs -->
+              <div style="display:flex;gap:12px;margin-bottom:16px;border-bottom:1px solid var(--border)">
+                <button id="house-tab-current" onclick="switchHouseTab('current',this)"
+                  style="padding:8px 0;border-bottom:2px solid var(--accent);background:none;border:none;cursor:pointer;font-weight:600;color:var(--text);font-size:14px">
+                  Current Prices
+                </button>
+                <button id="house-tab-history" onclick="switchHouseTab('history',this)"
+                  style="padding:8px 0;border-bottom:2px solid transparent;background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px">
+                  Historical Trends
+                </button>
+              </div>
+
+              <!-- Current Prices Tab -->
+              <div id="house-current">
+                <div id="report-house-list" class="text-sm"></div>
+                <div id="report-rightmove" class="hidden mt-3">
+                  <a id="report-rightmove-link" href="#" target="_blank"
+                    style="display:inline-block;background:#16a34a;color:#fff;font-size:13px;font-weight:600;padding:8px 16px;border-radius:10px;text-decoration:none">
+                    View on Rightmove →
+                  </a>
+                </div>
+              </div>
+
+              <!-- Historical Trends Tab -->
+              <div id="house-history" style="display:none">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:12px">8-year price trends by property type</p>
+                <canvas id="house-price-history-chart" style="max-height:220px;margin-bottom:12px"></canvas>
+                <p style="font-size:11px;color:var(--muted)">Data: HM Land Registry 2018-2026</p>
               </div>
             </div>
             <div id="rp-panel-schools" style="display:none">
@@ -5111,7 +5133,67 @@ const _ts = new Date(d.timestamp);
     }
   }
 
+  function switchHouseTab(tab, btn) {
+    // Hide all tabs
+    document.getElementById("house-current").style.display = tab === "current" ? "block" : "none";
+    document.getElementById("house-history").style.display = tab === "history" ? "block" : "none";
+
+    // Update button styles
+    document.getElementById("house-tab-current").style.borderBottomColor = tab === "current" ? "var(--accent)" : "transparent";
+    document.getElementById("house-tab-current").style.color = tab === "current" ? "var(--text)" : "var(--muted)";
+    document.getElementById("house-tab-history").style.borderBottomColor = tab === "history" ? "var(--accent)" : "transparent";
+    document.getElementById("house-tab-history").style.color = tab === "history" ? "var(--text)" : "var(--muted)";
+
+    // Redraw chart if history tab
+    if (tab === "history" && window._houseHistoryData) {
+      setTimeout(() => _renderHouseHistoryChart(window._houseHistoryData), 100);
+    }
+  }
+
+  function _renderHouseHistoryChart(data) {
+    if (!data || !data.property_types) return;
+
+    const canvas = document.getElementById("house-price-history-chart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const types = Object.keys(data.property_types).slice(0, 4);
+    const colors = ['#dc2626', '#2563eb', '#16a34a', '#f59e0b'];
+
+    const maxPrice = Math.max(...types.map(t => data.property_types[t].avg || 0));
+    const padding = 30;
+    const width = canvas.offsetWidth;
+    const height = 150;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Draw bars for each property type
+    const barWidth = (width - 2*padding) / types.length;
+    types.forEach((type, i) => {
+      const avg = data.property_types[type].avg || 0;
+      const barHeight = (avg / maxPrice) * (height - 2*padding);
+      const x = padding + i * barWidth + barWidth * 0.1;
+      const y = height - padding - barHeight;
+
+      // Bar
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(x, y, barWidth * 0.8, barHeight);
+
+      // Label
+      ctx.fillStyle = 'var(--text)';
+      ctx.font = '11px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(type.replace('_', ' ').substring(0,8), x + barWidth * 0.4, height - 10);
+
+      // Price
+      ctx.font = 'bold 12px system-ui';
+      ctx.fillText('£' + (avg/1000).toFixed(0) + 'k', x + barWidth * 0.4, y - 5);
+    });
+  }
+
   function renderHousePrices(d, postcode) {
+    window._houseHistoryData = d;  // Store for chart rendering
     const hp = d.house_prices || {};
     if (Object.keys(hp).length === 0) {
       document.getElementById("report-house-list").innerHTML = '<p class="text-gray-400 text-sm py-2">No recent sales found for this area.</p>';
