@@ -12923,8 +12923,8 @@ def api_home_brief():
                     # Compare times as strings (HH:MM)
                     _pe_past = _pe_end < _now_hhmm_cur
                 except Exception as _te:
-                    app.logger.debug(f"[event-time] parse error: {_te}, using start time only")
-                    _pe_past = _pe_t < _now_hhmm_cur
+                    app.logger.debug(f"[event-time] parse error: {_te}, using end time only")
+                    _pe_past = _pe_end < _now_hhmm_cur
             if _pe_past:
                 app.logger.debug(f"[brief] Hiding past event: {pe.get('title')} ends {_pe_end} (now {_now_hhmm_cur})")
                 _past_personal.append(pe)
