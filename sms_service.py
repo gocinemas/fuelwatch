@@ -13645,15 +13645,9 @@ def api_home_brief():
         "car_at_service":  _car_at_service,
     }
 
-    # Final safety filter: remove any past personal events from today_events
-    # (should have been caught earlier, but this ensures no past events leak through)
-    _final_cal = []
-    for _ce in _cal_events:
-        _ce_date = _ce.get("date", "")
-        if _ce_date and _ce_date < _today_s and _ce.get("personal"):
-            app.logger.debug(f"[brief] Final filter removing past personal event: {_ce.get('title')} date={_ce_date}")
-            continue  # Skip past personal events
-        _final_cal.append(_ce)
+    # Include all events (don't filter personal events by date)
+    # Personal events may use old dates but recur based on weekday
+    _final_cal = _cal_events
     result["today_events"] = _final_cal
 
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
