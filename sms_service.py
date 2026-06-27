@@ -1174,19 +1174,27 @@ def api_campaign(brand):
             os.getenv("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
         )
 
-        creatives = supabase.table("campaign_creatives").select("*").eq("brand", brand.title()).execute().data or []
-        sentiment = supabase.table("campaign_sentiment").select("*").execute().data or []
-        metrics = supabase.table("campaign_metrics").select("*").eq("brand_variant", brand.title()).execute().data or []
-        variants = supabase.table("campaign_variants").select("*").eq("brand_name", brand.title()).execute().data or []
+        # Get all creatives regardless of brand first
+        all_creatives = supabase.table("campaign_creatives").select("*").execute().data or []
+        creatives = [c for c in all_creatives if c.get("brand", "").lower() == brand.lower()]
+
+        sentiment = supabase.table("campaign_sentiment").select("*").limit(25).execute().data or []
+
+        all_metrics = supabase.table("campaign_metrics").select("*").execute().data or []
+        metrics = [m for m in all_metrics if m.get("brand_variant", "").lower() == brand.lower()]
+
+        all_variants = supabase.table("campaign_variants").select("*").execute().data or []
+        variants = [v for v in all_variants if v.get("brand_name", "").lower() == brand.lower()]
 
         return jsonify({
             "creatives": creatives,
             "sentiment": sentiment,
             "metrics": metrics,
-            "variants": variants
+            "variants": variants,
+            "debug": {"total_creatives": len(all_creatives), "brand_filter": brand}
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "type": type(e).__name__}), 500
 
 @app.route("/intel/campaign/<brand>")
 def intel_campaign(brand):
