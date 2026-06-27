@@ -12907,6 +12907,8 @@ def api_home_brief():
             # For today: hide if event time has passed (with end_time buffer)
             _pe_past = False
             app.logger.info(f"[personal-event] Processing: {pe.get('title')} date={_pe_date} time={_pe_t}")
+            _pe_past = False  # Default: event is upcoming
+            _pe_end = _pe_t  # Fallback if end time can't be parsed
             if _pe_t and _pe_date == _today_s:
                 try:
                     from datetime import timedelta as _ptd
