@@ -250,7 +250,6 @@
             const { data, error } = await supabase
                 .from('campaign_sentiment')
                 .select('*')
-                .eq('brand_name', 'Rexona')
                 .order('timestamp', { ascending: false })
                 .limit(20);
             return data || [];
