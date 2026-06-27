@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campaign Creative Tracker - Rexona x FIFA World Cup 2026</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -109,24 +108,15 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://uqwidlptkgmbxgaivafi.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat';
-
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
         async function load() {
             try {
-                const [creatives, sentiment, metrics, variants] = await Promise.all([
-                    supabase.from('campaign_creatives').select('*').eq('brand', 'Rexona'),
-                    supabase.from('campaign_sentiment').select('*'),
-                    supabase.from('campaign_metrics').select('*').eq('brand_variant', 'Rexona'),
-                    supabase.from('campaign_variants').select('*').eq('brand_name', 'Rexona')
-                ]);
+                const res = await fetch('/api/campaign/rexona');
+                const data = await res.json();
 
-                if (creatives.data) displayCreatives(creatives.data);
-                if (sentiment.data) displaySentiment(sentiment.data);
-                if (metrics.data) displayMetrics(creatives.data || [], sentiment.data || [], metrics.data);
-                if (variants.data) displayVariants(variants.data);
+                if (data.creatives) displayCreatives(data.creatives);
+                if (data.sentiment) displaySentiment(data.sentiment);
+                if (data.metrics) displayMetrics(data.creatives || [], data.sentiment || [], data.metrics);
+                if (data.variants) displayVariants(data.variants);
             } catch (e) {
                 console.error('Error:', e);
             }

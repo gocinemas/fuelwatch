@@ -1164,6 +1164,30 @@ def intel_world_cup():
     """FIFA World Cup 2026 sponsorship intelligence"""
     return render_template("intel_world_cup.html")
 
+@app.route("/api/campaign/<brand>")
+def api_campaign(brand):
+    """API: Campaign data for a specific brand"""
+    try:
+        from supabase import create_client
+        supabase = create_client(
+            os.getenv("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.getenv("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+
+        creatives = supabase.table("campaign_creatives").select("*").eq("brand", brand.title()).execute().data or []
+        sentiment = supabase.table("campaign_sentiment").select("*").execute().data or []
+        metrics = supabase.table("campaign_metrics").select("*").eq("brand_variant", brand.title()).execute().data or []
+        variants = supabase.table("campaign_variants").select("*").eq("brand_name", brand.title()).execute().data or []
+
+        return jsonify({
+            "creatives": creatives,
+            "sentiment": sentiment,
+            "metrics": metrics,
+            "variants": variants
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/intel/campaign/<brand>")
 def intel_campaign(brand):
     """Campaign intelligence for a specific brand"""
