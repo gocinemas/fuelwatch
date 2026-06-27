@@ -5151,16 +5151,22 @@ const _ts = new Date(d.timestamp);
   }
 
   function _renderHouseHistoryChart(data) {
-    if (!data || !data.property_types) return;
+    const hp = data.house_prices || {};
+    if (!hp || Object.keys(hp).length === 0) {
+      document.getElementById("house-price-history-chart").style.display = "none";
+      return;
+    }
 
     const canvas = document.getElementById("house-price-history-chart");
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const types = Object.keys(data.property_types).slice(0, 4);
+    const types = Object.keys(hp).filter(t => hp[t].avg).slice(0, 4);
     const colors = ['#dc2626', '#2563eb', '#16a34a', '#f59e0b'];
 
-    const maxPrice = Math.max(...types.map(t => data.property_types[t].avg || 0));
+    const maxPrice = Math.max(...types.map(t => hp[t].avg || 0));
+    if (maxPrice === 0) return;
+
     const padding = 30;
     const width = canvas.offsetWidth;
     const height = 150;
@@ -5171,7 +5177,7 @@ const _ts = new Date(d.timestamp);
     // Draw bars for each property type
     const barWidth = (width - 2*padding) / types.length;
     types.forEach((type, i) => {
-      const avg = data.property_types[type].avg || 0;
+      const avg = hp[type].avg || 0;
       const barHeight = (avg / maxPrice) * (height - 2*padding);
       const x = padding + i * barWidth + barWidth * 0.1;
       const y = height - padding - barHeight;
@@ -5184,7 +5190,8 @@ const _ts = new Date(d.timestamp);
       ctx.fillStyle = 'var(--text)';
       ctx.font = '11px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText(type.replace('_', ' ').substring(0,8), x + barWidth * 0.4, height - 10);
+      const label = type.replace('_', ' ').substring(0,10);
+      ctx.fillText(label, x + barWidth * 0.4, height - 10);
 
       // Price
       ctx.font = 'bold 12px system-ui';
