@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FIFA World Cup 2026 - Sponsorship Intelligence</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; min-height: 100vh; padding: 20px; }
@@ -11,34 +12,47 @@
         .header { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 40px 20px; border-radius: 12px 12px 0 0; text-align: center; }
         .header h1 { font-size: 2.2em; margin-bottom: 10px; }
         .header p { font-size: 1em; opacity: 0.9; }
-        .main-content { background: white; border-radius: 0 0 12px 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .search-box { margin-bottom: 30px; }
-        .search-input { width: 100%; padding: 15px; font-size: 1em; border: 2px solid #e5e7eb; border-radius: 8px; transition: border-color 0.3s; }
-        .search-input:focus { outline: none; border-color: #1e40af; }
+        .main-content { background: white; border-radius: 0 0 12px 12px; padding: 0; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .tabs { display: flex; border-bottom: 2px solid #e5e7eb; padding: 0 20px; }
+        .tab-btn { background: none; border: none; padding: 16px 24px; cursor: pointer; font-size: 1em; color: #666; font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.3s; }
+        .tab-btn:hover { color: #1e40af; }
+        .tab-btn.active { color: #1e40af; border-bottom-color: #1e40af; }
+        .tab-content { display: none; padding: 40px; }
+        .tab-content.active { display: block; }
         .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
         @media (max-width: 768px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
         .stat-box { background: #eff6ff; border-left: 4px solid #1e40af; padding: 20px; border-radius: 8px; text-align: center; }
         .stat-number { font-size: 2em; font-weight: 700; color: #1e40af; }
         .stat-label { font-size: 0.9em; color: #1e3a8a; margin-top: 5px; }
-        h2 { color: #333; margin: 30px 0 20px 0; font-size: 1.4em; }
-        .sponsors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        .sponsor-card { background: white; border: 2px solid #e5e7eb; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0; }
+        @media (max-width: 768px) { .comparison-grid { grid-template-columns: 1fr; } }
+        .comparison-card { background: #f9fafb; padding: 25px; border-radius: 8px; border-left: 5px solid #1e40af; }
+        .comparison-card h3 { color: #1e40af; margin-bottom: 15px; }
+        .comparison-item { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
+        .comparison-item:last-child { border-bottom: none; }
+        .comp-label { font-size: 0.9em; color: #666; font-weight: 500; }
+        .comp-value { font-size: 1.1em; color: #1a1a1a; font-weight: 600; margin-top: 4px; }
+        .search-box { margin-bottom: 20px; }
+        .search-input { width: 100%; padding: 12px; font-size: 1em; border: 2px solid #e5e7eb; border-radius: 8px; }
+        .search-input:focus { outline: none; border-color: #1e40af; }
+        .sponsors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; }
+        .sponsor-card { background: white; border: 2px solid #e5e7eb; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.3s; text-decoration: none; color: inherit; }
         .sponsor-card:hover { border-color: #1e40af; box-shadow: 0 4px 12px rgba(30, 64, 175, 0.15); transform: translateY(-2px); }
-        .sponsor-card.active { border-color: #1e40af; background: #eff6ff; }
         .sponsor-tier { font-size: 0.75em; color: #1e40af; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
-        .sponsor-name { font-weight: 600; color: #333; font-size: 1em; margin-bottom: 10px; }
+        .sponsor-name { font-weight: 600; color: #333; font-size: 0.95em; margin-bottom: 8px; }
         .sponsor-category { font-size: 0.8em; color: #666; }
-        .metrics-panel { background: #f9fafb; border-radius: 8px; padding: 25px; margin: 30px 0; display: none; }
-        .metrics-panel.show { display: block; }
-        .metrics-panel h3 { color: #1e40af; margin-bottom: 20px; font-size: 1.2em; }
-        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        @media (max-width: 768px) { .metrics-grid { grid-template-columns: 1fr; } }
-        .metric-item { background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #1e40af; }
-        .metric-key { font-size: 0.85em; color: #666; margin-bottom: 5px; }
-        .metric-val { font-size: 1.4em; font-weight: 700; color: #1e40af; }
-        .narrative-box { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 5px solid #1e40af; padding: 25px; border-radius: 8px; margin-bottom: 30px; }
-        .narrative-box p { color: #1e3a8a; line-height: 1.6; }
-        footer { text-align: center; padding: 20px; color: #666; font-size: 0.9em; margin-top: 40px; border-top: 1px solid #e5e7eb; }
+        .tweets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin: 20px 0; }
+        .tweet-card { background: #f9fafb; border-left: 4px solid #1e40af; padding: 16px; border-radius: 6px; }
+        .tweet-author { font-weight: 600; color: #333; margin-bottom: 8px; }
+        .tweet-text { font-size: 0.95em; color: #555; margin-bottom: 10px; line-height: 1.5; font-style: italic; }
+        .tweet-sentiment { display: inline-block; font-size: 0.8em; padding: 4px 10px; border-radius: 3px; font-weight: 600; }
+        .sentiment-positive { background: #d1fae5; color: #065f46; }
+        .sentiment-negative { background: #fee2e2; color: #7f1d1d; }
+        .sentiment-neutral { background: #f3f4f6; color: #374151; }
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0; }
+        @media (max-width: 1024px) { .chart-grid { grid-template-columns: 1fr; } }
+        .chart-container { background: #f9fafb; padding: 20px; border-radius: 8px; position: relative; height: 300px; }
+        h2 { color: #333; margin: 20px 0 15px 0; font-size: 1.3em; }
     </style>
 </head>
 <body>
@@ -49,130 +63,203 @@
         </div>
 
         <div class="main-content">
-            <div class="narrative-box">
-                <p>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+                <button class="tab-btn" onclick="switchTab('comparison')">2022 vs 2026</button>
+                <button class="tab-btn" onclick="switchTab('sponsors')">Sponsors</button>
+                <button class="tab-btn" onclick="switchTab('sentiment')">Sentiment</button>
+                <button class="tab-btn" onclick="switchTab('charts')">Charts</button>
+            </div>
+
+            <div class="tab-content active" id="overview">
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="stat-number">34</div>
+                        <div class="stat-label">Official Partners</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">104</div>
+                        <div class="stat-label">Matches</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">3B+</div>
+                        <div class="stat-label">Global Viewers</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">28</div>
+                        <div class="stat-label">Tournament Days</div>
+                    </div>
+                </div>
+                <p style="color: #666; line-height: 1.6; margin: 20px 0;">
                     <strong>Communitas:</strong> Sports create a third place — not home, not work, but where strangers become community.
                     34 official partners. The smartest ones don't interrupt the moment. They own it.
-                    <em>Click a sponsor to see their intelligence metrics.</em>
+                    Click any sponsor to see their campaign intelligence, or explore the tabs below for tournament-wide analysis.
                 </p>
             </div>
 
-            <div class="search-box">
-                <input type="text" id="searchInput" class="search-input" placeholder="Search sponsors by name, tier, or category...">
+            <div class="tab-content" id="comparison">
+                <h2>2022 Qatar vs 2026 USA: The Sponsorship Shift</h2>
+                <div class="comparison-grid">
+                    <div class="comparison-card">
+                        <h3>2022 Qatar</h3>
+                        <div class="comparison-item">
+                            <div class="comp-label">Sponsor Strategy</div>
+                            <div class="comp-value">Regional focus + safe brands</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div class="comp-label">Top Insight</div>
+                            <div class="comp-value">Digital-first activation</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div class="comp-label">Brand Sentiment</div>
+                            <div class="comp-value">Controversial partnerships</div>
+                        </div>
+                    </div>
+                    <div class="comparison-card">
+                        <h3>2026 USA</h3>
+                        <div class="comparison-item">
+                            <div class="comp-label">Sponsor Strategy</div>
+                            <div class="comp-value">Experiential + emotional truth</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div class="comp-label">Top Insight</div>
+                            <div class="comp-value">Backing the people in pressure</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div class="comp-label">Brand Sentiment</div>
+                            <div class="comp-value">Communitas positioning</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="stats-row">
-                <div class="stat-box">
-                    <div class="stat-number">34</div>
-                    <div class="stat-label">Official Partners</div>
+            <div class="tab-content" id="sponsors">
+                <h2>All Sponsors (34)</h2>
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search sponsors...">
                 </div>
-                <div class="stat-box">
-                    <div class="stat-number">104</div>
-                    <div class="stat-label">Matches</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-number">3B+</div>
-                    <div class="stat-label">Viewers</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-number">28</div>
-                    <div class="stat-label">Days</div>
-                </div>
+                <div class="sponsors-grid" id="sponsorsGrid"></div>
             </div>
 
-            <h2 id="results-heading">All Sponsors</h2>
-            <div class="sponsors-grid" id="sponsorsGrid"></div>
-
-            <div class="metrics-panel" id="metricsPanel">
-                <h3 id="selectedSponsor"></h3>
-                <div class="metrics-grid" id="metricsContent"></div>
+            <div class="tab-content" id="sentiment">
+                <h2>Dark Conversations: Pressure Moments</h2>
+                <p style="color: #666; margin-bottom: 20px;">Real sentiment during high-stress match moments. When the world watches. When the tension is real.</p>
+                <div class="tweets-grid" id="tweetsGrid"></div>
             </div>
 
-            <footer>
-                <p>Click any sponsor to view their campaign intelligence</p>
-            </footer>
+            <div class="tab-content" id="charts">
+                <h2>Sponsorship Analysis</h2>
+                <div class="chart-grid">
+                    <div class="chart-container">
+                        <canvas id="tierChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         const sponsors = [
-            { tier: "FIFA Partners", name: "Coca-Cola", category: "Beverages", reach: "2.1B", engagement: "8.4%", sentiment: "0.72" },
-            { tier: "FIFA Partners", name: "Adidas", category: "Sportswear", reach: "1.8B", engagement: "9.2%", sentiment: "0.81" },
-            { tier: "FIFA Partners", name: "Visa", category: "Financial Services", reach: "1.5B", engagement: "7.1%", sentiment: "0.64" },
-            { tier: "FIFA Partners", name: "Wanda Group", category: "Real Estate", reach: "800M", engagement: "5.3%", sentiment: "0.51" },
-            { tier: "FIFA Partners", name: "Qatar Airways", category: "Airlines", reach: "900M", engagement: "6.8%", sentiment: "0.59" },
-            { tier: "FIFA Partners", name: "Hyundai", category: "Automotive", reach: "1.2B", engagement: "7.9%", sentiment: "0.68" },
-            { tier: "World Cup Sponsors", name: "Rexona", category: "Personal Care", reach: "1.1B", engagement: "8.9%", sentiment: "0.76" },
-            { tier: "World Cup Sponsors", name: "Sure", category: "Personal Care", reach: "650M", engagement: "7.2%", sentiment: "0.69" },
-            { tier: "World Cup Sponsors", name: "Degree", category: "Personal Care", reach: "950M", engagement: "8.1%", sentiment: "0.71" },
-            { tier: "World Cup Sponsors", name: "McDonald's", category: "Food & Beverage", reach: "1.3B", engagement: "8.6%", sentiment: "0.73" },
-            { tier: "World Cup Sponsors", name: "Pringles", category: "Snacks", reach: "750M", engagement: "7.4%", sentiment: "0.65" },
-            { tier: "World Cup Sponsors", name: "Gatorade", category: "Beverages", reach: "880M", engagement: "7.8%", sentiment: "0.67" },
-            { tier: "World Cup Sponsors", name: "Vivo", category: "Technology", reach: "920M", engagement: "8.3%", sentiment: "0.70" },
-            { tier: "World Cup Sponsors", name: "OnePlus", category: "Technology", reach: "620M", engagement: "6.9%", sentiment: "0.61" },
-            { tier: "World Cup Sponsors", name: "Budweiser", category: "Beverages", reach: "1.1B", engagement: "8.2%", sentiment: "0.72" },
-            { tier: "World Cup Sponsors", name: "Carlsberg", category: "Beverages", reach: "850M", engagement: "7.5%", sentiment: "0.68" },
-            { tier: "World Cup Sponsors", name: "Bank of America", category: "Financial Services", reach: "700M", engagement: "6.4%", sentiment: "0.57" },
-            { tier: "World Cup Sponsors", name: "QNB", category: "Financial Services", reach: "500M", engagement: "5.1%", sentiment: "0.49" },
-            { tier: "Supporters", name: "Twitter", category: "Technology", reach: "2.2B", engagement: "12.1%", sentiment: "0.68" },
-            { tier: "Supporters", name: "NetJets", category: "Aviation", reach: "200M", engagement: "4.2%", sentiment: "0.55" },
-            { tier: "Supporters", name: "Spotify", category: "Entertainment", reach: "1.4B", engagement: "9.8%", sentiment: "0.74" },
-            { tier: "Supporters", name: "EA Sports", category: "Gaming", reach: "1.6B", engagement: "11.3%", sentiment: "0.79" },
-            { tier: "Supporters", name: "Playstation", category: "Gaming", reach: "1.3B", engagement: "10.2%", sentiment: "0.75" },
-            { tier: "Supporters", name: "NVIDIA", category: "Technology", reach: "480M", engagement: "8.7%", sentiment: "0.71" },
-            { tier: "Supporters", name: "Google", category: "Technology", reach: "2.5B", engagement: "10.5%", sentiment: "0.72" },
-            { tier: "Supporters", name: "Microsoft", category: "Technology", reach: "2.1B", engagement: "9.8%", sentiment: "0.70" },
-            { tier: "Supporters", name: "Canon", category: "Photography", reach: "320M", engagement: "6.1%", sentiment: "0.58" },
-            { tier: "Supporters", name: "Panasonic", category: "Electronics", reach: "420M", engagement: "5.9%", sentiment: "0.56" },
-            { tier: "Supporters", name: "Kia Motors", category: "Automotive", reach: "980M", engagement: "7.6%", sentiment: "0.66" },
-            { tier: "Supporters", name: "JetBlue", category: "Airlines", reach: "380M", engagement: "5.8%", sentiment: "0.53" },
-            { tier: "Supporters", name: "Hisense", category: "Electronics", reach: "650M", engagement: "6.4%", sentiment: "0.60" },
-            { tier: "Supporters", name: "Alibaba", category: "E-commerce", reach: "1.7B", engagement: "9.1%", sentiment: "0.69" },
-            { tier: "Supporters", name: "Tencent", category: "Technology", reach: "1.9B", engagement: "9.4%", sentiment: "0.71" },
-            { tier: "Supporters", name: "Manulife", category: "Insurance", reach: "280M", engagement: "4.3%", sentiment: "0.52" }
+            { name: "Coca-Cola", tier: "FIFA Partners", category: "Beverages" },
+            { name: "Adidas", tier: "FIFA Partners", category: "Sportswear" },
+            { name: "Visa", tier: "FIFA Partners", category: "Financial Services" },
+            { name: "Wanda Group", tier: "FIFA Partners", category: "Real Estate" },
+            { name: "Qatar Airways", tier: "FIFA Partners", category: "Airlines" },
+            { name: "Hyundai", tier: "FIFA Partners", category: "Automotive" },
+            { name: "Rexona", tier: "World Cup Sponsors", category: "Personal Care" },
+            { name: "Sure", tier: "World Cup Sponsors", category: "Personal Care" },
+            { name: "Degree", tier: "World Cup Sponsors", category: "Personal Care" },
+            { name: "McDonald's", tier: "World Cup Sponsors", category: "Food & Beverage" },
+            { name: "Pringles", tier: "World Cup Sponsors", category: "Snacks" },
+            { name: "Gatorade", tier: "World Cup Sponsors", category: "Beverages" },
+            { name: "Vivo", tier: "World Cup Sponsors", category: "Technology" },
+            { name: "OnePlus", tier: "World Cup Sponsors", category: "Technology" },
+            { name: "Budweiser", tier: "World Cup Sponsors", category: "Beverages" },
+            { name: "Carlsberg", tier: "World Cup Sponsors", category: "Beverages" },
+            { name: "Bank of America", tier: "World Cup Sponsors", category: "Financial Services" },
+            { name: "QNB", tier: "World Cup Sponsors", category: "Financial Services" },
+            { name: "Twitter", tier: "Supporters", category: "Technology" },
+            { name: "NetJets", tier: "Supporters", category: "Aviation" },
+            { name: "Spotify", tier: "Supporters", category: "Entertainment" },
+            { name: "EA Sports", tier: "Supporters", category: "Gaming" },
+            { name: "Playstation", tier: "Supporters", category: "Gaming" },
+            { name: "NVIDIA", tier: "Supporters", category: "Technology" },
+            { name: "Google", tier: "Supporters", category: "Technology" },
+            { name: "Microsoft", tier: "Supporters", category: "Technology" },
+            { name: "Canon", tier: "Supporters", category: "Photography" },
+            { name: "Panasonic", tier: "Supporters", category: "Electronics" },
+            { name: "Kia Motors", tier: "Supporters", category: "Automotive" },
+            { name: "JetBlue", tier: "Supporters", category: "Airlines" },
+            { name: "Hisense", tier: "Supporters", category: "Electronics" },
+            { name: "Alibaba", tier: "Supporters", category: "E-commerce" },
+            { name: "Tencent", tier: "Supporters", category: "Technology" },
+            { name: "Manulife", tier: "Supporters", category: "Insurance" }
         ];
 
-        let allSponsors = [...sponsors];
-        let selectedSponsor = null;
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+        }
 
         function renderSponsors(list) {
             const html = list.map(s => `
-                <div class="sponsor-card" data-name="${s.name}" onclick="selectSponsor('${s.name}')">
+                <a href="/intel/campaign/${s.name.toLowerCase().replace(/\s+/g, '')}" class="sponsor-card">
                     <div class="sponsor-tier">${s.tier}</div>
                     <div class="sponsor-name">${s.name}</div>
                     <div class="sponsor-category">${s.category}</div>
-                </div>
+                </a>
             `).join('');
             document.getElementById('sponsorsGrid').innerHTML = html;
-            document.getElementById('results-heading').textContent = `Results (${list.length})`;
         }
 
-        function selectSponsor(name) {
-            selectedSponsor = sponsors.find(s => s.name === name);
-            if (!selectedSponsor) return;
+        async function loadSentiment() {
+            try {
+                const res = await fetch('/api/campaign/rexona');
+                const data = await res.json();
+                const html = data.sentiment.slice(0, 6).map(s => {
+                    const sentiment = s.sentiment_score > 0.5 ? 'positive' : s.sentiment_score < -0.5 ? 'negative' : 'neutral';
+                    const badge = sentiment === 'positive' ? '✓ Positive' : sentiment === 'negative' ? '✗ Negative' : '○ Neutral';
+                    return `
+                        <div class="tweet-card">
+                            <div class="tweet-author">@${s.author}</div>
+                            <div class="tweet-text">"${s.text}"</div>
+                            <span class="tweet-sentiment sentiment-${sentiment}">${badge}</span>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('tweetsGrid').innerHTML = html;
+            } catch (e) { console.error('Error:', e); }
+        }
 
-            document.querySelectorAll('.sponsor-card').forEach(card => card.classList.remove('active'));
-            document.querySelector(`[data-name="${name}"]`).classList.add('active');
+        function renderCharts() {
+            const tiers = {}, categories = {};
+            sponsors.forEach(s => {
+                tiers[s.tier] = (tiers[s.tier] || 0) + 1;
+                categories[s.category] = (categories[s.category] || 0) + 1;
+            });
 
-            const metrics = `
-                <div class="metric-item">
-                    <div class="metric-key">Global Reach</div>
-                    <div class="metric-val">${selectedSponsor.reach}</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-key">Engagement Rate</div>
-                    <div class="metric-val">${selectedSponsor.engagement}</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-key">Sentiment Score</div>
-                    <div class="metric-val">${selectedSponsor.sentiment}</div>
-                </div>
-            `;
+            new Chart(document.getElementById('tierChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(tiers),
+                    datasets: [{ data: Object.values(tiers), backgroundColor: ['#1e40af', '#3b82f6', '#93c5fd'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
 
-            document.getElementById('selectedSponsor').textContent = `${selectedSponsor.name} (${selectedSponsor.tier})`;
-            document.getElementById('metricsContent').innerHTML = metrics;
-            document.getElementById('metricsPanel').classList.add('show');
-            document.getElementById('metricsPanel').scrollIntoView({ behavior: 'smooth' });
+            new Chart(document.getElementById('categoryChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categories),
+                    datasets: [{ data: Object.values(categories), backgroundColor: ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
         }
 
         document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -186,6 +273,8 @@
         });
 
         renderSponsors(sponsors);
+        loadSentiment();
+        renderCharts();
     </script>
 </body>
 </html>

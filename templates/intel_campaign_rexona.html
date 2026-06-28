@@ -93,6 +93,9 @@
                 <div class="creative-item"><div class="creative-thumbnail">⏳</div><div class="creative-details"><div class="creative-title">Loading...</div></div></div>
             </div>
 
+            <h2 style="margin-top: 50px;">Real Tweets & Social Sentiment</h2>
+            <div id="tweets-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;"></div>
+
             <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #eee; text-align: center; color: #666;">
                 <p>Last updated: <span id="timestamp">Loading...</span></p>
                 <p style="font-size: 0.9em; margin-top: 10px;">Data refreshes automatically every 60 seconds</p>
@@ -115,6 +118,14 @@
                 document.getElementById('variants-container').innerHTML = variantsHtml;
                 const creativesHtml = data.creatives.map(c => `<div class="creative-item"><div class="creative-thumbnail">${c.platform === 'youtube' ? '🎥' : '📱'}</div><div class="creative-details"><div class="creative-title">${c.title}</div><div class="creative-meta">${c.platform.toUpperCase()} • ${(c.views/1000000).toFixed(1)}M views • ${((c.likes/c.views)*100).toFixed(1)}% engagement</div><a href="#" class="creative-link">View Campaign →</a></div></div>`).join('');
                 document.getElementById('creatives-container').innerHTML = creativesHtml;
+
+                const tweetsHtml = data.sentiment.map(s => {
+                    const sentiment = s.sentiment_score > 0.5 ? 'positive' : s.sentiment_score < -0.5 ? 'negative' : 'neutral';
+                    const badge = sentiment === 'positive' ? '✓ Positive' : sentiment === 'negative' ? '✗ Negative' : '○ Neutral';
+                    const badgeClass = `<span style="display: inline-block; font-size: 0.8em; padding: 4px 10px; border-radius: 3px; font-weight: 600; ${sentiment === 'positive' ? 'background: #d1fae5; color: #065f46;' : sentiment === 'negative' ? 'background: #fee2e2; color: #7f1d1d;' : 'background: #f3f4f6; color: #374151;'}">${badge}</span>`;
+                    return `<div style="background: #f9fafb; border-left: 4px solid #d97706; padding: 16px; border-radius: 6px;"><div style="font-weight: 600; color: #333; margin-bottom: 8px;">@${s.author}</div><div style="font-size: 0.95em; color: #555; margin-bottom: 10px; line-height: 1.5; font-style: italic;">"${s.text}"</div>${badgeClass}</div>`;
+                }).join('');
+                document.getElementById('tweets-container').innerHTML = tweetsHtml;
                 updateTimestamp();
             } catch (e) { console.error('Error:', e); }
         }
