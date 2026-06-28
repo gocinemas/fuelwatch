@@ -437,9 +437,16 @@ class DataFetchers:
             print(f"[amenities] Error: {e}")
             return {"amenities": {}, "source": f"Error: {str(e)}"}
 
-    def fetch_house_prices(self, postcode: str) -> dict:
-        """Fetch house prices: verified market prices first, then HM Land Registry data."""
-        cache_key = f"hp_market_{postcode}"
+    def fetch_house_prices(self, postcode: str, property_type: str = None, bedrooms: str = None) -> dict:
+        """
+        Fetch house prices with optional property type and bedroom filtering.
+
+        Args:
+            postcode: e.g., "KT16 0DA"
+            property_type: e.g., "semi_detached", "detached" (optional)
+            bedrooms: e.g., "2bed", "3bed", "4bed" (optional)
+        """
+        cache_key = f"hp_market_{postcode}_{property_type}_{bedrooms}"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
@@ -449,19 +456,24 @@ class DataFetchers:
             pc_prefix = postcode.replace(" ", "").upper()[:3]
             verified = {}
 
-            for ptype in ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']:
-                price_data = get_verified_price(postcode, ptype)
+            # If specific property type requested, only get that
+            ptypes = [property_type] if property_type else ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']
+
+            for ptype in ptypes:
+                price_data = get_verified_price(postcode, ptype, bedrooms)
                 if price_data:
                     verified[ptype] = {
                         "avg": price_data['avg'],
                         "count": price_data['count'],
                         "latest": "Jun 2026",
-                        "source": price_data['source']
+                        "source": price_data.get('source', 'Market-verified'),
+                        "note": price_data.get('note', ''),
+                        "bedrooms": bedrooms if bedrooms else "mixed"
                     }
 
             if verified:
                 result = {
-                    "current_price": verified.get('detached', verified.get('semi_detached', {})).get('avg', 0),
+                    "current_price": list(verified.values())[0].get('avg', 0) if verified else 0,
                     "house_prices": verified,
                     "source": "Market-verified (Rightmove/Zoopla)",
                     "last_updated": datetime.utcnow().isoformat()
