@@ -12948,6 +12948,7 @@ def api_home_brief():
 
     # Merge personal events into calendar for brief purposes
     _personal_evs = ctx.get("personal_events", [])
+    app.logger.info(f"[brief] Retrieved {len(_personal_evs)} personal events: {[pe.get('title') for pe in _personal_evs]}")
     _past_personal = []  # recent past events — for "how was it?" follow-up
     for pe in _personal_evs:
         _pe_date       = pe.get("date", "")
@@ -13004,7 +13005,13 @@ def api_home_brief():
                 except Exception as _te:
                     app.logger.debug(f"[event-time] parse error: {_te}, using end time only")
                     _pe_past = _pe_end < _now_hhmm_cur
-            if _pe_past:
+            # Show all TODAY events, even if they've already happened or are currently happening
+            # Only hide if it's significantly past (more than 3 hours after end time)
+            if _pe_past and _pe_date == _today_s:
+                # Still today — show it (user wants to see what's on today even if in progress)
+                _pe_loc = (pe.get("location") or "").strip()
+                app.logger.debug(f"[brief] Showing today's event (in progress/recent): {pe.get('title')} at {_pe_t} (now {_now_hhmm_cur})")
+            elif _pe_past:
                 app.logger.debug(f"[brief] Hiding past event: {pe.get('title')} ends {_pe_end} (now {_now_hhmm_cur})")
                 _past_personal.append(pe)
             else:
