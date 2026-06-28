@@ -32509,20 +32509,19 @@ def library_page():
 def admin_delete_bin_event():
     """Delete bin collection preference (removes bin reminders)."""
     try:
-        from_number = request.args.get("phone") or "+447595075735"
+        # Find any v2_prefs with bin_collection_day
+        all_prefs = lib._sb().table("ma_details").select("*").eq("type", "v2_prefs").execute().data or []
 
-        # Get v2_prefs
-        rows = lib._sb().table("ma_details").select("*").eq("device_id", from_number).eq("type", "v2_prefs").execute().data or []
+        deleted = False
+        for row in all_prefs:
+            prefs = row.get("data", {})
+            if "bin_collection_day" in prefs:
+                del prefs["bin_collection_day"]
+                lib._sb().table("ma_details").update({"data": prefs}).eq("id", row["id"]).execute()
+                deleted = True
+                break
 
-        if not rows:
-            return jsonify({"success": False, "error": "No preferences found"}), 404
-
-        prefs = rows[0].get("data", {})
-
-        # Remove bin collection day
-        if "bin_collection_day" in prefs:
-            del prefs["bin_collection_day"]
-            lib._sb().table("ma_details").update({"data": prefs}).eq("id", rows[0]["id"]).execute()
+        if deleted:
             return jsonify({"success": True, "message": "Bin collection preference removed"})
         else:
             return jsonify({"success": False, "message": "No bin collection preference found"}), 404
