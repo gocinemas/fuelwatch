@@ -85,6 +85,21 @@
                 <div class="creative-item"><div class="creative-thumbnail">⏳</div><div class="creative-details"><div class="creative-title">Loading...</div></div></div>
             </div>
 
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 40px 0;">
+                <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #333; font-size: 1.1em;">Sentiment Timeline — Tournament Days</h3>
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="sentimentChart"></canvas>
+                    </div>
+                </div>
+                <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #333; font-size: 1.1em;">Performance by Region (Impressions)</h3>
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="regionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <h2>Real Tweets & Social Sentiment</h2>
             <div class="tweets" id="tweets-container">
                 <div class="tweet-card"><div class="tweet-author">Loading...</div></div>
@@ -157,6 +172,41 @@
                     </div>
                 `).join('');
                 document.getElementById('variants-container').innerHTML = variantsHtml || '<p>No variants available</p>';
+
+                // Charts
+                if (data.metrics && data.metrics.length > 0) {
+                    const sorted = data.metrics.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    new Chart(document.getElementById('sentimentChart'), {
+                        type: 'line',
+                        data: {
+                            labels: sorted.map(m => new Date(m.date).toLocaleDateString('en-GB')),
+                            datasets: [{
+                                label: 'Sentiment Score',
+                                data: sorted.map(m => m.sentiment_avg),
+                                borderColor: '#d97706',
+                                backgroundColor: 'rgba(217, 119, 6, 0.05)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#d97706'
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: -1, max: 1 } } }
+                    });
+
+                    const regions = {};
+                    sorted.forEach(m => {
+                        regions[m.region] = (regions[m.region] || 0) + m.impressions;
+                    });
+                    new Chart(document.getElementById('regionChart'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(regions),
+                            datasets: [{ data: Object.values(regions), backgroundColor: ['#d97706', '#92400e', '#f59e0b', '#ea580c'] }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }
 
                 document.getElementById('timestamp').textContent = new Date().toLocaleString();
             } catch (e) {
