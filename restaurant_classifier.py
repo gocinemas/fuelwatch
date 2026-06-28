@@ -8,7 +8,6 @@ RESTAURANT_TYPES = {
     "kokoro": "takeaway",
     "chaiiwala": "takeaway",
     "wagamama": "takeaway",
-    "pret": "takeaway",
     "leon": "takeaway",
     "subway": "takeaway",
     "taco bell": "takeaway",
@@ -25,10 +24,17 @@ RESTAURANT_TYPES = {
     "barbounia": "dine-in",
     "granger & co": "dine-in",
 
-    # Coffee
-    "starbucks": "cafe",
-    "costa": "cafe",
-    "greggs": "cafe",
+    # Coffee & Cafes
+    "starbucks": "coffee",
+    "costa": "coffee",
+    "greggs": "coffee",
+    "pret": "coffee",
+    "pret a manger": "coffee",
+    "blacksheep": "coffee",
+    "blacksheep coffee": "coffee",
+    "caffe nero": "coffee",
+    "nero": "coffee",
+    "itsu": "coffee",
 }
 
 def classify_restaurant(name: str) -> str:
