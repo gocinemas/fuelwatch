@@ -2529,7 +2529,7 @@ def fetch_house_prices(postcode: str) -> dict:
     try:
         from market_verified_prices import MARKET_VERIFIED, get_historical_trend
 
-        pc_prefix = postcode.replace(" ", "").upper()[:3]
+        pc_prefix = postcode.replace(" ", "").upper()[:4]
         house_prices = {}
 
         print(f"[HOUSE-DEBUG] Postcode: {postcode} → prefix: {pc_prefix}")
