@@ -32505,6 +32505,20 @@ def library_page():
     return html
 
 
+@app.route("/admin/delete-bin-event")
+def admin_delete_bin_event():
+    """Delete recurring bin event (General Waste + Garden)."""
+    try:
+        rows = lib._sb().table("ma_details").select("*").eq("type", "personal_event").eq("title", "General Waste + Garden").execute().data or []
+        deleted_count = 0
+        for row in rows:
+            lib._sb().table("ma_details").delete().eq("id", row["id"]).execute()
+            deleted_count += 1
+        return jsonify({"success": True, "deleted": deleted_count, "message": f"Deleted {deleted_count} bin event(s)"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
     print("=" * 40)
     print("Pre-loading station data...")
     get_stations()
