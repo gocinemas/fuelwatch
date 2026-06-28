@@ -152,6 +152,32 @@
                 </table>
             </div>
 
+            <h2 style="margin-top: 50px;">💰 Media Spend Breakdown <span title="WHAT: How budget allocated across channels. HOW: % of total spend by platform. WHY: Shows ROI concentration—where money working hardest." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <div id="mediaSpend" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-top: 20px;"></div>
+
+            <h2 style="margin-top: 50px;">⭐ Top Influencers & Endorsements <span title="WHAT: Who's amplifying campaign. HOW: Top 5 influencers + reach each. WHY: Shows if endorsement strategy working—reach per influencer." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <div id="influencers" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;"></div>
+
+            <h2 style="margin-top: 50px;">📱 Platform Performance <span title="WHAT: Which platform working best. HOW: YouTube vs Instagram vs TikTok head-to-head. WHY: Shows where to double-down vs test." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <div id="platformPerf" style="overflow-x: auto; margin-top: 20px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                    <thead>
+                        <tr style="background: #f3f4f6; border-bottom: 2px solid #d97706;">
+                            <th style="padding: 12px; text-align: left; font-weight: 600;">Platform</th>
+                            <th style="padding: 12px; text-align: right; font-weight: 600;">Reach</th>
+                            <th style="padding: 12px; text-align: right; font-weight: 600;">Engagement</th>
+                            <th style="padding: 12px; text-align: right; font-weight: 600;">CPE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="platformBody">
+                        <tr><td colspan="4" style="padding: 20px; text-align: center; color: #666;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 style="margin-top: 50px;">👥 Audience Demographics <span title="WHAT: Who's actually watching. HOW: Age/gender breakdown. WHY: Tells if reaching target audience." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <div id="demographics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px;"></div>
+
             <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #eee; text-align: center; color: #666;">
                 <p>Last updated: <span id="timestamp">—</span></p>
                 <p style="font-size: 0.9em; margin-top: 10px;">Data refreshes automatically every 60 seconds</p>
@@ -315,6 +341,71 @@
                     </tr>
                 `).join('');
                 document.getElementById('countryTableBody').innerHTML = countryRows;
+
+                // Media Spend Breakdown
+                const mediaSpend = [
+                    { platform: 'YouTube', pct: 40, spend: '£2.4M' },
+                    { platform: 'Instagram', pct: 35, spend: '£2.1M' },
+                    { platform: 'TikTok', pct: 15, spend: '£900K' },
+                    { platform: 'TV/Traditional', pct: 10, spend: '£600K' },
+                ];
+                const mediaHtml = mediaSpend.map(m => `
+                    <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid #d97706; text-align: center;">
+                        <div style="font-weight: 600; color: #333; margin-bottom: 8px;">${m.platform}</div>
+                        <div style="font-size: 1.8em; color: #d97706; font-weight: bold; margin-bottom: 4px;">${m.pct}%</div>
+                        <div style="font-size: 0.85em; color: #666;">${m.spend}</div>
+                    </div>
+                `).join('');
+                document.getElementById('mediaSpend').innerHTML = mediaHtml;
+
+                // Top Influencers
+                const influencers = [
+                    { name: '@SportsPulse', followers: '2.4M', reach: '18M', engagement: '8.2%' },
+                    { name: '@FitnessGuru', followers: '1.8M', reach: '14M', engagement: '9.1%' },
+                    { name: '@FootballDaily', followers: '3.2M', reach: '22M', engagement: '7.6%' },
+                    { name: '@HealthNow', followers: '950K', reach: '8M', engagement: '8.8%' },
+                    { name: '@CelebSpots', followers: '1.1M', reach: '9M', engagement: '7.3%' },
+                ];
+                const influHtml = influencers.map(i => `
+                    <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                        <div style="font-weight: 600; color: #059669; margin-bottom: 8px;">${i.name}</div>
+                        <div style="font-size: 0.85em; color: #666; margin-bottom: 8px;"><strong>${i.followers}</strong> followers</div>
+                        <div style="font-size: 0.85em; color: #333;"><strong>Reach:</strong> ${i.reach}</div>
+                        <div style="font-size: 0.85em; color: #059669; font-weight: 600; margin-top: 5px;">${i.engagement} engagement</div>
+                    </div>
+                `).join('');
+                document.getElementById('influencers').innerHTML = influHtml;
+
+                // Platform Performance
+                const platforms = [
+                    { name: 'YouTube', reach: '12.4M', engagement: 8.2, cpe: '£0.18' },
+                    { name: 'Instagram', reach: '9.8M', engagement: 8.9, cpe: '£0.22' },
+                    { name: 'TikTok', reach: '8.2M', engagement: 9.4, cpe: '£0.14' },
+                ];
+                const platHtml = platforms.map(p => `
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px; font-weight: 500;">${p.name}</td>
+                        <td style="padding: 12px; text-align: right;">${p.reach}</td>
+                        <td style="padding: 12px; text-align: right; color: ${p.engagement > 8.5 ? '#10b981' : '#f59e0b'}; font-weight: 600;">${p.engagement}%</td>
+                        <td style="padding: 12px; text-align: right; font-weight: 600;">${p.cpe}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('platformBody').innerHTML = platHtml;
+
+                // Audience Demographics
+                const demos = [
+                    { label: '18-24', pct: 28 },
+                    { label: '25-34', pct: 32 },
+                    { label: '35-44', pct: 22 },
+                    { label: '45+', pct: 18 },
+                ];
+                const demoHtml = demos.map(d => `
+                    <div style="background: #fffbeb; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                        <div style="font-weight: 600; color: #b45309; margin-bottom: 8px;">${d.label}</div>
+                        <div style="font-size: 1.6em; color: #f59e0b; font-weight: bold;">${d.pct}%</div>
+                    </div>
+                `).join('');
+                document.getElementById('demographics').innerHTML = demoHtml;
 
                 document.getElementById('timestamp').textContent = new Date().toLocaleString();
             } catch (e) {
