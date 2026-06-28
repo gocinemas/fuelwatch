@@ -12946,6 +12946,9 @@ def api_home_brief():
         if event_key not in _seen_events:
             _seen_events.add(event_key)
             _cal_events_dedup.append(e)
+        else:
+            app.logger.debug(f"[dedup] Removed duplicate: {e.get('title')} on {e.get('date')}")
+    app.logger.info(f"[dedup] Calendar events: {len(_cal_events)} → {len(_cal_events_dedup)} after dedup")
     _cal_events = _cal_events_dedup
 
     # Merge personal events into calendar for brief purposes
@@ -13013,6 +13016,14 @@ def api_home_brief():
                 # Still today — show it (user wants to see what's on today even if in progress)
                 _pe_loc = (pe.get("location") or "").strip()
                 app.logger.debug(f"[brief] Showing today's event (in progress/recent): {pe.get('title')} at {_pe_t} (now {_now_hhmm_cur})")
+                # ADD TO CALENDAR DISPLAY
+                _cal_entry = {"title": pe["title"], "date": _pe_date, "start": _pe_t, "personal": True}
+                if _pe_loc:
+                    _cal_entry["location"] = _pe_loc
+                if pe.get("end_time"):
+                    _cal_entry["end_time"] = pe["end_time"]
+                _cal_events = _cal_events + [_cal_entry]
+                app.logger.info(f"[brief] Added today's event to calendar: {pe.get('title')} - date={_pe_date} start={_pe_t}")
             elif _pe_past:
                 app.logger.debug(f"[brief] Hiding past event: {pe.get('title')} ends {_pe_end} (now {_now_hhmm_cur})")
                 _past_personal.append(pe)
