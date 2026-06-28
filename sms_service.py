@@ -12935,6 +12935,17 @@ def api_home_brief():
                 facts.insert(1, f"🎫 Saved for today: {_event_label(_te)}")
                 break
     _cal_events = ctx.get("calendar", []) + ctx.get("ms_calendar", [])
+
+    # Deduplicate calendar events (same title + date + time = same event)
+    _seen_events = set()
+    _cal_events_dedup = []
+    for e in _cal_events:
+        event_key = (e.get("title", ""), e.get("date", ""), e.get("start", ""))
+        if event_key not in _seen_events:
+            _seen_events.add(event_key)
+            _cal_events_dedup.append(e)
+    _cal_events = _cal_events_dedup
+
     # Merge personal events into calendar for brief purposes
     _personal_evs = ctx.get("personal_events", [])
     _past_personal = []  # recent past events — for "how was it?" follow-up
