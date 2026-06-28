@@ -32507,30 +32507,26 @@ def library_page():
 
 @app.route("/admin/delete-bin-event")
 def admin_delete_bin_event():
-    """Delete recurring bin event (General Waste + Garden)."""
+    """Delete bin collection preference (removes bin reminders)."""
     try:
-        # Get all recurring activities
-        rows = lib._sb().table("ma_details").select("*").eq("type", "recurring_activities").execute().data or []
+        from_number = request.args.get("phone") or "+447595075735"
 
-        deleted_count = 0
-        for row in rows:
-            activities = row.get("data", [])
-            if not activities:
-                continue
+        # Get v2_prefs
+        rows = lib._sb().table("ma_details").select("*").eq("device_id", from_number).eq("type", "v2_prefs").execute().data or []
 
-            # Filter out bin event
-            filtered = [a for a in activities if a.get("title") != "General Waste + Garden"]
+        if not rows:
+            return jsonify({"success": False, "error": "No preferences found"}), 404
 
-            if len(filtered) < len(activities):
-                # Bin event was removed, update
-                deleted_count += len(activities) - len(filtered)
-                if filtered:
-                    lib._sb().table("ma_details").update({"data": filtered}).eq("id", row["id"]).execute()
-                else:
-                    # No activities left, delete the row
-                    lib._sb().table("ma_details").delete().eq("id", row["id"]).execute()
+        prefs = rows[0].get("data", {})
 
-        return jsonify({"success": True, "deleted": deleted_count, "message": f"Deleted {deleted_count} bin event(s)"})
+        # Remove bin collection day
+        if "bin_collection_day" in prefs:
+            del prefs["bin_collection_day"]
+            lib._sb().table("ma_details").update({"data": prefs}).eq("id", rows[0]["id"]).execute()
+            return jsonify({"success": True, "message": "Bin collection preference removed"})
+        else:
+            return jsonify({"success": False, "message": "No bin collection preference found"}), 404
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
