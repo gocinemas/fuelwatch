@@ -32576,6 +32576,42 @@ def admin_find_waste():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/admin/migrate-restaurant-types")
+def admin_migrate_restaurant_types():
+    """Migrate existing receipts with restaurant type classification."""
+    try:
+        from restaurant_classifier import classify_restaurant
+
+        sb = lib._sb()
+
+        # Get all receipts
+        receipts = sb.table("ma_receipts").select("*").execute().data or []
+
+        updated = 0
+        for receipt in receipts:
+            merchant = receipt.get("merchant", "")
+            if not merchant:
+                continue
+
+            rtype = classify_restaurant(merchant)
+
+            # Skip if already tagged or unknown
+            if receipt.get("restaurant_type") or rtype == "unknown":
+                continue
+
+            # Update receipt with type
+            sb.table("ma_receipts").update({
+                "restaurant_type": rtype
+            }).eq("id", receipt["id"]).execute()
+
+            updated += 1
+
+        return jsonify({"success": True, "migrated": updated, "total": len(receipts)})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
     print("=" * 40)
     print("Pre-loading station data...")
     get_stations()
