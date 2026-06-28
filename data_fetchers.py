@@ -487,7 +487,22 @@ class DataFetchers:
                 self._set_cache(cache_key, result)
                 return result
 
-        # Priority 2: Fall back to HM Land Registry data
+        # Priority 2: Fall back to HM Land Registry with bedroom extraction
+        try:
+            from house_prices_universal import query_hml_with_bedrooms
+
+            result = query_hml_with_bedrooms(postcode, property_type)
+            if result:
+                return {
+                    "house_prices": result,
+                    "source": "HM Land Registry (2018-2026, 7.4M sales)",
+                    "last_updated": datetime.utcnow().isoformat(),
+                    "note": "Bedroom counts inferred from price ranges"
+                }
+        except Exception as e:
+            print(f"[house-prices] HM Land Registry fallback error: {e}")
+
+        # Priority 3: Fall back to cached aggregate data
         try:
             from miru_lib import lib
             pc_prefix = postcode.replace(" ", "").upper()[:3]
