@@ -12971,11 +12971,14 @@ def api_home_brief():
         if _is_recurring:
             # Add recurring events ONLY if they match TODAY's weekday
             _pe_weekday = pe.get("weekday")
-            if _pe_weekday is None or _pe_weekday != now.weekday():
+            _today_weekday = now.weekday()
+            app.logger.info(f"[brief] Recurring check: {pe.get('title')} | stored_weekday={_pe_weekday} today_weekday={_today_weekday}")
+            if _pe_weekday is None or _pe_weekday != _today_weekday:
+                app.logger.info(f"[brief] SKIP recurring: {pe.get('title')} (weekday mismatch: {_pe_weekday} vs {_today_weekday})")
                 continue  # Not today — skip this recurring event
             # Only add if it matches today
             _pe_date = _today_s
-            app.logger.info(f"[brief] Recurring event: {pe.get('title')} on today ({_today_s})")
+            app.logger.info(f"[brief] ADD recurring: {pe.get('title')} on today ({_today_s})")
 
         # Also check if event has weekday matching today, even with a date (backwards compat for old events)
         _pe_weekday = pe.get("weekday")
