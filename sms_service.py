@@ -32507,30 +32507,26 @@ def library_page():
 
 @app.route("/admin/delete-bin-event")
 def admin_delete_bin_event():
-    """Completely delete all bin collection preferences."""
+    """Delete ALL bin collection preferences from ALL users."""
     try:
-        # Find any v2_prefs with bin settings
         all_prefs = lib._sb().table("ma_details").select("*").eq("type", "v2_prefs").execute().data or []
 
-        deleted = False
+        deleted_count = 0
         for row in all_prefs:
             prefs = row.get("data", {})
-            # Remove ALL bin-related fields
             bin_fields = ["bin_collection_day", "bin_rotation", "bin_week_1", "bin_week_2"]
-            before = len([k for k in bin_fields if k in prefs])
+
+            changed = False
             for field in bin_fields:
                 if field in prefs:
                     del prefs[field]
+                    deleted_count += 1
+                    changed = True
 
-            if before > 0:
+            if changed:
                 lib._sb().table("ma_details").update({"data": prefs}).eq("id", row["id"]).execute()
-                deleted = True
-                break
 
-        if deleted:
-            return jsonify({"success": True, "message": "All bin collection settings removed"})
-        else:
-            return jsonify({"success": False, "message": "No bin collection settings found"}), 404
+        return jsonify({"success": True, "deleted": deleted_count, "message": f"Removed {deleted_count} bin fields"})
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
