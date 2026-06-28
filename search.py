@@ -2513,11 +2513,17 @@ def fetch_house_prices(postcode: str) -> dict:
     """Fetch house prices from market-verified data (Rightmove/Zoopla).
     Falls back to HM Land Registry data if market prices not available."""
     from datetime import date, timedelta
+    import sys
+
+    print(f"\n>>> FETCH_HOUSE_PRICES CALLED: {postcode}", file=sys.stderr, flush=True)
 
     cache_key = postcode.strip().upper().replace(" ", "")
     cached = _house_cache.get(cache_key)
     if cached and (time.time() - cached["ts"]) < _HOUSE_CACHE_TTL:
+        print(f">>> USING CACHE for {postcode}", file=sys.stderr, flush=True)
         return cached["data"]
+
+    print(f">>> CACHE MISS for {postcode}, fetching fresh", file=sys.stderr, flush=True)
 
     # Priority 1: Try market-verified prices
     try:
