@@ -2521,19 +2521,17 @@ def fetch_house_prices(postcode: str) -> dict:
 
     # Priority 1: Try market-verified prices
     try:
-        from market_verified_prices import get_verified_price, get_historical_trend
+        from market_verified_prices import MARKET_VERIFIED, get_historical_trend
 
         pc_prefix = postcode.replace(" ", "").upper()[:3]
         house_prices = {}
 
-        for ptype in ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']:
-            price_data = get_verified_price(postcode, ptype)
-            if price_data:
-                house_prices[ptype] = {
-                    "avg": price_data['avg'],
-                    "count": price_data['count'],
-                    "latest": "Jun 2026"
-                }
+        if pc_prefix in MARKET_VERIFIED:
+            market_data = MARKET_VERIFIED[pc_prefix]
+            for ptype in ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']:
+                if ptype in market_data:
+                    # Return all bedroom sizes for this property type
+                    house_prices[ptype] = market_data[ptype]
 
         if house_prices:
             result = {**house_prices}
