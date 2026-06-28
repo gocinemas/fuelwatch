@@ -32509,11 +32509,27 @@ def library_page():
 def admin_delete_bin_event():
     """Delete recurring bin event (General Waste + Garden)."""
     try:
-        rows = lib._sb().table("ma_details").select("*").eq("type", "personal_event").eq("title", "General Waste + Garden").execute().data or []
+        # Get all recurring activities
+        rows = lib._sb().table("ma_details").select("*").eq("type", "recurring_activities").execute().data or []
+
         deleted_count = 0
         for row in rows:
-            lib._sb().table("ma_details").delete().eq("id", row["id"]).execute()
-            deleted_count += 1
+            activities = row.get("data", [])
+            if not activities:
+                continue
+
+            # Filter out bin event
+            filtered = [a for a in activities if a.get("title") != "General Waste + Garden"]
+
+            if len(filtered) < len(activities):
+                # Bin event was removed, update
+                deleted_count += len(activities) - len(filtered)
+                if filtered:
+                    lib._sb().table("ma_details").update({"data": filtered}).eq("id", row["id"]).execute()
+                else:
+                    # No activities left, delete the row
+                    lib._sb().table("ma_details").delete().eq("id", row["id"]).execute()
+
         return jsonify({"success": True, "deleted": deleted_count, "message": f"Deleted {deleted_count} bin event(s)"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
