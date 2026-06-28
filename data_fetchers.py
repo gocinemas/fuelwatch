@@ -453,24 +453,20 @@ class DataFetchers:
             return cached
 
         # Priority 1: Check verified market prices (Rightmove/Zoopla)
-        if get_verified_price:
+        try:
+            from market_verified_prices import MARKET_VERIFIED
+
             pc_prefix = postcode.replace(" ", "").upper()[:3]
             verified = {}
 
-            # If specific property type requested, only get that
-            ptypes = [property_type] if property_type else ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']
+            if pc_prefix in MARKET_VERIFIED:
+                market_data = MARKET_VERIFIED[pc_prefix]
+                ptypes = [property_type] if property_type else ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']
 
-            for ptype in ptypes:
-                price_data = get_verified_price(postcode, ptype, bedrooms)
-                if price_data:
-                    verified[ptype] = {
-                        "avg": price_data['avg'],
-                        "count": price_data['count'],
-                        "latest": "Jun 2026",
-                        "source": price_data.get('source', 'Market-verified'),
-                        "note": price_data.get('note', ''),
-                        "bedrooms": bedrooms if bedrooms else "mixed"
-                    }
+                for ptype in ptypes:
+                    if ptype in market_data:
+                        # Return ALL bedroom sizes for this property type
+                        verified[ptype] = market_data[ptype]
 
             if verified:
                 # Add historical trends for each property type/bedroom combo
