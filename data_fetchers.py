@@ -461,7 +461,10 @@ class DataFetchers:
         cache_key = f"hp_market_{postcode}_{property_type}_{bedrooms}"
         cached = self._get_cache(cache_key)
         if cached:
+            print(f"[HP-DEBUG] Cache hit for {postcode}")
             return cached
+
+        print(f"[HP-DEBUG] Fetching prices for {postcode}...")
 
         # Priority 1: Check verified market prices (Rightmove/Zoopla)
         try:
@@ -470,6 +473,7 @@ class DataFetchers:
             pc_prefix = postcode.replace(" ", "").upper()[:3]
             verified = {}
 
+            print(f"[HP-DEBUG] Checking market_verified for {pc_prefix}")
             if pc_prefix in MARKET_VERIFIED:
                 market_data = MARKET_VERIFIED[pc_prefix]
                 ptypes = [property_type] if property_type else ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']
@@ -480,6 +484,7 @@ class DataFetchers:
                         verified[ptype] = market_data[ptype]
 
             if verified:
+                print(f"[HP-DEBUG] Market verified found! Types: {list(verified.keys())}")
                 # Add historical trends for each property type/bedroom combo
                 historical = {}
                 if get_historical_trend:
@@ -496,14 +501,19 @@ class DataFetchers:
                     "last_updated": datetime.utcnow().isoformat()
                 }
                 self._set_cache(cache_key, result)
+                print(f"[HP-DEBUG] Returning market-verified result")
                 return result
+            else:
+                print(f"[HP-DEBUG] No market-verified data found for {pc_prefix}")
 
         # Priority 2: Fall back to database aggregate data with bedroom estimates
         try:
             from miru_lib import lib
             pc_prefix = postcode.replace(" ", "").upper()[:3]
+            print(f"[HP-DEBUG] Querying database for {pc_prefix}")
             rows = lib._sb().table("house_price_real").select("*").eq("postcode", pc_prefix).execute().data or []
 
+            print(f"[HP-DEBUG] Database query returned {len(rows)} rows")
             if rows:
                 # Convert database records to bedroom-based format
                 result = {}
@@ -532,14 +542,19 @@ class DataFetchers:
                     }
 
                 if result:
-                    return {
+                    print(f"[HP-DEBUG] Database result found! Types: {list(result.keys())}")
+                    res = {
                         "house_prices": result,
                         "source": "HM Land Registry (2018-2026, 7.4M sales)",
                         "last_updated": datetime.utcnow().isoformat(),
                         "note": "Bedroom estimates based on average price"
                     }
+                    self._set_cache(cache_key, res)
+                    return res
+                else:
+                    print(f"[HP-DEBUG] No database results found")
         except Exception as e:
-            print(f"[house-prices] Database fallback error: {e}")
+            print(f"[HP-DEBUG] Database fallback error: {e}")
 
         # Priority 3: Fall back to cached aggregate data
         try:
