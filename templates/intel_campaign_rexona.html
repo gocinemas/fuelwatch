@@ -12,57 +12,88 @@
         .header { background: linear-gradient(135deg, #d97706 0%, #92400e 100%); color: white; padding: 40px 20px; border-radius: 12px 12px 0 0; text-align: center; }
         .header h1 { font-size: 2em; margin-bottom: 5px; }
         .header p { font-size: 1em; opacity: 0.9; }
-        .main-content { background: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .beta-banner { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 15px; border-radius: 8px; margin-bottom: 30px; }
+        .main-content { background: white; border-radius: 0 0 12px 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .creative-showcase { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .creative-card { background: #f3f4f6; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+        .creative-thumbnail { background: #d97706; height: 150px; display: flex; align-items: center; justify-content: center; font-size: 3em; }
+        .creative-info { padding: 15px; }
+        .creative-title { font-weight: bold; margin-bottom: 8px; }
+        .creative-meta { font-size: 0.85em; color: #666; }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 40px 0; }
+        @media (max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
+        .chart-box { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; }
+        .chart-box h3 { margin-bottom: 15px; color: #333; font-size: 1.1em; }
+        .chart-container { position: relative; height: 300px; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
         @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
         .card { background: #f9fafb; padding: 20px; border-radius: 8px; border-left: 4px solid #d97706; }
         .card h3 { color: #333; margin-bottom: 15px; font-size: 1.2em; }
         .metric { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
-        .metric:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .metric:last-child { border-bottom: none; }
         .metric-label { font-size: 0.9em; color: #666; }
-        .metric-value { font-size: 1.4em; font-weight: bold; color: #d97706; }
-        .sentiment-positive { color: #10b981; }
+        .metric-value { font-size: 1.4em; font-weight: bold; color: #d97706; margin-top: 4px; }
         .variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         .variant-card { background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%); padding: 15px; border-radius: 8px; border-left: 4px solid #d97706; }
         .variant-name { font-weight: bold; color: #333; margin-bottom: 5px; }
-        .variant-market { font-size: 0.85em; color: #666; }
-        .creatives { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .creative-item { background: #f3f4f6; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
-        .creative-thumbnail { background: #d97706; height: 150px; display: flex; align-items: center; justify-content: center; font-size: 3em; }
-        .creative-details { padding: 15px; }
-        .creative-title { font-weight: bold; margin-bottom: 8px; }
-        .creative-meta { font-size: 0.85em; color: #666; margin-bottom: 10px; }
-        .creative-link { color: #d97706; text-decoration: none; font-size: 0.9em; }
+        .variant-region { font-size: 0.85em; color: #666; margin-bottom: 8px; }
+        .variant-tagline { font-size: 0.9em; color: #555; }
+        .tweets { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px; }
+        .tweet-card { background: #f9fafb; border-left: 4px solid #d97706; padding: 16px; border-radius: 6px; }
+        .tweet-author { font-weight: 600; color: #333; margin-bottom: 8px; }
+        .tweet-text { font-size: 0.95em; color: #555; margin-bottom: 10px; line-height: 1.5; font-style: italic; }
+        .tweet-sentiment { display: inline-block; font-size: 0.8em; padding: 4px 10px; border-radius: 3px; font-weight: 600; }
+        .sentiment-positive { background: #d1fae5; color: #065f46; }
+        .sentiment-negative { background: #fee2e2; color: #7f1d1d; }
+        .sentiment-neutral { background: #f3f4f6; color: #374151; }
         h2 { color: #333; margin: 30px 0 20px 0; font-size: 1.5em; }
+        .back-link { display: inline-block; color: #d97706; text-decoration: none; margin-bottom: 20px; font-weight: 500; }
+        .back-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="container">
+        <a href="/intel/world-cup" class="back-link">← Back to World Cup</a>
+
         <div class="header">
             <h1>💪 Where Pressure Is Visible</h1>
             <p>Rexona x FIFA World Cup 2026 — Campaign Intelligence</p>
         </div>
 
         <div class="main-content">
-            <div class="beta-banner">
-                ⚠️ <strong>Fourth Official Positioning:</strong> Rexona backs the people who stand in pressure. Real-time campaign performance from Supabase. Updates every 60s.
+            <h2>Campaign Creatives</h2>
+            <div class="creative-showcase" id="creatives-container">
+                <div class="creative-card"><div class="creative-thumbnail">⏳</div><div class="creative-info"><div class="creative-title">Loading...</div></div></div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-box">
+                    <h3>Sentiment Timeline — Tournament Days</h3>
+                    <div class="chart-container">
+                        <canvas id="sentimentChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-box">
+                    <h3>Performance by Region (Impressions)</h3>
+                    <div class="chart-container">
+                        <canvas id="regionChart"></canvas>
+                    </div>
+                </div>
             </div>
 
             <div class="grid-2">
                 <div class="card">
-                    <h3>Campaign Strategy</h3>
+                    <h3>Campaign Overview</h3>
                     <div class="metric">
-                        <div class="metric-label">Core Narrative</div>
+                        <div class="metric-label">Campaign Theme</div>
                         <div class="metric-value">Where Pressure Is Visible</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Target Moment</div>
-                        <div class="metric-value">Added Time Signaling</div>
+                        <div class="metric-label">Regions Active</div>
+                        <div class="metric-value" id="regionsValue">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Brand Truth</div>
-                        <div class="metric-value">Inevitable Sponsorships</div>
+                        <div class="metric-label">Total Views</div>
+                        <div class="metric-value" id="viewsValue">—</div>
                     </div>
                 </div>
 
@@ -70,34 +101,31 @@
                     <h3>Performance Metrics</h3>
                     <div class="metric">
                         <div class="metric-label">Overall Sentiment</div>
-                        <div class="metric-value sentiment-positive" id="overall-sentiment">—</div>
+                        <div class="metric-value" id="sentimentValue">—</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">Peak Engagement</div>
-                        <div class="metric-value" id="peak-engagement">—</div>
+                        <div class="metric-value" id="engagementValue">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Total Views</div>
-                        <div class="metric-value" id="total-views">—</div>
+                        <div class="metric-label">Total Reach</div>
+                        <div class="metric-value" id="reachValue">—</div>
                     </div>
                 </div>
             </div>
 
-            <h2>Regional Variants</h2>
+            <h2>Regional Variant Comparison</h2>
             <div class="variants" id="variants-container">
                 <div class="variant-card"><div class="variant-name">Loading...</div></div>
             </div>
 
-            <h2>Campaign Creatives</h2>
-            <div class="creatives" id="creatives-container">
-                <div class="creative-item"><div class="creative-thumbnail">⏳</div><div class="creative-details"><div class="creative-title">Loading...</div></div></div>
+            <h2>Real Tweets & Social Sentiment</h2>
+            <div class="tweets" id="tweets-container">
+                <div class="tweet-card"><div class="tweet-author">Loading...</div></div>
             </div>
 
-            <h2 style="margin-top: 50px;">Real Tweets & Social Sentiment</h2>
-            <div id="tweets-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;"></div>
-
             <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #eee; text-align: center; color: #666;">
-                <p>Last updated: <span id="timestamp">Loading...</span></p>
+                <p>Last updated: <span id="timestamp">—</span></p>
                 <p style="font-size: 0.9em; margin-top: 10px;">Data refreshes automatically every 60 seconds</p>
             </div>
         </div>
@@ -108,28 +136,96 @@
             try {
                 const res = await fetch('/api/campaign/rexona');
                 const data = await res.json();
+
+                // Metrics
                 const views = data.creatives.reduce((s, c) => s + (c.views || 0), 0);
+                const reach = data.metrics.reduce((s, m) => s + (m.impressions || 0), 0);
                 const engagement = Math.max(...data.metrics.map(m => m.engagement_rate || 0)).toFixed(3);
                 const avgSent = (data.sentiment.reduce((s, x) => s + (x.sentiment_score || 0), 0) / data.sentiment.length).toFixed(2);
-                document.getElementById('overall-sentiment').textContent = avgSent;
-                document.getElementById('peak-engagement').textContent = (engagement * 100).toFixed(1) + '%';
-                document.getElementById('total-views').textContent = (views / 1000000).toFixed(1) + 'M';
-                const variantsHtml = data.variants.map(v => `<div class="variant-card"><div class="variant-name">${v.brand_name === 'Sure' ? '🇬🇧' : v.brand_name === 'Degree' ? '🇺🇸' : v.region === 'India' ? '🇮🇳' : '🇧🇷'} ${v.brand_name}</div><div class="variant-market">${v.region}</div><p style="font-size: 0.85em; color: #555; margin-top: 5px;"><strong>${v.tagline}</strong></p></div>`).join('');
-                document.getElementById('variants-container').innerHTML = variantsHtml;
-                const creativesHtml = data.creatives.map(c => `<div class="creative-item"><div class="creative-thumbnail">${c.platform === 'youtube' ? '🎥' : '📱'}</div><div class="creative-details"><div class="creative-title">${c.title}</div><div class="creative-meta">${c.platform.toUpperCase()} • ${(c.views/1000000).toFixed(1)}M views • ${((c.likes/c.views)*100).toFixed(1)}% engagement</div><a href="#" class="creative-link">View Campaign →</a></div></div>`).join('');
+
+                document.getElementById('viewsValue').textContent = (views / 1000000).toFixed(1) + 'M';
+                document.getElementById('reachValue').textContent = (reach / 1000000).toFixed(1) + 'M';
+                document.getElementById('regionsValue').textContent = data.variants.length + ' Markets';
+                document.getElementById('sentimentValue').textContent = avgSent;
+                document.getElementById('engagementValue').textContent = (engagement * 100).toFixed(1) + '%';
+
+                // Creatives
+                const creativesHtml = data.creatives.map(c => `
+                    <div class="creative-card">
+                        <div class="creative-thumbnail">${c.platform === 'youtube' ? '🎥' : '📱'}</div>
+                        <div class="creative-info">
+                            <div class="creative-title">${c.title}</div>
+                            <div class="creative-meta">${c.platform.toUpperCase()} • ${(c.views/1000000).toFixed(1)}M views • ${((c.likes/c.views)*100).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                `).join('');
                 document.getElementById('creatives-container').innerHTML = creativesHtml;
 
+                // Charts
+                if (data.metrics.length > 0) {
+                    const sorted = data.metrics.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    new Chart(document.getElementById('sentimentChart'), {
+                        type: 'line',
+                        data: {
+                            labels: sorted.map(m => new Date(m.date).toLocaleDateString('en-GB')),
+                            datasets: [{
+                                label: 'Sentiment Score',
+                                data: sorted.map(m => m.sentiment_avg),
+                                borderColor: '#d97706',
+                                backgroundColor: 'rgba(217, 119, 6, 0.05)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#d97706'
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: -1, max: 1 } } }
+                    });
+
+                    const regions = {};
+                    sorted.forEach(m => {
+                        regions[m.region] = (regions[m.region] || 0) + m.impressions;
+                    });
+                    new Chart(document.getElementById('regionChart'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(regions),
+                            datasets: [{ data: Object.values(regions), backgroundColor: ['#d97706', '#92400e', '#f59e0b', '#ea580c'] }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }
+
+                // Variants
+                const variantsHtml = data.variants.map(v => `
+                    <div class="variant-card">
+                        <div class="variant-name">${v.brand_name}</div>
+                        <div class="variant-region">${v.region}</div>
+                        <div class="variant-tagline"><strong>${v.tagline}</strong> — ${v.messaging_angle}</div>
+                    </div>
+                `).join('');
+                document.getElementById('variants-container').innerHTML = variantsHtml;
+
+                // Tweets
                 const tweetsHtml = data.sentiment.map(s => {
                     const sentiment = s.sentiment_score > 0.5 ? 'positive' : s.sentiment_score < -0.5 ? 'negative' : 'neutral';
                     const badge = sentiment === 'positive' ? '✓ Positive' : sentiment === 'negative' ? '✗ Negative' : '○ Neutral';
-                    const badgeClass = `<span style="display: inline-block; font-size: 0.8em; padding: 4px 10px; border-radius: 3px; font-weight: 600; ${sentiment === 'positive' ? 'background: #d1fae5; color: #065f46;' : sentiment === 'negative' ? 'background: #fee2e2; color: #7f1d1d;' : 'background: #f3f4f6; color: #374151;'}">${badge}</span>`;
-                    return `<div style="background: #f9fafb; border-left: 4px solid #d97706; padding: 16px; border-radius: 6px;"><div style="font-weight: 600; color: #333; margin-bottom: 8px;">@${s.author}</div><div style="font-size: 0.95em; color: #555; margin-bottom: 10px; line-height: 1.5; font-style: italic;">"${s.text}"</div>${badgeClass}</div>`;
+                    return `
+                        <div class="tweet-card">
+                            <div class="tweet-author">@${s.author}</div>
+                            <div class="tweet-text">"${s.text}"</div>
+                            <span class="tweet-sentiment sentiment-${sentiment}">${badge}</span>
+                        </div>
+                    `;
                 }).join('');
                 document.getElementById('tweets-container').innerHTML = tweetsHtml;
-                updateTimestamp();
-            } catch (e) { console.error('Error:', e); }
+
+                document.getElementById('timestamp').textContent = new Date().toLocaleString();
+            } catch (e) {
+                console.error('Error:', e);
+            }
         }
-        function updateTimestamp() { document.getElementById('timestamp').textContent = new Date().toLocaleString(); }
+
         loadData();
         setInterval(loadData, 60000);
     </script>
