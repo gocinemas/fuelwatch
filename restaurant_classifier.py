@@ -39,6 +39,10 @@ RESTAURANT_TYPES = {
     "caffe nero": "coffee",
     "nero": "coffee",
     "itsu": "coffee",
+
+    # Grocery & Supermarkets
+    "sadda superstore": "grocery",
+    "sadda": "grocery",
 }
 
 def classify_restaurant(name: str) -> str:
