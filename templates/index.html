@@ -5200,30 +5200,125 @@ const _ts = new Date(d.timestamp);
   }
 
   function renderHousePrices(d, postcode) {
-    window._houseHistoryData = d;  // Store for chart rendering
+    window._houseHistoryData = d;
     const hp = d.house_prices || {};
     if (Object.keys(hp).length === 0) {
       document.getElementById("report-house-list").innerHTML = '<p class="text-gray-400 text-sm py-2">No recent sales found for this area.</p>';
       return;
     }
-    const scope = Object.values(hp)[0]?.scope || postcode;
-    const scopeNote = `${scope} · last 3 years`;
-    document.getElementById("report-house-list").innerHTML =
-      Object.entries(hp).map(([type, v]) =>
-        `<div class="flex justify-between py-2 border-b border-gray-50 last:border-0">
-          <div>
-            <span class="text-gray-700 font-medium">${type}</span>
-            <span class="text-xs text-gray-400 ml-2">${v.count} sale${v.count>1?"s":""} · latest ${v.latest}</span>
-          </div>
+
+    // Show all property types with current prices
+    const priceHtml = Object.entries(hp).map(([type, v]) => {
+      const label = type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return `<div class="py-3 border-b border-gray-50 last:border-0">
+        <div class="flex justify-between items-start mb-1">
+          <span class="text-gray-700 font-medium text-sm">${label}</span>
           <span class="font-semibold text-gray-900">£${v.avg.toLocaleString()}</span>
-        </div>`
-      ).join("") + `<p class="text-xs text-gray-400 mt-2">📍 ${scopeNote} · Source: Land Registry</p>`;
+        </div>
+        <div class="text-xs text-gray-400">${v.count} sale${v.count>1?"s":""} · ${v.bedrooms || 'various'}</div>
+        ${v.note ? `<div class="text-xs text-gray-500 mt-1">${v.note}</div>` : ''}
+      </div>`;
+    }).join("");
+
+    document.getElementById("report-house-list").innerHTML = priceHtml +
+      `<p class="text-xs text-gray-400 mt-3">Source: ${d.source || 'Market data'}</p>`;
+
+    // Draw evolution chart if historical data exists
+    if (d.historical_trends && Object.keys(d.historical_trends).length > 0) {
+      setTimeout(() => _renderEvolutionChart(d.historical_trends), 100);
+    }
 
     if (d.rightmove_url) {
       document.getElementById("report-rightmove-link").href = d.rightmove_url;
       document.getElementById("report-rightmove-link").textContent = `View ${postcode.replace(/(.{3,4})(.{3})$/,"$1 $2")} on Rightmove →`;
       document.getElementById("report-rightmove").classList.remove("hidden");
     }
+  }
+
+  function _renderEvolutionChart(trends) {
+    const canvas = document.getElementById("house-price-history-chart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const colors = ['#dc2626', '#2563eb', '#16a34a', '#f59e0b', '#8b5cf6'];
+
+    // Get all years and all property types
+    let allYears = new Set();
+    Object.values(trends).forEach(yearData => {
+      Object.keys(yearData).forEach(y => allYears.add(parseInt(y)));
+    });
+    allYears = Array.from(allYears).sort();
+
+    if (allYears.length === 0) return;
+
+    const propTypes = Object.keys(trends);
+    const padding = 40;
+    const width = canvas.offsetWidth;
+    const height = 200;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Find min/max for scaling
+    let minPrice = Infinity, maxPrice = 0;
+    Object.values(trends).forEach(yearData => {
+      Object.values(yearData).forEach(price => {
+        minPrice = Math.min(minPrice, price);
+        maxPrice = Math.max(maxPrice, price);
+      });
+    });
+
+    const yRange = maxPrice - minPrice;
+    const xStep = (width - 2*padding) / (allYears.length - 1);
+    const yScale = (height - 2*padding) / yRange;
+
+    // Draw grid
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < allYears.length; i++) {
+      const x = padding + i * xStep;
+      ctx.beginPath();
+      ctx.moveTo(x, padding);
+      ctx.lineTo(x, height - padding);
+      ctx.stroke();
+    }
+
+    // Draw lines for each property type
+    propTypes.forEach((propType, typeIdx) => {
+      ctx.strokeStyle = colors[typeIdx % colors.length];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+
+      allYears.forEach((year, idx) => {
+        const price = trends[propType][year] || 0;
+        const x = padding + idx * xStep;
+        const y = height - padding - ((price - minPrice) * yScale);
+
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    });
+
+    // Draw labels
+    ctx.fillStyle = 'var(--text)';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'center';
+
+    allYears.forEach((year, idx) => {
+      const x = padding + idx * xStep;
+      ctx.fillText(year, x, height - 15);
+    });
+
+    // Legend
+    ctx.textAlign = 'left';
+    ctx.font = '11px system-ui';
+    propTypes.forEach((type, idx) => {
+      ctx.fillStyle = colors[idx % colors.length];
+      ctx.fillRect(padding + idx * 100, 5, 10, 10);
+      ctx.fillStyle = 'var(--text)';
+      ctx.fillText(type.replace(/_/g, ' ').substring(0, 12), padding + 15 + idx * 100, 13);
+    });
   }
 
   function renderLocalData(d) {

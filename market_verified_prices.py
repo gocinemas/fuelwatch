@@ -123,6 +123,51 @@ MARKET_VERIFIED = {
     }
 }
 
+# Historical progression data (year-by-year evolution)
+# Shows how prices have grown from 2017 to 2026
+HISTORICAL_TRENDS = {
+    "KT16": {
+        "semi_detached": {
+            "2bed": {
+                2017: 495000,
+                2018: 505000,
+                2019: 520000,
+                2020: 540000,
+                2021: 555000,
+                2022: 570000,
+                2023: 575000,
+                2024: 585000,
+                2025: 595000,
+                2026: 599000
+            },
+            "3bed": {
+                2017: 600000,
+                2018: 620000,
+                2019: 640000,
+                2020: 665000,
+                2021: 685000,
+                2022: 705000,
+                2023: 710000,
+                2024: 720000,
+                2025: 730000,
+                2026: 735000
+            },
+            "4bed": {
+                2017: 750000,
+                2018: 775000,
+                2019: 800000,
+                2020: 835000,
+                2021: 860000,
+                2022: 885000,
+                2023: 890000,
+                2024: 900000,
+                2025: 910000,
+                2026: 920000
+            }
+        }
+    }
+}
+
 def get_verified_price(postcode: str, property_type: str, bedrooms: str = None):
     """
     Get verified market price for postcode + property_type + bedrooms.
@@ -155,6 +200,33 @@ def get_verified_price(postcode: str, property_type: str, bedrooms: str = None):
             return prop_data[bed]
 
     return None  # No data available
+
+def get_historical_trend(postcode: str, property_type: str, bedrooms: str = None):
+    """
+    Get year-by-year price progression for a property.
+    Returns: {2017: 495000, 2018: 505000, ..., 2026: 599000}
+    """
+    pc_prefix = postcode.replace(" ", "").upper()[:3]
+
+    if pc_prefix not in HISTORICAL_TRENDS:
+        return None
+
+    if property_type not in HISTORICAL_TRENDS[pc_prefix]:
+        return None
+
+    trend_data = HISTORICAL_TRENDS[pc_prefix][property_type]
+
+    # If bedrooms specified, return exact match
+    if bedrooms and bedrooms in trend_data:
+        return trend_data[bedrooms]
+
+    # Otherwise return largest available
+    bed_order = ["5bed", "4bed", "3bed", "2bed", "1bed"]
+    for bed in bed_order:
+        if bed in trend_data:
+            return trend_data[bed]
+
+    return None
 
 if __name__ == "__main__":
     print("=== Verified Market Prices ===\n")

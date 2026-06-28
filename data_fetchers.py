@@ -11,9 +11,10 @@ import random
 
 # Import verified market prices
 try:
-    from market_verified_prices import get_verified_price
+    from market_verified_prices import get_verified_price, get_historical_trend
 except ImportError:
     get_verified_price = None
+    get_historical_trend = None
 
 class DataFetchers:
     def __init__(self):
@@ -472,9 +473,18 @@ class DataFetchers:
                     }
 
             if verified:
+                # Add historical trends for each property type/bedroom combo
+                historical = {}
+                if get_historical_trend:
+                    for ptype in ptypes:
+                        trend = get_historical_trend(postcode, ptype, bedrooms)
+                        if trend:
+                            historical[ptype] = trend
+
                 result = {
                     "current_price": list(verified.values())[0].get('avg', 0) if verified else 0,
                     "house_prices": verified,
+                    "historical_trends": historical,  # Year-by-year evolution
                     "source": "Market-verified (Rightmove/Zoopla)",
                     "last_updated": datetime.utcnow().isoformat()
                 }
