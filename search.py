@@ -2526,18 +2526,28 @@ def fetch_house_prices(postcode: str) -> dict:
         pc_prefix = postcode.replace(" ", "").upper()[:3]
         house_prices = {}
 
+        print(f"[HOUSE-DEBUG] Postcode: {postcode} → prefix: {pc_prefix}")
+        print(f"[HOUSE-DEBUG] Available prefixes: {list(MARKET_VERIFIED.keys())}")
+        print(f"[HOUSE-DEBUG] Is {pc_prefix} in MARKET_VERIFIED? {pc_prefix in MARKET_VERIFIED}")
+
         if pc_prefix in MARKET_VERIFIED:
             market_data = MARKET_VERIFIED[pc_prefix]
+            print(f"[HOUSE-DEBUG] Found market data for {pc_prefix}: {list(market_data.keys())}")
             for ptype in ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']:
                 if ptype in market_data:
                     # Return all bedroom sizes for this property type
                     house_prices[ptype] = market_data[ptype]
+                    print(f"[HOUSE-DEBUG] Added {ptype}: {list(market_data[ptype].keys())}")
 
         if house_prices:
             result = {**house_prices}
+            print(f"[HOUSE-DEBUG] Returning market data")
             _house_cache[cache_key] = {"ts": time.time(), "data": result}
             return result
-    except ImportError:
+        else:
+            print(f"[HOUSE-DEBUG] No market data found, falling back to SPARQL")
+    except ImportError as e:
+        print(f"[HOUSE-DEBUG] Import failed: {e}")
         pass
 
     # Priority 2: Fall back to old SPARQL method
