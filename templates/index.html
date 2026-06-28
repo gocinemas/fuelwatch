@@ -18303,7 +18303,7 @@ let _savesAll = [];
     }
   }
 
-  function _deletePersonalEvent(btn) {
+  window._deletePersonalEvent = function(btn) {
     var title = btn.getAttribute('data-title');
     if (!title) return;
     // Find the event in the personal events list and get its index
@@ -18337,7 +18337,7 @@ let _savesAll = [];
       }
     })
     .catch(e => alert('Error: ' + e.message));
-  }
+  };
 
   function _briefUpdateFuelStrip(fuel) {
     var strip   = document.getElementById("brief-fuel-strip");
