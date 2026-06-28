@@ -12959,11 +12959,19 @@ def api_home_brief():
         _pe_date       = pe.get("date", "")
         _pe_t          = (pe.get("time")       or "").strip()
         _pe_leave      = (pe.get("leave_time") or "").strip()
-        app.logger.info(f"[personal-event] Processing: {pe.get('title')} | date={_pe_date} time={_pe_t} weekday={pe.get('weekday')}")
+        _pe_title = pe.get('title', 'unknown')
+
+        # DETAILED LOGGING FOR SWIMMING
+        if 'swimming' in _pe_title.lower():
+            app.logger.info(f"[SWIMMING-DEBUG] Full event data: {pe}")
+
+        app.logger.info(f"[personal-event] Processing: {_pe_title} | date={_pe_date} time={_pe_t} weekday={pe.get('weekday')}")
 
         # FILTER: Skip events from the past (older than today)
         if _pe_date and _pe_date < _today_s:
-            app.logger.debug(f"[brief] Filtering out past personal event: {pe.get('title')} date={_pe_date} (before today {_today_s})")
+            if 'swimming' in _pe_title.lower():
+                app.logger.info(f"[SWIMMING-DEBUG] FILTERED OUT as past: {_pe_date} < {_today_s}")
+            app.logger.debug(f"[brief] Filtering out past personal event: {_pe_title} date={_pe_date} (before today {_today_s})")
             continue  # Past event — skip
 
         # Handle recurring events (no date, but has weekday or frequency)
@@ -12984,11 +12992,15 @@ def api_home_brief():
                     _weekday_match = True
 
             if not _weekday_match:
+                if 'swimming' in _pe_title.lower():
+                    app.logger.info(f"[SWIMMING-DEBUG] FILTERED: weekday mismatch: stored={_pe_weekday} today={_today_weekday}")
                 continue  # Not today — skip
 
             # Matches today — set date and continue processing
             _pe_date = _today_s
-            app.logger.info(f"[brief] Recurring event matches today: {pe.get('title')}")
+            if 'swimming' in _pe_title.lower():
+                app.logger.info(f"[SWIMMING-DEBUG] Recurring match! Setting date to {_today_s}")
+            app.logger.info(f"[brief] Recurring event matches today: {_pe_title}")
 
         # Also check if event has weekday matching today, even with a date (backwards compat for old events)
         _pe_weekday = pe.get("weekday")
@@ -13043,14 +13055,18 @@ def api_home_brief():
                 _past_personal.append(pe)
             else:
                 _pe_loc = (pe.get("location") or "").strip()
-                app.logger.debug(f"[brief] Showing upcoming event: {pe.get('title')} at {_pe_t} ends {_pe_end} (now {_now_hhmm_cur})")
+                if 'swimming' in _pe_title.lower():
+                    app.logger.info(f"[SWIMMING-DEBUG] ADDING TO CALENDAR: {_pe_title} at {_pe_t}, ends {_pe_end}")
+                app.logger.debug(f"[brief] Showing upcoming event: {_pe_title} at {_pe_t} ends {_pe_end} (now {_now_hhmm_cur})")
                 _cal_entry = {"title": pe["title"], "date": _pe_date, "start": _pe_t, "personal": True}
                 if _pe_loc:
                     _cal_entry["location"] = _pe_loc
                 if pe.get("end_time"):
                     _cal_entry["end_time"] = pe["end_time"]
                 _cal_events = _cal_events + [_cal_entry]
-                app.logger.info(f"[brief] Added to calendar: {pe.get('title')} - date={_pe_date} start={_pe_t}")
+                if 'swimming' in _pe_title.lower():
+                    app.logger.info(f"[SWIMMING-DEBUG] Successfully added! _cal_events now has {len(_cal_events)} items")
+                app.logger.info(f"[brief] Added to calendar: {_pe_title} - date={_pe_date} start={_pe_t}")
             # Leave-time reminder — surface as explicit fact so Groq says "leave by X"
             if _pe_leave and _pe_date == _today_s and _pe_leave > _now_hhmm_cur:
                 facts.append(f"Leave by {_pe_leave} for {pe['title']}")
