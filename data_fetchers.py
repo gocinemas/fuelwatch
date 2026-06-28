@@ -438,6 +438,17 @@ class DataFetchers:
             print(f"[amenities] Error: {e}")
             return {"amenities": {}, "source": f"Error: {str(e)}"}
 
+    def _estimate_bedroom(self, price: int, prop_type: str) -> str:
+        """Estimate bedroom count from price and property type."""
+        if prop_type == 'flats_maisonettes':
+            return '2bed' if price < 300000 else '3bed'
+        elif prop_type == 'terraced':
+            return '2bed' if price < 350000 else ('3bed' if price < 500000 else '4bed')
+        elif prop_type == 'semi_detached':
+            return '2bed' if price < 400000 else ('3bed' if price < 600000 else ('4bed' if price < 800000 else '5bed'))
+        else:  # detached
+            return '3bed' if price < 600000 else ('4bed' if price < 1000000 else '5bed')
+
     def fetch_house_prices(self, postcode: str, property_type: str = None, bedrooms: str = None) -> dict:
         """
         Fetch house prices with optional property type and bedroom filtering.
@@ -487,20 +498,48 @@ class DataFetchers:
                 self._set_cache(cache_key, result)
                 return result
 
-        # Priority 2: Fall back to HM Land Registry with bedroom extraction
+        # Priority 2: Fall back to database aggregate data with bedroom estimates
         try:
-            from house_prices_universal import query_hml_with_bedrooms
+            from miru_lib import lib
+            pc_prefix = postcode.replace(" ", "").upper()[:3]
+            rows = lib._sb().table("house_price_real").select("*").eq("postcode", pc_prefix).execute().data or []
 
-            result = query_hml_with_bedrooms(postcode, property_type)
-            if result:
-                return {
-                    "house_prices": result,
-                    "source": "HM Land Registry (2018-2026, 7.4M sales)",
-                    "last_updated": datetime.utcnow().isoformat(),
-                    "note": "Bedroom counts inferred from price ranges"
-                }
+            if rows:
+                # Convert database records to bedroom-based format
+                result = {}
+                for row in rows:
+                    ptype = row.get("property_type", "").lower()
+                    if not ptype:
+                        continue
+
+                    avg_price = row.get("avg_price", 0)
+                    if not avg_price:
+                        continue
+
+                    if ptype not in result:
+                        result[ptype] = {}
+
+                    # Estimate bedroom count from avg price
+                    bedroom = self._estimate_bedroom(avg_price, ptype)
+
+                    result[ptype][bedroom] = {
+                        "avg": avg_price,
+                        "median": row.get("median_price", avg_price),
+                        "min": row.get("min_price", 0),
+                        "max": row.get("max_price", 0),
+                        "count": row.get("sales_count", 0),
+                        "source": "HM Land Registry (2018-2026)",
+                    }
+
+                if result:
+                    return {
+                        "house_prices": result,
+                        "source": "HM Land Registry (2018-2026, 7.4M sales)",
+                        "last_updated": datetime.utcnow().isoformat(),
+                        "note": "Bedroom estimates based on average price"
+                    }
         except Exception as e:
-            print(f"[house-prices] HM Land Registry fallback error: {e}")
+            print(f"[house-prices] Database fallback error: {e}")
 
         # Priority 3: Fall back to cached aggregate data
         try:

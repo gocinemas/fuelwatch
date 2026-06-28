@@ -38,7 +38,23 @@ def query_hml_with_bedrooms(postcode: str, property_type: str = None):
     # Structure: {ptype: {bedroom: [prices]}}
     prices_by_type_bed = defaultdict(lambda: defaultdict(list))
 
-    csv_files = sorted(glob.glob("/Users/srevi/Downloads/pp-*.csv"))
+    # Try multiple CSV paths
+    csv_paths = [
+        "/Users/srevi/Downloads/pp-*.csv",
+        "/app/data/pp-*.csv",
+        "/data/pp-*.csv",
+        "./data/pp-*.csv",
+    ]
+
+    csv_files = []
+    for path_pattern in csv_paths:
+        csv_files = sorted(glob.glob(path_pattern))
+        if csv_files:
+            break
+
+    if not csv_files:
+        # No CSV files found - return empty
+        return None
 
     for filepath in csv_files:
         try:
