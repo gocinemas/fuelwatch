@@ -23,6 +23,8 @@ RESTAURANT_TYPES = {
     "cote": "dine-in",
     "barbounia": "dine-in",
     "granger & co": "dine-in",
+    "saravanaa bhavan": "dine-in",
+    "saravana bhavan": "dine-in",
 
     # Coffee & Cafes
     "starbucks": "coffee",
