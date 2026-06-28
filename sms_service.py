@@ -1178,27 +1178,29 @@ def api_campaign(brand):
         all_creatives = supabase.table("campaign_creatives").select("*").execute().data or []
         creatives = [c for c in all_creatives if c.get("brand", "").lower() == brand.lower()]
 
-        # Get sentiment data filtered by brand keywords in text
+        # Get sentiment data - filter by brand_name if available
         all_sentiment = supabase.table("campaign_sentiment").select("*").limit(100).execute().data or []
-        brand_keywords = {
-            "rexona": ["rexona", "fourth official", "pressure is visible", "added time", "brasil"],
-            "sure": ["sure", "pressure makes you", "uk", "penalty", "pub"],
-            "degree": ["degree", "do not sweat", "usa", "usmnt", "motion sense"],
-        }
-
-        # Filter sentiment by brand-specific keywords
-        sentiment = []
         brand_lower = brand.lower()
-        keywords = brand_keywords.get(brand_lower, [brand_lower])
 
-        for s in all_sentiment:
-            text_lower = (s.get("text", "") + " " + s.get("author", "")).lower()
-            if any(kw in text_lower for kw in keywords):
-                sentiment.append(s)
-                if len(sentiment) >= 10:
-                    break
+        # Try to filter by brand_name field first
+        sentiment = [s for s in all_sentiment if s.get("brand_name", "").lower() == brand_lower][:10]
 
-        # If no brand-specific sentiment found, return top ones anyway
+        # Fallback: filter by keywords if no brand_name field exists
+        if not sentiment:
+            brand_keywords = {
+                "rexona": ["rexona", "fourth official", "pressure is visible", "added time", "brasil"],
+                "sure": ["sure", "pressure makes you", "uk", "penalty", "pub"],
+                "degree": ["degree", "do not sweat", "usa", "usmnt", "motion sense"],
+            }
+            keywords = brand_keywords.get(brand_lower, [brand_lower])
+            for s in all_sentiment:
+                text_lower = (s.get("text", "") + " " + s.get("author", "")).lower()
+                if any(kw in text_lower for kw in keywords):
+                    sentiment.append(s)
+                    if len(sentiment) >= 10:
+                        break
+
+        # Last resort: return first 10
         if not sentiment:
             sentiment = all_sentiment[:10]
 
