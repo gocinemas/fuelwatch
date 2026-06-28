@@ -2510,14 +2510,39 @@ GROUP BY ?type
 
 
 def fetch_house_prices(postcode: str) -> dict:
-    """Fetch last 3 years of sold prices from Land Registry SPARQL endpoint.
-    Uses district (indexed) — fast and reliable. Falls back to CITY OF prefix for some authorities."""
+    """Fetch house prices from market-verified data (Rightmove/Zoopla).
+    Falls back to HM Land Registry data if market prices not available."""
     from datetime import date, timedelta
+
     cache_key = postcode.strip().upper().replace(" ", "")
     cached = _house_cache.get(cache_key)
     if cached and (time.time() - cached["ts"]) < _HOUSE_CACHE_TTL:
         return cached["data"]
 
+    # Priority 1: Try market-verified prices
+    try:
+        from market_verified_prices import get_verified_price, get_historical_trend
+
+        pc_prefix = postcode.replace(" ", "").upper()[:3]
+        house_prices = {}
+
+        for ptype in ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']:
+            price_data = get_verified_price(postcode, ptype)
+            if price_data:
+                house_prices[ptype] = {
+                    "avg": price_data['avg'],
+                    "count": price_data['count'],
+                    "latest": "Jun 2026"
+                }
+
+        if house_prices:
+            result = {**house_prices}
+            _house_cache[cache_key] = {"ts": time.time(), "data": result}
+            return result
+    except ImportError:
+        pass
+
+    # Priority 2: Fall back to old SPARQL method
     cutoff_iso = (date.today() - timedelta(days=3 * 365)).strftime("%Y-%m-%d")
     info = _get_postcode_info(postcode)
     district = info["admin_district"]
