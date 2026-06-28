@@ -55,29 +55,47 @@
 
         <div class="main-content">
             <div class="grid-2">
-                <div class="card">
-                    <h3>Campaign Overview</h3>
+                <div class="card" style="background: #f0fdf4; border-left: 4px solid #10b981;">
+                    <h3 style="color: #059669;">🏥 Campaign Health Score</h3>
                     <div class="metric">
-                        <div class="metric-label">Brand</div>
-                        <div class="metric-value" id="brandValue">—</div>
+                        <div class="metric-label">Overall Health</div>
+                        <div class="metric-value" id="healthScore" style="font-size: 2.2em; color: #10b981;">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Regions Active</div>
-                        <div class="metric-value" id="regionsValue">—</div>
+                        <div class="metric-label">Trend Direction</div>
+                        <div class="metric-value" id="trendValue">—</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Campaign Status</div>
+                        <div class="metric-value" id="healthStatus" style="color: #10b981; font-weight: bold;">—</div>
                     </div>
                 </div>
 
-                <div class="card">
-                    <h3>Performance Metrics</h3>
+                <div class="card" style="background: #fffbeb; border-left: 4px solid #f59e0b;">
+                    <h3 style="color: #b45309;">📊 Key Metrics</h3>
                     <div class="metric">
-                        <div class="metric-label">Overall Sentiment</div>
+                        <div class="metric-label">Sentiment Score</div>
                         <div class="metric-value" id="sentimentValue">—</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Global Reach</div>
+                        <div class="metric-value" id="reachValue">—</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">Peak Engagement</div>
                         <div class="metric-value" id="engagementValue">—</div>
                     </div>
                 </div>
+            </div>
+
+            <div class="card" style="background: #f3f4f6; border-left: 4px solid #d97706; margin: 30px 0; padding: 25px;">
+                <h3 style="color: #92400e; margin-bottom: 15px;">🗺️ Regional Performance Breakdown</h3>
+                <div id="regionalBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px;"></div>
+            </div>
+
+            <div class="card" style="background: #fef3c7; border-left: 4px solid #d97706; margin: 30px 0; padding: 25px;">
+                <h3 style="color: #92400e; margin-bottom: 15px;">💡 Director Recommendation</h3>
+                <div id="recommendation" style="font-size: 1.05em; color: #333; line-height: 1.8; font-weight: 500;"></div>
             </div>
 
             <h2>Campaign Creatives</h2>
@@ -132,10 +150,52 @@
 
                 // Metrics
                 const views = data.creatives.reduce((s, c) => s + (c.views || 0), 0);
+                const reach = data.metrics.reduce((s, m) => s + (m.impressions || 0), 0);
                 const engagement = Math.max(...data.metrics.map(m => m.engagement_rate || 0)).toFixed(3);
                 const avgSent = (data.sentiment.reduce((s, x) => s + (x.sentiment_score || 0), 0) / data.sentiment.length).toFixed(2);
                 document.getElementById('sentimentValue').textContent = avgSent;
                 document.getElementById('engagementValue').textContent = (engagement * 100).toFixed(1) + '%';
+                document.getElementById('reachValue').textContent = (reach / 1000000).toFixed(1) + 'M';
+
+                // Health Score
+                const healthScore = Math.round((parseFloat(avgSent) * 50 + parseFloat(engagement) * 50) * 100);
+                const health = Math.min(100, Math.max(0, healthScore));
+                document.getElementById('healthScore').textContent = health;
+                document.getElementById('healthStatus').textContent = health >= 80 ? '✓ Excellent' : health >= 60 ? '⚠ Good' : 'At Risk';
+
+                // Trending
+                const sortedMetrics = data.metrics.sort((a, b) => new Date(a.date) - new Date(b.date));
+                const trendChange = sortedMetrics.length > 1 ?
+                  (sortedMetrics[sortedMetrics.length - 1].sentiment_avg - sortedMetrics[0].sentiment_avg).toFixed(2) : 0;
+                const trendEmoji = trendChange > 0.05 ? '📈' : trendChange < -0.05 ? '📉' : '➡️';
+                document.getElementById('trendValue').textContent = trendEmoji + ' ' + (trendChange > 0 ? '+' : '') + trendChange;
+
+                // Regional breakdown
+                const regions = {};
+                data.metrics.forEach(m => {
+                  regions[m.region] = (regions[m.region] || 0) + m.impressions;
+                });
+                const regionHtml = Object.entries(regions).map(([region, impr]) => `
+                  <div style="background: white; padding: 12px; border-radius: 6px; text-align: center; border: 1px solid #d1d5db;">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${region.charAt(0).toUpperCase() + region.slice(1)}</div>
+                    <div style="font-size: 1.2em; color: #d97706; font-weight: bold;">${(impr / 1000000).toFixed(1)}M</div>
+                    <div style="font-size: 0.75em; color: #666;">impressions</div>
+                  </div>
+                `).join('');
+                document.getElementById('regionalBreakdown').innerHTML = regionHtml;
+
+                // Recommendation
+                const recommendations = [];
+                if (health >= 85 && trendChange > 0) {
+                  recommendations.push("🎯 <strong>Scale Campaign</strong> — Strong momentum. Sentiment trending upward. Increase media spend by 15-20% to capture peak engagement moments during tournament.");
+                } else if (health >= 70 && trendChange > 0) {
+                  recommendations.push("📈 <strong>Optimize Current Strategy</strong> — Positive trajectory. Maintain spend levels. Focus on top-performing regions and platforms. Test variant messaging to boost engagement further.");
+                } else if (health >= 60) {
+                  recommendations.push("⚠️ <strong>Refine Messaging</strong> — Stable but growth opportunity. Campaign resonating in certain markets. Concentrate spend on best-performing regions. A/B test creative variations.");
+                } else {
+                  recommendations.push("🔴 <strong>Urgent Review Required</strong> — Health declining. Sentiment softening. Review creative performance and messaging alignment with target audience. Consider repositioning or fresh creative.");
+                }
+                document.getElementById('recommendation').innerHTML = recommendations.join('<br><br>');
 
                 // Creatives
                 const creativesHtml = data.creatives.map(c => `
