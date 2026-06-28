@@ -255,7 +255,7 @@
                 document.getElementById('variants-container').innerHTML = variantsHtml;
 
                 // Tweets
-                const tweetsHtml = data.sentiment.map(s => {
+                const tweetsHtml = data.sentiment.slice(0, 20).map(s => {
                     const sentiment = s.sentiment_score > 0.5 ? 'positive' : s.sentiment_score < -0.5 ? 'negative' : 'neutral';
                     const badge = sentiment === 'positive' ? '✓ Positive' : sentiment === 'negative' ? '✗ Negative' : '○ Neutral';
                     return `
@@ -266,7 +266,7 @@
                         </div>
                     `;
                 }).join('');
-                document.getElementById('tweets-container').innerHTML = tweetsHtml;
+                document.getElementById('tweets-container').innerHTML = tweetsHtml || '<p>No sentiment data</p>';
 
                 document.getElementById('timestamp').textContent = new Date().toLocaleString();
             } catch (e) {
@@ -275,7 +275,7 @@
         }
 
         loadData();
-        setInterval(loadData, 60000);
+        setInterval(loadData, 30000);  // Refresh every 30 seconds for live tweet updates
     </script>
 </body>
 </html>
