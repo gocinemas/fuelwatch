@@ -19184,7 +19184,28 @@ let _savesAll = [];
                 } else {
                   var itemsHtml = '';
                   if (d.items && d.items.length) {
-                    itemsHtml = '<div style="font-size:11px;color:var(--muted);margin-top:6px">Bought: ' + d.items.join(', ') + '</div>';
+                    var itemsToShow = d.items.slice(0, 2);
+                    var extraCount = Math.max(0, d.items.length - 2);
+                    var itemsText = itemsToShow.map(i => typeof i === 'string' ? i : (i.name || '')).filter(Boolean).join(', ');
+                    var expandBtnId = 'receipt-expand-' + Date.now();
+                    var itemsDetailId = 'receipt-items-' + Date.now();
+
+                    itemsHtml = '<div style="font-size:11px;color:var(--muted);margin-top:6px">Bought: ' + itemsText;
+                    if (extraCount > 0) {
+                      itemsHtml += ' <a href="#" onclick="document.getElementById(\'' + itemsDetailId + '\').style.display=\'block\';this.parentElement.style.display=\'none\';return false" style="color:var(--accent);cursor:pointer;font-weight:600">+' + extraCount + ' more</a>';
+                    }
+                    itemsHtml += '</div>';
+
+                    if (extraCount > 0 || d.items.length > 2) {
+                      itemsHtml += '<div id="' + itemsDetailId + '" style="display:none;font-size:11px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">';
+                      itemsHtml += d.items.map(i => {
+                        var name = typeof i === 'string' ? i : (i.name || '');
+                        var price = typeof i === 'object' ? (i.price ? '£' + i.price.toFixed(2) : '') : '';
+                        return '<div style="padding:4px 0">' + (name || '(no name)') + (price ? ' — ' + price : '') + '</div>';
+                      }).join('');
+                      itemsHtml += '<a href="#" onclick="document.getElementById(\'' + itemsDetailId + '\').style.display=\'none\';this.parentElement.parentElement.querySelector(\'a\').parentElement.style.display=\'block\';return false" style="color:var(--muted);cursor:pointer;font-size:10px;margin-top:4px;display:block">hide</a>';
+                      itemsHtml += '</div>';
+                    }
                   }
                   el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
                     + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Last shopped at <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + d.merchant + '</strong></div>'
