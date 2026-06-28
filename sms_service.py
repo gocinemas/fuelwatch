@@ -32532,6 +32532,34 @@ def admin_delete_bin_event():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/admin/find-waste")
+def admin_find_waste():
+    """Debug: find where 'General Waste' is stored."""
+    try:
+        # Search all ma_details for "Waste"
+        all_rows = lib._sb().table("ma_details").select("*").execute().data or []
+
+        results = []
+        for row in all_rows:
+            data = row.get("data", {})
+            row_type = row.get("type", "")
+
+            # Check if data contains "Waste"
+            data_str = str(data).lower()
+            if "waste" in data_str:
+                results.append({
+                    "id": row.get("id"),
+                    "type": row_type,
+                    "device": row.get("device_id"),
+                    "data_keys": list(data.keys()) if isinstance(data, dict) else "not a dict"
+                })
+
+        return jsonify({"found": len(results), "records": results})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
     print("=" * 40)
     print("Pre-loading station data...")
     get_stations()
