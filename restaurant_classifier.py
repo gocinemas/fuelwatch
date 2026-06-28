@@ -7,6 +7,8 @@ RESTAURANT_TYPES = {
     # Takeaway
     "kokoro": "takeaway",
     "chaiiwala": "takeaway",
+    "renaizzance": "takeaway",
+    "renaizance": "takeaway",
     "wagamama": "takeaway",
     "leon": "takeaway",
     "subway": "takeaway",
