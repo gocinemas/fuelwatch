@@ -3547,8 +3547,20 @@ def api_house():
     postcode, lat, lon, pc_fmt = result
     analytics.log_search("area", postcode, request.remote_addr, request.user_agent.string)
     house = fetch_house_prices(postcode)
+
+    # DEBUG: Log what's actually being returned
+    print(f"\n[API-HOUSE] Postcode: {postcode}")
+    print(f"[API-HOUSE] House data type: {type(house)}")
+    print(f"[API-HOUSE] House data keys: {list(house.keys()) if isinstance(house, dict) else 'N/A'}")
+    if isinstance(house, dict) and house:
+        for ptype, pdata in house.items():
+            if isinstance(pdata, dict):
+                print(f"[API-HOUSE] {ptype}: keys={list(pdata.keys())}, avg={pdata.get('avg')}, bedrooms={pdata.get('bedrooms')}")
+
     rightmove_url = f"https://www.rightmove.co.uk/house-prices/{pc_fmt.lower().replace(' ', '-')}.html"
-    return jsonify({"house_prices": house, "rightmove_url": rightmove_url})
+    response = {"house_prices": house, "rightmove_url": rightmove_url}
+    print(f"[API-HOUSE] Returning: {response}\n")
+    return jsonify(response)
 
 
 _LOCAL_SB_CACHE_TTL = 6 * 3600  # 6 hours
