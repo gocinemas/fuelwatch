@@ -32584,7 +32584,19 @@ def admin_migrate_restaurant_types():
 
         sb = lib._sb()
 
-        # Get all receipts (correct table name)
+        # First, try to add the restaurant_type column if it doesn't exist
+        try:
+            # Test query to see if column exists
+            sb.table("receipts").select("restaurant_type").limit(1).execute()
+        except:
+            # Column doesn't exist - return message to user
+            return jsonify({
+                "success": False,
+                "message": "restaurant_type column doesn't exist in receipts table",
+                "action": "Add 'restaurant_type' column to receipts table in Supabase first (type: text)"
+            }), 400
+
+        # Get all receipts
         receipts = sb.table("receipts").select("*").execute().data or []
 
         updated = 0
