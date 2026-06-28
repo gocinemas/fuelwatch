@@ -82,45 +82,45 @@
 
             <div class="grid-2">
                 <div class="card" style="background: #f0fdf4; border-left: 4px solid #10b981;">
-                    <h3 style="color: #059669;">🏥 Campaign Health Score</h3>
+                    <h3 style="color: #059669;">🏥 Campaign Health Score <span title="Score 0-100 based on sentiment analysis and engagement rates. Higher = stronger campaign performance and audience reception." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h3>
                     <div class="metric">
-                        <div class="metric-label">Overall Health</div>
+                        <div class="metric-label">Overall Health <span title="Weighted average of sentiment score (50%) and engagement rate (50%)" style="cursor: help; color: #666;">?</span></div>
                         <div class="metric-value" id="healthScore" style="font-size: 2.2em; color: #10b981;">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Trend Direction</div>
+                        <div class="metric-label">Trend Direction <span title="How sentiment is changing over the tournament. 📈 = improving, 📉 = declining, ➡️ = stable" style="cursor: help; color: #666;">?</span></div>
                         <div class="metric-value" id="trendValue">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Campaign Status</div>
+                        <div class="metric-label">Campaign Status <span title="Current performance level based on health score" style="cursor: help; color: #666;">?</span></div>
                         <div class="metric-value" id="healthStatus" style="color: #10b981; font-weight: bold;">—</div>
                     </div>
                 </div>
 
                 <div class="card" style="background: #fffbeb; border-left: 4px solid #f59e0b;">
-                    <h3 style="color: #b45309;">📊 Key Metrics</h3>
+                    <h3 style="color: #b45309;">📊 Key Metrics <span title="Real-time performance indicators pulled from social media and campaign data" style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h3>
                     <div class="metric">
-                        <div class="metric-label">Sentiment Score</div>
+                        <div class="metric-label">Sentiment Score <span title="Average sentiment from social mentions. Range: -1 (negative) to +1 (positive)" style="cursor: help; color: #666;">?</span></div>
                         <div class="metric-value" id="sentimentValue">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Total Reach</div>
+                        <div class="metric-label">Total Reach <span title="Total impressions across all platforms and regions (in millions)" style="cursor: help; color: #666;">?</span></div>
                         <div class="metric-value" id="reachValue">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Peak Engagement</div>
+                        <div class="metric-label">Peak Engagement <span title="Highest engagement rate (likes, comments, shares) across all creatives. Expressed as percentage." style="cursor: help; color: #666;">?</span></div>
                         <div class="metric-value" id="engagementValue">—</div>
                     </div>
                 </div>
             </div>
 
             <div class="card" style="background: #f3f4f6; border-left: 4px solid #d97706; margin: 30px 0; padding: 25px;">
-                <h3 style="color: #92400e; margin-bottom: 15px;">🗺️ Regional Performance Breakdown</h3>
+                <h3 style="color: #92400e; margin-bottom: 15px;">🗺️ Regional Performance <span title="Campaign impressions by geographic region. Shows where the campaign is gaining traction." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h3>
                 <div id="regionalBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px;"></div>
             </div>
 
             <div class="card" style="background: #fef3c7; border-left: 4px solid #d97706; margin: 30px 0; padding: 25px;">
-                <h3 style="color: #92400e; margin-bottom: 15px;">💡 Director Recommendation</h3>
+                <h3 style="color: #92400e; margin-bottom: 15px;">💡 Recommendation <span title="Data-driven action items based on current campaign health, trend, and regional performance" style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h3>
                 <div id="recommendation" style="font-size: 1.05em; color: #333; line-height: 1.8; font-weight: 500;"></div>
             </div>
 
