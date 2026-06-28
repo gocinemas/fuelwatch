@@ -18227,11 +18227,7 @@ let _savesAll = [];
           } else {
             cutoff = eMins + 60;  // Default 1 hour for regular events
           }
-          // Show all TODAY events, even if past (unless significantly old)
-          if (e.date === todayStr) {
-            console.log("[briefCard] Keep (today event, any time): " + e.title + " eMins=" + eMins + " cutoff=" + cutoff + " nowMins=" + nowMins);
-            return true;  // Show today's events regardless of time
-          }
+          // Only show events that haven't fully passed (within cutoff time)
           if (nowMins > cutoff) {
             console.log("[briefCard] Filter out (past): " + e.title + " eMins=" + eMins + " cutoff=" + cutoff + " nowMins=" + nowMins);
             return false;
