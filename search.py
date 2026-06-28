@@ -2550,7 +2550,56 @@ def fetch_house_prices(postcode: str) -> dict:
         print(f"[HOUSE-DEBUG] Import failed: {e}")
         pass
 
-    # Priority 2: Fall back to old SPARQL method
+    # Priority 2: Try database with bedroom estimation
+    try:
+        from miru_lib import lib
+
+        pc_prefix = postcode.replace(" ", "").upper()[:3]
+        print(f"[HOUSE-DEBUG] Querying database for {pc_prefix}")
+        rows = lib._sb().table("house_price_real").select("*").eq("postcode", pc_prefix).execute().data or []
+
+        if rows:
+            result = {}
+            for row in rows:
+                ptype = row.get("property_type", "").lower()
+                if not ptype:
+                    continue
+
+                avg_price = row.get("avg_price", 0)
+                if not avg_price:
+                    continue
+
+                if ptype not in result:
+                    result[ptype] = {}
+
+                # Estimate bedroom from average price
+                def est_bed(price, typ):
+                    if typ == 'flats_maisonettes':
+                        return '2bed' if price < 300000 else '3bed'
+                    elif typ == 'terraced':
+                        return '2bed' if price < 350000 else ('3bed' if price < 500000 else '4bed')
+                    elif typ == 'semi_detached':
+                        return '2bed' if price < 400000 else ('3bed' if price < 600000 else ('4bed' if price < 800000 else '5bed'))
+                    else:
+                        return '3bed' if price < 600000 else ('4bed' if price < 1000000 else '5bed')
+
+                bedroom = est_bed(avg_price, ptype)
+                result[ptype][bedroom] = {
+                    "avg": avg_price,
+                    "median": row.get("median_price", avg_price),
+                    "min": row.get("min_price", 0),
+                    "max": row.get("max_price", 0),
+                    "count": row.get("sales_count", 0),
+                }
+
+            if result:
+                print(f"[HOUSE-DEBUG] Returning database data with bedroom estimates")
+                _house_cache[cache_key] = {"ts": time.time(), "data": result}
+                return result
+    except Exception as e:
+        print(f"[HOUSE-DEBUG] Database fallback error: {e}")
+
+    # Priority 3: Fall back to old SPARQL method
     cutoff_iso = (date.today() - timedelta(days=3 * 365)).strftime("%Y-%m-%d")
     info = _get_postcode_info(postcode)
     district = info["admin_district"]
