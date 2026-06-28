@@ -1178,7 +1178,29 @@ def api_campaign(brand):
         all_creatives = supabase.table("campaign_creatives").select("*").execute().data or []
         creatives = [c for c in all_creatives if c.get("brand", "").lower() == brand.lower()]
 
-        sentiment = supabase.table("campaign_sentiment").select("*").limit(25).execute().data or []
+        # Get sentiment data filtered by brand keywords in text
+        all_sentiment = supabase.table("campaign_sentiment").select("*").limit(100).execute().data or []
+        brand_keywords = {
+            "rexona": ["rexona", "fourth official", "pressure is visible", "added time", "brasil"],
+            "sure": ["sure", "pressure makes you", "uk", "penalty", "pub"],
+            "degree": ["degree", "do not sweat", "usa", "usmnt", "motion sense"],
+        }
+
+        # Filter sentiment by brand-specific keywords
+        sentiment = []
+        brand_lower = brand.lower()
+        keywords = brand_keywords.get(brand_lower, [brand_lower])
+
+        for s in all_sentiment:
+            text_lower = (s.get("text", "") + " " + s.get("author", "")).lower()
+            if any(kw in text_lower for kw in keywords):
+                sentiment.append(s)
+                if len(sentiment) >= 10:
+                    break
+
+        # If no brand-specific sentiment found, return top ones anyway
+        if not sentiment:
+            sentiment = all_sentiment[:10]
 
         all_metrics = supabase.table("campaign_metrics").select("*").execute().data or []
         metrics = [m for m in all_metrics if m.get("brand_variant", "").lower() == brand.lower()]
