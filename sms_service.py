@@ -9559,6 +9559,123 @@ def api_v2_spend():
         return jsonify({"total": 0, "count": 0, "period": "", "breakdown": {}, "error": str(e)})
 
 
+@app.route("/api/v2/receipts-timeline", methods=["GET"])
+def api_v2_receipts_timeline():
+    """Get all receipts with items for timeline view (last N days)."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"receipts": [], "total": 0})
+
+    try:
+        days = request.args.get("days", 90, type=int)
+        from miru_lib import lib
+        import json
+        from datetime import datetime, timedelta
+
+        # Get receipts from last N days
+        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        plain_phone = from_number.replace("whatsapp:", "").strip()
+
+        rows = lib._sb().table("receipts").select("*") \
+            .eq("phone", plain_phone) \
+            .gte("created_at", cutoff) \
+            .order("shop_date", desc=True) \
+            .execute().data or []
+
+        total = sum(float(r.get("total", 0)) for r in rows if r.get("total"))
+        receipts = []
+
+        for row in rows:
+            # Parse items if stored as JSON string
+            items = row.get("items", [])
+            if isinstance(items, str):
+                try:
+                    items = json.loads(items)
+                except:
+                    items = []
+
+            receipts.append({
+                "id": row.get("id"),
+                "merchant": row.get("merchant"),
+                "total": float(row.get("total", 0)),
+                "shop_date": row.get("shop_date") or row.get("created_at"),
+                "created_at": row.get("created_at"),
+                "items": items,
+                "category": row.get("category")
+            })
+
+        return jsonify({"receipts": receipts, "total": total})
+    except Exception as e:
+        print(f"[receipts-timeline] Error: {e}")
+        return jsonify({"receipts": [], "total": 0, "error": str(e)})
+
+
+@app.route("/api/v2/item-price-history", methods=["GET"])
+def api_v2_item_price_history():
+    """Get price history for a specific item across all receipts."""
+    token = request.args.get("token", "").strip()
+    item_name = request.args.get("item", "").strip()
+    from_number = _v2_resolve(token)
+
+    if not from_number or not item_name:
+        return jsonify({"history": [], "average": 0, "min": 0, "max": 0})
+
+    try:
+        from miru_lib import lib
+        import json
+
+        plain_phone = from_number.replace("whatsapp:", "").strip()
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date,created_at,items") \
+            .eq("phone", plain_phone) \
+            .order("shop_date", desc=True) \
+            .execute().data or []
+
+        history = []
+        for row in rows:
+            items = row.get("items", [])
+            if isinstance(items, str):
+                try:
+                    items = json.loads(items)
+                except:
+                    items = []
+
+            # Search for item in this receipt
+            for item in items:
+                item_text = item if isinstance(item, str) else (item.get("name", "") or "")
+                if item_name.lower() in item_text.lower():
+                    price = None
+                    if not isinstance(item, str) and isinstance(item, dict):
+                        price = item.get("price")
+
+                    if price is None:
+                        # Fall back to total divided by item count
+                        price = float(row.get("total", 0)) / max(1, len(items))
+
+                    history.append({
+                        "date": row.get("shop_date") or row.get("created_at"),
+                        "price": float(price),
+                        "merchant": row.get("merchant")
+                    })
+                    break
+
+        if not history:
+            return jsonify({"history": [], "average": 0, "min": 0, "max": 0})
+
+        prices = [h["price"] for h in history]
+        average = sum(prices) / len(prices)
+
+        return jsonify({
+            "history": history,
+            "average": average,
+            "min": min(prices),
+            "max": max(prices)
+        })
+    except Exception as e:
+        print(f"[item-price-history] Error: {e}")
+        return jsonify({"history": [], "average": 0, "min": 0, "max": 0, "error": str(e)})
+
+
 @app.route("/api/v2/spend/upload-pdf", methods=["POST"])
 def api_v2_spend_upload_pdf():
     """Upload and extract transactions from a PDF (bank statement, receipt, or invoice)."""

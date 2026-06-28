@@ -16762,6 +16762,7 @@ _bkBadge();
 
     <!-- View tabs -->
     <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button onclick="_receiptsSetView('timeline')" id="receipts-tab-timeline" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Timeline</button>
       <button onclick="_receiptsSetView('month')" id="receipts-tab-month" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Monthly</button>
       <button onclick="_receiptsSetView('quarter')" id="receipts-tab-quarter" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Quarterly</button>
     </div>
@@ -26920,7 +26921,35 @@ document.addEventListener('keydown', function(e) {
 
   // Receipt Analysis state
   let _receiptsCurrentDate = new Date();
-  let _receiptsViewMode = 'month';
+  let _receiptsViewMode = 'timeline'; // Default to timeline view
+
+  window._showItemPriceHistory = async function(itemName) {
+    const token = _miruPhone() || localStorage.getItem("miru_saves_token");
+    if (!token) return;
+
+    try {
+      const r = await fetch(`/api/v2/item-price-history?token=${encodeURIComponent(token)}&item=${encodeURIComponent(itemName)}`);
+      if (!r.ok) throw new Error("Failed to fetch price history");
+      const data = await r.json();
+
+      if (!data.history || data.history.length === 0) {
+        alert(`No price history found for "${itemName}"`);
+        return;
+      }
+
+      let msg = `📊 Price History for "${itemName}"\n\n`;
+      for (const entry of data.history) {
+        const date = new Date(entry.date).toLocaleDateString('en-GB');
+        msg += `${date} — £${entry.price.toFixed(2)} (${entry.merchant})\n`;
+      }
+      msg += `\nAverage: £${data.average.toFixed(2)}\nLowest: £${data.min.toFixed(2)}\nHighest: £${data.max.toFixed(2)}`;
+
+      alert(msg);
+    } catch (e) {
+      console.error("[item-history]", e);
+      alert("Failed to load price history");
+    }
+  };
 
   window._receiptsSetView = function(view) {
     _receiptsViewMode = view;
@@ -26940,18 +26969,86 @@ document.addEventListener('keydown', function(e) {
     document.getElementById("receipts-empty").style.display = "none";
 
     try {
-      let url = `/api/v2/spend?token=${encodeURIComponent(token)}`;
-      if (_receiptsViewMode === 'month') {
-        url += `&month=${_receiptsCurrentDate.getMonth()+1}&year=${_receiptsCurrentDate.getFullYear()}`;
-      } else if (_receiptsViewMode === 'quarter') {
-        const q = Math.floor(_receiptsCurrentDate.getMonth() / 3) + 1;
-        url += `&quarter=${q}&year=${_receiptsCurrentDate.getFullYear()}`;
+      let url, data;
+
+      if (_receiptsViewMode === 'timeline') {
+        // Timeline view: fetch individual receipts
+        url = `/api/v2/receipts-timeline?token=${encodeURIComponent(token)}`;
+        url += `&days=90`; // Last 90 days
+        const r = await fetch(url);
+        if (!r.ok) throw new Error("Failed to fetch receipts");
+        data = await r.json();
+        data.isTimeline = true;
+      } else {
+        // Category view: existing spend endpoint
+        url = `/api/v2/spend?token=${encodeURIComponent(token)}`;
+        if (_receiptsViewMode === 'month') {
+          url += `&month=${_receiptsCurrentDate.getMonth()+1}&year=${_receiptsCurrentDate.getFullYear()}`;
+        } else if (_receiptsViewMode === 'quarter') {
+          const q = Math.floor(_receiptsCurrentDate.getMonth() / 3) + 1;
+          url += `&quarter=${q}&year=${_receiptsCurrentDate.getFullYear()}`;
+        }
+        const r = await fetch(url);
+        if (!r.ok) throw new Error("Failed to fetch spend");
+        data = await r.json();
       }
 
-      const r = await fetch(url);
-      if (!r.ok) throw new Error("Failed to fetch spend");
-      const data = await r.json();
+      if (data.isTimeline) {
+        // Timeline view: show individual receipts
+        if (!data.receipts || data.receipts.length === 0) {
+          document.getElementById("receipts-loading").style.display = "none";
+          document.getElementById("receipts-empty").style.display = "block";
+          return;
+        }
 
+        let html = `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e5e5e0">`;
+        html += `<div style="font-size:28px;font-weight:900;color:var(--text);margin-bottom:4px">£${data.total?.toFixed(2)}</div>`;
+        html += `<div style="font-size:11px;color:var(--muted)">${data.receipts.length} receipts</div>`;
+        html += `</div>`;
+
+        // Sort by date, newest first
+        const sorted = (data.receipts || []).sort((a, b) => new Date(b.shop_date || b.created_at) - new Date(a.shop_date || a.created_at));
+
+        for (const receipt of sorted) {
+          const date = receipt.shop_date || receipt.created_at;
+          const dateStr = new Date(date).toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
+          const items = Array.isArray(receipt.items) ? receipt.items : (typeof receipt.items === 'string' ? JSON.parse(receipt.items) : []);
+          const itemCount = items.length;
+          const expandId = 'receipt-' + receipt.id;
+          const expandBtnId = 'expand-' + receipt.id;
+
+          html += `<div style="margin-bottom:12px;padding:12px;background:#faf9f4;border:1px solid #e5e5e0;border-radius:10px">`;
+          html += `<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">`;
+          html += `<div><div style="font-weight:600;color:var(--text)">${receipt.merchant || 'Unknown'}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${dateStr}</div></div>`;
+          html += `<div style="text-align:right;font-weight:700;color:var(--accent)">£${parseFloat(receipt.total || 0).toFixed(2)}</div>`;
+          html += `</div>`;
+
+          if (itemCount > 0) {
+            const itemsPreview = items.slice(0, 1).map(i => typeof i === 'string' ? i : (i.name || '?')).join(', ');
+            const moreCount = Math.max(0, itemCount - 1);
+            html += `<div style="font-size:11px;color:var(--muted);cursor:pointer" onclick="const el=document.getElementById('${expandId}');el.style.display=el.style.display==='none'?'block':'none';this.style.display='none'">`;
+            html += `${itemsPreview}${moreCount > 0 ? ' +' + moreCount + ' more' : ''}`;
+            html += `</div>`;
+
+            html += `<div id="${expandId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #e5e5e0;font-size:11px">`;
+            for (const item of items) {
+              const itemName = typeof item === 'string' ? item : (item.name || 'unknown');
+              const itemPrice = typeof item === 'object' ? (item.price ? '£' + item.price.toFixed(2) : '') : '';
+              html += `<div style="padding:4px 0;cursor:pointer;color:var(--text)" onclick="_showItemPriceHistory('${itemName.replace(/'/g, "\\'")}')">` + itemName + (itemPrice ? ' — ' + itemPrice : '') + `</div>`;
+            }
+            html += `</div>`;
+          }
+
+          html += `</div>`;
+        }
+
+        document.getElementById("receipts-list").innerHTML = html;
+        document.getElementById("receipts-loading").style.display = "none";
+        document.getElementById("receipts-list").style.display = "block";
+        return;
+      }
+
+      // Category view (original logic)
       if (!data.breakdown || Object.keys(data.breakdown).length === 0) {
         document.getElementById("receipts-loading").style.display = "none";
         document.getElementById("receipts-empty").style.display = "block";
@@ -26998,6 +27095,7 @@ document.addEventListener('keydown', function(e) {
     const curYear = _receiptsCurrentDate.getFullYear();
 
     // Update tab highlights
+    document.getElementById('receipts-tab-timeline').style.background = _receiptsViewMode === 'timeline' ? '#f0f0f0' : 'white';
     document.getElementById('receipts-tab-month').style.background = _receiptsViewMode === 'month' ? '#f0f0f0' : 'white';
     document.getElementById('receipts-tab-quarter').style.background = _receiptsViewMode === 'quarter' ? '#f0f0f0' : 'white';
 
