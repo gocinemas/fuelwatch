@@ -12959,6 +12959,7 @@ def api_home_brief():
         _pe_date       = pe.get("date", "")
         _pe_t          = (pe.get("time")       or "").strip()
         _pe_leave      = (pe.get("leave_time") or "").strip()
+        app.logger.info(f"[personal-event] Processing: {pe.get('title')} | date={_pe_date} time={_pe_t} weekday={pe.get('weekday')}")
 
         # FILTER: Skip events from the past (older than today)
         if _pe_date and _pe_date < _today_s:
