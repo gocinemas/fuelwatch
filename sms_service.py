@@ -32584,8 +32584,8 @@ def admin_migrate_restaurant_types():
 
         sb = lib._sb()
 
-        # Get all receipts
-        receipts = sb.table("ma_receipts").select("*").execute().data or []
+        # Get all receipts (correct table name)
+        receipts = sb.table("receipts").select("*").execute().data or []
 
         updated = 0
         for receipt in receipts:
@@ -32600,7 +32600,7 @@ def admin_migrate_restaurant_types():
                 continue
 
             # Update receipt with type
-            sb.table("ma_receipts").update({
+            sb.table("receipts").update({
                 "restaurant_type": rtype
             }).eq("id", receipt["id"]).execute()
 
