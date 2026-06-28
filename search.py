@@ -2552,11 +2552,17 @@ def fetch_house_prices(postcode: str) -> dict:
 
     # Priority 2: Try database with bedroom estimation
     try:
-        from miru_lib import lib
+        from supabase import create_client
 
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
+        if not url or not key:
+            raise Exception("Supabase credentials missing")
+
+        sb = create_client(url, key)
         pc_prefix = postcode.replace(" ", "").upper()[:3]
         print(f"[HOUSE-DEBUG] Querying database for {pc_prefix}")
-        rows = lib._sb().table("house_price_real").select("*").eq("postcode", pc_prefix).execute().data or []
+        rows = sb.table("house_price_real").select("*").eq("postcode", pc_prefix).execute().data or []
 
         if rows:
             result = {}
