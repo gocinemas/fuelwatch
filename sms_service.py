@@ -32715,6 +32715,22 @@ def saves_dashboard():
     """Context Memory web dashboard — search and organize saved items."""
     return render_template("saves-dashboard.html")
 
+@app.route("/analytics")
+def analytics_page():
+    """Analytics dashboard — search activity, usage metrics."""
+    return render_template("analytics.html")
+
+
+@app.route("/api/analytics")
+def api_analytics():
+    """Return analytics stats — searches, top queries, daily trends."""
+    try:
+        stats = analytics.get_stats()
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/library")
 def library_page():
     """Full-featured library page with book search, scanner, and tracking."""
