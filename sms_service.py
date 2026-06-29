@@ -22935,6 +22935,33 @@ def _whatsapp_reply_inner():
         resp.message("✅ Morning brief is back on — you'll get it each morning.")
         return str(resp)
 
+    # ── RECEIPT INTELLIGENCE QUERIES ───────────────────────────────────────────
+    # Detect: "show receipts", "how much did I spend", "spending breakdown", etc.
+    _receipt_triggers = [
+        r'\b(show|list|get|what)\s+(me\s+)?receipts?\b',
+        r'\bhow\s+much\s+(did\s+i\s+)?spend\b',
+        r'\bwhat[\'s]?\s+my\s+(total|spending|spend)\b',
+        r'\bwhere.*spend\b',
+        r'\breceipt.*from\b',
+        r'\b(spending|receipts)\b.*\b(june|may|april|march|february|january|this month|this week)\b',
+        r'\b(top|biggest|most)\s+(merchant|restaurant|purchase|spend)\b',
+        r'\bbreakdown\b.*\b(category|categor)',
+        r'\bcoffee\s+(spend|receipt)',
+        r'\brestaurant\s+(spend|receipt)',
+    ]
+
+    if any(re.search(t, body_lower, re.IGNORECASE) for t in _receipt_triggers):
+        try:
+            receipt_result = _route_receipt_query(from_number, body)
+            if receipt_result and not receipt_result.get("error"):
+                answer = receipt_result.get("answer", "No data")
+                cached_indicator = " (cached)" if receipt_result.get("cached") else ""
+                resp.message(f"💰 {answer}{cached_indicator}")
+                return str(resp)
+        except Exception as _rq_err:
+            print(f"[receipts-query] Error: {_rq_err}", flush=True)
+            # Fall through to other handlers if receipt query fails
+
     # ── Recurring activity capture ─────────────────────────────────────────────
     # Detect: "X runs all year" / "X is all year" / "X all year round" — toggle all_year flag
     _ALL_YEAR_RE = re.compile(
