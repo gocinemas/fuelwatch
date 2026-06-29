@@ -9611,45 +9611,24 @@ def api_v2_receipts_timeline():
 
             # Parse summary for total amount and items
             if summary:
-                # Try multiple patterns to find the total
-                patterns = [
-                    r'total amount(?:\s+due)?.*?£([\d,.]+)',  # "total amount due is £XXX"
-                    r'Total[:\s]+£([\d,.]+)',                  # "Total: £XXX"
-                    r'Amount[:\s]+£([\d,.]+)',                 # "Amount: £XXX"
-                    r'Price[:\s]+£([\d,.]+)',                  # "Price: £XXX"
-                ]
+                # Look for "total amount due is £XXX"
+                total_match = _re_parse.search(r'total amount due is £([\d,.]+)', summary, _re_parse.IGNORECASE)
+                if total_match:
+                    try:
+                        amount = float(total_match.group(1).replace(",", ""))
+                    except:
+                        pass
 
-                # DEBUG first receipt only
-                if merchant == "Waitrose & Partners" and created_at and "28 Jun" in str(created_at):
-                    print(f"[DEBUG-EXTRACT] Waitrose receipt, trying patterns...", flush=True)
-                    print(f"  summary: {summary[:150]}", flush=True)
-
-                for pattern in patterns:
-                    total_match = _re_parse.search(pattern, summary, _re_parse.IGNORECASE)
-                    if total_match:
-                        try:
-                            amount = float(total_match.group(1).replace(",", ""))
-                            if merchant == "Waitrose & Partners" and created_at and "28 Jun" in str(created_at):
-                                print(f"  MATCHED pattern: {pattern} → {amount}", flush=True)
-                            break
-                        except Exception as e:
-                            if merchant == "Waitrose & Partners" and created_at and "28 Jun" in str(created_at):
-                                print(f"  pattern matched but parse failed: {e}", flush=True)
-                            pass
-
-                # Fallback: find largest £ amount if no pattern matched
+                # If not found, try to find ANY £ amount in summary
                 if amount == 0:
                     all_amounts = _re_parse.findall(r'£([\d,.]+)', summary)
                     if all_amounts:
                         try:
-                            # Filter out obviously wrong amounts (< £0.50 or > £500 outliers)
-                            valid_amounts = [float(a.replace(",", "")) for a in all_amounts
-                                           if 0.50 <= float(a.replace(",", "")) <= 500]
-                            if valid_amounts:
-                                # Use largest valid amount (usually the total)
-                                amount = max(valid_amounts)
+                            amounts_float = [float(a.replace(",", "")) for a in all_amounts]
+                            # Use largest amount (usually the total, not individual items)
+                            amount = max(amounts_float)
                         except:
-                            amount = 0
+                            pass
 
                 # Extract item lines (bullet points or dashes)
                 lines = summary.split("\n")
