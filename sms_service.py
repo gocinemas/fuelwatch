@@ -11449,7 +11449,7 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
 
                 # Handle times that cross midnight
                 if end < start:
-                    end = end.replace(day=2)
+                    end = end + timedelta(hours=24)
 
                 # Check if commute is active NOW
                 is_active_now = start <= now <= end
