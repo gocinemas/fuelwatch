@@ -99,7 +99,7 @@
 
             <div class="grid-2">
                 <div class="card" style="background: #f0fdf4; border-left: 4px solid #10b981;">
-                    <h3 style="color: #059669;">🏥 Campaign Health Score <span class="help-icon" data-tooltip="Score 0-100 based on sentiment (50%) + engagement (50%). Higher = stronger performance.">?</span></h3>
+                    <h3 style="color: #059669;">🏥 Campaign Health Score <span class="help-icon" data-tooltip="Score 0-100: sentiment (50%) + engagement (50%). Higher = stronger performance.">?</span></h3>
                     <div class="metric">
                         <div class="metric-label">Overall Health</div>
                         <div class="metric-value" id="healthScore" style="font-size: 2.2em; color: #10b981;">—</div>
@@ -115,29 +115,29 @@
                 </div>
 
                 <div class="card" style="background: #fffbeb; border-left: 4px solid #f59e0b;">
-                    <h3 style="color: #b45309;">📊 Key Metrics <span title="WHAT: Live data from social platforms showing how people are actually responding to your campaign RIGHT NOW. WHY: These show if message lands with audience." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h3>
+                    <h3 style="color: #b45309;">📊 Key Metrics <span class="help-icon" data-tooltip="Live data from social platforms. Shows if Fourth Official positioning resonates with audience.">?</span></h3>
                     <div class="metric">
-                        <div class="metric-label">Sentiment Score <span title="WHAT: Average feeling from Twitter/YouTube comments (-1=hate it to +1=love it). HOW: AI analyzes all tweets mentioning 'Rexona Fourth Official' and scores positive/negative/neutral. WHY: Tells if campaign message resonates emotionally. 0.7+ = winning. Below 0.5 = messaging not landing." style="cursor: help; color: #666;">?</span></div>
+                        <div class="metric-label">Sentiment Score</div>
                         <div class="metric-value" id="sentimentValue">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Total Reach <span title="WHAT: How many people SAW your campaign (impressions, not clicks). HOW: Sum of all video views + display impressions across YouTube/Instagram/Twitter. Measured in millions. WHY: Scale indicator. 10M+ reach = significant market exposure. Shows if investment in media buying is working." style="cursor: help; color: #666;">?</span></div>
+                        <div class="metric-label">Total Reach</div>
                         <div class="metric-value" id="reachValue">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Peak Engagement <span title="WHAT: Best-performing creative's interaction rate (% who liked/commented/shared). HOW: Likes+Comments+Shares ÷ Views × 100. WHY: Shows if content is GOOD, not just visible. 8%+ = strong creative. Below 5% = creative needs refresh. Tells which formats work (video vs posts)." style="cursor: help; color: #666;">?</span></div>
+                        <div class="metric-label">Peak Engagement</div>
                         <div class="metric-value" id="engagementValue">—</div>
                     </div>
                 </div>
             </div>
 
             <div class="card" style="background: #f3f4f6; border-left: 4px solid #d97706; margin: 30px 0; padding: 25px;">
-                <h3 style="color: #92400e; margin-bottom: 15px;">🗺️ Regional Performance <span title="WHAT: Where your campaign is actually working. HOW: Breaks down impressions by region (Global, India, Brazil, UK). EXAMPLE: If Brasil getting 7M impressions vs Global 4M = campaign stronger in Portuguese-speaking markets. WHY: Tells where to concentrate budget or which messaging variants to scale." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h3>
+                <h3 style="color: #92400e; margin-bottom: 15px;">🗺️ Regional Performance <span class="help-icon" data-tooltip="Shows where campaign performs best. Scale spend in winning regions.">?</span></h3>
                 <div id="regionalBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px;"></div>
             </div>
 
             <div class="card" style="background: #fef3c7; border-left: 4px solid #d97706; margin: 30px 0; padding: 25px;">
-                <h3 style="color: #92400e; margin-bottom: 15px;">💡 Recommendation <span title="WHAT: What to DO with this campaign RIGHT NOW based on all the data above. HOW: Algorithm looks at health score + trend + regional wins. EXAMPLE: If trending up but only Brasil strong = scale Brasil spend, test other regions. WHY: Turns data into action so you spend money smarter." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h3>
+                <h3 style="color: #92400e; margin-bottom: 15px;">💡 Recommendation <span class="help-icon" data-tooltip="Data-driven actions: scale if trending up, refine if flat, reposition if declining.">?</span></h3>
                 <div id="recommendation" style="font-size: 1.05em; color: #333; line-height: 1.8; font-weight: 500;"></div>
             </div>
 
@@ -151,7 +151,7 @@
                 <div class="tweet-card"><div class="tweet-author">Loading...</div></div>
             </div>
 
-            <h2 style="margin-top: 50px;">🗺️ Country-Level Impact <span title="WHAT: How campaign performing in each country. Viewers, engagement, sentiment vary by market. WHY: Shows which countries winning + where growth opportunity exists. Shows ROI by country." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <h2 style="margin-top: 50px;">🗺️ Country-Level Impact <span class="help-icon" data-tooltip="Country-by-country performance. Identifies winning markets and growth opportunities.">?</span></h2>
             <div id="countryAnalytics" style="overflow-x: auto; margin-top: 20px;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
                     <thead>
@@ -169,13 +169,13 @@
                 </table>
             </div>
 
-            <h2 style="margin-top: 50px;">💰 Media Spend Breakdown <span title="WHAT: How budget allocated across channels. HOW: % of total spend by platform. WHY: Shows ROI concentration—where money working hardest." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <h2 style="margin-top: 50px;">💰 Media Spend Breakdown <span class="help-icon" data-tooltip="Budget allocation by platform. Shows ROI concentration and spending efficiency.">?</span></h2>
             <div id="mediaSpend" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-top: 20px;"></div>
 
-            <h2 style="margin-top: 50px;">⭐ Top Influencers & Endorsements <span title="WHAT: Who's amplifying campaign. HOW: Top 5 influencers + reach each. WHY: Shows if endorsement strategy working—reach per influencer." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <h2 style="margin-top: 50px;">⭐ Top Influencers & Endorsements <span class="help-icon" data-tooltip="Top amplifiers of campaign. Shows reach per influencer and engagement performance.">?</span></h2>
             <div id="influencers" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;"></div>
 
-            <h2 style="margin-top: 50px;">📱 Platform Performance <span title="WHAT: Which platform working best. HOW: YouTube vs Instagram vs TikTok head-to-head. WHY: Shows where to double-down vs test." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <h2 style="margin-top: 50px;">📱 Platform Performance <span class="help-icon" data-tooltip="Platform comparison: reach, engagement, cost. Shows where to concentrate spend.">?</span></h2>
             <div id="platformPerf" style="overflow-x: auto; margin-top: 20px;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
                     <thead>
@@ -192,7 +192,7 @@
                 </table>
             </div>
 
-            <h2 style="margin-top: 50px;">👥 Audience Demographics <span title="WHAT: Who's actually watching. HOW: Age/gender breakdown. WHY: Tells if reaching target audience." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h2>
+            <h2 style="margin-top: 50px;">👥 Audience Demographics <span class="help-icon" data-tooltip="Audience breakdown by age. Confirms if reaching target demographics.">?</span></h2>
             <div id="demographics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px;"></div>
 
             <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #eee; text-align: center; color: #666;">
