@@ -268,21 +268,42 @@
 
         async function loadSentiment() {
             try {
-                const res = await fetch('/api/campaign/rexona');
-                const data = await res.json();
-                const html = data.sentiment.slice(0, 6).map(s => {
+                // Fetch from brands with sentiment data (Rexona, Sure, Degree, etc.)
+                const brandsToFetch = ['rexona', 'sure', 'degree', 'coca-cola', 'adidas', 'visa'];
+                let allSentiment = [];
+
+                for (const brand of brandsToFetch) {
+                    try {
+                        const res = await fetch(`/api/campaign/${brand}`);
+                        const data = await res.json();
+                        if (data.sentiment && data.sentiment.length > 0) {
+                            // Add brand label to each sentiment
+                            data.sentiment.forEach(s => {
+                                s.brand = brand.charAt(0).toUpperCase() + brand.slice(1);
+                            });
+                            allSentiment = allSentiment.concat(data.sentiment);
+                        }
+                    } catch (e) {
+                        console.log(`No sentiment data for ${brand}`);
+                    }
+                }
+
+                // Shuffle and show diverse brands
+                allSentiment = allSentiment.sort(() => Math.random() - 0.5).slice(0, 12);
+
+                const html = allSentiment.map(s => {
                     const sentiment = s.sentiment_score > 0.5 ? 'positive' : s.sentiment_score < -0.5 ? 'negative' : 'neutral';
                     const badge = sentiment === 'positive' ? '✓ Positive' : sentiment === 'negative' ? '✗ Negative' : '○ Neutral';
                     return `
                         <div class="tweet-card">
-                            <div class="tweet-author">@${s.author}</div>
+                            <div class="tweet-author">@${s.author} <span style="font-size: 0.8em; color: #666;">(${s.brand})</span></div>
                             <div class="tweet-text">"${s.text}"</div>
                             <span class="tweet-sentiment sentiment-${sentiment}">${badge}</span>
                         </div>
                     `;
                 }).join('');
-                document.getElementById('tweetsGrid').innerHTML = html;
-            } catch (e) { console.error('Error:', e); }
+                document.getElementById('tweetsGrid').innerHTML = html || '<p style="color: #666; padding: 20px;">No sentiment data available yet from sponsors</p>';
+            } catch (e) { console.error('Error loading sentiment:', e); }
         }
 
         function renderCharts() {
