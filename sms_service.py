@@ -9573,15 +9573,15 @@ def api_v2_receipts_timeline():
         import json
         from datetime import datetime, timedelta
 
-        # Get receipts from last N days
+        # Get receipts from last N days (stored in wa_saves as 🧾 clippings)
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
-        plain_phone = from_number.replace("whatsapp:", "").strip()
 
-        print(f"[receipts-timeline] Querying for phone={plain_phone}, cutoff={cutoff}", flush=True)
-        rows = lib._sb().table("receipts").select("*") \
-            .eq("phone", plain_phone) \
+        print(f"[receipts-timeline] Querying wa_saves for user={from_number}, cutoff={cutoff}", flush=True)
+        rows = lib._sb().table("wa_saves").select("*") \
+            .eq("from_number", from_number) \
             .gte("created_at", cutoff) \
-            .order("shop_date", desc=True) \
+            .ilike("title", "🧾%") \
+            .order("created_at", desc=True) \
             .execute().data or []
 
         print(f"[receipts-timeline] Found {len(rows)} receipts", flush=True)
@@ -9628,10 +9628,11 @@ def api_v2_item_price_history():
         from miru_lib import lib
         import json
 
-        plain_phone = from_number.replace("whatsapp:", "").strip()
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date,created_at,items") \
-            .eq("phone", plain_phone) \
-            .order("shop_date", desc=True) \
+        # Query wa_saves for receipts (🧾 clippings)
+        rows = lib._sb().table("wa_saves").select("*") \
+            .eq("from_number", from_number) \
+            .ilike("title", "🧾%") \
+            .order("created_at", desc=True) \
             .execute().data or []
 
         history = []
