@@ -19225,7 +19225,13 @@ let _savesAll = [];
 
     // My Commutes card — show active commutes from traffic data
     var traffic = ctx && ctx.traffic;
-    var commuteLegs = (traffic && traffic.legs) ? traffic.legs.filter(function(leg) { return leg.type === "commute"; }) : [];
+    console.log('[commute-debug] traffic:', traffic);
+    console.log('[commute-debug] traffic.legs:', traffic && traffic.legs);
+    var commuteLegs = (traffic && traffic.legs) ? traffic.legs.filter(function(leg) {
+      console.log('[commute-debug] leg:', leg);
+      return leg.type === "commute";
+    }) : [];
+    console.log('[commute-debug] commuteLegs found:', commuteLegs.length);
     if (commuteLegs.length > 0) {
       var commuteRows = commuteLegs.map(function(leg) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
