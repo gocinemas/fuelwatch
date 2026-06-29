@@ -32721,6 +32721,171 @@ def api_analytics():
         return jsonify({"error": str(e)}), 500
 
 
+# ── RECEIPT INTELLIGENCE SYSTEM ───────────────────────────────────────────
+@app.route("/api/receipts/analyze-daily", methods=["POST"])
+def api_receipts_analyze_daily():
+    """Background cron: analyze receipts for all active users, cache results."""
+    import os
+    body = request.get_json(force=True, silent=True) or {}
+    token = body.get("token", "").strip()
+    expected_token = os.environ.get("RECEIPT_CRON_TOKEN", "receipt-analysis-2026")
+
+    if token != expected_token:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    users_analyzed = 0
+    errors = []
+
+    try:
+        # Get unique users with receipts from wa_saves
+        raw = lib._sb().table("wa_saves").select("from_number") \
+            .ilike("title", "🧾%").execute().data or []
+
+        unique_users = set(r["from_number"] for r in raw if r.get("from_number"))
+        print(f"[receipts-daily] Found {len(unique_users)} users with receipts", flush=True)
+
+        for user in unique_users:
+            try:
+                result = _build_receipt_analysis_cache(user)
+                if not result.get("error"):
+                    users_analyzed += 1
+                else:
+                    errors.append(f"{user}: {result.get('error')}")
+            except Exception as e:
+                errors.append(f"{user}: {str(e)}")
+                print(f"[receipts-daily] Error analyzing {user}: {e}", flush=True)
+
+        print(f"[receipts-daily] Successfully analyzed {users_analyzed} users", flush=True)
+        return jsonify({
+            "users_analyzed": users_analyzed,
+            "errors": errors if errors else None,
+            "timestamp": __import__('datetime').datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        print(f"[receipts-daily] Fatal error: {e}", flush=True)
+        return jsonify({"error": str(e), "users_analyzed": users_analyzed}), 500
+
+
+def _build_receipt_analysis_cache(from_number: str) -> dict:
+    """Fetch all receipts, analyze with Groq, store cache in ma_details."""
+    import json
+    from datetime import datetime as _dt_analysis, timedelta as _td_analysis
+    import re as _re_analysis
+
+    plain = from_number.replace("whatsapp:", "").strip()
+
+    # Fetch all receipts from last 90 days
+    cutoff = (_dt_analysis.now() - _td_analysis(days=90)).isoformat()
+    rows = lib._sb().table("wa_saves") \
+        .select("id,title,summary,amount,created_at") \
+        .eq("from_number", plain) \
+        .gte("created_at", cutoff) \
+        .ilike("title", "🧾%") \
+        .order("created_at", desc=True) \
+        .execute().data or []
+
+    if not rows:
+        return {"error": "No receipts found"}
+
+    # Parse receipts into text format for Groq
+    receipts_text = ""
+    total = 0.0
+    count = 0
+
+    for row in rows:
+        merchant = row.get("title", "").replace("🧾 ", "").replace("🧾", "").strip()
+        amount = row.get("amount")
+        date_str = (row.get("created_at") or "")[:10]
+
+        # Extract amount
+        if amount:
+            try:
+                amt_float = float(str(amount).replace("£", "").replace(",", ""))
+                total += amt_float
+                count += 1
+                receipts_text += f"- {merchant}: £{amt_float:.2f} ({date_str})\n"
+            except:
+                pass
+
+    if count == 0:
+        return {"error": "No parseable receipt amounts"}
+
+    # Use Groq to analyze and categorize
+    prompt = f"""Analyze these {count} shopping receipts (total £{total:.2f}) and provide categorization and insights.
+
+RECEIPTS:
+{receipts_text}
+
+Respond with ONLY valid JSON (no markdown, no code blocks):
+{{
+    "total": {total},
+    "count": {count},
+    "avg_transaction": {total/count:.2f},
+    "breakdown": {{"Groceries": {{"total": 0, "count": 0, "avg": 0}}, "Restaurants": {{"total": 0, "count": 0, "avg": 0}}, "Coffee": {{"total": 0, "count": 0, "avg": 0}}, "Transport": {{"total": 0, "count": 0, "avg": 0}}, "Other": {{"total": 0, "count": 0, "avg": 0}}}},
+    "top_merchants": [{{"name": "Waitrose", "total": 0, "count": 0}}, {{"name": "Costa", "total": 0, "count": 0}}, {{"name": "Tesco", "total": 0, "count": 0}}],
+    "trends": {{"biggest_category": "Groceries", "highest_single_purchase": "£100"}}
+}}"""
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic()
+
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        response_text = response.content[0].text.strip()
+
+        # Clean up markdown if present
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+
+        analysis = json.loads(response_text)
+
+        # Store in cache
+        lib._sb().table("ma_details").upsert({
+            "device_id": plain,
+            "type": "receipt_analysis",
+            "data": {
+                **analysis,
+                "last_updated": _dt_analysis.now().isoformat(),
+                "period": _dt_analysis.now().strftime("%B %Y")
+            }
+        }, on_conflict="device_id,type").execute()
+
+        print(f"[receipts-analysis] Cached for {plain}: £{total:.2f} across {count} receipts", flush=True)
+        return analysis
+
+    except json.JSONDecodeError as e:
+        print(f"[receipts-analysis] JSON parse error for {plain}: {e}", flush=True)
+        return {"error": f"JSON parse failed: {str(e)}"}
+    except Exception as e:
+        print(f"[receipts-analysis] Groq error for {plain}: {e}", flush=True)
+        return {"error": f"Analysis failed: {str(e)}"}
+
+
+def _get_receipt_cache(from_number: str) -> dict:
+    """Fetch cached receipt analysis from ma_details."""
+    try:
+        plain = from_number.replace("whatsapp:", "").strip()
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", plain) \
+            .eq("type", "receipt_analysis") \
+            .limit(1).execute().data or []
+
+        return rows[0]['data'] if rows else {}
+    except Exception as e:
+        print(f"[receipts-cache] Fetch error: {e}", flush=True)
+        return {}
+
+
 @app.route("/library")
 def library_page():
     """Full-featured library page with book search, scanner, and tracking."""
