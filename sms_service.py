@@ -9577,11 +9577,14 @@ def api_v2_receipts_timeline():
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
         plain_phone = from_number.replace("whatsapp:", "").strip()
 
+        print(f"[receipts-timeline] Querying for phone={plain_phone}, cutoff={cutoff}", flush=True)
         rows = lib._sb().table("receipts").select("*") \
             .eq("phone", plain_phone) \
             .gte("created_at", cutoff) \
             .order("shop_date", desc=True) \
             .execute().data or []
+
+        print(f"[receipts-timeline] Found {len(rows)} receipts", flush=True)
 
         total = sum(float(r.get("total", 0)) for r in rows if r.get("total"))
         receipts = []
