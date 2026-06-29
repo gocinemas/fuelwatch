@@ -9601,21 +9601,34 @@ def api_v2_receipts_timeline():
 
             # Parse summary for total amount and items
             if summary:
-                # Look for "total amount due is £XXX" pattern first (most reliable)
-                total_match = _re_parse.search(r'total amount(?:\s+due)?.*?£([\d,.]+)', summary, _re_parse.IGNORECASE)
-                if total_match:
-                    try:
-                        amount = float(total_match.group(1).replace(",", ""))
-                    except:
-                        amount = 0
+                # Try multiple patterns to find the total
+                patterns = [
+                    r'total amount(?:\s+due)?.*?£([\d,.]+)',  # "total amount due is £XXX"
+                    r'Total[:\s]+£([\d,.]+)',                  # "Total: £XXX"
+                    r'Amount[:\s]+£([\d,.]+)',                 # "Amount: £XXX"
+                    r'Price[:\s]+£([\d,.]+)',                  # "Price: £XXX"
+                ]
 
-                # Fallback: find largest £ amount if no explicit total
+                for pattern in patterns:
+                    total_match = _re_parse.search(pattern, summary, _re_parse.IGNORECASE)
+                    if total_match:
+                        try:
+                            amount = float(total_match.group(1).replace(",", ""))
+                            break
+                        except:
+                            pass
+
+                # Fallback: find largest £ amount if no pattern matched
                 if amount == 0:
                     all_amounts = _re_parse.findall(r'£([\d,.]+)', summary)
                     if all_amounts:
                         try:
-                            # Get the largest amount (usually the total)
-                            amount = max([float(a.replace(",", "")) for a in all_amounts])
+                            # Filter out obviously wrong amounts (< £0.50 or > £500 outliers)
+                            valid_amounts = [float(a.replace(",", "")) for a in all_amounts
+                                           if 0.50 <= float(a.replace(",", "")) <= 500]
+                            if valid_amounts:
+                                # Use largest valid amount (usually the total)
+                                amount = max(valid_amounts)
                         except:
                             amount = 0
 
