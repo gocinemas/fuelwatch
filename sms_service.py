@@ -11442,10 +11442,10 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 time_end = uc.get("time_end", "23:59")
 
                 # Show commutes that are: happening now OR starting within next 2 hours
-                from datetime import datetime, timedelta
-                now = datetime.strptime(current_time, "%H:%M")
-                start = datetime.strptime(time_start, "%H:%M")
-                end = datetime.strptime(time_end, "%H:%M")
+                from datetime import datetime as _dt_comp, timedelta as _td_comp
+                now = _dt_comp.strptime(current_time, "%H:%M")
+                start = _dt_comp.strptime(time_start, "%H:%M")
+                end = _dt_comp.strptime(time_end, "%H:%M")
 
                 # Handle times that cross midnight
                 if end < start:
@@ -11455,7 +11455,7 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 is_active_now = start <= now <= end
 
                 # Check if commute starts within next 2 hours
-                cutoff = now + timedelta(hours=2)
+                cutoff = now + _td_comp(hours=2)
                 is_upcoming = now < start <= cutoff
 
                 if is_active_now or is_upcoming:
