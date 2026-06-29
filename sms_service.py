@@ -9589,6 +9589,16 @@ def api_v2_receipts_timeline():
         total = 0
 
         import re as _re_parse
+
+        # DEBUG: Log first receipt to see actual data structure
+        if rows:
+            print(f"[receipts-debug] FIRST RECEIPT STRUCTURE:", flush=True)
+            first = rows[0]
+            print(f"  title: {first.get('title')}", flush=True)
+            print(f"  summary (first 200 chars): {str(first.get('summary'))[:200]}", flush=True)
+            print(f"  category: {first.get('category')}", flush=True)
+            print(f"  All fields: {list(first.keys())}", flush=True)
+
         for row in rows:
             # wa_saves stores receipts with 🧾 prefix in title
             title = row.get("title", "").replace("🧾 ", "").strip()
