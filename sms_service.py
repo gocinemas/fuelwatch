@@ -32886,6 +32886,117 @@ def _get_receipt_cache(from_number: str) -> dict:
         return {}
 
 
+def _route_receipt_query(from_number: str, question: str) -> dict:
+    """Smart routing: cached data for simple queries, Groq for complex ones."""
+    import json
+
+    q_lower = question.lower().strip()
+
+    # Fetch cached analysis
+    cached = _get_receipt_cache(from_number)
+    if not cached or cached.get("error"):
+        return {"answer": "No receipt data available yet. Start saving receipts to Miru!", "cached": False}
+
+    # SIMPLE QUERIES (from cache, instant)
+    if any(w in q_lower for w in ["total", "how much", "spend", "what's my total", "this month"]):
+        total = cached.get("total", 0)
+        count = cached.get("count", 0)
+        avg = cached.get("avg_transaction", 0)
+        return {
+            "answer": f"This month: £{total:.2f} across {count} purchases (avg £{avg:.2f})",
+            "cached": True
+        }
+
+    if any(w in q_lower for w in ["breakdown", "by category", "categories", "where", "where did"]):
+        bd = cached.get("breakdown", {})
+        if bd:
+            breakdown_text = ", ".join(
+                f"{cat} £{v.get('total', 0):.2f} ({v.get('count', 0)} times)"
+                for cat, v in list(bd.items())[:5]
+            )
+            return {
+                "answer": f"Breakdown: {breakdown_text}",
+                "cached": True
+            }
+
+    if any(w in q_lower for w in ["top merchant", "biggest spend", "most spend", "spent most"]):
+        top_merchants = cached.get("top_merchants", [])
+        if top_merchants:
+            top = top_merchants[0]
+            return {
+                "answer": f"Top merchant: {top.get('name')} (£{top.get('total', 0):.2f} across {top.get('count', 0)} visits)",
+                "cached": True
+            }
+
+    if any(w in q_lower for w in ["coffee", "cafe", "starbucks", "costa", "pret", "nero", "greggs"]):
+        bd = cached.get("breakdown", {})
+        coffee = bd.get("Coffee", {})
+        if coffee and coffee.get("total", 0) > 0:
+            return {
+                "answer": f"Coffee: £{coffee.get('total', 0):.2f} across {coffee.get('count', 0)} visits (avg £{coffee.get('avg', 0):.2f})",
+                "cached": True
+            }
+        else:
+            return {
+                "answer": "No coffee purchases recorded this month",
+                "cached": True
+            }
+
+    if any(w in q_lower for w in ["restaurant", "dining", "food"]):
+        bd = cached.get("breakdown", {})
+        restaurants = bd.get("Restaurants", {})
+        if restaurants and restaurants.get("total", 0) > 0:
+            return {
+                "answer": f"Restaurants: £{restaurants.get('total', 0):.2f} across {restaurants.get('count', 0)} visits (avg £{restaurants.get('avg', 0):.2f})",
+                "cached": True
+            }
+
+    if any(w in q_lower for w in ["trend", "compare"]):
+        trends = cached.get("trends", {})
+        if trends:
+            trend_text = trends.get("biggest_category", "No data")
+            return {
+                "answer": f"Trends: {trend_text}",
+                "cached": True
+            }
+
+    # COMPLEX QUERIES (Groq, optimized with cached context)
+    groq_prompt = f"""User asks: "{question}"
+
+Their spending summary this month:
+- Total: £{cached.get('total', 0):.2f} across {cached.get('count', 0)} purchases
+- Average per transaction: £{cached.get('avg_transaction', 0):.2f}
+- Breakdown by category: {json.dumps(cached.get('breakdown', {}))}
+- Top merchants: {json.dumps(cached.get('top_merchants', []))}
+
+Answer their question about spending concisely in 1-2 sentences. Only use the data provided."""
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic()
+
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=200,
+            messages=[{"role": "user", "content": groq_prompt}]
+        )
+
+        answer = response.content[0].text.strip()
+        return {
+            "answer": answer,
+            "cached": False,
+            "reason": "complex_query"
+        }
+
+    except Exception as e:
+        print(f"[receipts-query] Groq error: {e}", flush=True)
+        return {
+            "answer": "Could not analyze query",
+            "cached": False,
+            "error": str(e)
+        }
+
+
 @app.route("/library")
 def library_page():
     """Full-featured library page with book search, scanner, and tracking."""
