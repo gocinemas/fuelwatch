@@ -9576,7 +9576,7 @@ def api_v2_receipts_timeline():
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
 
         print(f"[receipts-timeline] Querying wa_saves for user={from_number}, cutoff={cutoff}", flush=True)
-        rows = lib._sb().table("wa_saves").select("*") \
+        rows = lib._sb().table("wa_saves").select("id,from_number,title,summary,amount,category,created_at") \
             .eq("from_number", from_number) \
             .gte("created_at", cutoff) \
             .ilike("title", "🧾%") \
@@ -9605,45 +9605,20 @@ def api_v2_receipts_timeline():
             summary = row.get("summary", "")
             category = row.get("category", "Unknown")
 
+            # USE THE PRE-EXTRACTED AMOUNT FIELD!
             amount = 0
+            amount_field = row.get("amount")
+            if amount_field:
+                try:
+                    amount = float(str(amount_field).replace("£", "").replace(",", ""))
+                except:
+                    pass
+
             merchant = title or "Unknown"
             items = []
 
-            # Parse summary for total amount and items
+            # Extract item lines from summary (bullet points or dashes)
             if summary:
-                # Try multiple patterns for total amount
-                patterns = [
-                    r'total amount due is £([\d,.]+)',      # "total amount due is £XXX"
-                    r'total[:\s]+£([\d,.]+)',               # "Total: £XXX" or "Total £XXX"
-                    r'amount[:\s]+£([\d,.]+)',              # "Amount: £XXX"
-                    r'price[:\s]+£([\d,.]+)',               # "Price: £XXX"
-                ]
-
-                for pattern in patterns:
-                    total_match = _re_parse.search(pattern, summary, _re_parse.IGNORECASE)
-                    if total_match:
-                        try:
-                            amount = float(total_match.group(1).replace(",", ""))
-                            break
-                        except:
-                            pass
-
-                # If still not found, find largest £ amount (fallback)
-                if amount == 0:
-                    all_amounts = _re_parse.findall(r'£([\d,.]+)', summary)
-                    if all_amounts:
-                        try:
-                            amounts_float = [float(a.replace(",", "")) for a in all_amounts]
-                            # Use largest but reasonable amount (filter out extremes)
-                            valid = [a for a in amounts_float if 0.50 <= a <= 500]
-                            if valid:
-                                amount = max(valid)
-                            elif amounts_float:
-                                amount = max(amounts_float)
-                        except:
-                            pass
-
-                # Extract item lines (bullet points or dashes)
                 lines = summary.split("\n")
                 for line in lines:
                     line = line.strip()
