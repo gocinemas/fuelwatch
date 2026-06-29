@@ -208,40 +208,55 @@
                 const brandName = data.variants.length > 0 ? data.variants[0].brand_name : brandParam;
                 document.getElementById('brandName').textContent = `💪 ${brandName} Campaign Intelligence`;
 
-                // Metrics
+                // Metrics — handle sparse data gracefully
                 const views = data.creatives.reduce((s, c) => s + (c.views || 0), 0);
                 const reach = data.metrics.reduce((s, m) => s + (m.impressions || 0), 0);
-                const engagement = Math.max(...data.metrics.map(m => m.engagement_rate || 0)).toFixed(3);
-                const avgSent = (data.sentiment.reduce((s, x) => s + (x.sentiment_score || 0), 0) / data.sentiment.length).toFixed(2);
-                document.getElementById('sentimentValue').textContent = avgSent;
-                document.getElementById('engagementValue').textContent = (engagement * 100).toFixed(1) + '%';
-                document.getElementById('reachValue').textContent = (reach / 1000000).toFixed(1) + 'M';
+                // Calculate numeric values for health/trends
+                const engagementRates = data.metrics.map(m => m.engagement_rate || 0).filter(e => e > 0);
+                const engagementValue = engagementRates.length > 0 ? Math.max(...engagementRates) : 0;
+                const avgSentValue = data.sentiment.length > 0 ? (data.sentiment.reduce((s, x) => s + (x.sentiment_score || 0), 0) / data.sentiment.length) : 0;
 
-                // Health Score
-                const healthScore = Math.round((parseFloat(avgSent) * 50 + parseFloat(engagement) * 50) * 100);
-                const health = Math.min(100, Math.max(0, healthScore));
+                // Display metrics with smart fallbacks
+                document.getElementById('sentimentValue').textContent = data.sentiment.length > 0 ? avgSentValue.toFixed(2) : '—';
+                document.getElementById('engagementValue').textContent = data.metrics.length > 0 ? (engagementValue * 100).toFixed(1) + '%' : '—';
+                document.getElementById('reachValue').textContent = reach > 0 ? (reach / 1000000).toFixed(1) + 'M' : (data.metrics.length > 0 ? '0.0M' : '—');
+
+                // Health Score — always calculate if ANY data exists
+                const hasMetricsData = data.metrics.length > 0 || data.sentiment.length > 0;
+                let health = 50; // default mid-range health for sparse campaigns
+                if (hasMetricsData) {
+                    const healthScore = Math.round((avgSentValue * 50 + engagementValue * 50) * 100);
+                    health = Math.min(100, Math.max(0, healthScore));
+                }
                 document.getElementById('healthScore').textContent = health;
                 document.getElementById('healthStatus').textContent = health >= 80 ? '✓ Excellent' : health >= 60 ? '⚠ Good' : 'At Risk';
 
-                // Trending
+                // Trending — handle single or no metric points
                 const sortedMetrics = data.metrics.sort((a, b) => new Date(a.date) - new Date(b.date));
-                const trendChange = sortedMetrics.length > 1 ?
-                  (sortedMetrics[sortedMetrics.length - 1].sentiment_avg - sortedMetrics[0].sentiment_avg).toFixed(2) : 0;
+                let trendChange = 0;
+                if (sortedMetrics.length > 1) {
+                    const sentimentValues = sortedMetrics.map(m => m.sentiment_avg || 0).filter(s => s !== undefined && s !== null);
+                    if (sentimentValues.length > 1) {
+                        trendChange = parseFloat((sentimentValues[sentimentValues.length - 1] - sentimentValues[0]).toFixed(2));
+                    }
+                }
                 const trendEmoji = trendChange > 0.05 ? '📈' : trendChange < -0.05 ? '📉' : '➡️';
-                document.getElementById('trendValue').textContent = trendEmoji + ' ' + (trendChange > 0 ? '+' : '') + trendChange;
+                document.getElementById('trendValue').textContent = sortedMetrics.length > 0 ? (trendEmoji + ' ' + (trendChange > 0 ? '+' : '') + trendChange) : '—';
 
-                // Regional breakdown
+                // Regional breakdown — show what we have or placeholder
                 const regions = {};
                 data.metrics.forEach(m => {
-                  regions[m.region] = (regions[m.region] || 0) + m.impressions;
+                  if (m.region) regions[m.region] = (regions[m.region] || 0) + (m.impressions || 0);
                 });
-                const regionHtml = Object.entries(regions).map(([region, impr]) => `
-                  <div style="background: white; padding: 12px; border-radius: 6px; text-align: center; border: 1px solid #d1d5db;">
-                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${region.charAt(0).toUpperCase() + region.slice(1)}</div>
-                    <div style="font-size: 1.2em; color: #d97706; font-weight: bold;">${(impr / 1000000).toFixed(1)}M</div>
-                    <div style="font-size: 0.75em; color: #666;">impressions</div>
-                  </div>
-                `).join('');
+                const regionHtml = Object.entries(regions).length > 0
+                  ? Object.entries(regions).map(([region, impr]) => `
+                    <div style="background: white; padding: 12px; border-radius: 6px; text-align: center; border: 1px solid #d1d5db;">
+                      <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${region.charAt(0).toUpperCase() + region.slice(1)}</div>
+                      <div style="font-size: 1.2em; color: #d97706; font-weight: bold;">${impr > 1000000 ? (impr / 1000000).toFixed(1) + 'M' : (impr / 1000).toFixed(0) + 'K'}</div>
+                      <div style="font-size: 0.75em; color: #666;">impressions</div>
+                    </div>
+                  `).join('')
+                  : '<div style="text-align: center; color: #999; padding: 20px;">Regional data collection in progress...</div>';
                 document.getElementById('regionalBreakdown').innerHTML = regionHtml;
 
                 // Recommendation
@@ -346,7 +361,7 @@
                     // Hide Media Spend section if no data
                     const heading = Array.from(document.querySelectorAll('h2')).find(h => h.textContent.includes('Media Spend'));
                     if (heading) heading.style.display = 'none';
-                    document.getElementById('mediaSpend').parentElement.style.display = 'none';
+                    document.getElementById('mediaSpend').style.display = 'none';
                 }
 
                 // Top Influencers/Social Sentiment Contributors
@@ -383,7 +398,7 @@
                     // Hide Influencers section if no sentiment data
                     const heading = Array.from(document.querySelectorAll('h2')).find(h => h.textContent.includes('Influencers'));
                     if (heading) heading.style.display = 'none';
-                    document.getElementById('influencers').parentElement.style.display = 'none';
+                    document.getElementById('influencers').style.display = 'none';
                 }
 
                 // Platform Performance — extract from metrics
@@ -403,7 +418,7 @@
                     // Hide Platform Performance section if no data
                     const heading = Array.from(document.querySelectorAll('h2')).find(h => h.textContent.includes('Platform Performance'));
                     if (heading) heading.style.display = 'none';
-                    document.getElementById('platformPerf').parentElement.style.display = 'none';
+                    document.getElementById('platformPerf').style.display = 'none';
                 } else {
                     const platforms = Object.entries(platformMetrics)
                         .filter(([p]) => p !== 'unknown')
@@ -451,7 +466,7 @@
                     // Hide Demographics section if no age_group fields
                     const heading = Array.from(document.querySelectorAll('h2')).find(h => h.textContent.includes('Demographics'));
                     if (heading) heading.style.display = 'none';
-                    document.getElementById('demographics').parentElement.style.display = 'none';
+                    document.getElementById('demographics').style.display = 'none';
                 }
 
                 // Variants
