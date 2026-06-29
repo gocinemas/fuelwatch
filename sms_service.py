@@ -9619,13 +9619,22 @@ def api_v2_receipts_timeline():
                     r'Price[:\s]+£([\d,.]+)',                  # "Price: £XXX"
                 ]
 
+                # DEBUG first receipt only
+                if merchant == "Waitrose & Partners" and created_at and "28 Jun" in str(created_at):
+                    print(f"[DEBUG-EXTRACT] Waitrose receipt, trying patterns...", flush=True)
+                    print(f"  summary: {summary[:150]}", flush=True)
+
                 for pattern in patterns:
                     total_match = _re_parse.search(pattern, summary, _re_parse.IGNORECASE)
                     if total_match:
                         try:
                             amount = float(total_match.group(1).replace(",", ""))
+                            if merchant == "Waitrose & Partners" and created_at and "28 Jun" in str(created_at):
+                                print(f"  MATCHED pattern: {pattern} → {amount}", flush=True)
                             break
-                        except:
+                        except Exception as e:
+                            if merchant == "Waitrose & Partners" and created_at and "28 Jun" in str(created_at):
+                                print(f"  pattern matched but parse failed: {e}", flush=True)
                             pass
 
                 # Fallback: find largest £ amount if no pattern matched
