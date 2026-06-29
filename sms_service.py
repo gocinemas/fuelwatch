@@ -11440,11 +11440,29 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                     continue
                 time_start = uc.get("time_start", "00:00")
                 time_end = uc.get("time_end", "23:59")
-                if time_start <= current_time <= time_end:
-                    print(f"    ✓ Match! Adding to active_commutes", flush=True)
+
+                # Show commutes that are: happening now OR starting within next 2 hours
+                from datetime import datetime, timedelta
+                now = datetime.strptime(current_time, "%H:%M")
+                start = datetime.strptime(time_start, "%H:%M")
+                end = datetime.strptime(time_end, "%H:%M")
+
+                # Handle times that cross midnight
+                if end < start:
+                    end = end.replace(day=2)
+
+                # Check if commute is active NOW
+                is_active_now = start <= now <= end
+
+                # Check if commute starts within next 2 hours
+                cutoff = now + timedelta(hours=2)
+                is_upcoming = now < start <= cutoff
+
+                if is_active_now or is_upcoming:
+                    print(f"    ✓ Match! (active_now={is_active_now}, upcoming={is_upcoming})", flush=True)
                     active_commutes.append(uc)
                 else:
-                    print(f"    ✗ Time mismatch: {current_time} not in {time_start}-{time_end}", flush=True)
+                    print(f"    ✗ Time mismatch: {current_time} not in {time_start}-{time_end} (and not in next 2h)", flush=True)
         except Exception as e:
             print(f"🎯 COMMUTE ERROR: {e}", flush=True)
             pass  # Silently fail and fall back to school_profiles
