@@ -9,9 +9,11 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; min-height: 100vh; padding: 20px; }
         .container { max-width: 1400px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 40px 20px; border-radius: 12px 12px 0 0; text-align: center; }
-        .header h1 { font-size: 2.2em; margin-bottom: 10px; }
-        .header p { font-size: 1em; opacity: 0.9; }
+        .header { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 40px 20px; border-radius: 12px 12px 0 0; text-align: center; position: relative; overflow: hidden; }
+        .header::before { content: "⚽"; position: absolute; font-size: 120px; opacity: 0.08; top: -20px; right: -20px; }
+        .header::after { content: "🏆"; position: absolute; font-size: 120px; opacity: 0.08; bottom: -20px; left: -20px; }
+        .header h1 { font-size: 2.2em; margin-bottom: 10px; position: relative; z-index: 1; }
+        .header p { font-size: 1em; opacity: 0.9; position: relative; z-index: 1; }
         .main-content { background: white; border-radius: 0 0 12px 12px; padding: 0; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
         .tabs { display: flex; border-bottom: 2px solid #e5e7eb; padding: 0 20px; }
         .tab-btn { background: none; border: none; padding: 16px 24px; cursor: pointer; font-size: 1em; color: #666; font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.3s; }
@@ -53,6 +55,28 @@
         @media (max-width: 1024px) { .chart-grid { grid-template-columns: 1fr; } }
         .chart-container { background: #f9fafb; padding: 20px; border-radius: 8px; position: relative; height: 300px; }
         h2 { color: #333; margin: 20px 0 15px 0; font-size: 1.3em; }
+        .help-icon { cursor: help; color: #1e40af; font-weight: bold; margin-left: 8px; position: relative; display: inline-block; }
+        .help-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: normal;
+            white-space: normal;
+            max-width: 250px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .section-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .tournament-stat { background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%); border-left: 4px solid #1e40af; padding: 20px; border-radius: 8px; text-align: center; }
+        .tournament-stat .number { font-size: 2.5em; font-weight: bold; color: #1e40af; }
+        .tournament-stat .label { font-size: 0.9em; color: #1e3a8a; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -75,30 +99,55 @@
                 <div class="stats-row">
                     <div class="stat-box">
                         <div class="stat-number">34</div>
-                        <div class="stat-label">Official Partners</div>
+                        <div class="stat-label">Official Partners ⚽</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-number">104</div>
-                        <div class="stat-label">Matches</div>
+                        <div class="stat-label">Matches 🏟️</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-number">3B+</div>
-                        <div class="stat-label">Global Viewers</div>
+                        <div class="stat-label">Global Viewers 🌍</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-number">28</div>
-                        <div class="stat-label">Tournament Days</div>
+                        <div class="stat-label">Tournament Days 📅</div>
                     </div>
                 </div>
-                <p style="color: #666; line-height: 1.6; margin: 20px 0;">
-                    <strong>Communitas:</strong> Sports create a third place — not home, not work, but where strangers become community.
-                    34 official partners. The smartest ones don't interrupt the moment. They own it.
-                    Click any sponsor to see their campaign intelligence, or explore the tabs below for tournament-wide analysis.
-                </p>
+
+                <div style="background: #f9fafb; border-left: 4px solid #1e40af; padding: 25px; border-radius: 8px; margin: 30px 0;">
+                    <h3 style="color: #1e40af; margin-bottom: 15px;">🎯 Tournament Intelligence <span class="help-icon" data-tooltip="Real-time sponsorship performance data across all 34 partners. 48 nations competing.">?</span></h3>
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 15px;">
+                        <strong>Communitas:</strong> Sports create a third place — not home, not work, but where strangers become community.
+                        34 official partners. The smartest ones don't interrupt the moment. They own it.
+                    </p>
+                    <p style="color: #666; line-height: 1.6;">
+                        👉 <strong>Click any sponsor</strong> to see campaign intelligence (sentiment, reach, engagement, regional performance, influencer mix, media spend).
+                        <strong>Explore tabs</strong> below for tournament-wide analysis and market comparisons.
+                    </p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 30px 0;">
+                    <div class="tournament-stat">
+                        <div style="font-size: 1.8em; margin-bottom: 8px;">🥇</div>
+                        <div class="number">6</div>
+                        <div class="label">FIFA Partners (Top Tier)</div>
+                    </div>
+                    <div class="tournament-stat">
+                        <div style="font-size: 1.8em; margin-bottom: 8px;">⭐</div>
+                        <div class="number">10</div>
+                        <div class="label">World Cup Sponsors</div>
+                    </div>
+                    <div class="tournament-stat">
+                        <div style="font-size: 1.8em; margin-bottom: 8px;">🌟</div>
+                        <div class="number">18</div>
+                        <div class="label">Supporter Partners</div>
+                    </div>
+                </div>
             </div>
 
             <div class="tab-content" id="comparison">
-                <h2>2022 Qatar vs 2026 USA: The Sponsorship Shift</h2>
+                <h2>🏆 2022 Qatar vs 2026 USA <span class="help-icon" data-tooltip="How sponsorship strategy changed between tournaments. Market evolution and partner positioning.">?</span></h2>
                 <div class="comparison-grid">
                     <div class="comparison-card">
                         <h3>2022 Qatar</h3>
@@ -134,7 +183,7 @@
             </div>
 
             <div class="tab-content" id="sponsors">
-                <h2>All Sponsors (34)</h2>
+                <h2>🏆 All 34 Sponsors <span class="help-icon" data-tooltip="Click any sponsor to view their campaign intelligence, sentiment, reach, and performance data.">?</span></h2>
                 <div class="search-box">
                     <input type="text" id="searchInput" class="search-input" placeholder="Search sponsors...">
                 </div>
@@ -142,13 +191,13 @@
             </div>
 
             <div class="tab-content" id="sentiment">
-                <h2>Dark Conversations: Pressure Moments</h2>
-                <p style="color: #666; margin-bottom: 20px;">Real sentiment during high-stress match moments. When the world watches. When the tension is real.</p>
+                <h2>💬 Real-Time Sentiment <span class="help-icon" data-tooltip="Live social mentions during tournament moments. Shows what people actually say about sponsors.">?</span></h2>
+                <p style="color: #666; margin-bottom: 20px;">Real sentiment during high-stress match moments. When the world watches. When the tension is real. Shows which sponsors resonate during critical tournament moments.</p>
                 <div class="tweets-grid" id="tweetsGrid"></div>
             </div>
 
             <div class="tab-content" id="charts">
-                <h2>Sponsorship Analysis</h2>
+                <h2>📊 Sponsorship Analysis <span class="help-icon" data-tooltip="Visual breakdown of sponsor tiers and categories across the tournament.">?</span></h2>
                 <div class="chart-grid">
                     <div class="chart-container">
                         <canvas id="tierChart"></canvas>
