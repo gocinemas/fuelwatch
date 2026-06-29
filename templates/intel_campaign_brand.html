@@ -343,7 +343,10 @@
                     `).join('');
                     document.getElementById('mediaSpend').innerHTML = mediaHtml;
                 } else {
-                    document.getElementById('mediaSpend').innerHTML = '<div style="background: #fef3c7; padding: 20px; border-radius: 8px; text-align: center; color: #92400e;"><strong>📊 Data not yet captured</strong><br><p style="font-size: 0.9em; margin-top: 8px;">Media spend breakdown tracking coming soon</p></div>';
+                    // Hide Media Spend section if no data
+                    const heading = Array.from(document.querySelectorAll('h2')).find(h => h.textContent.includes('Media Spend'));
+                    if (heading) heading.style.display = 'none';
+                    document.getElementById('mediaSpend').parentElement.style.display = 'none';
                 }
 
                 // Top Influencers/Social Sentiment Contributors
@@ -377,7 +380,10 @@
                     `).join('');
                     document.getElementById('influencers').innerHTML = influHtml;
                 } else {
-                    document.getElementById('influencers').innerHTML = '<div style="background: #f0fdf4; padding: 20px; border-radius: 8px; text-align: center; color: #059669;"><strong>📊 Influencer data not yet available</strong><br><p style="font-size: 0.9em; margin-top: 8px;">Social sentiment tracking coming soon</p></div>';
+                    // Hide Influencers section if no sentiment data
+                    const heading = Array.from(document.querySelectorAll('h2')).find(h => h.textContent.includes('Influencers'));
+                    if (heading) heading.style.display = 'none';
+                    document.getElementById('influencers').parentElement.style.display = 'none';
                 }
 
                 // Platform Performance — extract from metrics
@@ -394,7 +400,10 @@
                 });
 
                 if (Object.keys(platformMetrics).length === 0 || (Object.keys(platformMetrics).length === 1 && platformMetrics['unknown'])) {
-                    document.getElementById('platformBody').innerHTML = '<tr><td colspan="4" style="padding: 20px; text-align: center; color: #666;">Platform data not yet captured</td></tr>';
+                    // Hide Platform Performance section if no data
+                    const heading = Array.from(document.querySelectorAll('h2')).find(h => h.textContent.includes('Platform Performance'));
+                    if (heading) heading.style.display = 'none';
+                    document.getElementById('platformPerf').parentElement.style.display = 'none';
                 } else {
                     const platforms = Object.entries(platformMetrics)
                         .filter(([p]) => p !== 'unknown')
@@ -439,7 +448,10 @@
                     `).join('');
                     document.getElementById('demographics').innerHTML = demoHtml;
                 } else {
-                    document.getElementById('demographics').innerHTML = '<div style="background: #fffbeb; padding: 20px; border-radius: 8px; text-align: center; color: #b45309;"><strong>📊 Demographic data not yet available</strong><br><p style="font-size: 0.9em; margin-top: 8px;">Audience breakdown tracking coming soon</p></div>';
+                    // Hide Demographics section if no age_group fields
+                    const heading = Array.from(document.querySelectorAll('h2')).find(h => h.textContent.includes('Demographics'));
+                    if (heading) heading.style.display = 'none';
+                    document.getElementById('demographics').parentElement.style.display = 'none';
                 }
 
                 // Variants
