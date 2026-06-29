@@ -9585,26 +9585,49 @@ def api_v2_receipts_timeline():
 
         print(f"[receipts-timeline] Found {len(rows)} receipts", flush=True)
 
-        total = sum(float(r.get("total", 0)) for r in rows if r.get("total"))
         receipts = []
+        total = 0
 
         for row in rows:
-            # Parse items if stored as JSON string
-            items = row.get("items", [])
-            if isinstance(items, str):
-                try:
-                    items = json.loads(items)
-                except:
-                    items = []
+            # wa_saves stores receipts with 🧾 prefix in title
+            title = row.get("title", "").replace("🧾 ", "").strip()
+            summary = row.get("summary", "")
+            category = row.get("category", "Unknown")
+
+            # Try to extract amount from summary (usually first line has merchant/amount)
+            amount = 0
+            merchant = title or "Unknown"
+            items = []
+
+            # Parse summary for merchant and items
+            if summary:
+                lines = summary.split("\n")
+                # First line often has merchant or amount info
+                for line in lines:
+                    # Look for currency amounts (£XXX or $XXX)
+                    import re as _re_amt
+                    matches = _re_amt.findall(r'£[\d,.]+', line)
+                    if matches:
+                        try:
+                            amount_str = matches[-1].replace("£", "").replace(",", "")
+                            amount = float(amount_str)
+                            break
+                        except:
+                            pass
+
+                # Store lines as items
+                items = [line.strip() for line in lines if line.strip()][:5]  # First 5 lines
+
+            total += amount
 
             receipts.append({
                 "id": row.get("id"),
-                "merchant": row.get("merchant"),
-                "total": float(row.get("total", 0)),
-                "shop_date": row.get("shop_date") or row.get("created_at"),
+                "merchant": merchant,
+                "total": amount,
+                "shop_date": row.get("created_at"),
                 "created_at": row.get("created_at"),
                 "items": items,
-                "category": row.get("category")
+                "category": category
             })
 
         return jsonify({"receipts": receipts, "total": total})
