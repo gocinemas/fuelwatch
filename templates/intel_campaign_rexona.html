@@ -48,6 +48,23 @@
         h2 { color: #333; margin: 30px 0 20px 0; font-size: 1.5em; }
         .back-link { display: inline-block; color: #d97706; text-decoration: none; margin-bottom: 20px; font-weight: 500; }
         .back-link:hover { text-decoration: underline; }
+        .help-icon { cursor: help; color: #d97706; font-weight: bold; margin-left: 8px; position: relative; display: inline-block; }
+        .help-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: normal;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
@@ -82,17 +99,17 @@
 
             <div class="grid-2">
                 <div class="card" style="background: #f0fdf4; border-left: 4px solid #10b981;">
-                    <h3 style="color: #059669;">🏥 Campaign Health Score <span title="Score 0-100 based on sentiment analysis and engagement rates. Higher = stronger campaign performance and audience reception." style="cursor: help; color: #666; font-size: 0.8em; font-weight: normal;">?</span></h3>
+                    <h3 style="color: #059669;">🏥 Campaign Health Score <span class="help-icon" data-tooltip="Score 0-100 based on sentiment (50%) + engagement (50%). Higher = stronger performance.">?</span></h3>
                     <div class="metric">
-                        <div class="metric-label">Overall Health <span title="Weighted average of sentiment score (50%) and engagement rate (50%)" style="cursor: help; color: #666;">?</span></div>
+                        <div class="metric-label">Overall Health</div>
                         <div class="metric-value" id="healthScore" style="font-size: 2.2em; color: #10b981;">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Trend Direction <span title="How sentiment is changing over the tournament. 📈 = improving, 📉 = declining, ➡️ = stable" style="cursor: help; color: #666;">?</span></div>
+                        <div class="metric-label">Trend Direction</div>
                         <div class="metric-value" id="trendValue">—</div>
                     </div>
                     <div class="metric">
-                        <div class="metric-label">Campaign Status <span title="Current performance level based on health score" style="cursor: help; color: #666;">?</span></div>
+                        <div class="metric-label">Campaign Status</div>
                         <div class="metric-value" id="healthStatus" style="color: #10b981; font-weight: bold;">—</div>
                     </div>
                 </div>
