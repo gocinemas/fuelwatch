@@ -9588,35 +9588,48 @@ def api_v2_receipts_timeline():
         receipts = []
         total = 0
 
+        import re as _re_parse
         for row in rows:
             # wa_saves stores receipts with 🧾 prefix in title
             title = row.get("title", "").replace("🧾 ", "").strip()
             summary = row.get("summary", "")
             category = row.get("category", "Unknown")
 
-            # Try to extract amount from summary (usually first line has merchant/amount)
             amount = 0
             merchant = title or "Unknown"
             items = []
 
-            # Parse summary for merchant and items
+            # Parse summary for total amount and items
             if summary:
-                lines = summary.split("\n")
-                # First line often has merchant or amount info
-                for line in lines:
-                    # Look for currency amounts (£XXX or $XXX)
-                    import re as _re_amt
-                    matches = _re_amt.findall(r'£[\d,.]+', line)
-                    if matches:
-                        try:
-                            amount_str = matches[-1].replace("£", "").replace(",", "")
-                            amount = float(amount_str)
-                            break
-                        except:
-                            pass
+                # Look for "total amount due is £XXX" pattern first (most reliable)
+                total_match = _re_parse.search(r'total amount(?:\s+due)?.*?£([\d,.]+)', summary, _re_parse.IGNORECASE)
+                if total_match:
+                    try:
+                        amount = float(total_match.group(1).replace(",", ""))
+                    except:
+                        amount = 0
 
-                # Store lines as items
-                items = [line.strip() for line in lines if line.strip()][:5]  # First 5 lines
+                # Fallback: find largest £ amount if no explicit total
+                if amount == 0:
+                    all_amounts = _re_parse.findall(r'£([\d,.]+)', summary)
+                    if all_amounts:
+                        try:
+                            # Get the largest amount (usually the total)
+                            amount = max([float(a.replace(",", "")) for a in all_amounts])
+                        except:
+                            amount = 0
+
+                # Extract item lines (bullet points or dashes)
+                lines = summary.split("\n")
+                for line in lines:
+                    line = line.strip()
+                    # Skip META lines, totals, and empty lines
+                    if line and not line.startswith("META:") and "total" not in line.lower() \
+                            and "saved" not in line.lower() and "amount" not in line.lower():
+                        # Clean up bullet points
+                        line = _re_parse.sub(r'^[•\-\*]\s*', '', line)
+                        if line and len(line) > 3:
+                            items.append(line)
 
             total += amount
 
@@ -9626,7 +9639,7 @@ def api_v2_receipts_timeline():
                 "total": amount,
                 "shop_date": row.get("created_at"),
                 "created_at": row.get("created_at"),
-                "items": items,
+                "items": items[:10],  # Cap at 10 items
                 "category": category
             })
 
