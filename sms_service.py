@@ -9611,22 +9611,35 @@ def api_v2_receipts_timeline():
 
             # Parse summary for total amount and items
             if summary:
-                # Look for "total amount due is £XXX"
-                total_match = _re_parse.search(r'total amount due is £([\d,.]+)', summary, _re_parse.IGNORECASE)
-                if total_match:
-                    try:
-                        amount = float(total_match.group(1).replace(",", ""))
-                    except:
-                        pass
+                # Try multiple patterns for total amount
+                patterns = [
+                    r'total amount due is £([\d,.]+)',      # "total amount due is £XXX"
+                    r'total[:\s]+£([\d,.]+)',               # "Total: £XXX" or "Total £XXX"
+                    r'amount[:\s]+£([\d,.]+)',              # "Amount: £XXX"
+                    r'price[:\s]+£([\d,.]+)',               # "Price: £XXX"
+                ]
 
-                # If not found, try to find ANY £ amount in summary
+                for pattern in patterns:
+                    total_match = _re_parse.search(pattern, summary, _re_parse.IGNORECASE)
+                    if total_match:
+                        try:
+                            amount = float(total_match.group(1).replace(",", ""))
+                            break
+                        except:
+                            pass
+
+                # If still not found, find largest £ amount (fallback)
                 if amount == 0:
                     all_amounts = _re_parse.findall(r'£([\d,.]+)', summary)
                     if all_amounts:
                         try:
                             amounts_float = [float(a.replace(",", "")) for a in all_amounts]
-                            # Use largest amount (usually the total, not individual items)
-                            amount = max(amounts_float)
+                            # Use largest but reasonable amount (filter out extremes)
+                            valid = [a for a in amounts_float if 0.50 <= a <= 500]
+                            if valid:
+                                amount = max(valid)
+                            elif amounts_float:
+                                amount = max(amounts_float)
                         except:
                             pass
 
