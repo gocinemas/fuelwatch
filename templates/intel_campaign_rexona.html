@@ -329,100 +329,164 @@
                 }).join('');
                 document.getElementById('tweets-container').innerHTML = tweetsHtml || '<p>No sentiment data</p>';
 
-                // Country-Level Analytics
-                const countries = [
-                    { name: 'United Kingdom', views: 2400000, engagement: 8.2, sentiment: 0.78, status: '🔥 Hot' },
-                    { name: 'India', views: 3100000, engagement: 9.1, sentiment: 0.82, status: '🔥 Hot' },
-                    { name: 'Brazil', views: 2800000, engagement: 8.9, sentiment: 0.81, status: '🔥 Hot' },
-                    { name: 'USA', views: 1900000, engagement: 7.4, sentiment: 0.69, status: '⚡ Growing' },
-                    { name: 'France', views: 1200000, engagement: 6.8, sentiment: 0.65, status: '⚡ Growing' },
-                    { name: 'Germany', views: 1400000, engagement: 7.2, sentiment: 0.68, status: '⚡ Growing' },
-                    { name: 'Spain', views: 1100000, engagement: 6.9, sentiment: 0.64, status: '➡️ Stable' },
-                    { name: 'Mexico', views: 950000, engagement: 6.4, sentiment: 0.61, status: '➡️ Stable' },
-                    { name: 'Argentina', views: 820000, engagement: 7.6, sentiment: 0.74, status: '⚡ Growing' },
-                    { name: 'Japan', views: 680000, engagement: 5.9, sentiment: 0.58, status: '📈 Opportunity' },
-                    { name: 'Australia', views: 550000, engagement: 8.1, sentiment: 0.79, status: '🔥 Hot' },
-                    { name: 'Canada', views: 480000, engagement: 7.3, sentiment: 0.70, status: '⚡ Growing' },
-                    { name: 'Netherlands', views: 420000, engagement: 7.8, sentiment: 0.76, status: '🔥 Hot' },
-                    { name: 'Belgium', views: 380000, engagement: 6.5, sentiment: 0.62, status: '➡️ Stable' },
-                    { name: 'South Korea', views: 320000, engagement: 5.2, sentiment: 0.54, status: '📈 Opportunity' },
-                ];
+                // Country-Level Analytics — extract from metrics by region
+                const regionMetrics = {};
+                data.metrics.forEach(m => {
+                    if (!regionMetrics[m.region]) {
+                        regionMetrics[m.region] = { impressions: 0, engagement: 0, sentiment: 0, count: 0 };
+                    }
+                    regionMetrics[m.region].impressions += m.impressions || 0;
+                    regionMetrics[m.region].engagement += m.engagement_rate || 0;
+                    regionMetrics[m.region].sentiment += m.sentiment_avg || 0;
+                    regionMetrics[m.region].count += 1;
+                });
 
-                const countryRows = countries.map(c => `
-                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                        <td style="padding: 12px; font-weight: 500;">${c.name}</td>
-                        <td style="padding: 12px; text-align: right;">${(c.views / 1000000).toFixed(1)}M</td>
-                        <td style="padding: 12px; text-align: right; color: ${c.engagement > 8 ? '#10b981' : c.engagement > 7 ? '#f59e0b' : '#ef4444'}; font-weight: 600;">${c.engagement}%</td>
-                        <td style="padding: 12px; text-align: right; color: ${c.sentiment > 0.75 ? '#10b981' : c.sentiment > 0.65 ? '#f59e0b' : '#ef4444'}; font-weight: 600;">${c.sentiment}</td>
-                        <td style="padding: 12px; text-align: center;">${c.status}</td>
-                    </tr>
-                `).join('');
-                document.getElementById('countryTableBody').innerHTML = countryRows;
+                const countries = Object.entries(regionMetrics).map(([region, data]) => ({
+                    name: region.charAt(0).toUpperCase() + region.slice(1),
+                    views: data.impressions,
+                    engagement: (data.engagement / data.count * 100),
+                    sentiment: data.sentiment / data.count,
+                    status: (data.sentiment / data.count) > 0.75 ? '🔥 Hot' : (data.sentiment / data.count) > 0.65 ? '⚡ Growing' : '➡️ Stable'
+                }));
+
+                if (countries.length === 0) {
+                    document.getElementById('countryTableBody').innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #666;">Regional data collection in progress...</td></tr>';
+                } else {
+                    const countryRows = countries.map(c => `
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px; font-weight: 500;">${c.name}</td>
+                            <td style="padding: 12px; text-align: right;">${(c.views / 1000000).toFixed(1)}M</td>
+                            <td style="padding: 12px; text-align: right; color: ${c.engagement > 8 ? '#10b981' : c.engagement > 7 ? '#f59e0b' : '#ef4444'}; font-weight: 600;">${c.engagement.toFixed(1)}%</td>
+                            <td style="padding: 12px; text-align: right; color: ${c.sentiment > 0.75 ? '#10b981' : c.sentiment > 0.65 ? '#f59e0b' : '#ef4444'}; font-weight: 600;">${c.sentiment.toFixed(2)}</td>
+                            <td style="padding: 12px; text-align: center;">${c.status}</td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('countryTableBody').innerHTML = countryRows;
+                }
 
                 // Media Spend Breakdown
-                const mediaSpend = [
-                    { platform: 'YouTube', pct: 40, spend: '£2.4M' },
-                    { platform: 'Instagram', pct: 35, spend: '£2.1M' },
-                    { platform: 'TikTok', pct: 15, spend: '£900K' },
-                    { platform: 'TV/Traditional', pct: 10, spend: '£600K' },
-                ];
-                const mediaHtml = mediaSpend.map(m => `
-                    <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid #d97706; text-align: center;">
-                        <div style="font-weight: 600; color: #333; margin-bottom: 8px;">${m.platform}</div>
-                        <div style="font-size: 1.8em; color: #d97706; font-weight: bold; margin-bottom: 4px;">${m.pct}%</div>
-                        <div style="font-size: 0.85em; color: #666;">${m.spend}</div>
-                    </div>
-                `).join('');
-                document.getElementById('mediaSpend').innerHTML = mediaHtml;
+                const hasSpendData = data.metrics.some(m => m.spend_budget || m.spend_amount);
+                if (hasSpendData) {
+                    const platforms = {};
+                    data.metrics.forEach(m => {
+                        if (m.platform) {
+                            if (!platforms[m.platform]) platforms[m.platform] = 0;
+                            platforms[m.platform] += m.spend_budget || m.spend_amount || 0;
+                        }
+                    });
+                    const total = Object.values(platforms).reduce((a, b) => a + b, 0);
+                    const mediaSpend = Object.entries(platforms).map(([platform, spend]) => ({
+                        platform: platform.charAt(0).toUpperCase() + platform.slice(1),
+                        pct: total > 0 ? ((spend / total) * 100).toFixed(0) : 0,
+                        spend: spend > 1000000 ? '£' + (spend / 1000000).toFixed(1) + 'M' : '£' + (spend / 1000).toFixed(0) + 'K'
+                    }));
+                    const mediaHtml = mediaSpend.map(m => `
+                        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid #d97706; text-align: center;">
+                            <div style="font-weight: 600; color: #333; margin-bottom: 8px;">${m.platform}</div>
+                            <div style="font-size: 1.8em; color: #d97706; font-weight: bold; margin-bottom: 4px;">${m.pct}%</div>
+                            <div style="font-size: 0.85em; color: #666;">${m.spend}</div>
+                        </div>
+                    `).join('');
+                    document.getElementById('mediaSpend').innerHTML = mediaHtml;
+                } else {
+                    document.getElementById('mediaSpend').innerHTML = '<div style="background: #fef3c7; padding: 20px; border-radius: 8px; text-align: center; color: #92400e;"><strong>📊 Data not yet captured</strong><br><p style="font-size: 0.9em; margin-top: 8px;">Media spend breakdown tracking coming soon</p></div>';
+                }
 
-                // Top Influencers
-                const influencers = [
-                    { name: '@SportsPulse', followers: '2.4M', reach: '18M', engagement: '8.2%' },
-                    { name: '@FitnessGuru', followers: '1.8M', reach: '14M', engagement: '9.1%' },
-                    { name: '@FootballDaily', followers: '3.2M', reach: '22M', engagement: '7.6%' },
-                    { name: '@HealthNow', followers: '950K', reach: '8M', engagement: '8.8%' },
-                    { name: '@CelebSpots', followers: '1.1M', reach: '9M', engagement: '7.3%' },
-                ];
-                const influHtml = influencers.map(i => `
-                    <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-                        <div style="font-weight: 600; color: #059669; margin-bottom: 8px;">${i.name}</div>
-                        <div style="font-size: 0.85em; color: #666; margin-bottom: 8px;"><strong>${i.followers}</strong> followers</div>
-                        <div style="font-size: 0.85em; color: #333;"><strong>Reach:</strong> ${i.reach}</div>
-                        <div style="font-size: 0.85em; color: #059669; font-weight: 600; margin-top: 5px;">${i.engagement} engagement</div>
-                    </div>
-                `).join('');
-                document.getElementById('influencers').innerHTML = influHtml;
+                // Top Influencers/Social Sentiment Contributors
+                if (data.sentiment && data.sentiment.length > 0) {
+                    const authorMetrics = {};
+                    data.sentiment.forEach(s => {
+                        const author = s.author || 'Unknown';
+                        if (!authorMetrics[author]) {
+                            authorMetrics[author] = { count: 0, sentiment: 0 };
+                        }
+                        authorMetrics[author].count += 1;
+                        authorMetrics[author].sentiment += s.sentiment_score || 0;
+                    });
+                    const topInfluencers = Object.entries(authorMetrics)
+                        .map(([author, stats]) => ({
+                            name: '@' + author.replace(/^@/, ''),
+                            mentions: stats.count,
+                            sentiment: (stats.sentiment / stats.count).toFixed(2),
+                            engagement: (stats.count > 5 ? 'High' : stats.count > 2 ? 'Medium' : 'Low')
+                        }))
+                        .sort((a, b) => b.mentions - a.mentions)
+                        .slice(0, 5);
 
-                // Platform Performance
-                const platforms = [
-                    { name: 'YouTube', reach: '12.4M', engagement: 8.2, cpe: '£0.18' },
-                    { name: 'Instagram', reach: '9.8M', engagement: 8.9, cpe: '£0.22' },
-                    { name: 'TikTok', reach: '8.2M', engagement: 9.4, cpe: '£0.14' },
-                ];
-                const platHtml = platforms.map(p => `
-                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                        <td style="padding: 12px; font-weight: 500;">${p.name}</td>
-                        <td style="padding: 12px; text-align: right;">${p.reach}</td>
-                        <td style="padding: 12px; text-align: right; color: ${p.engagement > 8.5 ? '#10b981' : '#f59e0b'}; font-weight: 600;">${p.engagement}%</td>
-                        <td style="padding: 12px; text-align: right; font-weight: 600;">${p.cpe}</td>
-                    </tr>
-                `).join('');
-                document.getElementById('platformBody').innerHTML = platHtml;
+                    const influHtml = topInfluencers.map(i => `
+                        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                            <div style="font-weight: 600; color: #059669; margin-bottom: 8px;">${i.name}</div>
+                            <div style="font-size: 0.85em; color: #666; margin-bottom: 8px;"><strong>${i.mentions}</strong> mentions</div>
+                            <div style="font-size: 0.85em; color: #333;"><strong>Sentiment:</strong> ${i.sentiment}</div>
+                            <div style="font-size: 0.85em; color: #059669; font-weight: 600; margin-top: 5px;">📊 ${i.engagement} engagement</div>
+                        </div>
+                    `).join('');
+                    document.getElementById('influencers').innerHTML = influHtml;
+                } else {
+                    document.getElementById('influencers').innerHTML = '<div style="background: #f0fdf4; padding: 20px; border-radius: 8px; text-align: center; color: #059669;"><strong>📊 Influencer data not yet available</strong><br><p style="font-size: 0.9em; margin-top: 8px;">Social sentiment tracking coming soon</p></div>';
+                }
+
+                // Platform Performance — extract from metrics
+                const platformMetrics = {};
+                data.metrics.forEach(m => {
+                    const platform = m.platform || 'unknown';
+                    if (!platformMetrics[platform]) {
+                        platformMetrics[platform] = { reach: 0, engagement: 0, cost: 0, count: 0 };
+                    }
+                    platformMetrics[platform].reach += m.impressions || 0;
+                    platformMetrics[platform].engagement += m.engagement_rate || 0;
+                    platformMetrics[platform].cost += m.spend_budget || m.spend_amount || 0;
+                    platformMetrics[platform].count += 1;
+                });
+
+                if (Object.keys(platformMetrics).length === 0 || (Object.keys(platformMetrics).length === 1 && platformMetrics['unknown'])) {
+                    document.getElementById('platformBody').innerHTML = '<tr><td colspan="4" style="padding: 20px; text-align: center; color: #666;">Platform data not yet captured</td></tr>';
+                } else {
+                    const platforms = Object.entries(platformMetrics)
+                        .filter(([p]) => p !== 'unknown')
+                        .map(([name, data]) => ({
+                            name: name.charAt(0).toUpperCase() + name.slice(1),
+                            reach: (data.reach / 1000000).toFixed(1) + 'M',
+                            engagement: (data.engagement / data.count * 100).toFixed(1),
+                            cpe: data.cost > 0 && data.reach > 0 ? '£' + (data.cost / data.reach).toFixed(2) : 'N/A'
+                        }));
+
+                    const platHtml = platforms.map(p => `
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px; font-weight: 500;">${p.name}</td>
+                            <td style="padding: 12px; text-align: right;">${p.reach}</td>
+                            <td style="padding: 12px; text-align: right; color: ${parseFloat(p.engagement) > 8.5 ? '#10b981' : '#f59e0b'}; font-weight: 600;">${p.engagement}%</td>
+                            <td style="padding: 12px; text-align: right; font-weight: 600;">${p.cpe}</td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('platformBody').innerHTML = platHtml;
+                }
 
                 // Audience Demographics
-                const demos = [
-                    { label: '18-24', pct: 28 },
-                    { label: '25-34', pct: 32 },
-                    { label: '35-44', pct: 22 },
-                    { label: '45+', pct: 18 },
-                ];
-                const demoHtml = demos.map(d => `
-                    <div style="background: #fffbeb; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;">
-                        <div style="font-weight: 600; color: #b45309; margin-bottom: 8px;">${d.label}</div>
-                        <div style="font-size: 1.6em; color: #f59e0b; font-weight: bold;">${d.pct}%</div>
-                    </div>
-                `).join('');
-                document.getElementById('demographics').innerHTML = demoHtml;
+                const hasDemoData = data.metrics.some(m => m.age_group_18_24 || m.age_group_25_34 || m.age_group_35_44 || m.age_group_45_plus);
+                if (hasDemoData) {
+                    const demoData = { '18-24': 0, '25-34': 0, '35-44': 0, '45+': 0 };
+                    data.metrics.forEach(m => {
+                        demoData['18-24'] += m.age_group_18_24 || 0;
+                        demoData['25-34'] += m.age_group_25_34 || 0;
+                        demoData['35-44'] += m.age_group_35_44 || 0;
+                        demoData['45+'] += m.age_group_45_plus || 0;
+                    });
+                    const total = Object.values(demoData).reduce((a, b) => a + b, 0);
+                    const demos = Object.entries(demoData).map(([label, count]) => ({
+                        label: label,
+                        pct: total > 0 ? ((count / total) * 100).toFixed(0) : 0
+                    }));
+                    const demoHtml = demos.map(d => `
+                        <div style="background: #fffbeb; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                            <div style="font-weight: 600; color: #b45309; margin-bottom: 8px;">${d.label}</div>
+                            <div style="font-size: 1.6em; color: #f59e0b; font-weight: bold;">${d.pct}%</div>
+                        </div>
+                    `).join('');
+                    document.getElementById('demographics').innerHTML = demoHtml;
+                } else {
+                    document.getElementById('demographics').innerHTML = '<div style="background: #fffbeb; padding: 20px; border-radius: 8px; text-align: center; color: #b45309;"><strong>📊 Demographic data not yet available</strong><br><p style="font-size: 0.9em; margin-top: 8px;">Audience breakdown tracking coming soon</p></div>';
+                }
 
                 document.getElementById('timestamp').textContent = new Date().toLocaleString();
             } catch (e) {
