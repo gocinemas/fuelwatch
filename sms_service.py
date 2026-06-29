@@ -9654,6 +9654,11 @@ def api_v2_receipts_timeline():
                 "category": category
             })
 
+        # DEBUG: Check items extraction
+        print(f"[receipts-timeline] Response summary: {len(receipts)} receipts, total £{total}", flush=True)
+        for i, r in enumerate(receipts[:3]):  # Show first 3
+            print(f"  Receipt {i+1}: {r['merchant']} - {len(r.get('items', []))} items", flush=True)
+
         return jsonify({"receipts": receipts, "total": total})
     except Exception as e:
         print(f"[receipts-timeline] Error: {e}")
