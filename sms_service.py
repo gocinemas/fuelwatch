@@ -9569,7 +9569,6 @@ def api_v2_receipts_timeline():
 
     try:
         days = request.args.get("days", 90, type=int)
-        from miru_lib import lib
         import json
         from datetime import datetime, timedelta
 
@@ -9625,7 +9624,6 @@ def api_v2_item_price_history():
         return jsonify({"history": [], "average": 0, "min": 0, "max": 0})
 
     try:
-        from miru_lib import lib
         import json
 
         # Query wa_saves for receipts (🧾 clippings)
