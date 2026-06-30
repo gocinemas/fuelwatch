@@ -19578,12 +19578,19 @@ let _savesAll = [];
   window._briefAsk = _briefAsk;
 
   // ── Receipt PDF Upload ────────────────────────────────────────────────────
-  function _receiptsUploadPdfTap() {
+  window._receiptsUploadPdfTap = function() {
     const inp = document.getElementById("receipts-pdf-input");
-    if (inp) { inp.value = ""; inp.click(); }
+    console.log("[receipts-pdf] Tap clicked, input element:", inp);
+    if (inp) {
+      inp.value = "";
+      inp.click();
+      console.log("[receipts-pdf] File picker triggered");
+    } else {
+      console.error("[receipts-pdf] Input element not found!");
+    }
   }
 
-  async function _receiptsUploadPdf(input) {
+  window._receiptsUploadPdf = async function(input) {
     const file = input.files?.[0];
     if (!file) return;
 
@@ -19626,7 +19633,7 @@ let _savesAll = [];
     }
   }
 
-  function _receiptsShowPdfPreview(transactions, filename) {
+  window._receiptsShowPdfPreview = function(transactions, filename) {
     const sheet = document.createElement("div");
     sheet.dataset.pdfSheet = "1";
     sheet.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
@@ -19687,7 +19694,7 @@ let _savesAll = [];
     sheet._transactions = transactions;
   }
 
-  async function _receiptsConfirmPdfSave(btn) {
+  window._receiptsConfirmPdfSave = async function(btn) {
     const sheet = btn.closest('[data-pdf-sheet]');
     const transactions = sheet._transactions;
 
