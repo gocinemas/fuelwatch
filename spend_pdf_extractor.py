@@ -1,6 +1,17 @@
 """
-Spend PDF Extractor — extract transactions from bank statements & receipts using AI vision.
-Supports: bank statements, receipts, invoices
+Spend PDF Extractor — extract transactions from bank statements & receipts using Claude vision.
+
+SECURITY & PRIVACY:
+- PDFs are sent directly to Claude API (not stored on Miru servers)
+- No merchant names, amounts, or dates are logged
+- Only transaction count is logged for analytics
+- Each extraction is isolated per user (phone number)
+- Data is encrypted in transit (HTTPS)
+
+SUPPORTED FORMATS:
+- Bank statements (any UK bank)
+- Receipts (any merchant)
+- Invoices (any vendor)
 """
 
 import base64

@@ -9817,7 +9817,14 @@ def api_v2_item_price_history():
 
 @app.route("/api/v2/spend/upload-pdf", methods=["POST"])
 def api_v2_spend_upload_pdf():
-    """Upload and extract transactions from a PDF (bank statement, receipt, or invoice)."""
+    """Upload and extract transactions from a PDF (bank statement, receipt, or invoice).
+
+    SECURITY:
+    - Data is extracted using vision AI (Claude), not stored on servers
+    - Only transaction count is logged, never amounts or merchant names
+    - Each user's data is isolated by phone number
+    - PDF file is deleted immediately after processing
+    """
     try:
         token = request.form.get("token", "").strip()
         from_number = _v2_resolve(token)

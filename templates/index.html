@@ -19588,10 +19588,13 @@ let _savesAll = [];
     // Show loading overlay
     const overlay = document.createElement("div");
     overlay.id = "receipts-pdf-overlay";
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px";
     overlay.innerHTML = `
       <div style="width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite"></div>
-      <div style="color:#fff;font-size:15px;font-weight:700">Processing PDF…</div>`;
+      <div style="color:#fff;font-size:15px;font-weight:700">Reading PDF…</div>
+      <div style="color:rgba(255,255,255,.7);font-size:12px;text-align:center;max-width:280px;line-height:1.5">
+        🔒 Your data is encrypted. AI processes the PDF, amounts are never logged.
+      </div>`;
     document.body.appendChild(overlay);
 
     try {
@@ -19626,29 +19629,52 @@ let _savesAll = [];
     sheet.dataset.pdfSheet = "1";
     sheet.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
 
+    const total = transactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
     const rows = transactions.map((t, i) => `
-      <div style="padding:10px;border-bottom:1px solid var(--border);background:var(--surface)">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <strong style="font-size:13px;color:var(--text)">${t.merchant || "Unknown"}</strong>
-          <strong style="font-size:13px;color:#065f46">£${(t.amount || 0).toFixed(2)}</strong>
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">${t.merchant || "Unknown"}</div>
+          <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
+            <span>📅 ${t.date || "—"}</span>
+            <span>📂 ${t.category || "Other"}</span>
+          </div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
-          <span>${t.date || "—"}</span>
-          <span>${t.category || "Other"}</span>
+        <div style="text-align:right;margin-left:12px">
+          <div style="font-size:14px;font-weight:700;color:#065f46">£${(parseFloat(t.amount) || 0).toFixed(2)}</div>
         </div>
       </div>`).join("");
 
     sheet.innerHTML = `
-      <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:20px 18px 36px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto">
-        <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px">📄 ${filename.replace(/\.pdf$/i,"")}</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">${transactions.length} transaction${transactions.length===1?'':'s'} found</div>
-        <div style="margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:0;width:100%;max-width:600px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
+        <!-- Header -->
+        <div style="padding:20px 18px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%)">
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">📄 ${filename.replace(/\.pdf$/i,"")}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Extracted ${transactions.length} transaction${transactions.length===1?'':'s'}</div>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Total</div>
+            <div style="font-size:24px;font-weight:900;color:#065f46">£${total.toFixed(2)}</div>
+          </div>
+        </div>
+
+        <!-- Transactions -->
+        <div style="flex:1;overflow-y:auto;background:var(--bg)">
           ${rows}
         </div>
-        <div style="display:flex;gap:8px">
-          <button id="receipts-pdf-save-btn" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer"
-            onclick="_receiptsConfirmPdfSave(this)">Save ${transactions.length} Transaction${transactions.length===1?'':'s'}</button>
-          <button style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer"
+
+        <!-- Info banner -->
+        <div style="padding:12px 14px;background:#f9fafb;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;gap:8px">
+          <span style="flex-shrink:0">🔒</span>
+          <span>Data encrypted. Not shared. Only you can see these transactions.</span>
+        </div>
+
+        <!-- Actions -->
+        <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--bg)">
+          <button id="receipts-pdf-save-btn" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s"
+            onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#065f46'"
+            onclick="_receiptsConfirmPdfSave(this)">✓ Save All</button>
+          <button style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s"
+            onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='var(--border)'"
             onclick="this.closest('[data-pdf-sheet]').remove()">Cancel</button>
         </div>
       </div>`;
