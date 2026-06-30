@@ -1238,11 +1238,11 @@ def brand_search():
 
     # Intel subdomain - show brand directory with multiple search modes
     if "intel.humanagency.co" in request.host:
-        # If brand name provided, go directly to brand page
+        # If brand name provided, go to choice page (unified Phase 1 + Phase 2)
         name = request.args.get("name", "").strip()
         if name or search:
             brand_name = name or search
-            return redirect(f"/brand/full?search={brand_name}&market={market}")
+            return redirect(f"/brand/unified?search={brand_name}")
         # Otherwise show professional directory (company, category, or brand search)
         return render_template("intel_directory_professional.html")
 
