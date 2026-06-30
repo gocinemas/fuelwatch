@@ -16882,12 +16882,14 @@ _bkBadge();
   <div style="padding:0 16px;max-width:500px;margin:0 auto">
     <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">💰 <span id="receipts-period">JUNE</span></div>
 
-    <!-- View tabs + PDF upload -->
+    <!-- Receipt label -->
+    <div style="font-size:12px;font-weight:700;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px;display:inline-block;margin-bottom:12px">🧾 Receipts</div>
+
+    <!-- View tabs + PDF uploads tab -->
     <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">
-      <button onclick="_receiptsSetView('month')" id="receipts-tab-month" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Monthly</button>
-      <button onclick="_receiptsSetView('quarter')" id="receipts-tab-quarter" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Quarterly</button>
-      <div style="flex:1"></div>
-      <button onclick="_receiptsUploadPdfTap()" title="Upload receipt or bank statement PDF" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">📄 Upload PDF</button>
+      <button onclick="_receiptsSetView('month')" id="receipts-tab-month" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">📋 Monthly</button>
+      <button onclick="_receiptsSetView('quarter')" id="receipts-tab-quarter" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">📊 Quarterly</button>
+      <button onclick="_receiptsSetView('pdf')" id="receipts-tab-pdf" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">📄 PDF Uploads</button>
     </div>
     <input id="receipts-pdf-input" type="file" accept=".pdf,application/pdf" style="display:none" onchange="_receiptsUploadPdf(this)">
 
@@ -27227,6 +27229,25 @@ document.addEventListener('keydown', function(e) {
     document.getElementById("receipts-list").style.display = "none";
     document.getElementById("receipts-empty").style.display = "none";
 
+    // If PDF uploads tab, show different content
+    if (_receiptsViewMode === 'pdf') {
+      document.getElementById("receipts-month-nav").style.display = "none";
+      document.getElementById("receipts-loading").style.display = "none";
+      const html = `
+        <div style="text-align:center;padding:40px 20px;background:#faf9f4;border:1px solid #e5e5e0;border-radius:12px">
+          <div style="font-size:48px;margin-bottom:12px">📄</div>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">Upload PDF Receipts & Bank Statements</div>
+          <div style="font-size:14px;color:var(--muted);margin-bottom:20px">Select a PDF file to extract transactions automatically</div>
+          <button onclick="_receiptsUploadPdfTap()" style="background:#065f46;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Choose PDF File</button>
+        </div>
+      `;
+      document.getElementById("receipts-list").innerHTML = html;
+      document.getElementById("receipts-list").style.display = "block";
+      return;
+    }
+
+    document.getElementById("receipts-month-nav").style.display = "flex";
+
     try {
       let url, data;
 
@@ -27304,10 +27325,51 @@ document.addEventListener('keydown', function(e) {
         return;
       }
 
+      // Build pie chart
+      const colors = ["#667eea","#764ba2","#ff6b6b","#ffa94d","#51cf66","#4ecdc4","#45b7d1","#96ceb4"];
+      const pieData = [];
+      for (const [cat, catData] of Object.entries(data.breakdown)) {
+        const total = catData.total;
+        const pct = (total / data.total * 100).toFixed(1);
+        pieData.push({cat, pct, total, color: colors[pieData.length % colors.length]});
+      }
+      pieData.sort((a, b) => b.pct - a.pct);
+
+      // SVG pie chart
+      let svg = '<svg width="120" height="120" style="margin-right:20px" viewBox="0 0 120 120">';
+      let angle = -90;
+      for (const slice of pieData) {
+        const sliceAngle = slice.pct * 3.6;
+        const startAngle = angle * Math.PI / 180;
+        const endAngle = (angle + sliceAngle) * Math.PI / 180;
+        const x1 = 60 + 50 * Math.cos(startAngle);
+        const y1 = 60 + 50 * Math.sin(startAngle);
+        const x2 = 60 + 50 * Math.cos(endAngle);
+        const y2 = 60 + 50 * Math.sin(endAngle);
+        const largeArc = sliceAngle > 180 ? 1 : 0;
+        const path = `M 60 60 L ${x1} ${y1} A 50 50 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        svg += `<path d="${path}" fill="${slice.color}" stroke="white" stroke-width="2"/>`;
+        angle += sliceAngle;
+      }
+      svg += '</svg>';
+
+      let legend = '<div style="flex:1">';
+      for (const slice of pieData) {
+        legend += `<div style="display:flex;align-items:center;margin-bottom:6px;font-size:12px">
+          <span style="width:12px;height:12px;background:${slice.color};border-radius:2px;margin-right:6px"></span>
+          <span style="flex:1">${slice.cat}</span>
+          <span style="font-weight:600">£${slice.total.toFixed(0)}</span>
+        </div>`;
+      }
+      legend += '</div>';
+
       let html = `<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e5e5e0">`;
       html += `<div style="font-size:28px;font-weight:900;color:var(--text);margin-bottom:4px">£${data.total?.toFixed(2)}</div>`;
       html += `<div style="font-size:11px;color:var(--muted)">${data.count} receipts</div>`;
       html += `</div>`;
+
+      // Show pie chart before categories
+      html += `<div style="display:flex;align-items:center;margin-bottom:20px;padding:12px;background:#fff;border:1px solid #e5e5e0;border-radius:8px">` + svg + legend + `</div>`;
 
       for (const [cat, catData] of Object.entries(data.breakdown).sort((a, b) => b[1].total - a[1].total)) {
         const catEmoji = {"Clothes":"👗","Accessories":"👜","Groceries":"🛒","Coffee & Lunch":"☕","Dining":"🍽️","Fast Food":"🍔","Takeaway":"🥡","Fuel":"⛽","Transport":"🚆","Shopping":"🛍️","Subscriptions":"🎬","Parking":"🅿️","Other":"📌"}[cat] || "📌";
@@ -27346,6 +27408,7 @@ document.addEventListener('keydown', function(e) {
     // Update tab highlights
     document.getElementById('receipts-tab-month').style.background = _receiptsViewMode === 'month' ? '#f0f0f0' : 'white';
     document.getElementById('receipts-tab-quarter').style.background = _receiptsViewMode === 'quarter' ? '#f0f0f0' : 'white';
+    document.getElementById('receipts-tab-pdf').style.background = _receiptsViewMode === 'pdf' ? '#f0f0f0' : 'white';
 
     if (_receiptsViewMode === 'month') {
       document.getElementById('receipts-period').textContent = months[curMonth].toUpperCase();
