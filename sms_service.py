@@ -4129,7 +4129,7 @@ def api_brand_phase2():
         # Get market entry score
         try:
             scorer = MarketEntryScorer()
-            market_score = scorer.score_market(
+            score_result = scorer.score_market(
                 brand_name=name,
                 market_country=market,
                 category=category,
@@ -4142,6 +4142,16 @@ def api_brand_phase2():
                     "competitive_intensity": market_econ.get("competitive_intensity", "medium"),
                 },
             )
+            # Map scoring engine keys to template expectations
+            market_score = {
+                "entry_readiness_score": round((score_result.get("brand_strength_score", 5) + score_result.get("growth_opportunity_score", 5)) / 2),
+                "brand_strength_score": score_result.get("brand_strength_score"),
+                "growth_opportunity_score": score_result.get("growth_opportunity_score"),
+                "recommendation": score_result.get("recommendation"),
+                "category_cagr_3yr": market_econ.get("category_cagr_3yr"),
+                "competitive_intensity": market_econ.get("competitive_intensity"),
+                "market_risk_score": 10 - round(score_result.get("brand_strength_score", 5)),
+            }
         except Exception as e:
             app.logger.warning(f"[api_brand_phase2] Market scoring failed: {e}")
             market_score = None
