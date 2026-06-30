@@ -4083,6 +4083,92 @@ def api_brand():
     })
 
 
+@app.route("/brand/phase2")
+def brand_phase2():
+    """Phase 2: Market Expansion Intelligence with all features"""
+    search = request.args.get("search", "").strip()
+    market = request.args.get("market", "UK").strip().upper()
+
+    return render_template("intel_brand_phase2_complete.html")
+
+
+@app.route("/api/brand/phase2", methods=["GET"])
+def api_brand_phase2():
+    """Phase 2 API: Returns brand data + market economics for expansion analysis"""
+    name = request.args.get("name", "").strip()
+    market = request.args.get("market", "UK").strip().upper()
+
+    if not name or len(name) < 2:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        sb = lib._sb()
+
+        # Get brand fundamentals
+        brand_result = sb.table("brand_phase1_intelligence").select("*").eq(
+            "brand_name", name
+        ).eq(
+            "market_country", market
+        ).execute()
+
+        if not brand_result.data:
+            return jsonify({"error": f"Brand '{name}' not found in {market}"}), 404
+
+        brand_row = brand_result.data[0]
+        category = brand_row.get("category", "").lower()
+
+        # Get market economics
+        econ_result = sb.table("brand_phase1_market_economics").select("*").eq(
+            "market_country", market
+        ).eq(
+            "category", category
+        ).execute()
+
+        market_econ = econ_result.data[0] if econ_result.data else {}
+
+        # Get market entry score
+        try:
+            scorer = MarketEntryScorer()
+            market_score = scorer.score_market(
+                brand_name=name,
+                market_country=market,
+                category=category,
+                brand_data={
+                    "positioning_tier": brand_row.get("positioning_tier"),
+                    "distribution_strategy": brand_row.get("distribution_strategy"),
+                },
+                market_data=market_econ,
+                competitive_data={
+                    "competitive_intensity": market_econ.get("competitive_intensity", "medium"),
+                },
+            )
+        except Exception as e:
+            app.logger.warning(f"[api_brand_phase2] Market scoring failed: {e}")
+            market_score = None
+
+        return jsonify({
+            "brand": {
+                "name": brand_row.get("brand_name"),
+                "category": category,
+                "founded": brand_row.get("founded_year"),
+                "origin": {"city": brand_row.get("headquarters_city"), "country": brand_row.get("headquarters_country")},
+                "positioning_tier": brand_row.get("positioning_tier"),
+                "price_usd_equivalent": brand_row.get("price_usd_equivalent"),
+            },
+            "market_econ": market_econ,
+            "market_score": market_score,
+            "markets": [
+                {"code": "UK", "name": "United Kingdom", "ppp": 1.0},
+                {"code": "US", "name": "United States", "ppp": 1.0},
+                {"code": "IN", "name": "India", "ppp": 0.25},
+            ]
+        })
+
+    except Exception as e:
+        app.logger.error(f"[api_brand_phase2] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/company/intelligence", methods=["GET"])
 def api_company_intelligence():
     """Fetch real company intelligence using yfinance + AI strategy.

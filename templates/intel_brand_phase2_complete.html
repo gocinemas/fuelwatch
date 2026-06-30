@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Intelligence — Phase 2 (Market Expansion)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            padding: 24px 0;
+            margin-bottom: 32px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .brand-header {
+            flex: 1;
+        }
+
+        .brand-name {
+            font-size: 32px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .brand-meta {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .market-switcher {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .market-btn {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .market-btn:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .market-btn.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #f0f4f8, #e8f1f9);
+            border: 2px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #0369a1;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 900;
+            color: #1e293b;
+        }
+
+        .stat-detail {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        /* Market Economics Card */
+        .market-economics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        /* Headroom Calculator */
+        .headroom-section {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .headroom-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        /* Market Entry Scoring */
+        .scoring-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .market-entry-card {
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .market-entry-card.green {
+            background: #dcfce7;
+            border: 2px solid #86efac;
+        }
+
+        .market-entry-card.yellow {
+            background: #fef3c7;
+            border: 2px solid #fcd34d;
+        }
+
+        .market-entry-card.red {
+            background: #fee2e2;
+            border: 2px solid #fca5a5;
+        }
+
+        .entry-score {
+            font-size: 32px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .entry-label {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .entry-detail {
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        /* Pricing Table */
+        .pricing-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .pricing-table th {
+            background: #f1f5f9;
+            padding: 12px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 13px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .pricing-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+
+        .pricing-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .recommendation-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .rec-green { background: #dcfce7; color: #166534; }
+        .rec-yellow { background: #fef3c7; color: #92400e; }
+        .rec-red { background: #fee2e2; color: #991b1b; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .tooltip-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: #cbd5e1;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 11px;
+            line-height: 16px;
+            cursor: help;
+            position: relative;
+        }
+
+        .tooltip-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="brand-header">
+                <div class="brand-name" id="brandName">—</div>
+                <div class="brand-meta" id="brandMeta">—</div>
+            </div>
+            <div class="market-switcher">
+                <button class="market-btn active" data-market="UK" onclick="switchMarket('UK')">🇬🇧 UK</button>
+                <button class="market-btn" data-market="US" onclick="switchMarket('US')">🇺🇸 USA</button>
+                <button class="market-btn" data-market="IN" onclick="switchMarket('IN')">🇮🇳 India</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- FEATURE 1: MARKET ECONOMICS -->
+        <div class="card" id="economicsCard">
+            <div class="card-title">
+                📊 Market Economics
+                <span class="tooltip-icon" data-tooltip="GDP, PPP index, market size, and growth rate for this category in this market">?</span>
+            </div>
+            <div class="market-economics-grid" id="economicsGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- FEATURE 2: HEADROOM ANALYSIS -->
+        <div class="card" id="headroomCard">
+            <div class="card-title">
+                📈 Market Opportunity & Headroom
+                <span class="tooltip-icon" data-tooltip="Current market share vs. realistic expansion potential">?</span>
+            </div>
+            <div class="headroom-section" id="headroomAnalysis">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- FEATURE 3: PRICING RECOMMENDATION -->
+        <div class="card" id="pricingCard">
+            <div class="card-title">
+                💰 Pricing Recommendation
+                <span class="tooltip-icon" data-tooltip="Recommended pricing based on PPP index, local markets, and positioning">?</span>
+            </div>
+            <table class="pricing-table" id="pricingTable">
+                <thead>
+                    <tr>
+                        <th>Market</th>
+                        <th>Recommended Price</th>
+                        <th>PPP Adjustment</th>
+                        <th>vs Competitors</th>
+                        <th>Recommendation</th>
+                    </tr>
+                </thead>
+                <tbody id="pricingBody">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- FEATURE 4: MARKET ENTRY SCORING -->
+        <div class="card" id="scoringCard">
+            <div class="card-title">
+                🎯 Market Entry Opportunity Scoring
+                <span class="tooltip-icon" data-tooltip="Green=High opportunity, Yellow=Conditional entry, Red=High risk/not recommended">?</span>
+            </div>
+            <div class="scoring-grid" id="scoringGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- FEATURE 5: EXPANSION STRATEGY BLUEPRINT -->
+        <div class="card" id="strategyCard">
+            <div class="card-title">
+                🗺️ Market Entry Strategy
+                <span class="tooltip-icon" data-tooltip="Recommended variant, distribution, pricing, and timeline for this market">?</span>
+            </div>
+            <div id="strategyContent">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMarket = "UK";
+        let brandData = {};
+        let marketEconomics = {};
+        let marketScores = {};
+
+        async function loadBrandData() {
+            const params = new URLSearchParams(window.location.search);
+            const brandName = params.get("search") || "Nike";
+
+            try {
+                const response = await fetch(`/api/brand?name=${encodeURIComponent(brandName)}&country=${currentMarket}`);
+                brandData = await response.json();
+
+                document.getElementById("brandName").textContent = brandData.brand?.name || brandName;
+                document.getElementById("brandMeta").textContent =
+                    `${brandData.brand?.origin?.city || '—'}, ${brandData.brand?.origin?.country || '—'} • Founded ${brandData.brand?.founded || '—'}`;
+
+                renderPhase2Data();
+            } catch (e) {
+                console.error("Failed to load brand data:", e);
+            }
+        }
+
+        async function switchMarket(market) {
+            currentMarket = market;
+
+            // Update button states
+            document.querySelectorAll(".market-btn").forEach(btn => btn.classList.remove("active"));
+            document.querySelector(`[data-market="${market}"]`).classList.add("active");
+
+            // Reload with new market
+            loadBrandData();
+        }
+
+        function renderPhase2Data() {
+            renderMarketEconomics();
+            renderHeadroomAnalysis();
+            renderPricingRecommendation();
+            renderMarketEntryScoring();
+            renderExpansionStrategy();
+        }
+
+        function renderMarketEconomics() {
+            const econ = brandData.market_econ || {};
+            const html = `
+                <div class="stat-box">
+                    <div class="stat-label">Country GDP</div>
+                    <div class="stat-value">$${(econ.country_gdp_usd_trillions || 0).toFixed(1)}T</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">PPP Index</div>
+                    <div class="stat-value">${(econ.ppp_index || 1).toFixed(2)}x</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Category Market Size</div>
+                    <div class="stat-value">
+                        ${econ.category_market_size_usd_millions >= 1000
+                            ? `$${(econ.category_market_size_usd_millions / 1000).toFixed(1)}B`
+                            : `$${econ.category_market_size_usd_millions}M`}
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">3-Year CAGR</div>
+                    <div class="stat-value">${econ.category_cagr_3yr || 0}%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Market Maturity</div>
+                    <div class="stat-value">${econ.market_maturity || '—'}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Competitive Intensity</div>
+                    <div class="stat-value">${econ.competitive_intensity || '—'}</div>
+                </div>
+            `;
+            document.getElementById("economicsGrid").innerHTML = html;
+        }
+
+        function renderHeadroomAnalysis() {
+            const brand = brandData.brand || {};
+            const econ = brandData.market_econ || {};
+            const tam = econ.category_market_size_usd_millions || 0;
+
+            // Estimate current share (simplified - would come from real data)
+            const currentShare = 2; // 2% estimated
+            const currentRevenue = (tam * currentShare) / 100;
+            const targetShare = 5; // 5% realistic target
+            const targetRevenue = (tam * targetShare) / 100;
+            const headroom = ((targetRevenue - currentRevenue) / currentRevenue * 100).toFixed(0);
+
+            const html = `
+                <div class="headroom-row">
+                    <div>
+                        <div class="stat-label">Total Addressable Market (TAM)</div>
+                        <div class="stat-value">
+                            ${tam >= 1000 ? `$${(tam/1000).toFixed(1)}B` : `$${tam}M`}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Est. Current Share</div>
+                        <div class="stat-value">${currentShare}%</div>
+                        <div class="stat-detail">→ $${currentRevenue.toFixed(0)}M revenue</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Realistic Target (5% share)</div>
+                        <div class="stat-value">${targetShare}%</div>
+                        <div class="stat-detail">→ $${targetRevenue.toFixed(0)}M revenue</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Growth Headroom</div>
+                        <div class="stat-value" style="color: #16a34a;">${headroom}%</div>
+                        <div class="stat-detail">Potential upside</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById("headroomAnalysis").innerHTML = html;
+        }
+
+        function renderPricingRecommendation() {
+            const brand = brandData.brand || {};
+            const markets = [
+                { code: "UK", name: "🇬🇧 UK", ppp: 1.0, basePrice: 4.50 },
+                { code: "US", name: "🇺🇸 USA", ppp: 1.0, basePrice: 5.76 },
+                { code: "IN", name: "🇮🇳 India", ppp: 0.25, basePrice: 1.44 }
+            ];
+
+            let html = "";
+            markets.forEach(m => {
+                const recommendedPrice = (brand.price_usd_equivalent || 5) * m.ppp;
+                const recommendation = m.code === currentMarket ? "Current Market" :
+                    recommendedPrice < 3 ? "Premium Mass-Market" : "Selective Premium";
+
+                html += `
+                    <tr>
+                        <td><strong>${m.name}</strong></td>
+                        <td>
+                            ${m.code === "UK" ? "£" : m.code === "US" ? "$" : "₹"}${
+                                m.code === "UK" ? recommendedPrice.toFixed(2) :
+                                m.code === "US" ? recommendedPrice.toFixed(2) :
+                                (recommendedPrice * 100).toFixed(0)
+                            }
+                        </td>
+                        <td>${m.ppp === 1.0 ? "1.0x (Baseline)" : m.ppp < 1 ? "0.25x (Lower)" : "Higher"}</td>
+                        <td>+${((recommendedPrice - (brand.price_usd_equivalent || 5)) / (brand.price_usd_equivalent || 5) * 100).toFixed(0)}%</td>
+                        <td><span class="recommendation-badge ${m.code === currentMarket ? 'rec-green' : 'rec-yellow'}">${recommendation}</span></td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById("pricingBody").innerHTML = html;
+        }
+
+        function renderMarketEntryScoring() {
+            const score = brandData.market_score || { entry_readiness_score: 6 };
+            const s = score.entry_readiness_score || 6;
+            const status = s >= 8 ? { emoji: "🟢", label: "GREEN - Enter Now", class: "green" } :
+                          s >= 5 ? { emoji: "🟡", label: "YELLOW - Conditional", class: "yellow" } :
+                          { emoji: "🔴", label: "RED - High Risk", class: "red" };
+
+            const html = `
+                <div class="market-entry-card ${status.class}">
+                    <div class="entry-score">${status.emoji} ${s}/10</div>
+                    <div class="entry-label">${status.label}</div>
+                    <div class="entry-detail">
+                        ${s >= 8 ? "Market conditions are favorable. Recommend immediate entry." :
+                          s >= 5 ? "Requires strategic positioning. Consider niche entry or premium positioning." :
+                          "Market is saturated or unfavorable. Requires major repositioning."}
+                    </div>
+                    <div class="entry-detail" style="margin-top: 8px; font-size: 11px; color: #64748b;">
+                        <strong>Factors:</strong> Growth rate ${score.category_cagr_3yr || 3}% •
+                        Intensity ${score.competitive_intensity || 'Medium'} •
+                        Risk ${score.market_risk_score || 6}/10
+                    </div>
+                </div>
+            `;
+            document.getElementById("scoringGrid").innerHTML = html;
+        }
+
+        function renderExpansionStrategy() {
+            const brand = brandData.brand || {};
+            const econ = brandData.market_econ || {};
+
+            const html = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                    <div>
+                        <h4 style="margin-bottom: 8px;">📍 Positioning</h4>
+                        <p style="font-size: 13px; color: #475569; line-height: 1.6;">
+                            ${brand.positioning_tier === "premium" ? "Premium positioning: Focus on efficacy, prestige, and exclusivity." :
+                              brand.positioning_tier === "mass-market" ? "Mass-market positioning: Emphasize value and accessibility." :
+                              "Balanced positioning: Hybrid approach combining quality with affordability."}
+                        </p>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 8px;">🛒 Distribution</h4>
+                        <p style="font-size: 13px; color: #475569; line-height: 1.6;">
+                            ${currentMarket === "UK" ? "Multi-channel: Supermarkets, specialty retailers, online, direct-to-consumer." :
+                              currentMarket === "US" ? "Selective: Premium retailers, e-commerce, direct partnerships." :
+                              "Focused: Major retailer partnerships, online marketplaces, modern trade."}
+                        </p>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 8px;">⏱️ Timeline</h4>
+                        <p style="font-size: 13px; color: #475569; line-height: 1.6;">
+                            <strong>Year 1:</strong> Pilot launch, build awareness (15-30% target)<br>
+                            <strong>Year 2:</strong> Scale distribution (30-50% target)<br>
+                            <strong>Year 3:</strong> Consolidation (50-65% target)
+                        </p>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 8px;">🎯 Marketing Focus</h4>
+                        <p style="font-size: 13px; color: #475569; line-height: 1.6;">
+                            ${econ.market_maturity === "emerging" ? "Digital-first: TikTok, Instagram, YouTube, influencer partnerships." :
+                              econ.market_maturity === "mature" ? "Omnichannel: Traditional media + digital + experiential." :
+                              "Performance marketing: High ROI channels, data-driven optimization."}
+                        </p>
+                    </div>
+                </div>
+            `;
+            document.getElementById("strategyContent").innerHTML = html;
+        }
+
+        // Load on page load
+        window.addEventListener("load", loadBrandData);
+    </script>
+</body>
+</html>
