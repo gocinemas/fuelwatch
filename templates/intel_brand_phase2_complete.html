@@ -390,7 +390,7 @@
             const brandName = params.get("search") || "Nike";
 
             try {
-                const response = await fetch(`/api/brand?name=${encodeURIComponent(brandName)}&country=${currentMarket}`);
+                const response = await fetch(`/api/brand/phase2?name=${encodeURIComponent(brandName)}&market=${currentMarket}`);
                 brandData = await response.json();
 
                 document.getElementById("brandName").textContent = brandData.brand?.name || brandName;
