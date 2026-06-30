@@ -26978,16 +26978,15 @@ document.addEventListener('keydown', function(e) {
 
       // Monthly/Quarterly view: existing spend endpoint
       url = `/api/v2/spend?token=${encodeURIComponent(token)}`;
-        if (_receiptsViewMode === 'month') {
-          url += `&month=${_receiptsCurrentDate.getMonth()+1}&year=${_receiptsCurrentDate.getFullYear()}`;
-        } else if (_receiptsViewMode === 'quarter') {
-          const q = Math.floor(_receiptsCurrentDate.getMonth() / 3) + 1;
-          url += `&quarter=${q}&year=${_receiptsCurrentDate.getFullYear()}`;
-        }
-        const r = await fetch(url);
-        if (!r.ok) throw new Error("Failed to fetch spend");
-        data = await r.json();
+      if (_receiptsViewMode === 'month') {
+        url += `&month=${_receiptsCurrentDate.getMonth()+1}&year=${_receiptsCurrentDate.getFullYear()}`;
+      } else if (_receiptsViewMode === 'quarter') {
+        const q = Math.floor(_receiptsCurrentDate.getMonth() / 3) + 1;
+        url += `&quarter=${q}&year=${_receiptsCurrentDate.getFullYear()}`;
       }
+      const r = await fetch(url);
+      if (!r.ok) throw new Error("Failed to fetch spend");
+      data = await r.json();
 
       if (data.isTimeline) {
         // Timeline view: show individual receipts
