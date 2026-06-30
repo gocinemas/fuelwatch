@@ -1,0 +1,960 @@
+[
+  {
+    "brand": "coca-cola",
+    "url": "https://intel.humanagency.co/api/campaign/coca-cola",
+    "timestamp": "2026-06-29T19:45:01.867592",
+    "http_status": 200,
+    "response_time": 1.38,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 43082395,
+      "avg_sentiment": 0.77,
+      "avg_engagement_rate": 0.0376,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-14",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "adidas",
+    "url": "https://intel.humanagency.co/api/campaign/adidas",
+    "timestamp": "2026-06-29T19:45:03.355580",
+    "http_status": 200,
+    "response_time": 1.13,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 45720146,
+      "avg_sentiment": 0.72,
+      "avg_engagement_rate": 0.0583,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-16",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "visa",
+    "url": "https://intel.humanagency.co/api/campaign/visa",
+    "timestamp": "2026-06-29T19:45:04.592376",
+    "http_status": 200,
+    "response_time": 1.02,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 40697541,
+      "avg_sentiment": 0.62,
+      "avg_engagement_rate": 0.045,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-18",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "wanda-group",
+    "url": "https://intel.humanagency.co/api/campaign/wanda-group",
+    "timestamp": "2026-06-29T19:45:05.716241",
+    "http_status": 200,
+    "response_time": 1.04,
+    "data_quality": {
+      "has_creatives": false,
+      "creative_count": 0,
+      "has_metrics": false,
+      "metric_count": 0,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": false,
+      "variant_count": 0
+    },
+    "metrics_summary": {},
+    "error": null
+  },
+  {
+    "brand": "qatar-airways",
+    "url": "https://intel.humanagency.co/api/campaign/qatar-airways",
+    "timestamp": "2026-06-29T19:45:06.858746",
+    "http_status": 200,
+    "response_time": 1.34,
+    "data_quality": {
+      "has_creatives": false,
+      "creative_count": 0,
+      "has_metrics": false,
+      "metric_count": 0,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": false,
+      "variant_count": 0
+    },
+    "metrics_summary": {},
+    "error": null
+  },
+  {
+    "brand": "hyundai",
+    "url": "https://intel.humanagency.co/api/campaign/hyundai",
+    "timestamp": "2026-06-29T19:45:08.300608",
+    "http_status": 200,
+    "response_time": 0.97,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 37038302,
+      "avg_sentiment": 0.69,
+      "avg_engagement_rate": 0.0544,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "rexona",
+    "url": "https://intel.humanagency.co/api/campaign/rexona",
+    "timestamp": "2026-06-29T19:45:09.372275",
+    "http_status": 200,
+    "response_time": 1.29,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 3,
+      "has_metrics": true,
+      "metric_count": 10,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": true,
+      "variant_count": 3
+    },
+    "metrics_summary": {
+      "total_impressions": 112653615,
+      "avg_sentiment": 0.71,
+      "avg_engagement_rate": 0.0623,
+      "regions_covered": [
+        "Brazil",
+        "India",
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-11",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "sure",
+    "url": "https://intel.humanagency.co/api/campaign/sure",
+    "timestamp": "2026-06-29T19:45:10.761404",
+    "http_status": 200,
+    "response_time": 1.01,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 35450940,
+      "avg_sentiment": 0.7,
+      "avg_engagement_rate": 0.0415,
+      "regions_covered": [
+        "global",
+        "UK"
+      ],
+      "date_range": {
+        "earliest": "2026-06-13",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "degree",
+    "url": "https://intel.humanagency.co/api/campaign/degree",
+    "timestamp": "2026-06-29T19:45:11.878079",
+    "http_status": 200,
+    "response_time": 1.33,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 40093910,
+      "avg_sentiment": 0.64,
+      "avg_engagement_rate": 0.052,
+      "regions_covered": [
+        "USA",
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-14",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "mcdonalds",
+    "url": "https://intel.humanagency.co/api/campaign/mcdonalds",
+    "timestamp": "2026-06-29T19:45:13.314729",
+    "http_status": 200,
+    "response_time": 0.96,
+    "data_quality": {
+      "has_creatives": false,
+      "creative_count": 0,
+      "has_metrics": false,
+      "metric_count": 0,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": false,
+      "variant_count": 0
+    },
+    "metrics_summary": {},
+    "error": null
+  },
+  {
+    "brand": "pringles",
+    "url": "https://intel.humanagency.co/api/campaign/pringles",
+    "timestamp": "2026-06-29T19:45:14.381551",
+    "http_status": 200,
+    "response_time": 0.99,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 34043198,
+      "avg_sentiment": 0.69,
+      "avg_engagement_rate": 0.0507,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "gatorade",
+    "url": "https://intel.humanagency.co/api/campaign/gatorade",
+    "timestamp": "2026-06-29T19:45:15.477806",
+    "http_status": 200,
+    "response_time": 0.98,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 39469481,
+      "avg_sentiment": 0.66,
+      "avg_engagement_rate": 0.0545,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "vivo",
+    "url": "https://intel.humanagency.co/api/campaign/vivo",
+    "timestamp": "2026-06-29T19:45:16.564850",
+    "http_status": 200,
+    "response_time": 0.97,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 33619680,
+      "avg_sentiment": 0.68,
+      "avg_engagement_rate": 0.0476,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "oneplus",
+    "url": "https://intel.humanagency.co/api/campaign/oneplus",
+    "timestamp": "2026-06-29T19:45:17.638159",
+    "http_status": 200,
+    "response_time": 1.03,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 25507569,
+      "avg_sentiment": 0.76,
+      "avg_engagement_rate": 0.0513,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "budweiser",
+    "url": "https://intel.humanagency.co/api/campaign/budweiser",
+    "timestamp": "2026-06-29T19:45:18.769796",
+    "http_status": 200,
+    "response_time": 0.95,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 40829750,
+      "avg_sentiment": 0.72,
+      "avg_engagement_rate": 0.0538,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "carlsberg",
+    "url": "https://intel.humanagency.co/api/campaign/carlsberg",
+    "timestamp": "2026-06-29T19:45:19.831796",
+    "http_status": 200,
+    "response_time": 0.98,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 36533408,
+      "avg_sentiment": 0.79,
+      "avg_engagement_rate": 0.0487,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "bank-of-america",
+    "url": "https://intel.humanagency.co/api/campaign/bank-of-america",
+    "timestamp": "2026-06-29T19:45:20.915841",
+    "http_status": 200,
+    "response_time": 1.27,
+    "data_quality": {
+      "has_creatives": false,
+      "creative_count": 0,
+      "has_metrics": false,
+      "metric_count": 0,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": false,
+      "variant_count": 0
+    },
+    "metrics_summary": {},
+    "error": null
+  },
+  {
+    "brand": "qnb",
+    "url": "https://intel.humanagency.co/api/campaign/qnb",
+    "timestamp": "2026-06-29T19:45:22.287701",
+    "http_status": 200,
+    "response_time": 0.98,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 32233553,
+      "avg_sentiment": 0.7,
+      "avg_engagement_rate": 0.0441,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "twitter",
+    "url": "https://intel.humanagency.co/api/campaign/twitter",
+    "timestamp": "2026-06-29T19:45:23.372117",
+    "http_status": 200,
+    "response_time": 0.95,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 3,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 43431867,
+      "avg_sentiment": 0.65,
+      "avg_engagement_rate": 0.0529,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "netjets",
+    "url": "https://intel.humanagency.co/api/campaign/netjets",
+    "timestamp": "2026-06-29T19:45:24.433558",
+    "http_status": 200,
+    "response_time": 1.02,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 30911247,
+      "avg_sentiment": 0.8,
+      "avg_engagement_rate": 0.0613,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "spotify",
+    "url": "https://intel.humanagency.co/api/campaign/spotify",
+    "timestamp": "2026-06-29T19:45:25.557126",
+    "http_status": 200,
+    "response_time": 1.12,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 40070947,
+      "avg_sentiment": 0.72,
+      "avg_engagement_rate": 0.0561,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-15",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "ea-sports",
+    "url": "https://intel.humanagency.co/api/campaign/ea-sports",
+    "timestamp": "2026-06-29T19:45:26.781168",
+    "http_status": 200,
+    "response_time": 0.95,
+    "data_quality": {
+      "has_creatives": false,
+      "creative_count": 0,
+      "has_metrics": false,
+      "metric_count": 0,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": false,
+      "variant_count": 0
+    },
+    "metrics_summary": {},
+    "error": null
+  },
+  {
+    "brand": "playstation",
+    "url": "https://intel.humanagency.co/api/campaign/playstation",
+    "timestamp": "2026-06-29T19:45:27.833951",
+    "http_status": 200,
+    "response_time": 0.97,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 41840149,
+      "avg_sentiment": 0.76,
+      "avg_engagement_rate": 0.0604,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "nvidia",
+    "url": "https://intel.humanagency.co/api/campaign/nvidia",
+    "timestamp": "2026-06-29T19:45:28.908358",
+    "http_status": 200,
+    "response_time": 1.06,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 41600036,
+      "avg_sentiment": 0.66,
+      "avg_engagement_rate": 0.0481,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "google",
+    "url": "https://intel.humanagency.co/api/campaign/google",
+    "timestamp": "2026-06-29T19:45:30.071198",
+    "http_status": 200,
+    "response_time": 1.12,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 45106589,
+      "avg_sentiment": 0.72,
+      "avg_engagement_rate": 0.0558,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-19",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "microsoft",
+    "url": "https://intel.humanagency.co/api/campaign/microsoft",
+    "timestamp": "2026-06-29T19:45:31.300929",
+    "http_status": 200,
+    "response_time": 1.15,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 34902518,
+      "avg_sentiment": 0.69,
+      "avg_engagement_rate": 0.0491,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "canon",
+    "url": "https://intel.humanagency.co/api/campaign/canon",
+    "timestamp": "2026-06-29T19:45:32.554945",
+    "http_status": 200,
+    "response_time": 1.0,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 32718701,
+      "avg_sentiment": 0.71,
+      "avg_engagement_rate": 0.0605,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "panasonic",
+    "url": "https://intel.humanagency.co/api/campaign/panasonic",
+    "timestamp": "2026-06-29T19:45:33.654847",
+    "http_status": 200,
+    "response_time": 0.93,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 36301490,
+      "avg_sentiment": 0.68,
+      "avg_engagement_rate": 0.0566,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "kia-motors",
+    "url": "https://intel.humanagency.co/api/campaign/kia-motors",
+    "timestamp": "2026-06-29T19:45:34.696465",
+    "http_status": 200,
+    "response_time": 0.99,
+    "data_quality": {
+      "has_creatives": false,
+      "creative_count": 0,
+      "has_metrics": false,
+      "metric_count": 0,
+      "has_sentiment": true,
+      "sentiment_count": 10,
+      "has_variants": false,
+      "variant_count": 0
+    },
+    "metrics_summary": {},
+    "error": null
+  },
+  {
+    "brand": "jetblue",
+    "url": "https://intel.humanagency.co/api/campaign/jetblue",
+    "timestamp": "2026-06-29T19:45:35.794848",
+    "http_status": 200,
+    "response_time": 0.95,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 40082838,
+      "avg_sentiment": 0.67,
+      "avg_engagement_rate": 0.0434,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "hisense",
+    "url": "https://intel.humanagency.co/api/campaign/hisense",
+    "timestamp": "2026-06-29T19:45:36.846894",
+    "http_status": 200,
+    "response_time": 1.01,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 39739629,
+      "avg_sentiment": 0.75,
+      "avg_engagement_rate": 0.0502,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "alibaba",
+    "url": "https://intel.humanagency.co/api/campaign/alibaba",
+    "timestamp": "2026-06-29T19:45:37.962472",
+    "http_status": 200,
+    "response_time": 0.95,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 42575603,
+      "avg_sentiment": 0.66,
+      "avg_engagement_rate": 0.0494,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "tencent",
+    "url": "https://intel.humanagency.co/api/campaign/tencent",
+    "timestamp": "2026-06-29T19:45:39.020092",
+    "http_status": 200,
+    "response_time": 1.11,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 31414697,
+      "avg_sentiment": 0.64,
+      "avg_engagement_rate": 0.0538,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  },
+  {
+    "brand": "manulife",
+    "url": "https://intel.humanagency.co/api/campaign/manulife",
+    "timestamp": "2026-06-29T19:45:40.239282",
+    "http_status": 200,
+    "response_time": 1.14,
+    "data_quality": {
+      "has_creatives": true,
+      "creative_count": 1,
+      "has_metrics": true,
+      "metric_count": 5,
+      "has_sentiment": true,
+      "sentiment_count": 1,
+      "has_variants": true,
+      "variant_count": 1
+    },
+    "metrics_summary": {
+      "total_impressions": 31412750,
+      "avg_sentiment": 0.67,
+      "avg_engagement_rate": 0.0527,
+      "regions_covered": [
+        "global"
+      ],
+      "date_range": {
+        "earliest": "2026-06-20",
+        "latest": "2026-06-28"
+      }
+    },
+    "error": null
+  }
+]

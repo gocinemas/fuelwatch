@@ -1,0 +1,76 @@
+{
+  "brand": "Coca Cola",
+  "financial_data_example": {
+    "field": "revenue_2025",
+    "value": "$48.2B",
+    "source": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000021344&type=10-K",
+    "source_type": "SEC 10-K Annual Report",
+    "filing_date": "2026-02-15",
+    "fiscal_year": 2025,
+    "confidence_score": 0.95,
+    "extracted_from": "SEC Form 10-K 2025 - Item 1.1 Net Operating Revenues",
+    "notes": "Latest official financial statement filed with SEC"
+  },
+  "sku_data_example": {
+    "field": "coca_cola_classic_usa_price",
+    "value": {
+      "product": "Coca-Cola Classic 330ml can",
+      "market": "USA",
+      "price": "$1.99",
+      "currency": "USD",
+      "ppp_adjusted_to_uk": "£1.59",
+      "ppp_factor": 0.80
+    },
+    "source": "https://www.amazon.com/Coca-Cola-Classic-Cans-12-Pack/dp/B000BQRTSQ",
+    "source_type": "Amazon Retail Pricing",
+    "confidence_score": 0.75,
+    "checked_date": "2026-06-30",
+    "notes": "Actual retail price from major US retailer as of check date"
+  },
+  "competitor_data_example": {
+    "field": "direct_competitors",
+    "value": [
+      {
+        "competitor": "PepsiCo",
+        "market_share_pct": 24.5,
+        "positioning": "Value-oriented, sports drink focus (Gatorade)"
+      },
+      {
+        "competitor": "Red Bull",
+        "market_share_pct": 8.2,
+        "positioning": "Premium energy drink, high-margin niche"
+      },
+      {
+        "competitor": "Monster Energy",
+        "market_share_pct": 7.8,
+        "positioning": "Extreme sports positioning, youth-focused"
+      }
+    ],
+    "source": "https://www.statista.com/outlook/cmo/soft-drinks/worldwide",
+    "source_type": "Statista Market Research Report",
+    "confidence_score": 0.80,
+    "report_date": "2026-Q2",
+    "notes": "Market share data from Statista Q2 2026 beverage report"
+  },
+  "social_media_example": {
+    "platform": "Instagram",
+    "handle": "@cocacola",
+    "followers": 3850000,
+    "source": "https://www.instagram.com/cocacola/",
+    "source_type": "Official Instagram Account",
+    "confidence_score": 0.99,
+    "checked_date": "2026-06-30",
+    "verification_method": "Direct account inspection, follower count from profile",
+    "notes": "Real-time follower count from verified official account"
+  },
+  "source_quality_scale": {
+    "0.95": "SEC Edgar, Companies House official filings",
+    "0.90": "Official investor relations sites, earnings transcripts",
+    "0.85": "Wikipedia, World Bank, IMF official statistics",
+    "0.80": "Statista reports, major market research firms",
+    "0.75": "Official brand websites, major retailers (Amazon, Tesco)",
+    "0.70": "Earnings call transcripts, analyst reports",
+    "0.65": "Press releases, brand news sites",
+    "0.40": "Estimates, Reddit sentiment, AI-generated numbers (AVOID)"
+  }
+}

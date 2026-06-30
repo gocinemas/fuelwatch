@@ -5194,11 +5194,30 @@ const _ts = new Date(d.timestamp);
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const types = Object.keys(hp).filter(t => hp[t].avg).slice(0, 4);
     const colors = ['#dc2626', '#2563eb', '#16a34a', '#f59e0b'];
-    const typeNames = ['Detached', 'Semi-detached', 'Terraced', 'Flat'];
+    const typeNames = {
+      'detached': 'Detached',
+      'semi_detached': 'Semi-detached',
+      'terraced': 'Terraced',
+      'flats_maisonettes': 'Flat'
+    };
 
-    const maxPrice = Math.max(...types.map(t => hp[t].avg || 0));
+    // Extract highest bedroom category from each type for charting
+    const chartData = Object.entries(hp).map(([type, v]) => {
+      const hasBedrooms = v && typeof v === 'object' && !v.avg && Object.keys(v).some(k => k.match(/\d+bed/));
+      let price = 0;
+      if (hasBedrooms) {
+        // Get the highest-priced bedroom as representative
+        const prices = Object.values(v).map(bd => bd.avg || 0).filter(p => p > 0);
+        price = Math.max(...prices);
+      } else {
+        price = v.avg || 0;
+      }
+      return { type, label: typeNames[type] || type.replace(/_/g, ' '), price };
+    }).filter(d => d.price > 0).slice(0, 4);
+
+    const types = chartData.map(d => d.type);
+    const maxPrice = Math.max(...chartData.map(d => d.price));
     if (maxPrice === 0) return;
 
     const padding = 50;
@@ -5220,9 +5239,9 @@ const _ts = new Date(d.timestamp);
     }
 
     // Draw bars for each property type
-    const barWidth = (width - 2*padding) / types.length;
-    types.forEach((type, i) => {
-      const avg = hp[type].avg || 0;
+    const barWidth = (width - 2*padding) / chartData.length;
+    chartData.forEach((data, i) => {
+      const avg = data.price;
       const barHeight = (avg / maxPrice) * (height - 2*padding);
       const x = padding + i * barWidth + barWidth * 0.15;
       const y = height - padding - barHeight;
@@ -5243,8 +5262,7 @@ const _ts = new Date(d.timestamp);
       ctx.fillStyle = '#333';
       ctx.font = 'bold 12px system-ui';
       ctx.textAlign = 'center';
-      const label = typeNames[i] || type.replace('_', ' ');
-      ctx.fillText(label, x + barWidth * 0.35, height - 15);
+      ctx.fillText(data.label, x + barWidth * 0.35, height - 15);
 
       // Price
       ctx.font = 'bold 14px system-ui';
@@ -5291,17 +5309,37 @@ const _ts = new Date(d.timestamp);
       return;
     }
 
-    // Show all property types with current prices
+    // Show all property types with current prices (including bedroom breakdown)
     const priceHtml = Object.entries(hp).map(([type, v]) => {
-      const label = type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      return `<div class="py-3 border-b border-gray-50 last:border-0">
-        <div class="flex justify-between items-start mb-1">
-          <span class="text-gray-700 font-medium text-sm">${label}</span>
-          <span class="font-semibold text-gray-900">£${v.avg.toLocaleString()}</span>
-        </div>
-        <div class="text-xs text-gray-400">${v.count} sale${v.count>1?"s":""} · ${v.bedrooms || 'various'}</div>
-        ${v.note ? `<div class="text-xs text-gray-500 mt-1">${v.note}</div>` : ''}
-      </div>`;
+      const typeLabel = type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+      // Check if v contains bedroom breakdown (nested objects like {2bed: {...}, 3bed: {...}})
+      const hasBedrooms = v && typeof v === 'object' && !v.avg && Object.keys(v).some(k => k.match(/\d+bed/));
+
+      if (hasBedrooms) {
+        // Expand bedroom breakdown
+        return Object.entries(v).map(([bed, bedData]) => {
+          const bedLabel = bed.charAt(0).toUpperCase() + bed.slice(1);
+          return `<div class="py-3 border-b border-gray-50 last:border-0">
+            <div class="flex justify-between items-start mb-1">
+              <span class="text-gray-700 font-medium text-sm">${typeLabel} · ${bedLabel}</span>
+              <span class="font-semibold text-gray-900">£${bedData.avg?.toLocaleString() || 'N/A'}</span>
+            </div>
+            <div class="text-xs text-gray-400">${bedData.count || 0} sale${bedData.count>1?"s":""} · £${bedData.min?.toLocaleString()}-£${bedData.max?.toLocaleString()}</div>
+            ${bedData.note ? `<div class="text-xs text-gray-500 mt-1">${bedData.note}</div>` : ''}
+          </div>`;
+        }).join("");
+      } else {
+        // Single price (legacy format)
+        return `<div class="py-3 border-b border-gray-50 last:border-0">
+          <div class="flex justify-between items-start mb-1">
+            <span class="text-gray-700 font-medium text-sm">${typeLabel}</span>
+            <span class="font-semibold text-gray-900">£${v.avg?.toLocaleString() || 'N/A'}</span>
+          </div>
+          <div class="text-xs text-gray-400">${v.count || 0} sale${v.count>1?"s":""} · ${v.bedrooms || 'various'}</div>
+          ${v.note ? `<div class="text-xs text-gray-500 mt-1">${v.note}</div>` : ''}
+        </div>`;
+      }
     }).join("");
 
     document.getElementById("report-house-list").innerHTML = priceHtml +

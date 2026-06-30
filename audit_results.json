@@ -1,0 +1,682 @@
+[
+  {
+    "brand": "coca-cola",
+    "url": "https://intel.humanagency.co/intel/campaign/coca-cola",
+    "timestamp": "2026-06-29T19:43:32.358286",
+    "http_status": 200,
+    "response_time": 0.37,
+    "page_size": 33677,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": false,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "adidas",
+    "url": "https://intel.humanagency.co/intel/campaign/adidas",
+    "timestamp": "2026-06-29T19:43:32.953244",
+    "http_status": 200,
+    "response_time": 5.0,
+    "page_size": 33674,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "visa",
+    "url": "https://intel.humanagency.co/intel/campaign/visa",
+    "timestamp": "2026-06-29T19:43:38.186877",
+    "http_status": 200,
+    "response_time": 0.2,
+    "page_size": 33672,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "wanda-group",
+    "url": "https://intel.humanagency.co/intel/campaign/wanda-group",
+    "timestamp": "2026-06-29T19:43:38.626527",
+    "http_status": 200,
+    "response_time": 0.24,
+    "page_size": 33679,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": false,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "qatar-airways",
+    "url": "https://intel.humanagency.co/intel/campaign/qatar-airways",
+    "timestamp": "2026-06-29T19:43:39.088084",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33681,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": false,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "hyundai",
+    "url": "https://intel.humanagency.co/intel/campaign/hyundai",
+    "timestamp": "2026-06-29T19:43:39.622590",
+    "http_status": 200,
+    "response_time": 0.28,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "rexona",
+    "url": "https://intel.humanagency.co/intel/campaign/rexona",
+    "timestamp": "2026-06-29T19:43:40.125958",
+    "http_status": 200,
+    "response_time": 0.3,
+    "page_size": 33612,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "sure",
+    "url": "https://intel.humanagency.co/intel/campaign/sure",
+    "timestamp": "2026-06-29T19:43:40.663261",
+    "http_status": 200,
+    "response_time": 0.28,
+    "page_size": 33672,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "degree",
+    "url": "https://intel.humanagency.co/intel/campaign/degree",
+    "timestamp": "2026-06-29T19:43:41.174227",
+    "http_status": 200,
+    "response_time": 10.43,
+    "page_size": 33674,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "mcdonalds",
+    "url": "https://intel.humanagency.co/intel/campaign/mcdonalds",
+    "timestamp": "2026-06-29T19:43:51.831813",
+    "http_status": 200,
+    "response_time": 0.21,
+    "page_size": 33677,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "pringles",
+    "url": "https://intel.humanagency.co/intel/campaign/pringles",
+    "timestamp": "2026-06-29T19:43:52.256797",
+    "http_status": 200,
+    "response_time": 0.24,
+    "page_size": 33676,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "gatorade",
+    "url": "https://intel.humanagency.co/intel/campaign/gatorade",
+    "timestamp": "2026-06-29T19:43:52.740591",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33676,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "vivo",
+    "url": "https://intel.humanagency.co/intel/campaign/vivo",
+    "timestamp": "2026-06-29T19:43:53.246506",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33672,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "oneplus",
+    "url": "https://intel.humanagency.co/intel/campaign/oneplus",
+    "timestamp": "2026-06-29T19:43:53.778318",
+    "http_status": 200,
+    "response_time": 0.3,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "budweiser",
+    "url": "https://intel.humanagency.co/intel/campaign/budweiser",
+    "timestamp": "2026-06-29T19:43:54.305008",
+    "http_status": 200,
+    "response_time": 0.28,
+    "page_size": 33677,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "carlsberg",
+    "url": "https://intel.humanagency.co/intel/campaign/carlsberg",
+    "timestamp": "2026-06-29T19:43:54.825477",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33677,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "bank-of-america",
+    "url": "https://intel.humanagency.co/intel/campaign/bank-of-america",
+    "timestamp": "2026-06-29T19:43:55.337681",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33683,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": false,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "qnb",
+    "url": "https://intel.humanagency.co/intel/campaign/qnb",
+    "timestamp": "2026-06-29T19:43:55.863002",
+    "http_status": 200,
+    "response_time": 0.31,
+    "page_size": 33671,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "twitter",
+    "url": "https://intel.humanagency.co/intel/campaign/twitter",
+    "timestamp": "2026-06-29T19:43:56.413110",
+    "http_status": 200,
+    "response_time": 0.28,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "netjets",
+    "url": "https://intel.humanagency.co/intel/campaign/netjets",
+    "timestamp": "2026-06-29T19:43:56.916031",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "spotify",
+    "url": "https://intel.humanagency.co/intel/campaign/spotify",
+    "timestamp": "2026-06-29T19:43:57.430750",
+    "http_status": 200,
+    "response_time": 0.31,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "ea-sports",
+    "url": "https://intel.humanagency.co/intel/campaign/ea-sports",
+    "timestamp": "2026-06-29T19:43:57.958065",
+    "http_status": 200,
+    "response_time": 0.3,
+    "page_size": 33677,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": false,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "playstation",
+    "url": "https://intel.humanagency.co/intel/campaign/playstation",
+    "timestamp": "2026-06-29T19:43:58.493626",
+    "http_status": 200,
+    "response_time": 0.3,
+    "page_size": 33679,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "nvidia",
+    "url": "https://intel.humanagency.co/intel/campaign/nvidia",
+    "timestamp": "2026-06-29T19:43:59.015890",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33674,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "google",
+    "url": "https://intel.humanagency.co/intel/campaign/google",
+    "timestamp": "2026-06-29T19:43:59.541375",
+    "http_status": 200,
+    "response_time": 0.3,
+    "page_size": 33674,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "microsoft",
+    "url": "https://intel.humanagency.co/intel/campaign/microsoft",
+    "timestamp": "2026-06-29T19:44:00.064262",
+    "http_status": 200,
+    "response_time": 0.34,
+    "page_size": 33677,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "canon",
+    "url": "https://intel.humanagency.co/intel/campaign/canon",
+    "timestamp": "2026-06-29T19:44:00.638946",
+    "http_status": 200,
+    "response_time": 0.26,
+    "page_size": 33673,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "panasonic",
+    "url": "https://intel.humanagency.co/intel/campaign/panasonic",
+    "timestamp": "2026-06-29T19:44:01.131109",
+    "http_status": 200,
+    "response_time": 0.28,
+    "page_size": 33677,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "kia-motors",
+    "url": "https://intel.humanagency.co/intel/campaign/kia-motors",
+    "timestamp": "2026-06-29T19:44:01.638027",
+    "http_status": 200,
+    "response_time": 0.3,
+    "page_size": 33678,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": false,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "jetblue",
+    "url": "https://intel.humanagency.co/intel/campaign/jetblue",
+    "timestamp": "2026-06-29T19:44:02.160296",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "hisense",
+    "url": "https://intel.humanagency.co/intel/campaign/hisense",
+    "timestamp": "2026-06-29T19:44:02.675953",
+    "http_status": 200,
+    "response_time": 0.31,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "alibaba",
+    "url": "https://intel.humanagency.co/intel/campaign/alibaba",
+    "timestamp": "2026-06-29T19:44:03.221557",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "tencent",
+    "url": "https://intel.humanagency.co/intel/campaign/tencent",
+    "timestamp": "2026-06-29T19:44:03.744848",
+    "http_status": 200,
+    "response_time": 0.29,
+    "page_size": 33675,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  },
+  {
+    "brand": "manulife",
+    "url": "https://intel.humanagency.co/intel/campaign/manulife",
+    "timestamp": "2026-06-29T19:44:04.269987",
+    "http_status": 200,
+    "response_time": 0.27,
+    "page_size": 33676,
+    "checks": {
+      "page_loads": true,
+      "has_brand_name": true,
+      "has_sentiment_chart": true,
+      "has_health_score": true,
+      "has_tweets": true,
+      "has_regional_perf": true,
+      "has_placeholder_only": true,
+      "has_back_link": true,
+      "responsive_meta": true,
+      "has_errors": true
+    }
+  }
+]

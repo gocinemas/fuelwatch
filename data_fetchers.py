@@ -470,7 +470,12 @@ class DataFetchers:
         try:
             from market_verified_prices import MARKET_VERIFIED
 
-            pc_prefix = postcode.replace(" ", "").upper()[:3]
+            pc_clean = postcode.replace(" ", "").upper()
+            # Try outward code first (4 chars), then 3-char prefix
+            pc_prefix = pc_clean[:4] if len(pc_clean) >= 4 else pc_clean[:3]
+            if pc_prefix not in MARKET_VERIFIED and len(pc_clean) >= 3:
+                pc_prefix = pc_clean[:3]
+
             verified = {}
 
             print(f"[HP-DEBUG] Checking market_verified for {pc_prefix}")
@@ -505,6 +510,9 @@ class DataFetchers:
                 return result
             else:
                 print(f"[HP-DEBUG] No market-verified data found for {pc_prefix}")
+
+        except Exception as e:
+            print(f"[HP-DEBUG] Market-verified lookup error: {e}")
 
         # Priority 2: Fall back to database aggregate data with bedroom estimates
         try:
