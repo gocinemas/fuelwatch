@@ -385,12 +385,17 @@
         let marketEconomics = {};
         let marketScores = {};
 
-        async function loadBrandData() {
+        async function loadBrandData(marketOverride = null) {
             const params = new URLSearchParams(window.location.search);
             const brandName = params.get("search") || "Nike";
+            const market = marketOverride || currentMarket;
+
+            // Map market codes to database format (UK, USA, India)
+            const marketMap = { "UK": "UK", "US": "USA", "IN": "India" };
+            const dbMarket = marketMap[market] || market;
 
             try {
-                const response = await fetch(`/api/brand/phase2?name=${encodeURIComponent(brandName)}&market=${currentMarket}`);
+                const response = await fetch(`/api/brand/phase2?name=${encodeURIComponent(brandName)}&market=${dbMarket}`);
                 brandData = await response.json();
 
                 document.getElementById("brandName").textContent = brandData.brand?.name || brandName;
@@ -410,8 +415,10 @@
             document.querySelectorAll(".market-btn").forEach(btn => btn.classList.remove("active"));
             document.querySelector(`[data-market="${market}"]`).classList.add("active");
 
-            // Reload with new market
-            loadBrandData();
+            // Reload with new market (map to database format)
+            const marketMap = { "UK": "UK", "US": "USA", "IN": "India" };
+            const dbMarket = marketMap[market] || market;
+            loadBrandData(dbMarket);
         }
 
         function renderPhase2Data() {
