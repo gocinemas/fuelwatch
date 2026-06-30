@@ -1416,10 +1416,31 @@
               </div>
 
               <!-- Historical Trends Tab -->
-              <div id="house-history" style="display:none">
-                <p style="font-size:13px;color:var(--muted);margin-bottom:12px">8-year price trends by property type</p>
-                <canvas id="house-price-history-chart" style="max-height:220px;margin-bottom:12px"></canvas>
-                <p style="font-size:11px;color:var(--muted)">Data: HM Land Registry 2018-2026</p>
+              <div id="house-history" style="display:none;background:linear-gradient(135deg,#f8f9fa 0%,#ffffff 100%);border-radius:12px;padding:16px;border:1px solid #e5e7eb">
+                <div style="margin-bottom:16px">
+                  <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">📈 Price Trends (2018-2026)</div>
+                  <p style="font-size:12px;color:var(--muted)">How property prices have evolved by type</p>
+                </div>
+                <canvas id="house-price-history-chart" style="width:100%;height:280px;margin-bottom:16px;display:block;background:white;border-radius:8px;border:1px solid #efefef;padding:8px;box-sizing:border-box"></canvas>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px">
+                  <div style="padding:10px;background:white;border-radius:8px;border-left:4px solid #dc2626;text-align:center">
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Detached</div>
+                    <div id="trend-detached" style="font-size:13px;font-weight:700;color:#dc2626">—</div>
+                  </div>
+                  <div style="padding:10px;background:white;border-radius:8px;border-left:4px solid #2563eb;text-align:center">
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Semi-detached</div>
+                    <div id="trend-semi" style="font-size:13px;font-weight:700;color:#2563eb">—</div>
+                  </div>
+                  <div style="padding:10px;background:white;border-radius:8px;border-left:4px solid #16a34a;text-align:center">
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Terraced</div>
+                    <div id="trend-terraced" style="font-size:13px;font-weight:700;color:#16a34a">—</div>
+                  </div>
+                  <div style="padding:10px;background:white;border-radius:8px;border-left:4px solid #f59e0b;text-align:center">
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Flat</div>
+                    <div id="trend-flat" style="font-size:13px;font-weight:700;color:#f59e0b">—</div>
+                  </div>
+                </div>
+                <p style="font-size:10px;color:var(--muted);text-align:center;margin:0">Source: HM Land Registry, Rightmove, Zoopla</p>
               </div>
             </div>
             <div id="rp-panel-schools" style="display:none">
@@ -4882,7 +4903,11 @@ const _ts = new Date(d.timestamp);
     // Show results container with skeleton loaders in each panel
     document.getElementById("report-results").classList.remove("hidden");
     const _rSaveHomeRow = document.getElementById("report-save-home-row");
-    _rSaveHomeRow.style.display = MiruLocation.getHome() ? "none" : "block";
+    const homePC = MiruLocation.getHome();
+    const searchPC = postcode.replace(/\s+/g, "").toUpperCase();
+    const homeFormattedPC = homePC ? homePC.replace(/\s+/g, "").toUpperCase() : null;
+    // Show button only if: user has no home postcode AND current search is not already home
+    _rSaveHomeRow.style.display = (!homePC || searchPC === homeFormattedPC) ? "none" : "block";
     const pcFmt = postcode.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/i, "$1 $2").toUpperCase();
     const _rLabel = document.getElementById("report-share-label");
     _rLabel.textContent = "Research an Area · " + pcFmt;
@@ -5163,39 +5188,67 @@ const _ts = new Date(d.timestamp);
     const ctx = canvas.getContext('2d');
     const types = Object.keys(hp).filter(t => hp[t].avg).slice(0, 4);
     const colors = ['#dc2626', '#2563eb', '#16a34a', '#f59e0b'];
+    const typeNames = ['Detached', 'Semi-detached', 'Terraced', 'Flat'];
 
     const maxPrice = Math.max(...types.map(t => hp[t].avg || 0));
     if (maxPrice === 0) return;
 
-    const padding = 30;
+    const padding = 50;
     const width = canvas.offsetWidth;
-    const height = 150;
+    const height = canvas.offsetHeight;
 
     canvas.width = width;
     canvas.height = height;
+
+    // Draw subtle grid lines
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 5; i++) {
+      const y = padding + (height - 2*padding) * (i / 5);
+      ctx.beginPath();
+      ctx.moveTo(padding, y);
+      ctx.lineTo(width - padding, y);
+      ctx.stroke();
+    }
 
     // Draw bars for each property type
     const barWidth = (width - 2*padding) / types.length;
     types.forEach((type, i) => {
       const avg = hp[type].avg || 0;
       const barHeight = (avg / maxPrice) * (height - 2*padding);
-      const x = padding + i * barWidth + barWidth * 0.1;
+      const x = padding + i * barWidth + barWidth * 0.15;
       const y = height - padding - barHeight;
 
-      // Bar
-      ctx.fillStyle = colors[i];
-      ctx.fillRect(x, y, barWidth * 0.8, barHeight);
+      // Bar with gradient
+      const gradient = ctx.createLinearGradient(x, y, x, height - padding);
+      gradient.addColorStop(0, colors[i]);
+      gradient.addColorStop(1, colors[i] + '60');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, y, barWidth * 0.7, barHeight);
+
+      // Border
+      ctx.strokeStyle = colors[i];
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, barWidth * 0.7, barHeight);
 
       // Label
-      ctx.fillStyle = 'var(--text)';
-      ctx.font = '11px system-ui';
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 12px system-ui';
       ctx.textAlign = 'center';
-      const label = type.replace('_', ' ').substring(0,10);
-      ctx.fillText(label, x + barWidth * 0.4, height - 10);
+      const label = typeNames[i] || type.replace('_', ' ');
+      ctx.fillText(label, x + barWidth * 0.35, height - 15);
 
       // Price
-      ctx.font = 'bold 12px system-ui';
-      ctx.fillText('£' + (avg/1000).toFixed(0) + 'k', x + barWidth * 0.4, y - 5);
+      ctx.font = 'bold 14px system-ui';
+      ctx.fillStyle = colors[i];
+      ctx.fillText('£' + (avg/1000).toFixed(0) + 'k', x + barWidth * 0.35, y - 10);
+
+      // Update summary boxes
+      const summaryId = ['trend-detached', 'trend-semi', 'trend-terraced', 'trend-flat'][i];
+      const summaryEl = document.getElementById(summaryId);
+      if (summaryEl) {
+        summaryEl.textContent = '£' + (avg/1000).toFixed(0) + 'k';
+      }
     });
   }
 
