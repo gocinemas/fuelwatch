@@ -16760,9 +16760,8 @@ _bkBadge();
   <div style="padding:0 16px;max-width:500px;margin:0 auto">
     <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">💰 <span id="receipts-period">JUNE</span></div>
 
-    <!-- View tabs -->
+    <!-- View tabs (Timeline removed - use Monthly by default) -->
     <div style="display:flex;gap:6px;margin-bottom:12px">
-      <button onclick="_receiptsSetView('timeline')" id="receipts-tab-timeline" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Timeline</button>
       <button onclick="_receiptsSetView('month')" id="receipts-tab-month" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Monthly</button>
       <button onclick="_receiptsSetView('quarter')" id="receipts-tab-quarter" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Quarterly</button>
     </div>
@@ -26927,7 +26926,7 @@ document.addEventListener('keydown', function(e) {
 
   // Receipt Analysis state
   let _receiptsCurrentDate = new Date();
-  let _receiptsViewMode = 'timeline'; // Default to timeline view
+  let _receiptsViewMode = 'month'; // Default to monthly view (timeline removed)
 
   window._showItemPriceHistory = async function(itemName) {
     const token = _miruPhone() || localStorage.getItem("miru_saves_token");
@@ -26977,17 +26976,8 @@ document.addEventListener('keydown', function(e) {
     try {
       let url, data;
 
-      if (_receiptsViewMode === 'timeline') {
-        // Timeline view: fetch individual receipts
-        url = `/api/v2/receipts-timeline?token=${encodeURIComponent(token)}`;
-        url += `&days=90`; // Last 90 days
-        const r = await fetch(url);
-        if (!r.ok) throw new Error("Failed to fetch receipts");
-        data = await r.json();
-        data.isTimeline = true;
-      } else {
-        // Category view: existing spend endpoint
-        url = `/api/v2/spend?token=${encodeURIComponent(token)}`;
+      // Monthly/Quarterly view: existing spend endpoint
+      url = `/api/v2/spend?token=${encodeURIComponent(token)}`;
         if (_receiptsViewMode === 'month') {
           url += `&month=${_receiptsCurrentDate.getMonth()+1}&year=${_receiptsCurrentDate.getFullYear()}`;
         } else if (_receiptsViewMode === 'quarter') {
@@ -27101,7 +27091,6 @@ document.addEventListener('keydown', function(e) {
     const curYear = _receiptsCurrentDate.getFullYear();
 
     // Update tab highlights
-    document.getElementById('receipts-tab-timeline').style.background = _receiptsViewMode === 'timeline' ? '#f0f0f0' : 'white';
     document.getElementById('receipts-tab-month').style.background = _receiptsViewMode === 'month' ? '#f0f0f0' : 'white';
     document.getElementById('receipts-tab-quarter').style.background = _receiptsViewMode === 'quarter' ? '#f0f0f0' : 'white';
 
