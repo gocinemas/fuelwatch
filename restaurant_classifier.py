@@ -44,6 +44,20 @@ RESTAURANT_TYPES = {
     # Grocery & Supermarkets
     "sadda superstore": "grocery",
     "sadda": "grocery",
+    "tesco": "grocery",
+    "sainsbury": "grocery",
+    "sainsburys": "grocery",
+    "waitrose": "grocery",
+    "asda": "grocery",
+    "morrisons": "grocery",
+    "ocado": "grocery",
+    "aldi": "grocery",
+    "lidl": "grocery",
+    "iceland": "grocery",
+    "marks & spencer": "grocery",
+    "m&s": "grocery",
+    "co-op": "grocery",
+    "waitrose food": "grocery",
 }
 
 def classify_restaurant(name: str) -> str:
