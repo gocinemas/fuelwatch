@@ -16882,11 +16882,14 @@ _bkBadge();
   <div style="padding:0 16px;max-width:500px;margin:0 auto">
     <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">💰 <span id="receipts-period">JUNE</span></div>
 
-    <!-- View tabs (Timeline removed - use Monthly by default) -->
-    <div style="display:flex;gap:6px;margin-bottom:12px">
+    <!-- View tabs + PDF upload -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">
       <button onclick="_receiptsSetView('month')" id="receipts-tab-month" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Monthly</button>
       <button onclick="_receiptsSetView('quarter')" id="receipts-tab-quarter" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Quarterly</button>
+      <div style="flex:1"></div>
+      <button onclick="_receiptsUploadPdfTap()" title="Upload receipt or bank statement PDF" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">📄 Upload PDF</button>
     </div>
+    <input id="receipts-pdf-input" type="file" accept=".pdf,application/pdf" style="display:none" onchange="_receiptsUploadPdf(this)">
 
     <!-- Navigation -->
     <div id="receipts-month-nav" style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
@@ -19571,6 +19574,109 @@ let _savesAll = [];
     }
   }
   window._briefAsk = _briefAsk;
+
+  // ── Receipt PDF Upload ────────────────────────────────────────────────────
+  function _receiptsUploadPdfTap() {
+    const inp = document.getElementById("receipts-pdf-input");
+    if (inp) { inp.value = ""; inp.click(); }
+  }
+
+  async function _receiptsUploadPdf(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // Show loading overlay
+    const overlay = document.createElement("div");
+    overlay.id = "receipts-pdf-overlay";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px";
+    overlay.innerHTML = `
+      <div style="width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite"></div>
+      <div style="color:#fff;font-size:15px;font-weight:700">Processing PDF…</div>`;
+    document.body.appendChild(overlay);
+
+    try {
+      const token = localStorage.getItem("miru_phone") || "";
+      const fd = new FormData();
+      fd.append("pdf", file);
+      fd.append("token", token);
+
+      const r = await fetch("/api/v2/spend/upload-pdf", { method: "POST", body: fd });
+      const d = await r.json();
+      overlay.remove();
+
+      if (d.error) {
+        alert("Could not process PDF: " + d.error);
+        return;
+      }
+
+      if (d.success && d.transactions && d.transactions.length > 0) {
+        _receiptsShowPdfPreview(d.transactions, file.name);
+      } else {
+        alert("No transactions found in PDF. Try a bank statement or receipt.");
+      }
+    } catch (e) {
+      overlay.remove();
+      console.error("[receipts-pdf] Error:", e);
+      alert("Upload failed — please try again.");
+    }
+  }
+
+  function _receiptsShowPdfPreview(transactions, filename) {
+    const sheet = document.createElement("div");
+    sheet.dataset.pdfSheet = "1";
+    sheet.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
+
+    const rows = transactions.map((t, i) => `
+      <div style="padding:10px;border-bottom:1px solid var(--border);background:var(--surface)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <strong style="font-size:13px;color:var(--text)">${t.merchant || "Unknown"}</strong>
+          <strong style="font-size:13px;color:#065f46">£${(t.amount || 0).toFixed(2)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span>${t.date || "—"}</span>
+          <span>${t.category || "Other"}</span>
+        </div>
+      </div>`).join("");
+
+    sheet.innerHTML = `
+      <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:20px 18px 36px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto">
+        <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px">📄 ${filename.replace(/\.pdf$/i,"")}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">${transactions.length} transaction${transactions.length===1?'':'s'} found</div>
+        <div style="margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          ${rows}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="receipts-pdf-save-btn" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer"
+            onclick="_receiptsConfirmPdfSave(this)">Save ${transactions.length} Transaction${transactions.length===1?'':'s'}</button>
+          <button style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer"
+            onclick="this.closest('[data-pdf-sheet]').remove()">Cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(sheet);
+    sheet.addEventListener("click", e => { if (e.target === sheet) sheet.remove(); });
+
+    // Store transactions for saving
+    sheet._transactions = transactions;
+  }
+
+  async function _receiptsConfirmPdfSave(btn) {
+    const sheet = btn.closest('[data-pdf-sheet]');
+    const transactions = sheet._transactions;
+
+    btn.textContent = "Saving…";
+    btn.disabled = true;
+
+    try {
+      // Transactions already saved to Supabase by the API
+      // Just close the modal and refresh the receipts view
+      sheet.remove();
+      _receiptsAnalysisLoad('month');  // Refresh the receipts display
+      alert("✅ " + transactions.length + " transaction" + (transactions.length===1?"":"s") + " saved!");
+    } catch (e) {
+      console.error("[receipts-save] Error:", e);
+      btn.textContent = "Error saving";
+    }
+  }
 
   function _briefUpdateNarrative(d, mode) {
     var briefText = document.getElementById("brief-text");

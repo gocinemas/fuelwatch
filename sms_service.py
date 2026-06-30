@@ -9843,38 +9843,25 @@ def api_v2_spend_upload_pdf():
         if not result["success"]:
             return jsonify(result), 400
 
-        # Store extracted transactions in spend data
+        # Store extracted transactions in receipts table
         if result["transactions"]:
             try:
                 sb = lib._sb()
                 phone_clean = from_number.replace("whatsapp:", "").strip()
 
-                # Get existing spend data
-                rows = sb.table("ma_details").select("id,data") \
-                    .eq("device_id", phone_clean).eq("type", "spend_transactions").limit(1).execute().data or []
-
-                existing = (rows[0]["data"] if rows else []) or []
-
-                # Add new transactions
+                # Add each transaction as a receipt
                 for txn in result["transactions"]:
-                    existing.append({
-                        **txn,
-                        "source": "PDF Upload",
-                        "added_at": __import__("datetime").datetime.now().isoformat(),
-                    })
-
-                # Save back
-                if rows:
-                    sb.table("ma_details").update({"data": existing}).eq("id", rows[0]["id"]).execute()
-                else:
-                    sb.table("ma_details").insert({
-                        "device_id": phone_clean,
-                        "type": "spend_transactions",
-                        "label": "spend_transactions",
-                        "data": existing,
+                    sb.table("receipts").insert({
+                        "phone": phone_clean,
+                        "merchant": txn.get("merchant", "Unknown"),
+                        "total": txn.get("amount", 0),
+                        "shop_date": txn.get("date"),
+                        "items": __import__("json").dumps([{"name": txn.get("category", "Other"), "qty": 1, "price": txn.get("amount", 0)}]),
+                        "raw_summary": f"PDF extracted: {txn.get('category', 'Other')}",
+                        "restaurant_type": classify_restaurant(txn.get("merchant", "")),
                     }).execute()
 
-                app.logger.info(f"[spend] Extracted {result['count']} transactions from PDF")
+                app.logger.info(f"[spend] Stored {result['count']} transactions from PDF to receipts table")
             except Exception as e:
                 app.logger.warning(f"[spend] Failed to store transactions: {e}")
 
