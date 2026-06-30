@@ -4179,6 +4179,48 @@ def api_brand_phase2():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/research-request", methods=["POST"])
+def submit_research_request():
+    """Collect market research requests for Phase 2 freemium upgrade"""
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required = ["brand", "target_country", "contact_name", "contact_email"]
+        if not all(data.get(f) for f in required):
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+        # Store in Supabase for tracking
+        sb = lib._sb()
+        try:
+            sb.table("research_requests").insert({
+                "brand_name": data.get("brand"),
+                "target_country": data.get("target_country"),
+                "contact_name": data.get("contact_name"),
+                "contact_email": data.get("contact_email"),
+                "contact_role": data.get("contact_role", ""),
+                "timeline": data.get("timeline", "Standard (48h)"),
+                "notes": data.get("notes", ""),
+                "submitted_at": data.get("submitted_at"),
+                "source": data.get("source", "unknown"),
+                "status": "pending"
+            }).execute()
+        except Exception as db_err:
+            # Table might not exist yet - continue anyway
+            app.logger.warning(f"[research-request] DB error (table may not exist): {db_err}")
+
+        app.logger.info(f"[research-request] New request: {data.get('brand')} → {data.get('target_country')} ({data.get('contact_email')})")
+
+        return jsonify({
+            "success": True,
+            "message": f"Request received for {data.get('brand')} in {data.get('target_country')}. We'll contact you at {data.get('contact_email')} within 2 hours."
+        })
+
+    except Exception as e:
+        app.logger.error(f"[research-request] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/company/intelligence", methods=["GET"])
 def api_company_intelligence():
     """Fetch real company intelligence using yfinance + AI strategy.

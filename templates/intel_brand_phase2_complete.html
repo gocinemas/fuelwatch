@@ -377,6 +377,192 @@
                 <!-- Populated by JS -->
             </div>
         </div>
+
+        <!-- CTA: RESEARCH NEW MARKET (Freemium Upgrade) -->
+        <div class="card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border: 2px solid #3b82f6;">
+            <div class="card-title" style="color: #1e40af;">
+                🌍 Ready to expand to a new country?
+            </div>
+            <p style="color: #1e40af; font-size: 14px; margin-bottom: 20px; line-height: 1.6;">
+                You've seen how <span id="ctaBrandName">this brand</span> performs in UK, USA, and India.
+                Want deep market research for <strong>any other country?</strong>
+                <br><br>
+                Our research team analyzes: GDP, PPP, market size, competitors, distribution, pricing strategy, and entry risk.
+                <br><br>
+                <strong>Starting at $99 per market</strong> | 48-hour turnaround
+            </p>
+            <button onclick="openResearchModal()" style="
+                background: #3b82f6;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-weight: 700;
+                font-size: 14px;
+                cursor: pointer;
+                transition: background 0.2s;
+            " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                Request Market Research →
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: Research Request Form -->
+    <div id="researchModal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+    ">
+        <div style="
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        ">
+            <h2 style="margin-bottom: 24px; font-size: 20px; font-weight: 800;">
+                📍 Research New Market
+            </h2>
+
+            <form id="researchForm" onsubmit="submitResearchRequest(event)">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1e293b;">
+                        Brand Name *
+                    </label>
+                    <input type="text" id="formBrandName" readonly style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        background: #f8fafc;
+                    ">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1e293b;">
+                        Target Country *
+                    </label>
+                    <input type="text" id="targetCountry" placeholder="e.g., Brazil, Germany, Mexico" required style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 6px;
+                        font-size: 14px;
+                    ">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1e293b;">
+                        Your Name *
+                    </label>
+                    <input type="text" id="contactName" placeholder="Full name" required style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 6px;
+                        font-size: 14px;
+                    ">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1e293b;">
+                        Email *
+                    </label>
+                    <input type="email" id="contactEmail" placeholder="you@company.com" required style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 6px;
+                        font-size: 14px;
+                    ">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1e293b;">
+                        Your Role
+                    </label>
+                    <input type="text" id="contactRole" placeholder="e.g., Brand Manager, Marketing Director" style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        font-size: 14px;
+                    ">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1e293b;">
+                        Timeline
+                    </label>
+                    <select id="timeline" style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        font-size: 14px;
+                    ">
+                        <option>Urgent (within 24h)</option>
+                        <option selected>Standard (48h)</option>
+                        <option>Flexible (1+ week)</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1e293b;">
+                        Additional Notes
+                    </label>
+                    <textarea id="notes" placeholder="Any specific questions or concerns?" style="
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        min-height: 80px;
+                        font-family: inherit;
+                    "></textarea>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" style="
+                        flex: 1;
+                        background: #3b82f6;
+                        color: white;
+                        border: none;
+                        padding: 12px;
+                        border-radius: 8px;
+                        font-weight: 700;
+                        cursor: pointer;
+                    ">
+                        Request Research ($99+)
+                    </button>
+                    <button type="button" onclick="closeResearchModal()" style="
+                        flex: 1;
+                        background: #e2e8f0;
+                        color: #1e293b;
+                        border: none;
+                        padding: 12px;
+                        border-radius: 8px;
+                        font-weight: 700;
+                        cursor: pointer;
+                    ">
+                        Cancel
+                    </button>
+                </div>
+
+                <p style="font-size: 12px; color: #64748b; margin-top: 12px; text-align: center;">
+                    We'll reach out within 2 hours to confirm and discuss pricing.
+                </p>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -608,7 +794,65 @@
         }
 
         // Load on page load
-        window.addEventListener("load", loadBrandData);
+        window.addEventListener("load", () => {
+            loadBrandData();
+            // Pre-fill brand name in CTA
+            setTimeout(() => {
+                const brandName = brandData.brand?.name || "this brand";
+                document.getElementById("ctaBrandName").textContent = brandName;
+                document.getElementById("formBrandName").value = brandName;
+            }, 500);
+        });
+
+        function openResearchModal() {
+            document.getElementById("researchModal").style.display = "flex";
+            // Pre-fill brand name
+            const brandName = brandData.brand?.name || "";
+            document.getElementById("formBrandName").value = brandName;
+        }
+
+        function closeResearchModal() {
+            document.getElementById("researchModal").style.display = "none";
+        }
+
+        function submitResearchRequest(event) {
+            event.preventDefault();
+
+            const data = {
+                brand: document.getElementById("formBrandName").value,
+                target_country: document.getElementById("targetCountry").value,
+                contact_name: document.getElementById("contactName").value,
+                contact_email: document.getElementById("contactEmail").value,
+                contact_role: document.getElementById("contactRole").value,
+                timeline: document.getElementById("timeline").value,
+                notes: document.getElementById("notes").value,
+                submitted_at: new Date().toISOString(),
+                source: "intel_phase2"
+            };
+
+            // Send to backend
+            fetch("/api/research-request", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(res => {
+                if (res.success) {
+                    alert("✅ Request received! We'll be in touch within 2 hours.\n\nCheck your email for confirmation.");
+                    closeResearchModal();
+                    document.getElementById("researchForm").reset();
+                } else {
+                    alert("Error: " + (res.error || "Something went wrong"));
+                }
+            }).catch(e => {
+                console.error("Request failed:", e);
+                alert("❌ Error sending request. Please email us directly.");
+            });
+        }
+
+        // Close modal when clicking outside
+        document.getElementById("researchModal").addEventListener("click", (e) => {
+            if (e.target.id === "researchModal") closeResearchModal();
+        });
     </script>
 </body>
 </html>
