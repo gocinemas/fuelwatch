@@ -286,15 +286,25 @@ def main():
     # Export research logs
     populator.export_research_logs()
 
-    # FINAL STEP: Auto-update brand count references
+    # FINAL STEP 1: Auto-update brand count references
     print("\n" + "="*70)
-    print("[final_step] Updating brand count references everywhere...")
+    print("[final_step_1/2] Updating brand count references everywhere...")
     print("="*70)
     try:
         from update_brand_counts import main as update_counts
         update_counts()
     except Exception as e:
         print(f"⚠️  Could not auto-update counts: {e}")
+
+    # FINAL STEP 2: Fetch social media data for new brands
+    print("\n" + "="*70)
+    print("[final_step_2/2] Fetching social media data for new brands...")
+    print("="*70)
+    try:
+        from fetch_brand_social_media import fetch_all_missing_social_data
+        fetch_all_missing_social_data(batch_size=100)
+    except Exception as e:
+        print(f"⚠️  Could not fetch social media data: {e}")
 
 
 if __name__ == "__main__":
