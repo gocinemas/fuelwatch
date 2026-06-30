@@ -9795,6 +9795,227 @@ def api_v2_spend_upload_pdf():
         return jsonify({"error": str(e)}), 500
 
 
+# ────────────────────────────────────────────────────────────────────────
+# FIELD WORKER EXPENSE INTELLIGENCE (work_expenses)
+# ────────────────────────────────────────────────────────────────────────
+
+EXPENSE_GROQ_PROMPT = """You are a receipt OCR extraction assistant specialized for field workers' business expenses.
+
+Extract structured data from this receipt photo or invoice text.
+
+CRITICAL: Extract ONLY if this is a business receipt (not personal bills, insurance, utilities, etc.)
+
+RECEIPT DATA:
+{receipt_text}
+
+Extract these fields:
+1. amount: Total amount (number only, e.g., 45.00)
+2. currency: GBP, USD, EUR, etc.
+3. merchant: Business name (e.g., "Screwfix", "Shell", "Costa")
+4. date: Transaction date (YYYY-MM-DD format). If not visible, use "unknown"
+5. category: ONE of: Supplies, Fuel, Meals, Equipment, Transport, Accommodation, Communications, Subscriptions, Training, Other
+6. description: What was purchased?
+7. vat_amount: VAT charged (number only)
+8. business_use: true/false (is this business only or personal?)
+
+RETURN: Valid JSON only (no markdown)
+
+{
+  "amount": 45.00,
+  "currency": "GBP",
+  "merchant": "Screwfix",
+  "date": "2026-06-28",
+  "category": "Supplies",
+  "description": "Plasterboard + screws",
+  "vat_amount": 7.50,
+  "business_use": true,
+  "extraction_confidence": 0.95
+}
+
+IF EXTRACTION FAILS:
+{
+  "error": "reason",
+  "extraction_confidence": 0.0
+}"""
+
+def _extract_expense_with_groq(receipt_text: str) -> dict:
+    """Extract expense data from receipt text using Groq."""
+    try:
+        from groq import Groq
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+        prompt = EXPENSE_GROQ_PROMPT.format(receipt_text=receipt_text)
+        response = client.chat.completions.create(
+            model="mixtral-8x7b-32768",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_tokens=300
+        )
+
+        import json
+        response_text = response.choices[0].message.content.strip()
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+            response_text = response_text.rstrip("```").strip()
+
+        return json.loads(response_text)
+    except Exception as e:
+        print(f"[expense] Groq extraction error: {e}")
+        return {"error": str(e), "extraction_confidence": 0.0}
+
+@app.route("/api/v2/expenses/extract", methods=["POST"])
+def api_v2_expenses_extract():
+    """Extract receipt data using Groq OCR."""
+    try:
+        token = request.form.get("token", "") or request.json.get("token", "")
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        receipt_text = request.form.get("receipt_text", "") or request.json.get("receipt_text", "")
+        if not receipt_text:
+            return jsonify({"error": "receipt_text required"}), 400
+
+        # Extract with Groq
+        extracted = _extract_expense_with_groq(receipt_text)
+
+        if extracted.get("error"):
+            return jsonify(extracted), 400
+
+        # Store in Supabase
+        try:
+            lib._sb().table("work_expenses").insert({
+                "from_number": from_number,
+                "amount": extracted.get("amount", 0),
+                "currency": extracted.get("currency", "GBP"),
+                "merchant": extracted.get("merchant", "Unknown"),
+                "receipt_date": extracted.get("date", datetime.now().date().isoformat()),
+                "category": extracted.get("category", "Other"),
+                "description": extracted.get("description", ""),
+                "vat_amount": extracted.get("vat_amount", 0),
+                "business_use": extracted.get("business_use", True),
+                "extraction_confidence": extracted.get("extraction_confidence", 0),
+                "expense_status": "pending"
+            }).execute()
+            print(f"[expense] Stored: {from_number} - £{extracted.get('amount', 0):.2f} from {extracted.get('merchant')}")
+        except Exception as db_err:
+            print(f"[expense] DB error (not critical): {db_err}")
+
+        return jsonify({
+            "success": True,
+            "extracted": extracted,
+            "message": f"✅ Expense saved: £{extracted.get('amount', 0):.2f} from {extracted.get('merchant')} ({extracted.get('category')})"
+        })
+
+    except Exception as e:
+        print(f"[expense] Extract error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/v2/expenses/summary", methods=["GET"])
+def api_v2_expenses_summary():
+    """Get monthly expense breakdown by category."""
+    try:
+        token = request.args.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        # Get month from params
+        month = request.args.get("month", datetime.now().month, type=int)
+        year = request.args.get("year", datetime.now().year, type=int)
+
+        start_date = f"{year:04d}-{month:02d}-01"
+        if month == 12:
+            end_date = f"{year+1:04d}-01-01"
+        else:
+            end_date = f"{year:04d}-{month+1:02d}-01"
+
+        # Query expenses
+        rows = lib._sb().table("work_expenses").select(
+            "amount,merchant,category,vat_amount,receipt_date,expense_status"
+        ).eq("from_number", from_number) \
+         .gte("receipt_date", start_date) \
+         .lt("receipt_date", end_date) \
+         .execute().data or []
+
+        # Aggregate by category
+        breakdown = {}
+        total_amount = 0
+        total_vat = 0
+        merchants = {}
+
+        for row in rows:
+            cat = row.get("category", "Other")
+            amt = float(row.get("amount", 0))
+            vat = float(row.get("vat_amount", 0))
+            merch = row.get("merchant", "Unknown")
+
+            if cat not in breakdown:
+                breakdown[cat] = {"total": 0, "count": 0, "merchants": {}}
+
+            breakdown[cat]["total"] += amt
+            breakdown[cat]["count"] += 1
+
+            if merch not in breakdown[cat]["merchants"]:
+                breakdown[cat]["merchants"][merch] = 0
+            breakdown[cat]["merchants"][merch] += amt
+
+            total_amount += amt
+            total_vat += vat
+
+        # Sort categories by total (highest first)
+        sorted_breakdown = dict(sorted(breakdown.items(), key=lambda x: x[1]["total"], reverse=True))
+
+        return jsonify({
+            "period": f"{month_name(month)} {year}",
+            "total_amount": round(total_amount, 2),
+            "total_vat": round(total_vat, 2),
+            "receipt_count": len(rows),
+            "breakdown": sorted_breakdown
+        })
+
+    except Exception as e:
+        print(f"[expense] Summary error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/v2/expenses/list", methods=["GET"])
+def api_v2_expenses_list():
+    """List all expenses for a user (paginated)."""
+    try:
+        token = request.args.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        limit = request.args.get("limit", 20, type=int)
+        offset = request.args.get("offset", 0, type=int)
+
+        rows = lib._sb().table("work_expenses").select(
+            "id,amount,merchant,category,receipt_date,vat_amount,expense_status"
+        ).eq("from_number", from_number) \
+         .order("receipt_date", desc=True) \
+         .range(offset, offset + limit - 1) \
+         .execute().data or []
+
+        return jsonify({
+            "expenses": rows,
+            "count": len(rows),
+            "offset": offset,
+            "limit": limit
+        })
+
+    except Exception as e:
+        print(f"[expense] List error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+def month_name(month: int) -> str:
+    """Convert month number to name."""
+    names = ["", "January", "February", "March", "April", "May", "June",
+             "July", "August", "September", "October", "November", "December"]
+    return names[month] if 1 <= month <= 12 else "Unknown"
+
 @app.route("/api/v2/prefs", methods=["POST"])
 def api_v2_prefs_post():
     """Save V2 preferences. Merges with existing — send only changed keys."""
@@ -22934,6 +23155,57 @@ def _whatsapp_reply_inner():
             pass
         resp.message("✅ Morning brief is back on — you'll get it each morning.")
         return str(resp)
+
+    # ── FIELD WORKER EXPENSE QUERIES ──────────────────────────────────────────
+    # Detect: "add expense", "show my expenses", "expense breakdown", etc.
+    _expense_triggers = [
+        r'\b(add|capture|upload|save|log)\s+(an?\s+)?expense\b',
+        r'\b(show|list|get|what)\s+my\s+expenses?\b',
+        r'\bexpense\s+(breakdown|summary|report|total)\b',
+        r'\b(claim|claimed)\s+expenses?\b',
+        r'\bexpense\s+for\s+(june|may|april|march|february|january|this month)\b',
+    ]
+
+    if any(re.search(t, body_lower, re.IGNORECASE) for t in _expense_triggers):
+        try:
+            # Expense handler: capture from WhatsApp text or image
+            if "add" in body_lower or "capture" in body_lower or "upload" in body_lower or "save" in body_lower:
+                # User wants to add an expense
+                resp.message("📋 Send me a receipt photo or text (amount, merchant, category)\n\n"
+                            "Example: 'Screwfix £45 for supplies on June 28'\n\n"
+                            "Then I'll extract it automatically.")
+                return str(resp)
+            elif "show" in body_lower or "list" in body_lower or "summary" in body_lower:
+                # Show expense summary
+                try:
+                    import requests as _req_exp
+                    summary_url = f"{os.environ.get('MIRU_API_URL', 'http://localhost:5000')}/api/v2/expenses/summary"
+                    _params = {"token": token}
+                    _resp = _req_exp.get(summary_url, params=_params, timeout=5)
+                    if _resp.ok:
+                        data = _resp.json()
+                        period = data.get("period", "This month")
+                        total = data.get("total_amount", 0)
+                        vat = data.get("total_vat", 0)
+                        count = data.get("receipt_count", 0)
+
+                        msg = f"💼 **{period} Expenses**\n\n"
+                        msg += f"Total: £{total:.2f} (VAT: £{vat:.2f})\n"
+                        msg += f"Receipts: {count}\n\n"
+
+                        breakdown = data.get("breakdown", {})
+                        for cat, info in breakdown.items():
+                            msg += f"• {cat}: £{info.get('total', 0):.2f} ({info.get('count', 0)} items)\n"
+
+                        resp.message(msg)
+                        return str(resp)
+                except Exception as _exp_err:
+                    print(f"[expense-query] Summary error: {_exp_err}")
+                    resp.message("❌ Error fetching expense summary. Try again later.")
+                    return str(resp)
+        except Exception as _exp_handler_err:
+            print(f"[expense-handler] Error: {_exp_handler_err}")
+            # Fall through to other handlers
 
     # ── RECEIPT INTELLIGENCE QUERIES ───────────────────────────────────────────
     # Detect: "show receipts", "how much did I spend", "spending breakdown", etc.
