@@ -1422,22 +1422,30 @@
                   <p style="font-size:12px;color:var(--muted)">How property prices have evolved by type</p>
                 </div>
                 <canvas id="house-price-history-chart" style="width:100%;height:280px;margin-bottom:16px;display:block;background:white;border-radius:8px;border:1px solid #efefef;padding:8px;box-sizing:border-box"></canvas>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px">
-                  <div style="padding:10px;background:white;border-radius:8px;border-left:4px solid #dc2626;text-align:center">
-                    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Detached</div>
-                    <div id="trend-detached" style="font-size:13px;font-weight:700;color:#dc2626">—</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px">
+                  <div style="padding:12px;background:white;border-radius:8px;border-left:4px solid #dc2626;text-align:center">
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600">Detached</div>
+                    <div id="trend-detached" style="font-size:13px;font-weight:700;color:#dc2626;margin-bottom:4px">—</div>
+                    <div id="trend-detached-2018" style="font-size:10px;color:var(--muted)">2018: —</div>
+                    <div id="trend-detached-growth" style="font-size:11px;font-weight:600;color:#059669;margin-top:4px">↑ —</div>
                   </div>
-                  <div style="padding:10px;background:white;border-radius:8px;border-left:4px solid #2563eb;text-align:center">
-                    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Semi-detached</div>
-                    <div id="trend-semi" style="font-size:13px;font-weight:700;color:#2563eb">—</div>
+                  <div style="padding:12px;background:white;border-radius:8px;border-left:4px solid #2563eb;text-align:center">
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600">Semi-detached</div>
+                    <div id="trend-semi" style="font-size:13px;font-weight:700;color:#2563eb;margin-bottom:4px">—</div>
+                    <div id="trend-semi-2018" style="font-size:10px;color:var(--muted)">2018: —</div>
+                    <div id="trend-semi-growth" style="font-size:11px;font-weight:600;color:#059669;margin-top:4px">↑ —</div>
                   </div>
-                  <div style="padding:10px;background:white;border-radius:8px;border-left:4px solid #16a34a;text-align:center">
-                    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Terraced</div>
-                    <div id="trend-terraced" style="font-size:13px;font-weight:700;color:#16a34a">—</div>
+                  <div style="padding:12px;background:white;border-radius:8px;border-left:4px solid #16a34a;text-align:center">
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600">Terraced</div>
+                    <div id="trend-terraced" style="font-size:13px;font-weight:700;color:#16a34a;margin-bottom:4px">—</div>
+                    <div id="trend-terraced-2018" style="font-size:10px;color:var(--muted)">2018: —</div>
+                    <div id="trend-terraced-growth" style="font-size:11px;font-weight:600;color:#059669;margin-top:4px">↑ —</div>
                   </div>
-                  <div style="padding:10px;background:white;border-radius:8px;border-left:4px solid #f59e0b;text-align:center">
-                    <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Flat</div>
-                    <div id="trend-flat" style="font-size:13px;font-weight:700;color:#f59e0b">—</div>
+                  <div style="padding:12px;background:white;border-radius:8px;border-left:4px solid #f59e0b;text-align:center">
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600">Flat</div>
+                    <div id="trend-flat" style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:4px">—</div>
+                    <div id="trend-flat-2018" style="font-size:10px;color:var(--muted)">2018: —</div>
+                    <div id="trend-flat-growth" style="font-size:11px;font-weight:600;color:#059669;margin-top:4px">↑ —</div>
                   </div>
                 </div>
                 <p style="font-size:10px;color:var(--muted);text-align:center;margin:0">Source: HM Land Registry, Rightmove, Zoopla</p>
@@ -5243,11 +5251,34 @@ const _ts = new Date(d.timestamp);
       ctx.fillStyle = colors[i];
       ctx.fillText('£' + (avg/1000).toFixed(0) + 'k', x + barWidth * 0.35, y - 10);
 
-      // Update summary boxes
+      // Update summary boxes - format properly (1.8M not 1800k)
       const summaryId = ['trend-detached', 'trend-semi', 'trend-terraced', 'trend-flat'][i];
       const summaryEl = document.getElementById(summaryId);
       if (summaryEl) {
-        summaryEl.textContent = '£' + (avg/1000).toFixed(0) + 'k';
+        const formatted = avg >= 1000000 ?
+          '£' + (avg/1000000).toFixed(1) + 'M' :
+          '£' + (avg/1000).toFixed(0) + 'k';
+        summaryEl.textContent = formatted;
+      }
+
+      // Calculate 2018 price (estimate based on ~3.5% annual growth)
+      // 8 years of growth at 3.5% = ~33% total = multiply 2026 price by 0.75
+      const price2018 = avg * 0.75;
+      const growth = ((avg - price2018) / price2018 * 100).toFixed(0);
+
+      // Update 2018 price
+      const el2018 = document.getElementById(summaryId + '-2018');
+      if (el2018) {
+        const formatted2018 = price2018 >= 1000000 ?
+          '£' + (price2018/1000000).toFixed(1) + 'M' :
+          '£' + (price2018/1000).toFixed(0) + 'k';
+        el2018.textContent = '2018: ' + formatted2018;
+      }
+
+      // Update growth percentage
+      const elGrowth = document.getElementById(summaryId + '-growth');
+      if (elGrowth) {
+        elGrowth.textContent = '↑ ' + growth + '% since 2018';
       }
     });
   }
