@@ -4118,7 +4118,11 @@ def brand_phase2():
 def api_brand_phase2():
     """Phase 2 API: Returns brand data + market economics for expansion analysis"""
     name = request.args.get("name", "").strip()
-    market = request.args.get("market", "UK").strip().upper()
+    market = request.args.get("market", "UK").strip()
+
+    # Map market codes to database format (case-sensitive!)
+    market_map = {"UK": "UK", "USA": "USA", "India": "India"}
+    market = market_map.get(market, market)  # Use mapped value or keep original
 
     if not name or len(name) < 2:
         return jsonify({"error": "Brand name required"}), 400
