@@ -995,15 +995,36 @@
                 <div class="positioning-grid">
                     <div class="positioning-item">
                         <div class="positioning-label">Market Size</div>
-                        <div class="positioning-value">${{ "%.0f" | format(market_score.market_opportunity.usd_millions) }}M</div>
+                        <div class="positioning-value">
+                            {%- set size = market_score.market_opportunity.usd_millions|float -%}
+                            {%- if size >= 1000 -%}
+                                ${{ "%.1f" | format(size / 1000) }}B
+                            {%- else -%}
+                                ${{ "%.0f" | format(size) }}M
+                            {%- endif -%}
+                        </div>
                     </div>
                     <div class="positioning-item">
                         <div class="positioning-label">1% Market Share</div>
-                        <div class="positioning-value">${{ "%.0f" | format(market_score.market_opportunity.at_1_pct_share) }}M</div>
+                        <div class="positioning-value">
+                            {%- set share = market_score.market_opportunity.at_1_pct_share|float -%}
+                            {%- if share >= 1000 -%}
+                                ${{ "%.1f" | format(share / 1000) }}B
+                            {%- else -%}
+                                ${{ "%.0f" | format(share) }}M
+                            {%- endif -%}
+                        </div>
                     </div>
                     <div class="positioning-item">
                         <div class="positioning-label">Realistic Target</div>
-                        <div class="positioning-value">${{ "%.0f" | format(market_score.market_opportunity.at_target_share) }}M</div>
+                        <div class="positioning-value">
+                            {%- set target = market_score.market_opportunity.at_target_share|float -%}
+                            {%- if target >= 1000 -%}
+                                ${{ "%.1f" | format(target / 1000) }}B
+                            {%- else -%}
+                                ${{ "%.0f" | format(target) }}M
+                            {%- endif -%}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -136,5 +136,14 @@ def insert_expansion_brands():
 
 if __name__ == "__main__":
     success = insert_expansion_brands()
-    if not success:
+    if success:
+        # FINAL STEP: Auto-update brand count references
+        print("\n[final_step] Updating brand count references everywhere...")
+        try:
+            from update_brand_counts import main as update_counts
+            update_counts()
+        except Exception as e:
+            print(f"⚠️  Could not auto-update counts: {e}")
+        exit(0)
+    else:
         exit(1)

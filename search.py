@@ -2542,19 +2542,9 @@ def fetch_house_prices(postcode: str) -> dict:
             for ptype in ['detached', 'semi_detached', 'terraced', 'flats_maisonettes']:
                 if ptype in market_data:
                     bedrooms_data = market_data[ptype]
-                    # Get largest bedroom as "main" price for backward compat
-                    largest = max(bedrooms_data.items(), key=lambda x: x[1].get('avg', 0))[1]
-
-                    # Flat structure for frontend, with bedroom breakdown
-                    house_prices[ptype] = {
-                        'avg': largest.get('avg'),
-                        'median': largest.get('median'),
-                        'count': largest.get('count'),
-                        'bedrooms': ' | '.join([f"{b.replace('bed','')}: £{d['avg']//1000}k" for b, d in sorted(bedrooms_data.items())]),
-                        'source': largest.get('source', 'Market-verified'),
-                        'breakdown': {b: d['avg'] for b, d in bedrooms_data.items()}
-                    }
-                    print(f"[HOUSE-DEBUG] Added {ptype}: avg={house_prices[ptype]['avg']}")
+                    # Return full nested bedroom structure for proper frontend display
+                    house_prices[ptype] = bedrooms_data
+                    print(f"[HOUSE-DEBUG] Added {ptype} with bedrooms: {list(bedrooms_data.keys())}")
 
         if house_prices:
             result = {**house_prices}

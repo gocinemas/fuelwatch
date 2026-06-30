@@ -3932,6 +3932,8 @@ def api_brand_phase1():
 
 @app.route("/api/brand")
 def api_brand():
+    import threading
+
     name = request.args.get("name", "").strip()
     refresh = request.args.get("refresh", "").lower() == "true"
     country = request.args.get("country", "US").strip().upper()
@@ -3982,94 +3984,91 @@ def api_brand():
     # NOTE: Company intelligence (Crunchbase, EDGAR, OpenCorporates) moved to /api/company/intelligence endpoint only
     # Brand module should not make external API calls - use Groq + Wikipedia instead
 
-    # Generate Groq analysis for missing sections
-    try:
-        from agentic_intelligence_service import (
-            generate_health_score,
-            generate_risk_flags,
-            generate_market_opportunities_analysis,
-            generate_social_media_strategy,
-            generate_product_ecosystem_analysis,
-            generate_competitive_landscape_analysis
-        )
-
-        # Health Score (expects nested data structure)
+    # MOVED TO BACKGROUND: Generate Groq analysis for missing sections (non-blocking)
+    # Start background thread to fetch AI insights without blocking response
+    def fetch_agentic_insights_background():
         try:
+            from agentic_intelligence_service import (
+                generate_health_score,
+                generate_risk_flags,
+                generate_market_opportunities_analysis,
+                generate_social_media_strategy,
+                generate_product_ecosystem_analysis,
+                generate_competitive_landscape_analysis
+            )
+
             nested_data = {
                 "brand": data,
                 "financials": data.get("financials", {}),
                 "competitors": {"direct_competitors": data.get("competitors", [])},
                 "white_space": {"market_gaps": data.get("market_gaps", [])}
             }
-            health_score = generate_health_score(nested_data)
-            if health_score.get("score") is not None:
-                data["health_score"] = health_score
-                app.logger.info(f"[api_brand] Generated health score for {name}")
+
+            # Health Score
+            try:
+                health_score = generate_health_score(nested_data)
+                if health_score.get("score") is not None:
+                    data["health_score"] = health_score
+                    app.logger.info(f"[api_brand_bg] Generated health score for {name}")
+            except Exception as e:
+                app.logger.warning(f"[api_brand_bg] Health score failed: {e}")
+
+            # Risk Flags
+            try:
+                risk_flags = generate_risk_flags(nested_data)
+                if risk_flags.get("risks"):
+                    data["risk_flags"] = risk_flags
+                    app.logger.info(f"[api_brand_bg] Generated risk flags for {name}")
+            except Exception as e:
+                app.logger.warning(f"[api_brand_bg] Risk flags failed: {e}")
+
+            # Market Opportunities analysis (if missing)
+            if len(data.get("market_gaps", [])) == 0:
+                try:
+                    opp_analysis = generate_market_opportunities_analysis(data)
+                    if opp_analysis.get("opportunities"):
+                        data["ai_market_opportunities"] = opp_analysis
+                        app.logger.info(f"[api_brand_bg] Generated market opportunities for {name}")
+                except Exception as e:
+                    app.logger.warning(f"[api_brand_bg] Market opportunities failed: {e}")
+
+            # Social Media Strategy (if missing)
+            if len(data.get("brand_presence", [])) == 0:
+                try:
+                    social_analysis = generate_social_media_strategy(data)
+                    if social_analysis.get("strategy"):
+                        data["ai_social_strategy"] = social_analysis
+                        app.logger.info(f"[api_brand_bg] Generated social strategy for {name}")
+                except Exception as e:
+                    app.logger.warning(f"[api_brand_bg] Social strategy failed: {e}")
+
+            # Product Ecosystem analysis (if missing)
+            if len(data.get("products", [])) == 0:
+                try:
+                    product_analysis = generate_product_ecosystem_analysis(data)
+                    if product_analysis.get("ecosystem"):
+                        data["ai_product_ecosystem"] = product_analysis
+                        app.logger.info(f"[api_brand_bg] Generated product ecosystem for {name}")
+                except Exception as e:
+                    app.logger.warning(f"[api_brand_bg] Product ecosystem failed: {e}")
+
+            # Competitive Landscape analysis (if missing)
+            if len(data.get("competitors", [])) == 0:
+                try:
+                    comp_analysis = generate_competitive_landscape_analysis(data)
+                    if comp_analysis.get("landscape"):
+                        data["ai_competitive_landscape"] = comp_analysis
+                        app.logger.info(f"[api_brand_bg] Generated competitive landscape for {name}")
+                except Exception as e:
+                    app.logger.warning(f"[api_brand_bg] Competitive landscape failed: {e}")
         except Exception as e:
-            app.logger.warning(f"[api_brand] Health score generation failed: {e}")
+            app.logger.warning(f"[api_brand_bg] Agentic insights import failed: {e}")
 
-        # Risk Flags (expects nested data structure)
-        try:
-            nested_data = {
-                "brand": data,
-                "financials": data.get("financials", {}),
-                "competitors": {"direct_competitors": data.get("competitors", [])},
-                "white_space": {"market_gaps": data.get("market_gaps", [])}
-            }
-            risk_flags = generate_risk_flags(nested_data)
-            if risk_flags.get("risks"):
-                data["risk_flags"] = risk_flags
-                app.logger.info(f"[api_brand] Generated risk flags for {name}")
-        except Exception as e:
-            app.logger.warning(f"[api_brand] Risk flags generation failed: {e}")
+    # Start background thread (daemon=True so it doesn't block server shutdown)
+    bg_thread = threading.Thread(target=fetch_agentic_insights_background, daemon=True)
+    bg_thread.start()
 
-        # Market Opportunities analysis (if missing)
-        if len(data.get("market_gaps", [])) == 0:
-            try:
-                opp_analysis = generate_market_opportunities_analysis(data)
-                if opp_analysis.get("opportunities"):
-                    data["ai_market_opportunities"] = opp_analysis
-                    app.logger.info(f"[api_brand] Generated market opportunities for {name}")
-            except Exception as e:
-                app.logger.warning(f"[api_brand] Market opportunities analysis failed: {e}")
-
-        # Social Media Strategy (if missing)
-        if len(data.get("brand_presence", [])) == 0:
-            try:
-                social_analysis = generate_social_media_strategy(data)
-                if social_analysis.get("strategy"):
-                    data["ai_social_strategy"] = social_analysis
-                    app.logger.info(f"[api_brand] Generated social strategy for {name}")
-            except Exception as e:
-                app.logger.warning(f"[api_brand] Social media strategy failed: {e}")
-
-        # Product Ecosystem analysis (if missing)
-        if len(data.get("products", [])) == 0:
-            try:
-                product_analysis = generate_product_ecosystem_analysis(data)
-                if product_analysis.get("ecosystem"):
-                    data["ai_product_ecosystem"] = product_analysis
-                    app.logger.info(f"[api_brand] Generated product ecosystem for {name}")
-            except Exception as e:
-                app.logger.warning(f"[api_brand] Product ecosystem analysis failed: {e}")
-
-        # Competitive Landscape analysis (if missing)
-        if len(data.get("competitors", [])) == 0:
-            try:
-                comp_analysis = generate_competitive_landscape_analysis(data)
-                if comp_analysis.get("landscape"):
-                    data["ai_competitive_landscape"] = comp_analysis
-                    app.logger.info(f"[api_brand] Generated competitive landscape for {name}")
-            except Exception as e:
-                app.logger.warning(f"[api_brand] Competitive landscape analysis failed: {e}")
-    except Exception as e:
-        app.logger.warning(f"[api_brand] Groq analysis import failed: {e}")
-        # Continue - AI analysis is optional enhancement
-
-    # REMOVED: auto-save to database. Only save when user explicitly bookmarks/tracks.
-    # if data.get("timeline") or data.get("competitors"):
-    #     _save_brand_profile(data)
-
+    # Return immediately with basic data (don't wait for background thread)
     # Wrap in nested structure expected by intel_brand_full.html template
     return jsonify({
         "brand": data,
