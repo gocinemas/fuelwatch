@@ -1372,6 +1372,17 @@ def brand_compare():
         return redirect("/")
 
 
+@app.route("/brand")
+def brand_choice():
+    """Brand choice: Quick Profile (Phase 1) or Market Expansion (Phase 2)"""
+    search = request.args.get("search", "").strip()
+
+    if not search:
+        return redirect("/intel")
+
+    return render_template("intel_brand_choice.html")
+
+
 @app.route("/brand/full")
 def brand_full_intelligence():
     """Brand Intelligence page - Phase 1: Real Data Only"""

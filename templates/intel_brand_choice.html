@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Analysis Type — Intel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 48px;
+        }
+
+        .brand-name {
+            font-size: 42px;
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .tagline {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 360px;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border-color: currentColor;
+        }
+
+        .card.phase1 {
+            color: #3b82f6;
+        }
+
+        .card.phase2 {
+            color: #059669;
+        }
+
+        .card-icon {
+            font-size: 48px;
+            line-height: 1;
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1e293b;
+        }
+
+        .card-description {
+            font-size: 14px;
+            color: #475569;
+            line-height: 1.6;
+            flex: 1;
+        }
+
+        .card-features {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .card-features div {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .card-features div:last-child {
+            margin-bottom: 0;
+        }
+
+        .checkmark {
+            margin-top: 2px;
+            font-weight: bold;
+        }
+
+        .card-cta {
+            font-weight: 700;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 2px solid;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .card.phase1 .card-cta {
+            color: #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        .card.phase1 .card-cta:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .card.phase2 .card-cta {
+            color: #059669;
+            border-color: #059669;
+        }
+
+        .card.phase2 .card-cta:hover {
+            background: #059669;
+            color: white;
+        }
+
+        .time-estimate {
+            font-size: 12px;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .back-link {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/brand" class="back-link">← New search</a>
+
+        <div class="header">
+            <div class="brand-name" id="brandName">Brand</div>
+            <div class="subtitle">What would you like to know?</div>
+            <div class="tagline">Choose the analysis that fits your needs</div>
+        </div>
+
+        <div class="cards-grid">
+            <!-- PHASE 1: QUICK PROFILE -->
+            <div class="card phase1">
+                <div class="card-icon">📊</div>
+                <div class="card-title">Brand Profile</div>
+                <div class="card-description">
+                    Get a quick overview of the brand in a single market. Perfect for quick research, competitive analysis, or basic intelligence.
+                </div>
+                <div class="card-features">
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Brand fundamentals (founded, HQ, website)</span>
+                    </div>
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Positioning & pricing in one market</span>
+                    </div>
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Top competitors & distribution</span>
+                    </div>
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Brand health & risk scores</span>
+                    </div>
+                </div>
+                <div class="time-estimate">⏱️ ~2 minutes</div>
+                <button class="card-cta" onclick="goToPhase1()">
+                    View Profile →
+                </button>
+            </div>
+
+            <!-- PHASE 2: MARKET EXPANSION -->
+            <div class="card phase2">
+                <div class="card-icon">🗺️</div>
+                <div class="card-title">Market Expansion</div>
+                <div class="card-description">
+                    Deep analysis across multiple markets. See how the brand performs globally and discover new expansion opportunities.
+                </div>
+                <div class="card-features">
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Compare 3 markets (UK, USA, India)</span>
+                    </div>
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Market economics (GDP, PPP, growth rate)</span>
+                    </div>
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Pricing strategy by market</span>
+                    </div>
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Entry opportunity scoring (🟢🟡🔴)</span>
+                    </div>
+                    <div>
+                        <span class="checkmark">✓</span>
+                        <span>Research new markets (custom analysis)</span>
+                    </div>
+                </div>
+                <div class="time-estimate">⏱️ ~5-10 minutes</div>
+                <button class="card-cta" onclick="goToPhase2()">
+                    Explore Markets →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get brand name from URL
+        const params = new URLSearchParams(window.location.search);
+        const brandName = params.get("search") || "Brand";
+        document.getElementById("brandName").textContent = brandName;
+
+        function goToPhase1() {
+            window.location.href = `/brand/full?search=${encodeURIComponent(brandName)}`;
+        }
+
+        function goToPhase2() {
+            window.location.href = `/brand/phase2?search=${encodeURIComponent(brandName)}&market=UK`;
+        }
+
+        // Allow keyboard navigation
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "1") goToPhase1();
+            if (e.key === "2") goToPhase2();
+        });
+    </script>
+</body>
+</html>
