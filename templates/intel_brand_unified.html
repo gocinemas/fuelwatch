@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Intelligence — Complete Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 32px 20px;
+            text-align: center;
+        }
+
+        .brand-name {
+            font-size: 42px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .brand-meta {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 1200px) {
+            .split-view {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #f0f4f8, #e8f1f9);
+            border: 2px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #0369a1;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 900;
+            color: #1e293b;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .market-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .market-btn {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .market-btn:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .market-btn.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #3b82f6;
+            text-align: center;
+        }
+
+        .cta-section h3 {
+            color: #1e40af;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .cta-section p {
+            color: #0369a1;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .cta-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .cta-button:hover {
+            background: #2563eb;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.show {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="brand-name" id="brandName">Brand</div>
+        <div class="brand-meta" id="brandMeta">—</div>
+    </div>
+
+    <div class="container">
+        <a href="/brand" class="back-link">← New search</a>
+
+        <!-- SPLIT VIEW: Profile (Left) + Markets (Right) -->
+        <div class="split-view">
+            <!-- LEFT: PHASE 1 PROFILE -->
+            <div class="section">
+                <div class="section-title">📊 Brand Profile</div>
+                <div id="profileContent" class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <!-- RIGHT: PHASE 2 MARKETS -->
+            <div class="section">
+                <div class="section-title">🗺️ Market Expansion</div>
+
+                <!-- Market Switcher -->
+                <div class="market-buttons">
+                    <button class="market-btn active" onclick="switchMarket('UK')">🇬🇧 UK</button>
+                    <button class="market-btn" onclick="switchMarket('US')">🇺🇸 USA</button>
+                    <button class="market-btn" onclick="switchMarket('IN')">🇮🇳 India</button>
+                </div>
+
+                <!-- Market Economics -->
+                <div id="marketContent" class="loading">
+                    <div class="spinner"></div>
+                </div>
+
+                <!-- Upgrade CTA -->
+                <div class="cta-section" style="margin-top: 20px;">
+                    <h3>🌍 Expand to new markets?</h3>
+                    <p>Research any country for strategic expansion</p>
+                    <button class="cta-button" onclick="openResearchModal()">
+                        Request Research ($99+)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMarket = "UK";
+        let brandData = {};
+
+        // Get brand name from URL
+        const params = new URLSearchParams(window.location.search);
+        const brandName = params.get("search") || "Brand";
+        document.getElementById("brandName").textContent = brandName;
+
+        // Map market codes to database format
+        const marketMap = { "UK": "UK", "US": "USA", "IN": "India" };
+
+        async function loadBrandData(market = "UK") {
+            currentMarket = market;
+            const dbMarket = marketMap[market] || market;
+
+            try {
+                const response = await fetch(`/api/brand/phase2?name=${encodeURIComponent(brandName)}&market=${dbMarket}`);
+                brandData = await response.json();
+
+                document.getElementById("brandMeta").textContent =
+                    `${brandData.brand?.origin?.city || '—'}, ${brandData.brand?.origin?.country || '—'} • Founded ${brandData.brand?.founded || '—'}`;
+
+                renderProfile();
+                renderMarket();
+            } catch (e) {
+                console.error("Failed to load data:", e);
+                document.getElementById("profileContent").innerHTML = "❌ Error loading data";
+            }
+        }
+
+        function renderProfile() {
+            const b = brandData.brand || {};
+            const html = `
+                <div class="stat-box">
+                    <div class="stat-label">Founded</div>
+                    <div class="stat-value">${b.founded || '—'}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Positioning</div>
+                    <div class="stat-value" style="font-size: 16px; text-transform: capitalize;">${(b.positioning_tier || '—').replace('-', ' ')}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Price (USD)</div>
+                    <div class="stat-value">$${(b.price_usd_equivalent || 0).toFixed(2)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Category</div>
+                    <div class="stat-value" style="font-size: 16px; text-transform: capitalize;">${(b.category || '—').replace('-', ' ')}</div>
+                </div>
+            `;
+            document.getElementById("profileContent").innerHTML = html;
+        }
+
+        function renderMarket() {
+            const econ = brandData.market_econ || {};
+            const score = brandData.market_score || {};
+
+            const gdp = econ.country_gdp_usd_trillions || 0;
+            const marketSize = econ.category_market_size_usd_millions || 0;
+            const cagr = econ.category_cagr_3yr || 0;
+            const entryScore = Math.round((score.brand_strength_score || 5 + score.growth_opportunity_score || 5) / 2) || 6;
+
+            const html = `
+                <div class="stat-box">
+                    <div class="stat-label">Country GDP</div>
+                    <div class="stat-value">$${gdp.toFixed(1)}T</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Market Size</div>
+                    <div class="stat-value">
+                        ${marketSize >= 1000 ? '$' + (marketSize/1000).toFixed(1) + 'B' : '$' + marketSize + 'M'}
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">3-Year CAGR</div>
+                    <div class="stat-value">${cagr}%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Entry Score</div>
+                    <div class="stat-value" style="color: ${entryScore >= 8 ? '#059669' : entryScore >= 5 ? '#f59e0b' : '#dc2626'};">
+                        ${entryScore >= 8 ? '🟢' : entryScore >= 5 ? '🟡' : '🔴'} ${entryScore}/10
+                    </div>
+                </div>
+            `;
+            document.getElementById("marketContent").innerHTML = html;
+        }
+
+        function switchMarket(market) {
+            // Update button states
+            document.querySelectorAll(".market-btn").forEach(btn => btn.classList.remove("active"));
+            event.target.classList.add("active");
+
+            // Load data for new market
+            loadBrandData(market);
+        }
+
+        function openResearchModal() {
+            alert("Research request feature coming soon!\n\nRequesting custom market research for: " + brandName);
+        }
+
+        // Load initial data
+        loadBrandData();
+    </script>
+</body>
+</html>

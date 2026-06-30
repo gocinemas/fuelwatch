@@ -385,11 +385,13 @@
         document.getElementById("brandName").textContent = brandName;
 
         function goToPhase1() {
-            window.location.href = `/brand/full?search=${encodeURIComponent(brandName)}`;
+            // Go to unified view instead of separate Phase 1
+            window.location.href = `/brand/unified?search=${encodeURIComponent(brandName)}`;
         }
 
         function goToPhase2() {
-            window.location.href = `/brand/phase2?search=${encodeURIComponent(brandName)}&market=UK`;
+            // Go to unified view instead of separate Phase 2
+            window.location.href = `/brand/unified?search=${encodeURIComponent(brandName)}`;
         }
 
         // Tab switching

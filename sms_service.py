@@ -1383,6 +1383,17 @@ def brand_choice():
     return render_template("intel_brand_choice.html")
 
 
+@app.route("/brand/unified")
+def brand_unified():
+    """Unified brand analysis: Phase 1 (left) + Phase 2 (right) side-by-side"""
+    search = request.args.get("search", "").strip()
+
+    if not search:
+        return redirect("/intel")
+
+    return render_template("intel_brand_unified.html")
+
+
 @app.route("/brand/full")
 def brand_full_intelligence():
     """Brand Intelligence page - Phase 1: Real Data Only"""
