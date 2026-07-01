@@ -300,6 +300,9 @@
     <header>
         <div class="header-content">
             <div class="brand-header">
+                <div style="margin-bottom: 12px;">
+                    <a id="backToPhase1Link" href="#" style="color: #3b82f6; text-decoration: none; font-weight: 600; font-size: 13px;">← Back to Brand Profile</a>
+                </div>
                 <div class="brand-name" id="brandName">—</div>
                 <div class="brand-meta" id="brandMeta">—</div>
             </div>
@@ -656,6 +659,9 @@
                 document.getElementById("brandName").textContent = brandData.brand?.name || brandName;
                 document.getElementById("brandMeta").textContent =
                     `${brandData.brand?.origin?.city || '—'}, ${brandData.brand?.origin?.country || '—'} • Founded ${brandData.brand?.founded || '—'}`;
+
+                // Set back link to Phase 1
+                document.getElementById("backToPhase1Link").href = `/brand/full?search=${encodeURIComponent(brandData.brand?.name || brandName)}&market=UK`;
 
                 renderPhase2Data();
             } catch (e) {
