@@ -309,6 +309,12 @@
       <input type="text" id="schoolName" placeholder="e.g. Stanns Heath Junior School" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
     </div>
 
+    <div style="margin-bottom: 16px;">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">School Email</label>
+      <input type="email" id="schoolEmail" placeholder="e.g. office@school.sch.uk" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">Email address where school sends updates</div>
+    </div>
+
     <button class="btn-add-school" onclick="saveSchool()" style="margin-top: 24px;">Save School</button>
   </div>
 </div>
@@ -412,9 +418,15 @@
   async function saveSchool() {
     const childName = document.getElementById('childName').value.trim();
     const schoolName = document.getElementById('schoolName').value.trim();
+    const schoolEmail = document.getElementById('schoolEmail').value.trim();
 
-    if (!childName || !schoolName) {
+    if (!childName || !schoolName || !schoolEmail) {
       alert('Please fill in all fields');
+      return;
+    }
+
+    if (!schoolEmail.includes('@')) {
+      alert('Please enter a valid email address');
       return;
     }
 
@@ -423,12 +435,11 @@
       const params = new URLSearchParams(window.location.search);
       let wa = params.get('wa') || localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
 
-      const token = localStorage.getItem('_miruToken');
       let url = '/api/school/signup';
       const body = {
         child_name: childName,
         school_name: schoolName,
-        sender_emails: []
+        sender_emails: [schoolEmail]
       };
       if (wa) body.wa_number = wa;
 
@@ -438,14 +449,20 @@
         body: JSON.stringify(body)
       });
 
+      const data = await res.json();
       if (res.ok) {
         document.getElementById('childName').value = '';
         document.getElementById('schoolName').value = '';
+        document.getElementById('schoolEmail').value = '';
         closeModal();
+        alert('✓ School added! Gmail connection needed next.');
         loadSchools();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to save'));
       }
     } catch (e) {
       console.error('Save failed:', e);
+      alert('Error saving school: ' + e.message);
     }
   }
 
