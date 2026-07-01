@@ -12903,6 +12903,74 @@ def _rank_evening_saves(place_saves: list, content_saves: list, event_saves: lis
         return place_saves[:2] + content_saves[:1], events[:2]
 
 
+def _build_smart_fallback_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, weather, now):
+    """Build smart brief when Groq fails or returns empty."""
+    facts = []
+
+    # Time context
+    if hour < 6:
+        greeting = "Still early"
+    elif hour < 10:
+        greeting = "Good morning"
+    elif hour < 12:
+        greeting = "Late morning"
+    elif hour < 14:
+        greeting = "Lunchtime"
+    elif hour < 17:
+        greeting = "Afternoon"
+    elif hour < 19:
+        greeting = "Early evening"
+    elif hour < 21:
+        greeting = "Evening"
+    else:
+        greeting = "Late night"
+
+    # Weather
+    if weather and weather.get("temp") is not None:
+        temp = weather["temp"]
+        desc = weather.get("desc", "").lower()
+        if temp > 25:
+            facts.append(f"{temp}°C and {desc}")
+        elif temp < 5:
+            facts.append(f"Cold at {temp}°C — {desc}")
+        else:
+            facts.append(f"{temp}°C, {desc}")
+
+    # Trains
+    trains = ctx.get("trains", {})
+    if trains.get("departures"):
+        deps = trains["departures"][:1]
+        if deps:
+            d = deps[0]
+            facts.append(f"Next train: {d.get('time')} ({d.get('duration', '?')})")
+
+    # Fuel
+    fuel = ctx.get("fuel", {})
+    if fuel.get("price"):
+        facts.append(f"Fuel: {fuel['price']}p/L")
+
+    # School
+    if school_holiday:
+        facts.append("School holidays")
+    elif ctx.get("school", {}).get("events"):
+        events = ctx["school"]["events"][:1]
+        if events:
+            facts.append(f"School: {events[0].get('title', 'Event today')}")
+
+    # Spend
+    spend = ctx.get("spend", {})
+    if spend.get("today_total") and spend["today_total"] > 5:
+        facts.append(f"Spent £{spend['today_total']:.2f} today")
+
+    # Build final brief
+    if facts:
+        brief = f"{greeting}. {'. '.join(facts[:3])}."
+    else:
+        brief = f"{greeting}. Have a good {dow}."
+
+    return brief
+
+
 @app.route("/api/home/brief")
 def api_home_brief():
     """V2 context engine — returns personalised brief text + raw context."""
@@ -14314,6 +14382,10 @@ def api_home_brief():
     except Exception as _e:
         print(f"🎯 SNIPPET ERROR: {_e}")
         _weekend_snippet = {}
+
+    # Ensure brief is never empty — build smart fallback from actual facts
+    if not brief_text or len(brief_text.strip()) < 5:
+        brief_text = _build_smart_fallback_brief(ctx, prefs, hour, dow, _school_holiday_now, _loc_classification, weather, now)
 
     result = {
         "brief":        brief_text,
