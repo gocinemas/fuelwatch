@@ -13118,7 +13118,9 @@ def api_home_brief():
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
-            futures["rated_places"] = pool.submit(_v2_fetch_rated_places, _area_pc)
+            # Use cached places instead of Google API
+            from cache_layer import get_cached_places
+            futures["rated_places"] = pool.submit(lambda pc=_area_pc: [p for p in get_cached_places(pc).get("restaurants", [])[:5]])
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
         # Wait up to 8s for ALL futures collectively (not 8s each), then take whatever finished
@@ -15796,8 +15798,10 @@ def api_morning_brief():
                 if postcode:
                     _mfutures["weather"] = _mpool.submit(_v2_fetch_weather, postcode)
                     _mfutures["fuel"]    = _mpool.submit(_v2_fetch_fuel, postcode)
-                    # Weekend-only: nearby places (restaurants, cafes, parks)
-                    _mfutures["nearby_places"] = _mpool.submit(_v2_fetch_weekend_nearby_places, postcode, wday >= 5)
+                    # Weekend-only: nearby places (from cache, not Google)
+                    if wday >= 5:  # Weekend only
+                        from cache_layer import get_cached_places
+                        _mfutures["nearby_places"] = _mpool.submit(lambda pc=postcode: get_cached_places(pc))
                 _mfutures["school"]    = _mpool.submit(_v2_fetch_school, phone)
                 # Trains: weekdays only, and not a bank holiday
                 _mfutures["trains"]    = _mpool.submit(
@@ -27304,6 +27308,32 @@ def test_school_search():
     </html>
     """
     return html
+
+
+@app.route("/api/cache/refresh", methods=["POST"])
+def api_cache_refresh():
+    """Background job: refresh places cache. Call once daily via cron."""
+    try:
+        from cache_layer import refresh_all_postcodes
+        result = refresh_all_postcodes()
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/places/cached", methods=["GET"])
+def api_places_cached():
+    """Get cached places for a postcode (no API call)."""
+    try:
+        from cache_layer import get_cached_places
+        postcode = request.args.get("postcode", "").strip().upper()
+        if not postcode:
+            return jsonify({"error": "postcode required"}), 400
+
+        places = get_cached_places(postcode)
+        return jsonify(places), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/school/edit", methods=["POST"])
