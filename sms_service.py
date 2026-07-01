@@ -27272,6 +27272,121 @@ def api_school_search():
         return jsonify({"schools": []}), 200
 
 
+@app.route("/test/school-search")
+def test_school_search():
+    """Test page for school autocomplete - no modal, just the input field."""
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>School Search Test</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 40px 20px; }
+            .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+            h1 { font-size: 24px; margin-bottom: 10px; color: #333; }
+            p { color: #666; margin-bottom: 20px; font-size: 14px; }
+            .form-group { margin-bottom: 20px; }
+            label { display: block; font-weight: 600; color: #333; margin-bottom: 8px; }
+            input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; font-family: inherit; }
+            input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+            #searchResults { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10001; margin-top: -1px; }
+            .search-result { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.15s; }
+            .search-result:hover { background: #f9f9f9; }
+            .result-name { font-weight: 600; color: #333; font-size: 14px; }
+            .result-address { font-size: 12px; color: #999; margin-top: 4px; }
+            .wrapper { position: relative; }
+            .debug { margin-top: 30px; padding: 15px; background: #f0f9ff; border-left: 3px solid #2563eb; border-radius: 4px; font-family: monospace; font-size: 12px; color: #333; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔍 School Search Test</h1>
+            <p>Type a school name to test the autocomplete (no modal, just plain input)</p>
+
+            <div class="form-group">
+                <label for="schoolName">School Name</label>
+                <div class="wrapper">
+                    <input type="text" id="schoolName" placeholder="Start typing... (e.g., Stanns Heath)" oninput="searchSchools()">
+                    <div id="searchResults"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="selectedSchool">Selected School</label>
+                <input type="text" id="selectedSchool" placeholder="Click a result to populate" readonly>
+            </div>
+
+            <div class="debug">
+                <strong>Debug Log:</strong><br>
+                <div id="debugLog">Ready...</div>
+            </div>
+        </div>
+
+        <script>
+            function log(msg) {
+                const log = document.getElementById('debugLog');
+                const time = new Date().toLocaleTimeString();
+                log.textContent = `[${time}] ${msg}`;
+                console.log(msg);
+            }
+
+            async function searchSchools() {
+                const query = document.getElementById('schoolName').value.trim();
+                const resultsDiv = document.getElementById('searchResults');
+
+                log(`Searching for: "${query}"`);
+
+                if (!query || query.length < 2) {
+                    resultsDiv.style.display = 'none';
+                    log('Query too short');
+                    return;
+                }
+
+                try {
+                    const url = `/api/school/search?q=${encodeURIComponent(query)}`;
+                    log(`Fetching: ${url}`);
+
+                    const res = await fetch(url);
+                    log(`Response status: ${res.status}`);
+
+                    const data = await res.json();
+                    log(`Got ${data.schools?.length || 0} results`);
+
+                    if (!data.schools || data.schools.length === 0) {
+                        resultsDiv.style.display = 'none';
+                        log('No results found');
+                        return;
+                    }
+
+                    resultsDiv.innerHTML = data.schools.map(s => `
+                        <div class="search-result" onclick="selectSchool('${s.name.replace(/'/g, "\\'")}', '${s.address.replace(/'/g, "\\'")}')" style="cursor: pointer;">
+                            <div class="result-name">${s.name}</div>
+                            <div class="result-address">${s.address || 'No address'}</div>
+                        </div>
+                    `).join('');
+                    resultsDiv.style.display = 'block';
+                    log(`Showing ${data.schools.length} results`);
+                } catch (e) {
+                    log(`Error: ${e.message}`);
+                    console.error('School search error:', e);
+                }
+            }
+
+            function selectSchool(name, address) {
+                document.getElementById('schoolName').value = name;
+                document.getElementById('selectedSchool').value = name + (address ? ' — ' + address : '');
+                document.getElementById('searchResults').style.display = 'none';
+                log(`Selected: ${name}`);
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
+
 @app.route("/api/school/edit", methods=["POST"])
 def api_school_edit():
     """Edit an existing school profile."""
