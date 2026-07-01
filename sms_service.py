@@ -6982,34 +6982,9 @@ def _el_address(tags):
     return ", ".join(filter(None, parts)) or tags.get("addr:full", "")
 
 def _places_nearby(lat, lon, place_type, radius_m, max_results):
-    """Fetch nearby places via Google Places Nearby Search."""
-    key = os.environ.get("GOOGLE_PLACES_KEY", "")
-    if not key:
-        return []
-    try:
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
-            params={"location": f"{lat},{lon}", "radius": radius_m,
-                    "type": place_type, "key": key},
-            timeout=10,
-        )
-        results = r.json().get("results", [])
-        items = []
-        for p in results:
-            loc = p.get("geometry", {}).get("location", {})
-            plat, plon = loc.get("lat"), loc.get("lng")
-            dist = round(haversine_km(lat, lon, plat, plon), 2) if plat and plon else 999
-            items.append({
-                "name":        p.get("name", ""),
-                "address":     p.get("vicinity", ""),
-                "distance_km": dist,
-                "place_id":    p.get("place_id", ""),
-            })
-        items.sort(key=lambda x: x["distance_km"])
-        return items[:max_results]
-    except Exception as e:
-        print(f"[places_nearby {place_type}] {e}")
-        return []
+    """Fetch nearby places. Google Places disabled due to high costs — returns empty."""
+    # Google Places API disabled due to billing issues
+    return []
 
 def _fetch_hospitals_overpass(lat, lon, radius_m=20000):
     query = f"""[out:json][timeout:30];

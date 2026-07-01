@@ -17,9 +17,7 @@ import time
 from datetime import datetime
 from typing import Optional
 
-GOOGLE_API_KEY = (os.environ.get("GOOGLE_PLACES_KEY") or
-                  os.environ.get("GOOGLE_API_KEY") or
-                  "AIzaSyDSJyUiYSCADhDdtBcOFI_iF-b-HOlUEq8")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY")
 
 _MA_DETAIL_TYPES_MAP = {
     "home_ins":    "Home Insurance",
@@ -253,17 +251,9 @@ def _places_nearby(lat: float, lon: float, radius_m: int, place_type: str, api_k
 
 
 def fetch_nearby_amenities(lat: float, lon: float, radius_km: float = 8.0) -> dict:
-    """Fetch nearby supermarkets and cafes. Uses Google Places if API key set, else OSM."""
+    """Fetch nearby supermarkets and cafes. Uses OSM (Google Places disabled due to cost)."""
     radius_m = int(radius_km * 1000)
-    api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
-
-    if api_key:
-        try:
-            supermarkets = _places_nearby(lat, lon, radius_m, "supermarket", api_key)
-            cafes        = _places_nearby(lat, lon, radius_m, "cafe", api_key)
-            return {"supermarkets": supermarkets, "cafes": cafes}
-        except Exception:
-            pass  # fall through to OSM
+    # Google Places API disabled — use OSM fallback only
 
     # OSM fallback
     query = f"""
