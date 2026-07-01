@@ -13035,25 +13035,25 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
     else:
         intro = "Night:"
 
-        # === RANK & SELECT TOP 3 BY PRIORITY ===
-        if not insights:
-            return f"Have a good {dow}."
+    # === RANK & SELECT TOP 3 BY PRIORITY ===
+    if not insights:
+        return f"Have a good {dow}."
 
-        # Sort by priority, take top 3
-        prioritized = sorted(
-            zip(insights, [priority_score.get(k, 10) for k in range(len(insights))]),
-            key=lambda x: x[1],
-            reverse=True
-        )
-        top_insights = [i[0] for i in prioritized[:3]]
+    # Sort by priority, take top 3
+    prioritized = sorted(
+        zip(insights, [priority_score.get(k, 10) for k in range(len(insights))]),
+        key=lambda x: x[1],
+        reverse=True
+    )
+    top_insights = [i[0] for i in prioritized[:3]]
 
-        brief = f"{intro} " + " · ".join(top_insights)
+    brief = f"{intro} " + " · ".join(top_insights)
 
-        # Smart length limit
-        if len(brief) > 150:
-            brief = f"{intro} " + " · ".join(top_insights[:2])
+    # Smart length limit
+    if len(brief) > 150:
+        brief = f"{intro} " + " · ".join(top_insights[:2])
 
-        return brief + "."
+    return brief + "."
 
     except Exception as e:
         import traceback
