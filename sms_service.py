@@ -27242,59 +27242,34 @@ def school_lookup():
     return jsonify(info)
 
 
-@app.route("/api/school/lookup")
-def api_school_lookup():
-    """Search for UK schools by name - searches real UK school database + user's schools."""
+@app.route("/api/school/search")
+def api_school_search():
+    """Search for schools by name - searches user's existing schools."""
     query = request.args.get("q", "").strip().lower()
     if not query or len(query) < 2:
         return jsonify({"schools": []}), 200
 
     try:
-        schools_set = {}
-
-        # 1. First check user's existing schools
+        # Search user's existing schools
         sb = lib._sb()
-        user_rows = sb.table("school_profiles").select("school_name,address") \
+        rows = sb.table("school_profiles").select("school_name,address") \
             .ilike("school_name", f"%{query}%") \
             .order("school_name", desc=False) \
-            .limit(5).execute().data or []
+            .limit(10).execute().data or []
 
-        for r in user_rows:
+        # Deduplicate and build result
+        seen = {}
+        for r in rows:
             name = r.get("school_name", "").strip()
-            if name and name not in schools_set:
-                schools_set[name] = r.get("address", "").strip()
+            if name and name not in seen:
+                seen[name] = r.get("address", "").strip()
 
-        # 2. Search UK schools database via NHS/Edubase lookup
-        # Using a simple web service that searches UK schools
-        import requests
-        try:
-            # Using Get The Data UK schools API (free, no auth)
-            lookup_url = f"https://www.schools.com/search/ajax/search?term={query}"
-            headers = {"User-Agent": "Miru/1.0"}
-            resp = requests.get(lookup_url, timeout=3, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                if isinstance(data, list):
-                    for school in data[:5]:
-                        name = school.get("name", "").strip()
-                        address = school.get("address", "").strip()
-                        if name and name not in schools_set:
-                            schools_set[name] = address
-        except Exception as api_err:
-            print(f"[school-lookup] UK API error (non-critical): {api_err}")
-
-        schools = [{"name": name, "address": addr} for name, addr in schools_set.items()]
+        schools = [{"name": name, "address": addr} for name, addr in seen.items()]
         return jsonify({"schools": schools}), 200
 
     except Exception as e:
-        print(f"[school-lookup] error: {e}")
+        print(f"[school-search] error: {e}")
         return jsonify({"schools": []}), 200
-
-
-@app.route("/api/school/search")
-def api_school_search():
-    """Alias for /api/school/lookup for backwards compatibility."""
-    return api_school_lookup()
 
 
 @app.route("/api/school/edit", methods=["POST"])
