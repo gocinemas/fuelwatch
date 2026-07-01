@@ -27097,6 +27097,30 @@ def school_signup_api():
         return jsonify({"error": f"Signup failed: {e}"}), 500
 
 
+@app.route("/api/school/update", methods=["POST", "OPTIONS"])
+def school_update():
+    """Update school details (address, etc.)."""
+    if request.method == "OPTIONS":
+        return "", 204
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        school_id = data.get("id", "").strip()
+        address = data.get("address", "").strip()
+
+        if not school_id:
+            return jsonify({"error": "School ID required"}), 400
+
+        # Update the school record
+        lib._sb().table("school_profiles").update({
+            "address": address
+        }).eq("id", school_id).execute()
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"[school update] error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/diag")
 def school_diag():
     """Admin diagnostic: show profile/token/event state without sending anything."""

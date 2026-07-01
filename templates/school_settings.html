@@ -449,16 +449,33 @@
     }
   }
 
-  function editAddress(i) {
+  async function editAddress(i) {
     const school = schools[i];
     const newAddress = prompt(`Update location for ${school.school_name}:\n\n(Leave empty for no address)`, school.address || '');
 
     if (newAddress !== null) {
-      schools[i].address = newAddress.trim();
-      // Here you would save to backend via API
-      // For now, just update UI
-      renderSchools();
-      alert('Address updated (changes saved locally)');
+      try {
+        const res = await fetch('/api/school/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: school.id,
+            address: newAddress.trim()
+          })
+        });
+
+        if (res.ok) {
+          schools[i].address = newAddress.trim();
+          renderSchools();
+          alert('✓ Address saved');
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to save'));
+        }
+      } catch (e) {
+        console.error('Save error:', e);
+        alert('Error saving address: ' + e.message);
+      }
     }
   }
 
