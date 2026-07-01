@@ -27414,12 +27414,6 @@ def api_home_week_summary():
             .lte("created_at", week_end.isoformat()).execute().data or []
         this_week["saves"] = len(saves_rows)
 
-        # Activities this week (recurring activities)
-        recurring = sb.table("recurring_activities").select("activity") \
-            .eq("from_number", from_number) \
-            .gte("last_done", week_start.isoformat()).execute().data or []
-        this_week["activities"] = [r.get("activity", "") for r in recurring if r.get("activity")][:5]
-
         # === LAST WEEK ===
         last_week = {
             "period": f"{last_week_start.strftime('%b %d')} — {last_week_end.strftime('%b %d')}",
