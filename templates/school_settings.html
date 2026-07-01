@@ -320,8 +320,8 @@
     </div>
 
     <div style="margin-bottom: 16px;">
-      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Address</label>
-      <input type="text" id="schoolAddress" placeholder="Auto-filled when you pick a school" readonly style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px; background: var(--gray-50); color: var(--muted);">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Address <span style="color: #9ca3af; font-weight: 400;">(optional)</span></label>
+      <input type="text" id="schoolAddress" placeholder="School address (auto-filled if found, or type manually)" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
     </div>
 
     <div style="margin-bottom: 16px;">
@@ -330,7 +330,10 @@
       <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">Email address where school sends updates (you can add this later)</div>
     </div>
 
-    <button class="btn-add-school" onclick="saveSchool()" style="margin-top: 24px;">Save School</button>
+    <div style="display: flex; gap: 8px; margin-top: 24px;">
+      <button class="btn-add-school" onclick="saveSchool()" style="flex: 1;">Save School</button>
+      <button class="btn-add-school" onclick="closeModal()" style="flex: 1; background: #9ca3af;">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -467,6 +470,7 @@
   async function saveSchool() {
     const childName = document.getElementById('childName').value.trim();
     const schoolName = document.getElementById('schoolName').value.trim();
+    const address = document.getElementById('schoolAddress').value.trim();
     const schoolEmail = document.getElementById('schoolEmail').value.trim();
 
     if (!childName || !schoolName) {
@@ -488,6 +492,7 @@
       const body = {
         child_name: childName,
         school_name: schoolName,
+        address: address,
         sender_emails: schoolEmail ? [schoolEmail] : []
       };
       if (wa) body.wa_number = wa;
