@@ -27299,6 +27299,7 @@ def school_update():
 def api_school_week_ahead():
     """Timeline of this calendar week (Monday-Sunday) for the user."""
     import datetime as _dt
+    import zoneinfo as _zi
     wa = request.args.get("wa", "").strip()
     token = request.args.get("token", "").strip()
 
