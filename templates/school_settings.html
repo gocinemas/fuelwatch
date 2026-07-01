@@ -534,7 +534,7 @@
     const section = document.getElementById('weekAheadSection');
     const grid = document.getElementById('weekAheadGrid');
 
-    if (!data || !data.success || !data.events || data.events.length === 0) {
+    if (!data || !data.success || !data.by_day || Object.keys(data.by_day).length === 0) {
       section.style.display = 'none';
       return;
     }
@@ -545,19 +545,9 @@
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    // Group events by day
-    const byDay = {};
-    data.events.forEach(ev => {
-      const date = ev.event_date || '';
-      if (!byDay[date]) {
-        byDay[date] = [];
-      }
-      byDay[date].push(ev);
-    });
-
-    // Render each day's events
-    Object.keys(byDay).sort().forEach(date => {
-      const events = byDay[date];
+    // Render each day's events (already grouped by server)
+    Object.keys(data.by_day).sort().forEach(date => {
+      const events = data.by_day[date];
       const dateObj = new Date(date + 'T00:00:00');
       const dayName = dayNames[dateObj.getDay()];
       const dayNum = dateObj.getDate();
@@ -569,10 +559,10 @@
         </div>`;
 
       events.forEach(ev => {
-        const time = ev.event_time || '';
-        const title = ev.event_title || 'Event';
-        const child = ev.child_name || '';
-        const icon = '🏫';
+        const time = ev.time || '';
+        const title = ev.title || 'Event';
+        const child = ev.child || '';
+        const icon = ev.emoji || '🏫';
 
         html += `<div style="padding: 8px 0; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start;">
           <span style="font-size: 16px; flex-shrink: 0;">${icon}</span>
