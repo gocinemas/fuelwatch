@@ -12911,149 +12911,149 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
         insights = []
         priority_score = {}
 
-    # === ACTIVE TRIP (traveling right now) ===
-    if active_trip and active_trip.get("destination"):
-        dest = active_trip["destination"]
-        eta = active_trip.get("eta")
-        insights.append(f"🛣️ On way to {dest}" + (f" (ETA {eta})" if eta else ""))
-        priority_score["active_trip"] = 100
+        # === ACTIVE TRIP (traveling right now) ===
+        if active_trip and active_trip.get("destination"):
+            dest = active_trip["destination"]
+            eta = active_trip.get("eta")
+            insights.append(f"🛣️ On way to {dest}" + (f" (ETA {eta})" if eta else ""))
+            priority_score["active_trip"] = 100
 
-    # === SCHOOL INTELLIGENCE (kids matter most!) ===
-    if school_holiday:
-        insights.append("🏫 School holidays")
-        priority_score["school"] = 40
-    else:
-        school = ctx.get("school", {})
-        events = school.get("events", [])
-        if events:
-            ev = events[0]
-            title = ev.get("event_title", "")
-            date = ev.get("event_date", "")
-            child = ev.get("child_name", "")
-            if date:
-                delta = (_dt.datetime.fromisoformat(date).date() - now.date()).days
-                if delta == 0:
-                    insights.append(f"🏫 {child}: {title} TODAY")
-                    priority_score["school"] = 90
-                elif delta == 1:
-                    insights.append(f"🏫 {child}: {title} TOMORROW")
-                    priority_score["school"] = 80
-                elif delta <= 7:
-                    insights.append(f"🏫 {child}: {title} in {delta} days")
-                    priority_score["school"] = 50
+        # === SCHOOL INTELLIGENCE (kids matter most!) ===
+        if school_holiday:
+            insights.append("🏫 School holidays")
+            priority_score["school"] = 40
+        else:
+            school = ctx.get("school", {})
+            events = school.get("events", [])
+            if events:
+                ev = events[0]
+                title = ev.get("event_title", "")
+                date = ev.get("event_date", "")
+                child = ev.get("child_name", "")
+                if date:
+                    delta = (_dt.datetime.fromisoformat(date).date() - now.date()).days
+                    if delta == 0:
+                        insights.append(f"🏫 {child}: {title} TODAY")
+                        priority_score["school"] = 90
+                    elif delta == 1:
+                        insights.append(f"🏫 {child}: {title} TOMORROW")
+                        priority_score["school"] = 80
+                    elif delta <= 7:
+                        insights.append(f"🏫 {child}: {title} in {delta} days")
+                        priority_score["school"] = 50
 
-    # === COMMUTE (time-sensitive) ===
-    is_commute_time = (5 <= hour <= 9) or (16 <= hour <= 20)
-    trains = ctx.get("trains", {})
-    if is_commute_time and trains.get("departures"):
-        d = trains["departures"][0]
-        mins_until = d.get("minutes_until")
-        if mins_until is not None:
-            if mins_until < 10:
-                insights.insert(0, f"🚂 LEAVE NOW: {d.get('time')} ({mins_until}min)")
-                priority_score["commute"] = 100
-            elif mins_until < 25:
-                insights.insert(0, f"🚂 Train {d.get('time')} in {mins_until}min")
-                priority_score["commute"] = 85
+        # === COMMUTE (time-sensitive) ===
+        is_commute_time = (5 <= hour <= 9) or (16 <= hour <= 20)
+        trains = ctx.get("trains", {})
+        if is_commute_time and trains.get("departures"):
+            d = trains["departures"][0]
+            mins_until = d.get("minutes_until")
+            if mins_until is not None:
+                if mins_until < 10:
+                    insights.insert(0, f"🚂 LEAVE NOW: {d.get('time')} ({mins_until}min)")
+                    priority_score["commute"] = 100
+                elif mins_until < 25:
+                    insights.insert(0, f"🚂 Train {d.get('time')} in {mins_until}min")
+                    priority_score["commute"] = 85
 
-    # === WHAT THEY CARE ABOUT (Saves analysis) ===
-    recent_capture = ctx.get("recent_capture", {})
-    top_interests = recent_capture.get("top_interests", [])
-    if top_interests and hour >= 12 and hour <= 17:  # Afternoon discovery
-        category = top_interests[0].get("category", "")
-        if category:
-            insights.append(f"💡 {category} saved lately")
-            priority_score["interests"] = 30
+        # === WHAT THEY CARE ABOUT (Saves analysis) ===
+        recent_capture = ctx.get("recent_capture", {})
+        top_interests = recent_capture.get("top_interests", [])
+        if top_interests and hour >= 12 and hour <= 17:  # Afternoon discovery
+            category = top_interests[0].get("category", "")
+            if category:
+                insights.append(f"💡 {category} saved lately")
+                priority_score["interests"] = 30
 
-    # === LUNCH OPPORTUNITY (if lunchtime + they've saved food places) ===
-    if 11 <= hour <= 14:
-        rated_places = ctx.get("rated_places", [])
-        food_places = [p for p in rated_places if p.get("category") in ("restaurant", "cafe", "pub")]
-        if food_places:
-            place = food_places[0]
-            insights.append(f"🍽️ {place.get('name')} ({place.get('rating', 4.5)}⭐) nearby")
-            priority_score["lunch"] = 70
+        # === LUNCH OPPORTUNITY (if lunchtime + they've saved food places) ===
+        if 11 <= hour <= 14:
+            rated_places = ctx.get("rated_places", [])
+            food_places = [p for p in rated_places if p.get("category") in ("restaurant", "cafe", "pub")]
+            if food_places:
+                place = food_places[0]
+                insights.append(f"🍽️ {place.get('name')} ({place.get('rating', 4.5)}⭐) nearby")
+                priority_score["lunch"] = 70
 
-    # === SPEND PATTERNS (behavioral insight) ===
-    spend = ctx.get("spend", {})
-    today_total = spend.get("today_total", 0)
-    weekly_avg = spend.get("weekly_avg", 0)
-    if today_total > (weekly_avg * 2):  # Very unusual
-        insights.append(f"💸 Spending spree: £{today_total:.0f} today (2x usual)")
-        priority_score["spend"] = 60
-    elif today_total > (weekly_avg * 1.5):
-        insights.append(f"💸 £{today_total:.0f} today — higher than usual")
-        priority_score["spend"] = 40
+        # === SPEND PATTERNS (behavioral insight) ===
+        spend = ctx.get("spend", {})
+        today_total = spend.get("today_total", 0)
+        weekly_avg = spend.get("weekly_avg", 0)
+        if today_total > (weekly_avg * 2):  # Very unusual
+            insights.append(f"💸 Spending spree: £{today_total:.0f} today (2x usual)")
+            priority_score["spend"] = 60
+        elif today_total > (weekly_avg * 1.5):
+            insights.append(f"💸 £{today_total:.0f} today — higher than usual")
+            priority_score["spend"] = 40
 
-    # === CALENDAR EVENTS (meetings/plans) ===
-    calendar = ctx.get("calendar", [])
-    if calendar:
-        ev = calendar[0]
-        title = ev.get("summary", "")
-        if title:
-            insights.append(f"📌 {title}")
-            priority_score["calendar"] = 50
+        # === CALENDAR EVENTS (meetings/plans) ===
+        calendar = ctx.get("calendar", [])
+        if calendar:
+            ev = calendar[0]
+            title = ev.get("summary", "")
+            if title:
+                insights.append(f"📌 {title}")
+                priority_score["calendar"] = 50
 
-    # === DELIVERIES (practical need) ===
-    deliveries = ctx.get("deliveries", [])
-    if deliveries:
-        d = deliveries[0]
-        status = d.get("status", "")
-        if "today" in status.lower():
-            insights.append(f"📦 Delivery arriving today")
-            priority_score["delivery"] = 70
+        # === DELIVERIES (practical need) ===
+        deliveries = ctx.get("deliveries", [])
+        if deliveries:
+            d = deliveries[0]
+            status = d.get("status", "")
+            if "today" in status.lower():
+                insights.append(f"📦 Delivery arriving today")
+                priority_score["delivery"] = 70
 
-    # === BIN DAY (practical) ===
-    bin_day = ctx.get("bin_day")
-    if bin_day and bin_day.get("is_bin_day"):
-        insights.append(f"🗑️ {bin_day.get('bin_type', 'Bin')} day")
-        priority_score["bin"] = 35
+        # === BIN DAY (practical) ===
+        bin_day = ctx.get("bin_day")
+        if bin_day and bin_day.get("is_bin_day"):
+            insights.append(f"🗑️ {bin_day.get('bin_type', 'Bin')} day")
+            priority_score["bin"] = 35
 
-    # === RECURRING PATTERNS (what they do) ===
-    recurring = ctx.get("recurring", {})
-    activities = recurring.get("activities", [])
-    if activities and hour >= 17:  # Evening activity suggestions
-        act = activities[0]
-        insights.append(f"🎯 {act.get('activity', '')} (you do this often)")
-        priority_score["recurring"] = 25
+        # === RECURRING PATTERNS (what they do) ===
+        recurring = ctx.get("recurring", {})
+        activities = recurring.get("activities", [])
+        if activities and hour >= 17:  # Evening activity suggestions
+            act = activities[0]
+            insights.append(f"🎯 {act.get('activity', '')} (you do this often)")
+            priority_score["recurring"] = 25
 
-    # === TIME-OF-DAY CONTEXT ===
-    if hour < 6:
-        intro = "Early riser:"
-    elif hour < 9:
-        intro = "Morning:"
-    elif hour < 12:
-        intro = "Late morning:"
-    elif hour < 14:
-        intro = "Lunch rush:"
-    elif hour < 17:
-        intro = "Afternoon:"
-    elif hour < 19:
-        intro = "Evening:"
-    elif hour < 21:
-        intro = "Night out:"
-    else:
-        intro = "Night:"
+        # === TIME-OF-DAY CONTEXT ===
+        if hour < 6:
+            intro = "Early riser:"
+        elif hour < 9:
+            intro = "Morning:"
+        elif hour < 12:
+            intro = "Late morning:"
+        elif hour < 14:
+            intro = "Lunch rush:"
+        elif hour < 17:
+            intro = "Afternoon:"
+        elif hour < 19:
+            intro = "Evening:"
+        elif hour < 21:
+            intro = "Night out:"
+        else:
+            intro = "Night:"
 
-    # === RANK & SELECT TOP 3 BY PRIORITY ===
-    if not insights:
-        return f"Have a good {dow}."
+        # === RANK & SELECT TOP 3 BY PRIORITY ===
+        if not insights:
+            return f"Have a good {dow}."
 
-    # Sort by priority, take top 3
-    prioritized = sorted(
-        zip(insights, [priority_score.get(k, 10) for k in range(len(insights))]),
-        key=lambda x: x[1],
-        reverse=True
-    )
-    top_insights = [i[0] for i in prioritized[:3]]
+        # Sort by priority, take top 3
+        prioritized = sorted(
+            zip(insights, [priority_score.get(k, 10) for k in range(len(insights))]),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        top_insights = [i[0] for i in prioritized[:3]]
 
-    brief = f"{intro} " + " · ".join(top_insights)
+        brief = f"{intro} " + " · ".join(top_insights)
 
-    # Smart length limit
-    if len(brief) > 150:
-        brief = f"{intro} " + " · ".join(top_insights[:2])
+        # Smart length limit
+        if len(brief) > 150:
+            brief = f"{intro} " + " · ".join(top_insights[:2])
 
-    return brief + "."
+        return brief + "."
 
     except Exception as e:
         import traceback
