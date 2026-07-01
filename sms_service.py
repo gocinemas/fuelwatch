@@ -27296,6 +27296,162 @@ def school_update():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/school/week-ahead")
+def api_school_week_ahead():
+    """Timeline of everything happening this week for the user."""
+    import datetime as _dt
+    wa = request.args.get("wa", "").strip()
+    token = request.args.get("token", "").strip()
+
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+    now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
+    today = now.date()
+    week_start = today
+    week_end = today + _dt.timedelta(days=6)
+
+    try:
+        events = []
+
+        # === SCHOOL EVENTS ===
+        sb = lib._sb()
+        school_rows = sb.table("school_events").select("*") \
+            .eq("from_number", from_number) \
+            .gte("event_date", today.isoformat()) \
+            .lte("event_date", week_end.isoformat()) \
+            .order("event_date", desc=False).execute().data or []
+
+        for ev in school_rows:
+            date_str = ev.get("event_date", "")
+            if date_str:
+                dt = _dt.datetime.fromisoformat(date_str)
+                events.append({
+                    "type": "school",
+                    "date": date_str,
+                    "time": dt.strftime("%H:%M") if "T" in date_str else None,
+                    "title": ev.get("event_title", "School Event"),
+                    "child": ev.get("child_name", ""),
+                    "emoji": "🏫",
+                    "sort_key": (dt.date(), dt.time() if "T" in date_str else _dt.time.max)
+                })
+
+        # === CALENDAR EVENTS ===
+        try:
+            cal_rows = sb.table("calendar_events").select("*") \
+                .eq("from_number", from_number) \
+                .gte("start_date", today.isoformat()) \
+                .lte("start_date", week_end.isoformat()) \
+                .order("start_date", desc=False).execute().data or []
+
+            for ev in cal_rows:
+                date_str = ev.get("start_date", "")
+                if date_str:
+                    dt = _dt.datetime.fromisoformat(date_str) if "T" in date_str else _dt.datetime.combine(_dt.date.fromisoformat(date_str), _dt.time.min)
+                    events.append({
+                        "type": "calendar",
+                        "date": date_str,
+                        "time": dt.strftime("%H:%M") if "T" in date_str else None,
+                        "title": ev.get("summary", "Calendar Event"),
+                        "emoji": "📌",
+                        "sort_key": (dt.date(), dt.time() if "T" in date_str else _dt.time.max)
+                    })
+        except:
+            pass
+
+        # === DELIVERIES ===
+        try:
+            delivery_rows = sb.table("deliveries").select("*") \
+                .eq("from_number", from_number) \
+                .gte("expected_date", today.isoformat()) \
+                .lte("expected_date", week_end.isoformat()) \
+                .order("expected_date", desc=False).execute().data or []
+
+            for d in delivery_rows:
+                date_str = d.get("expected_date", "")
+                if date_str:
+                    events.append({
+                        "type": "delivery",
+                        "date": date_str,
+                        "title": d.get("carrier", "Delivery") + ": " + (d.get("item", "Package") or "Package"),
+                        "emoji": "📦",
+                        "sort_key": (_dt.date.fromisoformat(date_str), _dt.time.max)
+                    })
+        except:
+            pass
+
+        # === BIN DAYS ===
+        try:
+            bin_rows = sb.table("bin_days").select("*") \
+                .eq("from_number", from_number) \
+                .gte("date", today.isoformat()) \
+                .lte("date", week_end.isoformat()) \
+                .order("date", desc=False).execute().data or []
+
+            for b in bin_rows:
+                date_str = b.get("date", "")
+                if date_str:
+                    events.append({
+                        "type": "bin",
+                        "date": date_str,
+                        "title": b.get("bin_type", "Bin") + " day",
+                        "emoji": "🗑️",
+                        "sort_key": (_dt.date.fromisoformat(date_str), _dt.time.max)
+                    })
+        except:
+            pass
+
+        # === PERSONAL EVENTS (birthdays, anniversaries) ===
+        try:
+            personal_rows = sb.table("personal_events").select("*") \
+                .eq("from_number", from_number) \
+                .gte("date", today.isoformat()) \
+                .lte("date", week_end.isoformat()) \
+                .order("date", desc=False).execute().data or []
+
+            for p in personal_rows:
+                date_str = p.get("date", "")
+                if date_str:
+                    events.append({
+                        "type": "personal",
+                        "date": date_str,
+                        "title": p.get("title", "Event"),
+                        "emoji": "🎂" if "birthday" in p.get("title", "").lower() else "📍",
+                        "sort_key": (_dt.date.fromisoformat(date_str), _dt.time.max)
+                    })
+        except:
+            pass
+
+        # Sort by date/time
+        events.sort(key=lambda e: e["sort_key"])
+
+        # Group by day
+        by_day = {}
+        for ev in events:
+            date = ev["date"][:10]  # YYYY-MM-DD
+            if date not in by_day:
+                by_day[date] = []
+            by_day[date].append(ev)
+
+        return jsonify({
+            "success": True,
+            "week": {
+                "start": week_start.isoformat(),
+                "end": week_end.isoformat(),
+                "today": today.isoformat(),
+            },
+            "by_day": by_day,
+            "events_count": len(events),
+        })
+
+    except Exception as e:
+        print(f"[week-ahead] error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/diag")
 def school_diag():
     """Admin diagnostic: show profile/token/event state without sending anything."""
