@@ -291,6 +291,15 @@
     <p>No schools added yet</p>
     <button class="btn-add-school" onclick="showAddSchoolModal()">Add First School</button>
   </div>
+
+  <!-- Week ahead section -->
+  <div id="weekAheadSection" style="display: none; margin-top: 32px;">
+    <div class="hero">
+      <h1>📅 This Week</h1>
+      <p>School events coming up this week</p>
+    </div>
+    <div id="weekAheadGrid" style="display: grid; gap: 12px;"></div>
+  </div>
 </div>
 
 <!-- Modal -->
@@ -503,8 +512,86 @@
     }
   }
 
+  async function loadWeekAhead() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      let wa = params.get('wa');
+      if (!wa) {
+        wa = localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
+      }
+
+      if (!wa) return;
+
+      const res = await fetch(`/api/school/week-ahead?wa=${encodeURIComponent(wa)}`);
+      const data = await res.json();
+      renderWeekAhead(data);
+    } catch (e) {
+      console.warn('Failed to load week ahead:', e);
+    }
+  }
+
+  function renderWeekAhead(data) {
+    const section = document.getElementById('weekAheadSection');
+    const grid = document.getElementById('weekAheadGrid');
+
+    if (!data || !data.success || !data.events || data.events.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'block';
+    grid.innerHTML = '';
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Group events by day
+    const byDay = {};
+    data.events.forEach(ev => {
+      const date = ev.event_date || '';
+      if (!byDay[date]) {
+        byDay[date] = [];
+      }
+      byDay[date].push(ev);
+    });
+
+    // Render each day's events
+    Object.keys(byDay).sort().forEach(date => {
+      const events = byDay[date];
+      const dateObj = new Date(date + 'T00:00:00');
+      const dayName = dayNames[dateObj.getDay()];
+      const dayNum = dateObj.getDate();
+      const monthName = monthNames[dateObj.getMonth()];
+
+      let html = `<div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px;">
+          ${dayName} ${dayNum} ${monthName}
+        </div>`;
+
+      events.forEach(ev => {
+        const time = ev.event_time || '';
+        const title = ev.event_title || 'Event';
+        const child = ev.child_name || '';
+        const icon = '🏫';
+
+        html += `<div style="padding: 8px 0; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start;">
+          <span style="font-size: 16px; flex-shrink: 0;">${icon}</span>
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 12px; font-weight: 600; color: var(--text);">${title}</div>
+            ${child ? `<div style="font-size: 11px; color: var(--muted); margin-top: 2px;">👤 ${child}</div>` : ''}
+            ${time ? `<div style="font-size: 11px; color: var(--muted); margin-top: 2px;">⏰ ${time}</div>` : ''}
+          </div>
+        </div>`;
+      });
+
+      html += `</div>`;
+      grid.innerHTML += html;
+    });
+  }
+
   // Load on page load
   loadSchools();
+  loadWeekAhead();
 </script>
 
 </body>
