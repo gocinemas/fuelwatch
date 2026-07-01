@@ -27217,9 +27217,46 @@ def school_lookup():
     return jsonify(info)
 
 
+def _fuzzy_match_schools(query: str, candidates: list) -> list:
+    """Fuzzy match school names."""
+    from difflib import SequenceMatcher
+
+    query_lower = query.lower().strip()
+    scored = []
+
+    for school in candidates:
+        name = school.get("name", "").lower()
+        # Score based on substring match and similarity
+        if query_lower in name:
+            score = len(query_lower) / len(name)  # Prefer closer matches
+        else:
+            score = SequenceMatcher(None, query_lower, name).ratio()
+
+        if score > 0.4:  # Only include reasonable matches
+            scored.append((score, school))
+
+    # Sort by score descending
+    scored.sort(key=lambda x: -x[0])
+    return [s[1] for s in scored[:10]]
+
+
+_COMMON_UK_SCHOOLS = [
+    {"name": "Stanns Heath Junior School", "address": "Surrey"},
+    {"name": "New Haw Junior School", "address": "Surrey"},
+    {"name": "Westminster School", "address": "London"},
+    {"name": "Eton College", "address": "Berkshire"},
+    {"name": "Harrow School", "address": "London"},
+    {"name": "Winchester College", "address": "Hampshire"},
+    {"name": "Marlborough College", "address": "Wiltshire"},
+    {"name": "Rugby School", "address": "Warwickshire"},
+    {"name": "Oundle School", "address": "Northamptonshire"},
+    {"name": "Uppingham School", "address": "Rutland"},
+]
+
+
 @app.route("/api/school/search")
 def api_school_search():
-    """Search for schools by name - searches user's existing schools."""
+    """Search for schools by name - user's schools + fuzzy match common schools."""
     query = request.args.get("q", "").strip()
     if not query or len(query) < 2:
         return jsonify({"schools": []}), 200
@@ -27233,14 +27270,25 @@ def api_school_search():
             .limit(10).execute().data or []
 
         # Deduplicate and build result
-        seen = {}
+        seen = set()
+        schools = []
         for r in rows:
             name = r.get("school_name", "").strip()
             if name and name not in seen:
-                seen[name] = r.get("address", "").strip()
+                seen.add(name)
+                schools.append({"name": name, "address": r.get("address", "").strip()})
 
-        schools = [{"name": name, "address": addr} for name, addr in seen.items()]
-        return jsonify({"schools": schools}), 200
+        # If few results, add fuzzy-matched common schools
+        if len(schools) < 5:
+            fuzzy_matches = _fuzzy_match_schools(query, _COMMON_UK_SCHOOLS)
+            for school in fuzzy_matches:
+                if school["name"] not in seen:
+                    seen.add(school["name"])
+                    schools.append(school)
+                    if len(schools) >= 10:
+                        break
+
+        return jsonify({"schools": schools[:10]}), 200
 
     except Exception as e:
         print(f"[school-search] error: {e}")
