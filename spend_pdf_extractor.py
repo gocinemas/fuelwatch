@@ -83,27 +83,42 @@ Return ONLY the JSON array, no markdown or explanation.""",
         )
 
         response_text = message.content[0].text.strip()
+        original_response = response_text  # Keep original for debugging
 
         # Parse JSON response — handle markdown code blocks
         if response_text.startswith("```"):
             # Extract content between triple backticks
             parts = response_text.split("```")
             if len(parts) >= 2:
-                response_text = parts[1]
+                response_text = parts[1].strip()
             if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+                response_text = response_text[4:].strip()
 
         # Ensure we have valid JSON
         if not response_text.startswith("["):
+            print(f"[spend_pdf] Invalid format. First 200 chars: {original_response[:200]}")
             return {
                 "success": False,
-                "error": f"Invalid response format (not a JSON array)",
+                "error": f"Invalid response format (expected JSON array)",
                 "transactions": [],
                 "count": 0,
             }
 
-        transactions = json.loads(response_text)
+        try:
+            transactions = json.loads(response_text)
+        except json.JSONDecodeError as e:
+            print(f"[spend_pdf] JSON decode error: {e}")
+            print(f"[spend_pdf] Response text (first 500 chars): {response_text[:500]}")
+            # Try to extract JSON if Claude added extra text
+            import re
+            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+            if json_match:
+                try:
+                    transactions = json.loads(json_match.group(0))
+                except:
+                    raise e
+            else:
+                raise e
 
         return {
             "success": True,
