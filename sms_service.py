@@ -27217,15 +27217,61 @@ def school_lookup():
     return jsonify(info)
 
 
+def _search_osm_schools(query: str, limit: int = 5) -> list:
+    """Search OpenStreetMap for schools by name."""
+    try:
+        # Use Overpass API to search for schools by name in UK
+        overpass_url = "https://overpass-api.de/api/interpreter"
+        overpass_query = f"""
+[out:json][timeout:10];
+area["name"="United Kingdom"]->.uk;
+(
+  node["amenity"="school"]["name"~"{query}",i](area.uk);
+  way["amenity"="school"]["name"~"{query}",i](area.uk);
+);
+out geom;
+"""
+        resp = requests.post(overpass_url, data=overpass_query, timeout=10)
+        if resp.status_code != 200:
+            return []
+
+        data = resp.json()
+        schools = []
+
+        for elem in data.get("elements", []):
+            name = elem.get("tags", {}).get("name", "").strip()
+            if not name:
+                continue
+
+            # Try to get address
+            tags = elem.get("tags", {})
+            address_parts = []
+            if tags.get("addr:street"):
+                address_parts.append(tags.get("addr:street"))
+            if tags.get("addr:city"):
+                address_parts.append(tags.get("addr:city"))
+            if tags.get("addr:postcode"):
+                address_parts.append(tags.get("addr:postcode"))
+
+            address = ", ".join(address_parts) if address_parts else ""
+
+            schools.append({"name": name, "address": address, "source": "osm"})
+
+        return schools[:limit]
+    except Exception as e:
+        print(f"[osm-school-search] {e}")
+        return []
+
+
 @app.route("/api/school/search")
 def api_school_search():
-    """Search for schools by name - searches user's existing schools."""
-    query = request.args.get("q", "").strip().lower()
+    """Search for schools by name - searches user's schools + OSM."""
+    query = request.args.get("q", "").strip()
     if not query or len(query) < 2:
         return jsonify({"schools": []}), 200
 
     try:
-        # Search user's existing schools
+        # Search user's existing schools first
         sb = lib._sb()
         rows = sb.table("school_profiles").select("school_name,address") \
             .ilike("school_name", f"%{query}%") \
@@ -27240,7 +27286,13 @@ def api_school_search():
                 seen[name] = r.get("address", "").strip()
 
         schools = [{"name": name, "address": addr} for name, addr in seen.items()]
-        return jsonify({"schools": schools}), 200
+
+        # If no user schools found, try OpenStreetMap
+        if not schools:
+            osm_schools = _search_osm_schools(query, limit=10)
+            schools.extend(osm_schools)
+
+        return jsonify({"schools": schools[:10]}), 200
 
     except Exception as e:
         print(f"[school-search] error: {e}")
