@@ -27298,7 +27298,7 @@ def school_update():
 
 @app.route("/api/school/week-ahead")
 def api_school_week_ahead():
-    """Timeline of everything happening this week for the user."""
+    """Timeline of this calendar week (Monday-Sunday) for the user."""
     import datetime as _dt
     wa = request.args.get("wa", "").strip()
     token = request.args.get("token", "").strip()
@@ -27311,8 +27311,10 @@ def api_school_week_ahead():
     from_number = _v2_resolve(wa)
     now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
     today = now.date()
-    week_start = today
-    week_end = today + _dt.timedelta(days=6)
+    # Start from Monday of current week
+    week_start = today - _dt.timedelta(days=today.weekday())
+    # End on Sunday of current week
+    week_end = week_start + _dt.timedelta(days=6)
 
     try:
         events = []
@@ -27321,7 +27323,7 @@ def api_school_week_ahead():
         sb = lib._sb()
         school_rows = sb.table("school_events").select("*") \
             .eq("from_number", from_number) \
-            .gte("event_date", today.isoformat()) \
+            .gte("event_date", week_start.isoformat()) \
             .lte("event_date", week_end.isoformat()) \
             .order("event_date", desc=False).execute().data or []
 
