@@ -27240,29 +27240,38 @@ def _fuzzy_match_schools(query: str, candidates: list) -> list:
     return [s[1] for s in scored[:10]]
 
 
-_COMMON_UK_SCHOOLS = [
-    {"name": "Stanns Heath Junior School", "address": "Surrey"},
-    {"name": "New Haw Junior School", "address": "Surrey"},
-    {"name": "Westminster School", "address": "London"},
-    {"name": "Eton College", "address": "Berkshire"},
-    {"name": "Harrow School", "address": "London"},
-    {"name": "Winchester College", "address": "Hampshire"},
-    {"name": "Marlborough College", "address": "Wiltshire"},
-    {"name": "Rugby School", "address": "Warwickshire"},
-    {"name": "Oundle School", "address": "Northamptonshire"},
-    {"name": "Uppingham School", "address": "Rutland"},
-]
+# Load UK schools database on startup
+_UK_SCHOOLS_CACHE = []
+
+def _load_uk_schools():
+    """Load UK schools from CSV file."""
+    global _UK_SCHOOLS_CACHE
+    try:
+        import csv
+        csv_path = os.path.join(os.path.dirname(__file__), "data", "uk_schools.csv")
+        if os.path.exists(csv_path):
+            with open(csv_path, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                _UK_SCHOOLS_CACHE = [{"name": row["name"], "address": row.get("address", "")} for row in reader]
+            print(f"[schools] Loaded {len(_UK_SCHOOLS_CACHE)} UK schools")
+        else:
+            print(f"[schools] CSV not found at {csv_path}")
+    except Exception as e:
+        print(f"[schools] Error loading CSV: {e}")
+
+# Load on startup
+_load_uk_schools()
 
 
 @app.route("/api/school/search")
 def api_school_search():
-    """Search for schools by name - user's schools + fuzzy match common schools."""
+    """Search for schools by name - user's schools + fuzzy match UK database."""
     query = request.args.get("q", "").strip()
     if not query or len(query) < 2:
         return jsonify({"schools": []}), 200
 
     try:
-        # Search user's existing schools
+        # Search user's existing schools first
         sb = lib._sb()
         rows = sb.table("school_profiles").select("school_name,address") \
             .ilike("school_name", f"%{query}%") \
@@ -27278,15 +27287,13 @@ def api_school_search():
                 seen.add(name)
                 schools.append({"name": name, "address": r.get("address", "").strip()})
 
-        # If few results, add fuzzy-matched common schools
-        if len(schools) < 5:
-            fuzzy_matches = _fuzzy_match_schools(query, _COMMON_UK_SCHOOLS)
+        # Add fuzzy-matched schools from UK database
+        if _UK_SCHOOLS_CACHE:
+            fuzzy_matches = _fuzzy_match_schools(query, _UK_SCHOOLS_CACHE)
             for school in fuzzy_matches:
-                if school["name"] not in seen:
+                if school["name"] not in seen and len(schools) < 10:
                     seen.add(school["name"])
                     schools.append(school)
-                    if len(schools) >= 10:
-                        break
 
         return jsonify({"schools": schools[:10]}), 200
 
