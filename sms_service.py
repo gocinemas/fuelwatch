@@ -12907,8 +12907,9 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
     """Build AGENTIC brief using personal data & patterns."""
     import datetime as _dt
 
-    insights = []
-    priority_score = {}
+    try:
+        insights = []
+        priority_score = {}
 
     # === ACTIVE TRIP (traveling right now) ===
     if active_trip and active_trip.get("destination"):
@@ -13034,25 +13035,31 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
     else:
         intro = "Night:"
 
-    # === RANK & SELECT TOP 3 BY PRIORITY ===
-    if not insights:
+        # === RANK & SELECT TOP 3 BY PRIORITY ===
+        if not insights:
+            return f"Have a good {dow}."
+
+        # Sort by priority, take top 3
+        prioritized = sorted(
+            zip(insights, [priority_score.get(k, 10) for k in range(len(insights))]),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        top_insights = [i[0] for i in prioritized[:3]]
+
+        brief = f"{intro} " + " · ".join(top_insights)
+
+        # Smart length limit
+        if len(brief) > 150:
+            brief = f"{intro} " + " · ".join(top_insights[:2])
+
+        return brief + "."
+
+    except Exception as e:
+        import traceback
+        print(f"[brief] Smart brief error: {e}")
+        traceback.print_exc()
         return f"Have a good {dow}."
-
-    # Sort by priority, take top 3
-    prioritized = sorted(
-        zip(insights, [priority_score.get(k, 10) for k in range(len(insights))]),
-        key=lambda x: x[1],
-        reverse=True
-    )
-    top_insights = [i[0] for i in prioritized[:3]]
-
-    brief = f"{intro} " + " · ".join(top_insights)
-
-    # Smart length limit
-    if len(brief) > 150:
-        brief = f"{intro} " + " · ".join(top_insights[:2])
-
-    return brief + "."
 
 
 @app.route("/api/home/brief")
@@ -13178,6 +13185,7 @@ def api_home_brief():
         return jsonify(result)
 
     ctx: dict = {}
+    weather = {}  # Initialize weather dict
     pool = _cf.ThreadPoolExecutor(max_workers=12)
     try:
         futures = {}
@@ -14467,9 +14475,20 @@ def api_home_brief():
         print(f"🎯 SNIPPET ERROR: {_e}")
         _weekend_snippet = {}
 
-    # Ensure brief is never empty — build SUPER SMART brief from actual facts
-    if not brief_text or len(brief_text.strip()) < 5:
-        brief_text = _build_super_smart_brief(ctx, prefs, hour, dow, _school_holiday_now, _loc_classification, weather, now, _active_trip_early, None)
+    # Ensure brief is ALWAYS smart — fallback if Groq fails or returns minimal
+    # Check: empty, too short, or just time/generic greeting
+    is_minimal = (
+        not brief_text or
+        len(brief_text.strip()) < 8 or
+        brief_text.strip() in ("Rest well.", "Enjoy your time out!", "Sleep tight.", "Have a good day.", f"Have a good {dow}.") or
+        any(x in brief_text.lower() for x in ("rest well", "sleep", "enjoy your time", "good day", "have a good"))
+    )
+
+    if is_minimal:
+        smart_brief = _build_super_smart_brief(ctx, prefs, hour, dow, _school_holiday_now, _loc_classification, weather, now, _active_trip_early, None)
+        if len(smart_brief) > len(brief_text.strip()):  # Only use if it's actually better
+            brief_text = smart_brief
+        app.logger.info(f"[brief] Using smart fallback: {brief_text[:60]}...")
 
     result = {
         "brief":        brief_text,
