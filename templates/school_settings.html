@@ -448,7 +448,7 @@
       const body = {
         child_name: childName,
         school_name: schoolName,
-        sender_emails: [schoolEmail]
+        sender_emails: schoolEmail ? [schoolEmail] : []
       };
       if (wa) body.wa_number = wa;
 

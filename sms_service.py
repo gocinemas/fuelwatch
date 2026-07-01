@@ -27235,8 +27235,7 @@ def school_signup_api():
             return jsonify({"error": "Child name is required"}), 400
         if not school:
             return jsonify({"error": "School name is required"}), 400
-        if not emails:
-            return jsonify({"error": "At least one school email is required"}), 400
+        # Email is optional — can be added later via Gmail connection
 
         digits = _re2.sub(r"[^\d+]", "", wa_raw)
         if not digits.startswith("+"):
