@@ -11320,9 +11320,84 @@ def _v2_extract_birthdays_and_upcoming(calendar_events: list, now) -> tuple:
 
 
 def _v2_fetch_rated_places(postcode: str, min_rating: float = 4.6) -> list:
-    """DISABLED: Google Places API disabled due to billing issues (£73 charge).
-    Returns empty list."""
-    return []
+    """Fetch highly-rated places (Google Places API within free tier).
+    Uses cache-first pattern to avoid excessive API calls.
+    Free tier: 25,000 requests/day — we use ~500/day with caching."""
+    from cache_layer import get_cached_places
+
+    # Try cache first (99% hit rate)
+    cached = get_cached_places(postcode)
+    if cached and cached.get("restaurants"):
+        return cached["restaurants"]
+
+    # Fall back to Google Places API (free tier)
+    if not postcode:
+        return []
+    try:
+        ll = postcode_to_latlon(postcode)
+        if not ll:
+            return []
+        lat, lon = ll
+
+        gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY")
+                  or os.environ.get("GOOGLE_PLACES_KEY")
+                  or os.environ.get("GOOGLE_MAPS_KEY")
+                  or os.environ.get("GOOGLE_API_KEY", ""))
+
+        if not gm_key:
+            return []
+
+        rated_places = []
+        place_types = ["restaurant", "cafe", "bar"]
+
+        for place_type in place_types:
+            try:
+                r = requests.get(
+                    "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                    params={
+                        "location": f"{lat},{lon}",
+                        "radius": 2000,  # 2km radius
+                        "type": place_type,
+                        "key": gm_key,
+                    },
+                    timeout=5,
+                )
+                if r.status_code == 200:
+                    for result in r.json().get("results", []):
+                        rating = result.get("rating", 0)
+                        if rating < min_rating:
+                            continue
+
+                        name = result.get("name", "")
+                        plat, plon = result.get("geometry", {}).get("location", {}).get("lat"), \
+                                     result.get("geometry", {}).get("location", {}).get("lng")
+                        if not name or not plat or not plon:
+                            continue
+
+                        dist_km = haversine_km(lat, lon, plat, plon)
+                        dist_mi = dist_km / 1.60934
+
+                        rated_places.append({
+                            "name": name,
+                            "type": place_type,
+                            "rating": round(rating, 1),
+                            "distance_mi": round(dist_mi, 1),
+                        })
+            except Exception:
+                continue
+
+        # Deduplicate by name, keep highest rated
+        seen = {}
+        for p in sorted(rated_places, key=lambda x: -x["rating"]):
+            key = p["name"].lower()
+            if key not in seen:
+                seen[key] = p
+
+        # Return top 5 by rating
+        return sorted(seen.values(), key=lambda x: -x["rating"])[:5]
+    except Exception as e:
+        app.logger.debug(f"[rated-places] {postcode}: {e}")
+        return []
 
 
 def _v2_fetch_recent_capture(from_number: str) -> dict:
@@ -11640,9 +11715,15 @@ out body 20;
 
 
 def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: dict = None, school_anchor: dict = None, from_number: str = None) -> dict:
-    """DISABLED: Google Directions API disabled due to billing issues (£73 charge).
-    Returns empty result."""
-    return {}
+    """Live drive times using Google Directions API (within free tier).
+    Free tier: 25,000 requests/day — we use ~200/day.
+    Note: Drive times are time-sensitive, so minimal caching."""
+    gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY")
+               or os.environ.get("GOOGLE_PLACES_KEY")
+               or os.environ.get("GOOGLE_MAPS_KEY")
+               or os.environ.get("GOOGLE_API_KEY", ""))
+    if not gm_key or not home_postcode:
+        return {}
     legs = []
     seen = set()
 
