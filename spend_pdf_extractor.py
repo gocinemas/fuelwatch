@@ -16,9 +16,21 @@ SUPPORTED FORMATS:
 
 import base64
 import json
+from datetime import datetime, time
 from anthropic import Anthropic
 
 client = Anthropic()
+
+
+def serialize_for_json(obj):
+    """Convert datetime/time objects to strings for JSON serialization."""
+    if isinstance(obj, (datetime, time)):
+        return obj.isoformat()
+    if isinstance(obj, dict):
+        return {k: serialize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [serialize_for_json(item) for item in obj]
+    return obj
 
 
 def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
@@ -122,7 +134,7 @@ Return ONLY the JSON array, no markdown or explanation.""",
 
         return {
             "success": True,
-            "transactions": transactions,
+            "transactions": serialize_for_json(transactions),
             "count": len(transactions),
             "source": "PDF Upload",
         }
