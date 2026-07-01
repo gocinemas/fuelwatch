@@ -12903,70 +12903,139 @@ def _rank_evening_saves(place_saves: list, content_saves: list, event_saves: lis
         return place_saves[:2] + content_saves[:1], events[:2]
 
 
-def _build_smart_fallback_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, weather, now):
-    """Build smart brief when Groq fails or returns empty."""
-    facts = []
+def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, weather, now, active_trip=None, recent_saves=None):
+    """Build SUPER SMART brief using ALL intelligence."""
+    import datetime as _dt
 
-    # Time context
-    if hour < 6:
-        greeting = "Still early"
-    elif hour < 10:
-        greeting = "Good morning"
-    elif hour < 12:
-        greeting = "Late morning"
-    elif hour < 14:
-        greeting = "Lunchtime"
-    elif hour < 17:
-        greeting = "Afternoon"
-    elif hour < 19:
-        greeting = "Early evening"
-    elif hour < 21:
-        greeting = "Evening"
-    else:
-        greeting = "Late night"
+    insights = []
 
-    # Weather
+    # === COMMUTE INTELLIGENCE ===
+    # Check if it's commute time AND user has trains configured
+    is_commute_time = (5 <= hour <= 9) or (16 <= hour <= 20)
+    trains = ctx.get("trains", {})
+    trains_home = ctx.get("trains_home", {})
+
+    if is_commute_time and trains.get("departures"):
+        d = trains["departures"][0]
+        mins_until = d.get("minutes_until")
+        if mins_until is not None:
+            if mins_until < 10:
+                insights.append(f"🚂 LEAVE NOW: {d.get('time')} train in {mins_until}min")
+            elif mins_until < 30:
+                insights.append(f"🚂 Next train {d.get('time')} ({d.get('duration', '?')})")
+    elif not is_commute_time and trains.get("departures"):
+        # Show next journey for reference
+        d = trains["departures"][0]
+        insights.append(f"🚂 Next train: {d.get('time')} ({d.get('duration', '?')})")
+
+    # === TRAFFIC INTELLIGENCE ===
+    traffic = ctx.get("traffic", {})
+    if traffic and traffic.get("status"):
+        status = traffic["status"]
+        if status in ("severe", "heavy"):
+            insights.append(f"⚠️ Traffic: {status.upper()}")
+        elif status == "moderate":
+            insights.append(f"🚗 Traffic: moderate delays")
+
+    # === FUEL INTELLIGENCE ===
+    fuel = ctx.get("fuel", {})
+    if fuel.get("price"):
+        price = fuel["price"]
+        trend = fuel.get("trend", "")
+        if price < 120:
+            insights.append(f"⛽ Fuel: {price}p/L — CHEAP")
+        elif price > 140:
+            insights.append(f"⛽ Fuel: {price}p/L — expensive")
+        else:
+            insights.append(f"⛽ Fuel: {price}p/L")
+
+    # === WEATHER INTELLIGENCE ===
     if weather and weather.get("temp") is not None:
         temp = weather["temp"]
         desc = weather.get("desc", "").lower()
-        if temp > 25:
-            facts.append(f"{temp}°C and {desc}")
-        elif temp < 5:
-            facts.append(f"Cold at {temp}°C — {desc}")
+
+        # Smart weather alerts
+        if temp >= 28:
+            insights.append(f"☀️ VERY HOT: {temp}°C")
+        elif temp <= 2:
+            insights.append(f"❄️ FREEZING: {temp}°C")
+        elif "rain" in desc or "shower" in desc:
+            insights.append(f"🌧️ Rainy, {temp}°C")
+        elif "snow" in desc:
+            insights.append(f"❄️ Snow, {temp}°C")
+        elif "sunny" in desc:
+            insights.append(f"☀️ Sunny, {temp}°C")
         else:
-            facts.append(f"{temp}°C, {desc}")
+            insights.append(f"🌤️ {temp}°C, {desc}")
 
-    # Trains
-    trains = ctx.get("trains", {})
-    if trains.get("departures"):
-        deps = trains["departures"][:1]
-        if deps:
-            d = deps[0]
-            facts.append(f"Next train: {d.get('time')} ({d.get('duration', '?')})")
-
-    # Fuel
-    fuel = ctx.get("fuel", {})
-    if fuel.get("price"):
-        facts.append(f"Fuel: {fuel['price']}p/L")
-
-    # School
+    # === SCHOOL INTELLIGENCE ===
     if school_holiday:
-        facts.append("School holidays")
-    elif ctx.get("school", {}).get("events"):
-        events = ctx["school"]["events"][:1]
-        if events:
-            facts.append(f"School: {events[0].get('title', 'Event today')}")
-
-    # Spend
-    spend = ctx.get("spend", {})
-    if spend.get("today_total") and spend["today_total"] > 5:
-        facts.append(f"Spent £{spend['today_total']:.2f} today")
-
-    # Build final brief
-    if facts:
-        brief = f"{greeting}. {'. '.join(facts[:3])}."
+        insights.append("🏫 School holidays")
     else:
-        brief = f"{greeting}. Have a good {dow}."
+        school = ctx.get("school", {})
+        events = school.get("events", [])
+        if events:
+            ev = events[0]
+            title = ev.get("event_title", "Event")
+            date = ev.get("event_date", "")
+            if date:
+                delta = (_dt.datetime.fromisoformat(date).date() - now.date()).days
+                if delta == 0:
+                    insights.append(f"📅 School: {title} TODAY")
+                elif delta == 1:
+                    insights.append(f"📅 School: {title} TOMORROW")
+                elif delta <= 3:
+                    insights.append(f"📅 School: {title} in {delta} days")
+            else:
+                insights.append(f"📅 School: {title}")
+
+    # === SPEND INTELLIGENCE ===
+    spend = ctx.get("spend", {})
+    today_total = spend.get("today_total", 0)
+    weekly_avg = spend.get("weekly_avg", 0)
+
+    if today_total > (weekly_avg * 1.5):  # More than 1.5x weekly average
+        insights.append(f"💸 Spent £{today_total:.2f} today — above usual")
+    elif today_total > 20:
+        insights.append(f"💸 Spent £{today_total:.2f} today")
+
+    # === CALENDAR/EVENTS INTELLIGENCE ===
+    if ctx.get("calendar"):
+        events = ctx["calendar"][:1]
+        if events:
+            ev = events[0]
+            title = ev.get("summary", "Event")
+            insights.append(f"📌 {title}")
+
+    # === TIME-OF-DAY INTELLIGENCE ===
+    if hour < 6:
+        intro = "Early riser — "
+    elif hour < 9:
+        intro = "Morning commute — "
+    elif hour < 12:
+        intro = "Late morning — "
+    elif hour < 14:
+        intro = "Lunchtime — "
+    elif hour < 17:
+        intro = "Afternoon — "
+    elif hour < 19:
+        intro = "Evening — "
+    elif hour < 21:
+        intro = "Night out? — "
+    else:
+        intro = "Late night — "
+
+    # === BUILD FINAL BRIEF ===
+    if not insights:
+        # True fallback: absolutely no data
+        return f"Have a good {dow}."
+
+    # Take top 3 most important insights
+    brief = intro + " · ".join(insights[:3]) + "."
+
+    # Limit to reasonable length
+    if len(brief) > 140:
+        brief = intro + " · ".join(insights[:2]) + "."
 
     return brief
 
@@ -14383,9 +14452,9 @@ def api_home_brief():
         print(f"🎯 SNIPPET ERROR: {_e}")
         _weekend_snippet = {}
 
-    # Ensure brief is never empty — build smart fallback from actual facts
+    # Ensure brief is never empty — build SUPER SMART brief from actual facts
     if not brief_text or len(brief_text.strip()) < 5:
-        brief_text = _build_smart_fallback_brief(ctx, prefs, hour, dow, _school_holiday_now, _loc_classification, weather, now)
+        brief_text = _build_super_smart_brief(ctx, prefs, hour, dow, _school_holiday_now, _loc_classification, weather, now, _active_trip_early, None)
 
     result = {
         "brief":        brief_text,
