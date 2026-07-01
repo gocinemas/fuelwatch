@@ -84,12 +84,24 @@ Return ONLY the JSON array, no markdown or explanation.""",
 
         response_text = message.content[0].text.strip()
 
-        # Parse JSON response
+        # Parse JSON response — handle markdown code blocks
         if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
+            # Extract content between triple backticks
+            parts = response_text.split("```")
+            if len(parts) >= 2:
+                response_text = parts[1]
             if response_text.startswith("json"):
                 response_text = response_text[4:]
-            response_text = response_text.strip().rstrip("```").strip()
+            response_text = response_text.strip()
+
+        # Ensure we have valid JSON
+        if not response_text.startswith("["):
+            return {
+                "success": False,
+                "error": f"Invalid response format (not a JSON array)",
+                "transactions": [],
+                "count": 0,
+            }
 
         transactions = json.loads(response_text)
 
