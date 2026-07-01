@@ -27408,7 +27408,7 @@ def api_home_week_summary():
         this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
 
         # Saves this week
-        saves_rows = sb.table("saves").select("id") \
+        saves_rows = sb.table("wa_saves").select("id") \
             .eq("phone", from_number.replace("whatsapp:", "")) \
             .gte("created_at", week_start.isoformat()) \
             .lte("created_at", week_end.isoformat()).execute().data or []
@@ -27442,7 +27442,7 @@ def api_home_week_summary():
         last_week["top_places"] = [{"name": m[0], "visits": m[1]} for m in top_places]
 
         # Saves last week
-        saves_rows = sb.table("saves").select("id") \
+        saves_rows = sb.table("wa_saves").select("id") \
             .eq("phone", from_number.replace("whatsapp:", "")) \
             .gte("created_at", last_week_start.isoformat()) \
             .lte("created_at", last_week_end.isoformat()).execute().data or []
