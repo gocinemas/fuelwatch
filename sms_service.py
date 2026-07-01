@@ -48,6 +48,18 @@ from intel_groq_optimizer import IntelGroqOptimizer
 
 app = Flask(__name__)
 
+# Custom JSON encoder to handle time/datetime objects
+import json
+from datetime import datetime, time, date
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date, time)):
+            return obj.isoformat()
+        return super().default(obj)
+
+app.json_encoder = CustomJSONEncoder
+
 # CENTRAL BRIEF TEXT VALIDATION — Used by /api/home/brief and all Groq brief paths
 def _validate_brief_text(text):
     """Remove personal advice/imperatives. Allow facts, humor, situational context, place suggestions."""
