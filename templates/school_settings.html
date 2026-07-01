@@ -313,9 +313,15 @@
       <input type="text" id="childName" placeholder="e.g. Riaan" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
     </div>
 
-    <div style="margin-bottom: 16px;">
+    <div style="margin-bottom: 16px; position: relative;">
       <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">School Name</label>
-      <input type="text" id="schoolName" placeholder="e.g. Stanns Heath Junior School" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      <input type="text" id="schoolName" placeholder="e.g. Stanns Heath Junior School" oninput="searchSchools()" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      <div id="schoolSearchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-200); border-top: none; border-radius: 0 0 10px 10px; z-index: 10; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Address</label>
+      <input type="text" id="schoolAddress" placeholder="Auto-filled when you pick a school" readonly style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px; background: var(--gray-50); color: var(--muted);">
     </div>
 
     <div style="margin-bottom: 16px;">
@@ -325,6 +331,40 @@
     </div>
 
     <button class="btn-add-school" onclick="saveSchool()" style="margin-top: 24px;">Save School</button>
+  </div>
+</div>
+
+<!-- Edit School Modal -->
+<div class="modal" id="editSchoolModal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeEditModal()">✕</button>
+    <div class="modal-header">Edit School</div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Child Name</label>
+      <input type="text" id="editChildName" placeholder="e.g. Riaan" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+    </div>
+
+    <div style="margin-bottom: 16px; position: relative;">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">School Name</label>
+      <input type="text" id="editSchoolName" placeholder="e.g. Stanns Heath Junior School" oninput="searchSchoolsEdit()" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      <div id="editSchoolSearchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-200); border-top: none; border-radius: 0 0 10px 10px; z-index: 10; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Address</label>
+      <input type="text" id="editSchoolAddress" placeholder="Auto-filled when you pick a school" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">School Email <span style="color: #9ca3af; font-weight: 400;">(optional)</span></label>
+      <input type="email" id="editSchoolEmail" placeholder="e.g. office@school.sch.uk" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-add-school" onclick="saveEditedSchool()" style="margin-top: 24px; flex: 1;">Save Changes</button>
+      <button class="btn-add-school" onclick="closeEditModal()" style="margin-top: 24px; flex: 1; background: #9ca3af;">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -409,7 +449,7 @@
         </div>
 
         <div class="card-actions">
-          <button class="btn-action" onclick="editAddress(${i})">📍 Location</button>
+          <button class="btn-action" onclick="editSchool('${s.id}')">✏️ Edit</button>
           <button class="btn-action danger" onclick="deleteSchool(${i})">🗑 Remove</button>
         </div>
       </div>
@@ -577,6 +617,145 @@
       html += `</div>`;
       grid.innerHTML += html;
     });
+  }
+
+  // School search autocomplete
+  async function searchSchools() {
+    const query = document.getElementById('schoolName').value.trim();
+    const resultsDiv = document.getElementById('schoolSearchResults');
+
+    if (!query || query.length < 2) {
+      resultsDiv.style.display = 'none';
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/school/search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+
+      if (!data.schools || data.schools.length === 0) {
+        resultsDiv.style.display = 'none';
+        return;
+      }
+
+      resultsDiv.innerHTML = data.schools.map(s => `
+        <div onclick="selectSchool('${s.name.replace(/'/g, "\\'")}', '${s.address.replace(/'/g, "\\'")}')"
+          style="padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; hover-background: var(--bg);">
+          <div style="font-weight: 600; font-size: 13px;">${s.name}</div>
+          <div style="font-size: 11px; color: var(--muted);">${s.address || 'No address'}</div>
+        </div>
+      `).join('');
+      resultsDiv.style.display = 'block';
+    } catch (e) {
+      console.error('School search error:', e);
+    }
+  }
+
+  function selectSchool(name, address) {
+    document.getElementById('schoolName').value = name;
+    document.getElementById('schoolAddress').value = address;
+    document.getElementById('schoolSearchResults').style.display = 'none';
+  }
+
+  // Edit school flow
+  let currentEditSchoolId = null;
+
+  async function editSchool(schoolId) {
+    const school = schools.find(s => s.id === schoolId);
+    if (!school) return;
+
+    currentEditSchoolId = schoolId;
+    document.getElementById('editChildName').value = school.child_name || '';
+    document.getElementById('editSchoolName').value = school.school_name || '';
+    document.getElementById('editSchoolAddress').value = school.address || '';
+    document.getElementById('editSchoolEmail').value = (school.sender_emails && school.sender_emails[0]) || '';
+
+    document.getElementById('editSchoolModal').classList.add('show');
+  }
+
+  function closeEditModal() {
+    document.getElementById('editSchoolModal').classList.remove('show');
+    currentEditSchoolId = null;
+  }
+
+  async function searchSchoolsEdit() {
+    const query = document.getElementById('editSchoolName').value.trim();
+    const resultsDiv = document.getElementById('editSchoolSearchResults');
+
+    if (!query || query.length < 2) {
+      resultsDiv.style.display = 'none';
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/school/search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+
+      if (!data.schools || data.schools.length === 0) {
+        resultsDiv.style.display = 'none';
+        return;
+      }
+
+      resultsDiv.innerHTML = data.schools.map(s => `
+        <div onclick="selectSchoolEdit('${s.name.replace(/'/g, "\\'")}', '${s.address.replace(/'/g, "\\'")}')"
+          style="padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer;">
+          <div style="font-weight: 600; font-size: 13px;">${s.name}</div>
+          <div style="font-size: 11px; color: var(--muted);">${s.address || 'No address'}</div>
+        </div>
+      `).join('');
+      resultsDiv.style.display = 'block';
+    } catch (e) {
+      console.error('School search error:', e);
+    }
+  }
+
+  function selectSchoolEdit(name, address) {
+    document.getElementById('editSchoolName').value = name;
+    document.getElementById('editSchoolAddress').value = address;
+    document.getElementById('editSchoolSearchResults').style.display = 'none';
+  }
+
+  async function saveEditedSchool() {
+    const childName = document.getElementById('editChildName').value.trim();
+    const schoolName = document.getElementById('editSchoolName').value.trim();
+    const address = document.getElementById('editSchoolAddress').value.trim();
+    const schoolEmail = document.getElementById('editSchoolEmail').value.trim();
+
+    if (!childName || !schoolName) {
+      alert('Please enter child name and school name');
+      return;
+    }
+
+    if (schoolEmail && !schoolEmail.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/school/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentEditSchoolId,
+          child_name: childName,
+          school_name: schoolName,
+          address: address,
+          sender_emails: schoolEmail ? [schoolEmail] : []
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert('✓ School updated!');
+        closeEditModal();
+        loadSchools();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to save'));
+      }
+    } catch (e) {
+      console.error('Save error:', e);
+      alert('Error saving school: ' + e.message);
+    }
   }
 
   // Load on page load

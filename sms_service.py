@@ -27218,6 +27218,69 @@ def school_lookup():
     return jsonify(info)
 
 
+@app.route("/api/school/search")
+def api_school_search():
+    """Search for schools by name - returns matching schools with addresses."""
+    query = request.args.get("q", "").strip().lower()
+    if not query or len(query) < 2:
+        return jsonify({"schools": []}), 200
+
+    try:
+        # Search school_profiles for unique school names containing query
+        sb = lib._sb()
+        rows = sb.table("school_profiles").select("school_name,address") \
+            .ilike("school_name", f"%{query}%") \
+            .order("school_name", desc=False) \
+            .limit(10).execute().data or []
+
+        # Deduplicate by school_name, keep ones with addresses
+        seen = {}
+        for r in rows:
+            name = r.get("school_name", "").strip()
+            if name and name not in seen:
+                seen[name] = r.get("address", "").strip()
+
+        schools = [{"name": name, "address": addr} for name, addr in seen.items()]
+        return jsonify({"schools": schools}), 200
+
+    except Exception as e:
+        print(f"[school-search] error: {e}")
+        return jsonify({"schools": []}), 200
+
+
+@app.route("/api/school/edit", methods=["POST"])
+def api_school_edit():
+    """Edit an existing school profile."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        school_id = data.get("id", "").strip()
+        child_name = data.get("child_name", "").strip()
+        school_name = data.get("school_name", "").strip()
+        address = data.get("address", "").strip()
+        emails = data.get("sender_emails", [])
+
+        if not school_id:
+            return jsonify({"error": "School ID required"}), 400
+        if not child_name:
+            return jsonify({"error": "Child name required"}), 400
+        if not school_name:
+            return jsonify({"error": "School name required"}), 400
+
+        sb = lib._sb()
+        result = sb.table("school_profiles").update({
+            "child_name": child_name,
+            "school_name": school_name,
+            "address": address,
+            "sender_emails": emails if emails else []
+        }).eq("id", school_id).execute()
+
+        return jsonify({"ok": True}), 200
+
+    except Exception as e:
+        print(f"[school-edit] error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/signup", methods=["POST"])
 def school_signup_api():
     import re as _re2
