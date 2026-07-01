@@ -48,17 +48,29 @@ from intel_groq_optimizer import IntelGroqOptimizer
 
 app = Flask(__name__)
 
-# Custom JSON encoder to handle time/datetime objects
+# Custom JSON serialization to handle time/datetime objects
 import json
-from datetime import datetime, time, date
+from datetime import datetime, time as datetime_time, date
+from flask.json.provider import DefaultJSONProvider
 
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, (datetime, date, time)):
-            return obj.isoformat()
-        return super().default(obj)
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, o):
+        if isinstance(o, (datetime, date, datetime_time)):
+            return o.isoformat()
+        return super().default(o)
 
-app.json_encoder = CustomJSONEncoder
+app.json = CustomJSONProvider(app)
+
+# Helper to convert time objects to strings before returning
+def _ensure_json_serializable(obj):
+    """Recursively convert datetime/time objects to strings."""
+    if isinstance(obj, (datetime, date, datetime_time)):
+        return obj.isoformat()
+    if isinstance(obj, dict):
+        return {k: _ensure_json_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_ensure_json_serializable(item) for item in obj]
+    return obj
 
 # CENTRAL BRIEF TEXT VALIDATION — Used by /api/home/brief and all Groq brief paths
 def _validate_brief_text(text):
