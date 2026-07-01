@@ -27370,6 +27370,7 @@ def api_school_week_ahead():
 def api_home_week_summary():
     """Weekly summary: spend, saves, patterns, activities."""
     import datetime as _dt
+    import zoneinfo as _zi
     wa = request.args.get("wa", "").strip()
     token = request.args.get("token", "").strip()
 
