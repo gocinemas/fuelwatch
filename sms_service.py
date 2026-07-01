@@ -27366,6 +27366,112 @@ def api_school_week_ahead():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/home/week-summary")
+def api_home_week_summary():
+    """Weekly summary: spend, saves, patterns, activities."""
+    import datetime as _dt
+    wa = request.args.get("wa", "").strip()
+    token = request.args.get("token", "").strip()
+
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+    now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
+    today = now.date()
+    week_start = today - _dt.timedelta(days=today.weekday())  # Monday
+    week_end = week_start + _dt.timedelta(days=6)  # Sunday
+    last_week_start = week_start - _dt.timedelta(days=7)
+    last_week_end = week_start - _dt.timedelta(days=1)
+
+    try:
+        sb = lib._sb()
+
+        # === THIS WEEK ===
+        this_week = {
+            "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
+            "spend": 0,
+            "saves": 0,
+            "activities": [],
+        }
+
+        # Spend this week
+        spend_rows = sb.table("receipts").select("total") \
+            .eq("phone", from_number.replace("whatsapp:", "")) \
+            .gte("shop_date", week_start.isoformat()) \
+            .lte("shop_date", week_end.isoformat()).execute().data or []
+        this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
+
+        # Saves this week
+        saves_rows = sb.table("saves").select("id") \
+            .eq("phone", from_number.replace("whatsapp:", "")) \
+            .gte("created_at", week_start.isoformat()) \
+            .lte("created_at", week_end.isoformat()).execute().data or []
+        this_week["saves"] = len(saves_rows)
+
+        # Activities this week (recurring activities)
+        recurring = sb.table("recurring_activities").select("activity") \
+            .eq("from_number", from_number) \
+            .gte("last_done", week_start.isoformat()).execute().data or []
+        this_week["activities"] = [r.get("activity", "") for r in recurring if r.get("activity")][:5]
+
+        # === LAST WEEK ===
+        last_week = {
+            "period": f"{last_week_start.strftime('%b %d')} — {last_week_end.strftime('%b %d')}",
+            "spend": 0,
+            "saves": 0,
+            "top_places": [],
+        }
+
+        # Spend last week
+        spend_rows = sb.table("receipts").select("total,merchant") \
+            .eq("phone", from_number.replace("whatsapp:", "")) \
+            .gte("shop_date", last_week_start.isoformat()) \
+            .lte("shop_date", last_week_end.isoformat()).execute().data or []
+        last_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
+
+        # Top places last week
+        from collections import Counter
+        merchants = [r.get("merchant", "") for r in spend_rows if r.get("merchant")]
+        top_places = Counter(merchants).most_common(3)
+        last_week["top_places"] = [{"name": m[0], "visits": m[1]} for m in top_places]
+
+        # Saves last week
+        saves_rows = sb.table("saves").select("id") \
+            .eq("phone", from_number.replace("whatsapp:", "")) \
+            .gte("created_at", last_week_start.isoformat()) \
+            .lte("created_at", last_week_end.isoformat()).execute().data or []
+        last_week["saves"] = len(saves_rows)
+
+        # === TREND ===
+        week_over_week = "up" if this_week["spend"] > last_week["spend"] else "down" if this_week["spend"] < last_week["spend"] else "flat"
+        spend_change = abs(this_week["spend"] - last_week["spend"])
+        spend_pct = round((spend_change / last_week["spend"] * 100) if last_week["spend"] > 0 else 0)
+
+        # === CHECK IF SCHOOLS SET UP ===
+        school_profiles = sb.table("school_profiles").select("id") \
+            .eq("from_number", from_number).execute().data or []
+        has_schools = len(school_profiles) > 0
+
+        return jsonify({
+            "success": True,
+            "this_week": this_week,
+            "last_week": last_week,
+            "trend": {
+                "direction": week_over_week,
+                "amount": spend_change,
+                "percent": spend_pct,
+            },
+            "has_schools": has_schools,
+        })
+
+    except Exception as e:
+        print(f"[week-summary] error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/diag")
 def school_diag():
     """Admin diagnostic: show profile/token/event state without sending anything."""
