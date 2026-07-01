@@ -27409,7 +27409,7 @@ def api_home_week_summary():
 
         # Saves this week
         saves_rows = sb.table("wa_saves").select("id") \
-            .eq("phone", from_number.replace("whatsapp:", "")) \
+            .eq("from_number", from_number) \
             .gte("created_at", week_start.isoformat()) \
             .lte("created_at", week_end.isoformat()).execute().data or []
         this_week["saves"] = len(saves_rows)
@@ -27443,7 +27443,7 @@ def api_home_week_summary():
 
         # Saves last week
         saves_rows = sb.table("wa_saves").select("id") \
-            .eq("phone", from_number.replace("whatsapp:", "")) \
+            .eq("from_number", from_number) \
             .gte("created_at", last_week_start.isoformat()) \
             .lte("created_at", last_week_end.isoformat()).execute().data or []
         last_week["saves"] = len(saves_rows)
