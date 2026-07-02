@@ -27820,12 +27820,12 @@ def api_home_week_full():
         this_week["save_samples"] = [{"title": s.get("title", "Untitled"), "category": s.get("category", ""), "summary": (s.get("summary") or "")[:60]} for s in saves_rows[:5]]
 
         # School events this week
-        school_events = sb.table("school_events").select("id,child_name,event_name,event_date") \
+        school_events = sb.table("school_events").select("id,event_title,event_date,description") \
             .eq("from_number", from_number) \
             .gte("event_date", week_start.isoformat()) \
             .lte("event_date", week_end.isoformat()).execute().data or []
         this_week["school_events"] = len(school_events)
-        this_week["school_event_list"] = [{"child": e.get("child_name", ""), "event": e.get("event_name", ""), "date": e.get("event_date", "")} for e in school_events[:3]]
+        this_week["school_event_list"] = [{"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0]} for e in school_events[:3]]
 
         # === LAST WEEK (for comparison) ===
         last_week = {
@@ -27861,7 +27861,7 @@ def api_home_week_full():
         last_week["saves"] = len(last_saves)
 
         # Last week school events
-        last_school_events = sb.table("school_events").select("id") \
+        last_school_events = sb.table("school_events").select("id,event_title,event_date") \
             .eq("from_number", from_number) \
             .gte("event_date", last_week_start.isoformat()) \
             .lte("event_date", last_week_end.isoformat()).execute().data or []

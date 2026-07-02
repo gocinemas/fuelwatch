@@ -28233,10 +28233,10 @@ document.addEventListener('keydown', function(e) {
           .join('');
         breakdownEl.innerHTML = breakdown || '<div style="color:var(--muted);font-size:12px;text-align:center">No spend data</div>';
 
-        // School events this week with child names
+        // School events this week
         const schoolEl = document.getElementById('sw-school-events');
         const schoolHTML = d.this_week.school_event_list && d.this_week.school_event_list.length > 0
-          ? d.this_week.school_event_list.map(e => `<div style="padding:6px;background:rgba(255,255,255,0.5);border-radius:6px"><div style="font-weight:600">${e.event || 'Event'}</div><div style="font-size:10px;color:var(--muted)">${e.child || 'Child'} • ${e.date || ''}</div></div>`).join('')
+          ? d.this_week.school_event_list.map(e => `<div style="padding:6px;background:rgba(255,255,255,0.5);border-radius:6px"><div style="font-weight:600">${e.event || 'Event'}</div><div style="font-size:10px;color:var(--muted)">${e.date || ''}</div></div>`).join('')
           : '<div style="color:var(--muted);text-align:center">No events this week</div>';
         schoolEl.innerHTML = schoolHTML;
 
