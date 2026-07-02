@@ -1,0 +1,26 @@
+name: Refresh Intel Campaign Data
+
+on:
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install supabase
+
+      - name: Refresh campaign data
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://uqwidlptkgmbxgaivafi.supabase.co' }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_KEY || 'sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat' }}
+        run: python3 refresh_campaign_data.py
