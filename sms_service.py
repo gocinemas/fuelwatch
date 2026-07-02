@@ -9741,7 +9741,7 @@ def api_v2_receipts_timeline():
         print(f"[receipts-timeline] Querying for user={from_number}, cutoff={cutoff}", flush=True)
 
         # Get receipts from wa_saves (manual entries with 🧾 prefix)
-        wa_rows = lib._sb().table("wa_saves").select("id,from_number,title,summary,amount,category,created_at") \
+        wa_rows = lib._sb().table("wa_saves").select("id,from_number,title,summary,category,created_at") \
             .eq("from_number", from_number) \
             .gte("created_at", cutoff) \
             .ilike("title", "🧾%") \
@@ -9797,14 +9797,25 @@ def api_v2_receipts_timeline():
             category = row.get("category", "Unknown")
             source = row.get("_source", "manual")
 
-            # USE THE PRE-EXTRACTED AMOUNT FIELD!
+            # Extract amount from summary (wa_saves doesn't have amount column)
             amount = 0
-            amount_field = row.get("amount")
+            amount_field = row.get("amount")  # For PDF receipts (receipts table)
+
             if amount_field:
                 try:
                     amount = float(str(amount_field).replace("£", "").replace(",", ""))
                 except:
                     pass
+            elif summary and source == "manual":
+                # Extract amount from summary for manual entries
+                # Look for £XX.XX pattern
+                import re as _re_amount
+                match = _re_amount.search(r'£([\d,]+\.?\d*)', summary)
+                if match:
+                    try:
+                        amount = float(match.group(1).replace(",", ""))
+                    except:
+                        pass
 
             merchant = title or "Unknown"
             items = []
