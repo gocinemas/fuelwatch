@@ -27575,10 +27575,10 @@ def api_school_week_ahead():
     from_number = _v2_resolve(wa)
     now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
     today = now.date()
-    # Start from Monday of current week
-    week_start = today - _dt.timedelta(days=today.weekday())
-    # End on Sunday of current week
-    week_end = week_start + _dt.timedelta(days=6)
+    # Start from TODAY (not Monday of week)
+    week_start = today
+    # End 7 days from today (next Sunday or later)
+    week_end = today + _dt.timedelta(days=6)
 
     try:
         events = []
