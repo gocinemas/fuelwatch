@@ -1,6 +1,9 @@
 name: Refresh Intel Campaign Data
 
 on:
+  push:
+    paths:
+      - 'refresh_trigger.txt'
   workflow_dispatch:
 
 jobs:
