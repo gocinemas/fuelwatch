@@ -27759,8 +27759,10 @@ def api_home_week_full():
     last_week_end = last_week_start + _dt.timedelta(days=6)
 
     try:
+        print(f"[week-full] Starting: wa={wa}, from_number={from_number}")
         sb = lib._sb()
         phone = from_number.replace("whatsapp:", "")
+        print(f"[week-full] Phone resolved: {phone}")
 
         # === THIS WEEK ===
         this_week = {
@@ -27881,8 +27883,10 @@ def api_home_week_full():
         })
 
     except Exception as e:
+        import traceback
         print(f"[week-full] error: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": str(e), "type": type(e).__name__}), 500
 
 
 @app.route("/api/school/diag")
