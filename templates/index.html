@@ -19927,10 +19927,11 @@ let _savesAll = [];
       const txns = (data.new || []).concat(data.duplicates || []);
       const monthTotal = txns.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 
-      const txnHtml = txns.map(t => {
+      const txnHtml = txns.map((t, idx) => {
         const isDup = t.is_duplicate;
         return `
-          <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;opacity:${isDup?'0.5':'1'};background:${isDup?'rgba(0,0,0,0.02)':'transparent'}">
+          <label style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;opacity:${isDup?'0.5':'1'};background:${isDup?'rgba(0,0,0,0.02)':'transparent'};cursor:${isDup?'not-allowed':'pointer'};gap:10px">
+            <input type="checkbox" class="pdf-txn-checkbox" data-idx="${idx}" ${isDup?'disabled':''} ${!isDup?'checked':''} style="cursor:${isDup?'not-allowed':'pointer'};width:18px;height:18px">
             <div style="flex:1">
               <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;text-decoration:${isDup?'line-through':'none'}">${t.merchant || "Unknown"}</div>
               <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
@@ -19942,7 +19943,7 @@ let _savesAll = [];
             <div style="text-align:right;margin-left:12px">
               <div style="font-size:14px;font-weight:700;color:#065f46">£${(parseFloat(t.amount) || 0).toFixed(2)}</div>
             </div>
-          </div>`;
+          </label>`;
       }).join("");
 
       monthsHtml += `
@@ -19996,16 +19997,34 @@ let _savesAll = [];
 
     // Store for importing
     sheet._allTransactions = allTransactions;
+
+    // Add listeners to checkboxes for dynamic button update
+    sheet.querySelectorAll('.pdf-txn-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => _updatePdfImportButton(sheet));
+    });
+
+    // Initialize button state
+    _updatePdfImportButton(sheet);
   }
 
   window._receiptsConfirmPdfImport = async function(btn) {
-    if (btn.textContent.includes("No new")) {
-      btn.closest('[data-pdf-sheet]').remove();
+    const sheet = btn.closest('[data-pdf-sheet]');
+    const allTransactions = sheet._allTransactions;
+
+    // Get only selected checkboxes
+    const selectedIndices = new Set();
+    sheet.querySelectorAll('.pdf-txn-checkbox:checked').forEach(cb => {
+      selectedIndices.add(parseInt(cb.dataset.idx));
+    });
+
+    if (selectedIndices.size === 0) {
+      alert("Please select at least one receipt to import");
       return;
     }
 
-    const sheet = btn.closest('[data-pdf-sheet]');
-    const transactions = sheet._allTransactions;
+    // Filter to only selected transactions
+    const selectedTransactions = allTransactions.filter((_, idx) => selectedIndices.has(idx));
+    const selectedTotal = selectedTransactions.reduce((s, t) => s + (t.amount || 0), 0);
 
     btn.textContent = "Importing…";
     btn.disabled = true;
@@ -20015,7 +20034,7 @@ let _savesAll = [];
       const r = await fetch("/api/receipts/import-pdf", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({wa, transactions})
+        body: JSON.stringify({wa, transactions: selectedTransactions})
       });
       const d = await r.json();
 
@@ -20023,13 +20042,34 @@ let _savesAll = [];
 
       if (d.success) {
         _receiptsAnalysisLoad('month');  // Refresh the receipts display
-        alert("✅ Imported " + d.imported_count + " receipt" + (d.imported_count===1?"":"s") + " (£" + d.grand_total.toFixed(2) + ")");
+        alert("✅ Imported " + d.imported_count + " receipt" + (d.imported_count===1?"":"s") + " (£" + selectedTotal.toFixed(2) + ")");
       } else {
         alert("Error: " + (d.error || "Failed to import"));
       }
     } catch (e) {
       console.error("[receipts-import] Error:", e);
       btn.textContent = "Error importing";
+    }
+  }
+
+  // Update button text when checkboxes change
+  window._updatePdfImportButton = function(sheet) {
+    const btn = sheet.querySelector('#receipts-pdf-import-btn');
+    const selected = sheet.querySelectorAll('.pdf-txn-checkbox:checked').length;
+    const selectedTotal = Array.from(sheet.querySelectorAll('.pdf-txn-checkbox:checked')).reduce((s, cb) => {
+      const idx = parseInt(cb.dataset.idx);
+      const transactions = sheet._allTransactions || [];
+      return s + (transactions[idx]?.amount || 0);
+    }, 0);
+
+    if (selected === 0) {
+      btn.textContent = "Select receipts to import";
+      btn.style.opacity = "0.5";
+      btn.disabled = true;
+    } else {
+      btn.textContent = `✓ Import ${selected} (£${selectedTotal.toFixed(2)})`;
+      btn.style.opacity = "1";
+      btn.disabled = false;
     }
   }
 
