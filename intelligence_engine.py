@@ -1,0 +1,259 @@
+"""
+Miru Intelligence Engine - Agentic Reasoning Across All Modules
+
+Synthesizes data from receipts, fuel, school, calendar, saves, and commute
+to provide personalized insights, forecasts, and recommendations.
+"""
+
+import json
+from datetime import datetime, timedelta
+from typing import Dict, List, Any
+import os
+
+# Groq LLM for agentic reasoning
+from groq import Groq
+
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+
+class MiruIntelligence:
+    """Main intelligence engine for Miru."""
+
+    def __init__(self):
+        self.model = "mixtral-8x7b-32768"  # Fast, reasoning-capable
+
+    def _format_data_summary(self, data: Dict) -> str:
+        """Format user data for agentic reasoning prompt."""
+        return f"""
+User Data Summary:
+─────────────────
+RECEIPTS (This Week):
+  Total spend: £{data.get('spend_total', 0):.2f}
+  Categories: {json.dumps(data.get('spend_by_category', {}), indent=2)}
+  Top merchants: {', '.join(data.get('top_merchants', []))}
+
+FUEL DATA:
+  Last fill: £{data.get('last_fuel_amount', 0):.2f} @ {data.get('last_fuel_price', 'N/A')}p/L on {data.get('last_fuel_date', 'N/A')}
+  Current fuel price: {data.get('current_fuel_price', 'N/A')}p/L
+  Price trend: {data.get('fuel_price_trend', 'N/A')}
+  Days since last fill: {data.get('days_since_fuel', 'N/A')}
+
+SCHOOL EVENTS:
+  Events this week: {data.get('school_events_count', 0)}
+  Busiest day: {data.get('busiest_school_day', 'N/A')}
+
+SPENDING PATTERN:
+  Last week: £{data.get('last_week_spend', 0):.2f}
+  Average weekly: £{data.get('avg_weekly_spend', 0):.2f}
+  Trend: {data.get('spend_trend', 'N/A')}
+
+CAFE/LOCATION:
+  Cafe visits this week: {data.get('cafe_visits', 0)}
+  Top location: {data.get('top_location', 'N/A')}
+
+SAVES:
+  This week: {data.get('saves_count', 0)}
+  Last week: {data.get('last_week_saves', 0)}
+"""
+
+    def generate_insights(self, data: Dict) -> Dict[str, Any]:
+        """
+        Agentic reasoning across all modules to generate insights.
+        Returns: structured insights with forecasts, recommendations, anomalies.
+        """
+
+        data_summary = self._format_data_summary(data)
+
+        prompt = f"""{data_summary}
+
+Based on this data, provide comprehensive insights across these dimensions:
+
+1. **FUEL INTELLIGENCE**
+   - Is fuel price up or down since last fill? By how much?
+   - When should user fill up next? (forecast based on consumption pattern)
+   - Best day/price to fill up?
+   - Cost optimization: cheapest station?
+
+2. **SPEND INTELLIGENCE**
+   - Is spending up/down/normal?
+   - What's the trend? (increasing, decreasing, stable?)
+   - When will user run out of money if trend continues?
+   - Where can they save? (category recommendations)
+
+3. **LOCATION INTELLIGENCE**
+   - Most frequent locations and spend there
+   - Cost per visit to top locations
+   - Alternative locations that save money?
+   - Neighborhood patterns?
+
+4. **SCHOOL CALENDAR INTELLIGENCE**
+   - Is school busier than usual?
+   - Impact on routine (less cafe visits, less time)?
+   - Forecast busy days next week?
+
+5. **LIFESTYLE PATTERNS**
+   - Are habits changing? (saves down, cafe visits down, etc.)
+   - Is user busier/slower than usual?
+   - Activity level trend?
+
+6. **ANOMALIES & ALERTS**
+   - What's unusual this week?
+   - Any spending spikes?
+   - Any missing patterns (e.g., no cafe visits when they usually do)?
+
+7. **SMART RECOMMENDATIONS**
+   - Top 3 ways to save money
+   - Best time to fill fuel
+   - Forecast what they'll need next week
+   - Optimization opportunities
+
+Format response as JSON with these keys:
+{{
+  "fuel": {{"price_trend": "up/down/stable", "percent_change": number, "next_fill_days": number, "recommendation": "string"}},
+  "spend": {{"trend": "up/down/stable", "vs_normal": "percent", "forecast_next_week": number, "top_saving": "string"}},
+  "location": {{"most_visited": "string", "cost_per_visit": number, "alternative": "string", "savings": "string"}},
+  "school": {{"busy_level": "normal/busy/very_busy", "impact": "string", "next_busy_day": "string"}},
+  "lifestyle": {{"change": "string", "activity_level": "normal/increased/decreased"}},
+  "anomalies": ["string", "string"],
+  "recommendations": ["string", "string", "string"],
+  "forecast": {{"next_week_spend": number, "next_fuel_date": "string", "action_items": ["string"]}}
+}}
+
+Be specific with numbers, dates, and actionable insights. Assume user reads this and acts on it."""
+
+        try:
+            message = client.messages.create(
+                model=self.model,
+                max_tokens=2000,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            )
+
+            response_text = message.content[0].text.strip()
+
+            # Extract JSON from response
+            start = response_text.find('{')
+            end = response_text.rfind('}') + 1
+
+            if start >= 0 and end > start:
+                json_str = response_text[start:end]
+                insights = json.loads(json_str)
+            else:
+                insights = {
+                    "error": "Could not parse insights",
+                    "raw": response_text[:500]
+                }
+
+            return insights
+
+        except Exception as e:
+            print(f"[intelligence] Error generating insights: {e}")
+            return {"error": str(e)}
+
+    def get_full_intelligence(self, from_number: str, sb) -> Dict[str, Any]:
+        """
+        Aggregates all user data and generates complete intelligence report.
+        This is the main entry point for the insights API.
+        """
+        import datetime as _dt
+
+        phone = from_number.replace("whatsapp:", "").strip()
+        now = _dt.datetime.utcnow()
+        today = now.date()
+        week_ago = today - _dt.timedelta(days=7)
+
+        # Aggregate all data
+        try:
+            # This week's receipts
+            receipts = sb.table("receipts").select("total,merchant,shop_date,restaurant_type") \
+                .eq("phone", phone) \
+                .gte("shop_date", (today - _dt.timedelta(days=7)).isoformat()) \
+                .execute().data or []
+
+            spend_total = sum(float(r.get("total", 0)) for r in receipts)
+
+            # Category breakdown
+            spend_by_category = {}
+            for r in receipts:
+                merchant = r.get("merchant", "Unknown")
+                from sms_service import _receipt_category
+                cat = _receipt_category(merchant)
+                if cat not in spend_by_category:
+                    spend_by_category[cat] = 0
+                spend_by_category[cat] += float(r.get("total", 0))
+
+            # Top merchants
+            merchants = {}
+            for r in receipts:
+                m = r.get("merchant", "Unknown")
+                merchants[m] = merchants.get(m, 0) + float(r.get("total", 0))
+            top_merchants = sorted(merchants.items(), key=lambda x: x[1], reverse=True)[:5]
+
+            # Last week comparison
+            last_week_receipts = sb.table("receipts").select("total") \
+                .eq("phone", phone) \
+                .gte("shop_date", (week_ago - _dt.timedelta(days=7)).isoformat()) \
+                .lte("shop_date", week_ago.isoformat()) \
+                .execute().data or []
+            last_week_spend = sum(float(r.get("total", 0)) for r in last_week_receipts)
+
+            # Fuel data
+            fuel_receipts = [r for r in receipts if _receipt_category(r.get("merchant", "")) == "Fuel"]
+            last_fuel = fuel_receipts[0] if fuel_receipts else None
+
+            # School events
+            school_events = sb.table("school_events").select("event_date") \
+                .eq("from_number", from_number) \
+                .gte("event_date", today.isoformat()) \
+                .execute().data or []
+
+            # Saves
+            saves_this_week = sb.table("wa_saves").select("id") \
+                .eq("from_number", from_number) \
+                .gte("created_at", (today - _dt.timedelta(days=7)).isoformat()) \
+                .execute().data or []
+
+            saves_last_week = sb.table("wa_saves").select("id") \
+                .eq("from_number", from_number) \
+                .gte("created_at", (week_ago - _dt.timedelta(days=7)).isoformat()) \
+                .lte("created_at", week_ago.isoformat()) \
+                .execute().data or []
+
+            # Build data summary for intelligence engine
+            data = {
+                "spend_total": spend_total,
+                "spend_by_category": spend_by_category,
+                "top_merchants": [m[0] for m in top_merchants],
+                "last_week_spend": last_week_spend,
+                "avg_weekly_spend": (spend_total + last_week_spend) / 2,
+                "spend_trend": "up" if spend_total > last_week_spend else "down" if spend_total < last_week_spend else "stable",
+                "last_fuel_amount": float(last_fuel.get("total", 0)) if last_fuel else 0,
+                "last_fuel_date": last_fuel.get("shop_date", "N/A") if last_fuel else "N/A",
+                "days_since_fuel": (today - _dt.datetime.fromisoformat(last_fuel.get("shop_date", today.isoformat())).date()).days if last_fuel else 0,
+                "school_events_count": len(school_events),
+                "cafe_visits": len([r for r in receipts if _receipt_category(r.get("merchant", "")) in ["Coffee & Lunch", "Dining", "Takeaway"]]),
+                "top_location": top_merchants[0][0] if top_merchants else "N/A",
+                "saves_count": len(saves_this_week),
+                "last_week_saves": len(saves_last_week),
+            }
+
+            # Generate insights using agentic reasoning
+            insights = self.generate_insights(data)
+
+            return {
+                "success": True,
+                "timestamp": now.isoformat(),
+                "data_summary": data,
+                "insights": insights
+            }
+
+        except Exception as e:
+            print(f"[intelligence] Error aggregating data: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }

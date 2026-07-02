@@ -34547,7 +34547,37 @@ def admin_migrate_restaurant_types():
     print("\nService running on http://localhost:5000")
     print("Webhook endpoint: http://localhost:5000/sms")
     print("\nTo expose publicly, run in another terminal:")
-    print("  ngrok http 5000")
+@app.route("/api/insights/full", methods=["GET"])
+def api_insights_full():
+    """Get comprehensive intelligence across all modules."""
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+
+    try:
+        from intelligence_engine import MiruIntelligence
+        engine = MiruIntelligence()
+        sb = lib._sb()
+
+        intelligence = engine.get_full_intelligence(from_number, sb)
+        return jsonify(intelligence)
+
+    except Exception as e:
+        print(f"[insights] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ────────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    print("🚀 Miru running on port 8080")
+    print("\nFor local testing with Twilio webhooks:")
+    print("  1. Install ngrok: https://ngrok.com/download")
+    print("  2. Run: ngrok http 5000")
     print("\nThen set your Twilio webhook to:")
     print("  https://YOUR-NGROK-URL/sms\n")
     port = int(os.environ.get("PORT", 8080))
