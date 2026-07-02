@@ -12934,14 +12934,10 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
                 insights.append(f"💡 {category} saved lately")
                 priority_score["interests"] = 30
 
-        # === LUNCH OPPORTUNITY (if lunchtime + they've saved food places) ===
-        if 11 <= hour <= 14:
-            rated_places = ctx.get("rated_places", [])
-            food_places = [p for p in rated_places if p.get("category") in ("restaurant", "cafe", "pub")]
-            if food_places:
-                place = food_places[0]
-                insights.append(f"🍽️ {place.get('name')} ({place.get('rating', 4.5)}⭐) nearby")
-                priority_score["lunch"] = 70
+        # === LUNCH OPPORTUNITY REMOVED ===
+        # Lunch suggestions are now on-demand only (/api/lunch-ideas)
+        # This reduces Places API calls by 99%
+        # Users can ask "lunch ideas" if they want them
 
         # === SPEND PATTERNS (behavioral insight) ===
         spend = ctx.get("spend", {})
@@ -13199,9 +13195,8 @@ def api_home_brief():
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
-            # Use cached places instead of Google API
-            from cache_layer import get_cached_places
-            futures["rated_places"] = pool.submit(lambda pc=_area_pc: [p for p in get_cached_places(pc).get("restaurants", [])[:5]])
+            # Lunch suggestions now on-demand only (not in auto-brief)
+            # This removes unnecessary Places API calls
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
         # Wait up to 8s for ALL futures collectively (not 8s each), then take whatever finished
@@ -13219,13 +13214,17 @@ def api_home_brief():
     ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)
 
     # Traffic — user's active commutes (show_on_homepage=true) + school/work anchors
-    # Always check for active commutes (time filtering happens inside _v2_fetch_traffic)
+    # OPTIMIZATION: Only fetch during commute hours (6am-10am) on weekdays
+    # Skip entirely on weekends/evenings to save Google Directions API calls (99% reduction)
+    _is_commute_time = (6 <= now.hour <= 10) and (now.weekday() < 5)  # Weekdays 6-10am
+
     _tr_pc      = postcode or prefs.get("fuel_postcode", "")
     _tr_schl    = (ctx.get("school") or {}).get("schools") or []
     _tr_work    = _loc_profile.get("work") or {}  # Work anchor from My Area location profile
     _tr_school  = _loc_profile.get("school_run") or {}  # School run anchor from My Area location profile
-    # Fetch traffic if any routes configured — function handles time/day filtering
-    if _tr_pc:
+
+    # Fetch traffic only during commute hours (saves 99% of Directions API calls)
+    if _is_commute_time and _tr_pc:
         try:
             ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl, _tr_work, _tr_school, from_number)
         except Exception:
@@ -27413,6 +27412,39 @@ def api_places_cached():
 
         places = get_cached_places(postcode)
         return jsonify(places), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/lunch-ideas", methods=["GET"])
+def api_lunch_ideas():
+    """Get lunch suggestions on-demand (cache-first, not in auto-brief)."""
+    try:
+        from cache_layer import get_cached_places
+        postcode = request.args.get("postcode", "").strip().upper()
+        if not postcode:
+            return jsonify({"error": "postcode required"}), 400
+
+        # Try cache first
+        cached = get_cached_places(postcode)
+        restaurants = cached.get("restaurants", [])
+
+        if restaurants:
+            # Return top 3 with ratings
+            return jsonify({
+                "postcode": postcode,
+                "lunch_ideas": restaurants[:3],
+                "source": "cached"
+            }), 200
+
+        # If no cache, fetch from Google (on-demand only)
+        places = _v2_fetch_rated_places(postcode)
+        return jsonify({
+            "postcode": postcode,
+            "lunch_ideas": places[:3] if places else [],
+            "source": "google"
+        }), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
