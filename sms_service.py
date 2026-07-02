@@ -10000,7 +10000,23 @@ def import_pdf_receipts():
 
         # Import only new transactions (skip duplicates)
         for txn in transactions:
-            if not txn.get("is_duplicate"):  # Only import new ones
+            # Skip if marked as duplicate
+            if txn.get("is_duplicate"):
+                continue
+
+            # Double-check: make sure this receipt doesn't already exist
+            existing = sb.table("receipts").select("id") \
+                .eq("phone", phone_clean) \
+                .eq("merchant", txn.get("merchant", "Unknown")) \
+                .eq("total", txn.get("amount", 0)) \
+                .eq("shop_date", txn.get("date")).execute().data or []
+
+            if existing:
+                print(f"[spend] Skipping duplicate: {txn.get('merchant')} £{txn.get('amount')} on {txn.get('date')}")
+                continue
+
+            # Import the receipt
+            try:
                 sb.table("receipts").insert({
                     "phone": phone_clean,
                     "merchant": txn.get("merchant", "Unknown"),
@@ -10011,6 +10027,9 @@ def import_pdf_receipts():
                     "restaurant_type": classify_restaurant(txn.get("merchant", "")),
                 }).execute()
                 imported.append(txn)
+                print(f"[spend] Imported: {txn.get('merchant')} £{txn.get('amount')} on {txn.get('date')}")
+            except Exception as insert_error:
+                print(f"[spend] Failed to import {txn.get('merchant')}: {insert_error}")
 
         # Organize by month
         import datetime as _dt
