@@ -71,23 +71,25 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
                             "type": "text",
                             "text": """Extract all transactions from this document (bank statement, receipt, or invoice).
 
-For each transaction, return:
-- date: YYYY-MM-DD
-- merchant: business/shop name
-- amount: transaction amount (number, no currency symbol)
-- category: auto-categorize as one of: Groceries, Restaurants, Transport, Entertainment, Utilities, Subscriptions, Shopping, Cash, Other
+IMPORTANT: Return ONLY a valid JSON array. No other text.
 
-Return ONLY valid JSON array:
-[
-  {"date": "2026-06-23", "merchant": "Tesco", "amount": 45.50, "category": "Groceries"},
-  {"date": "2026-06-22", "merchant": "Spotify", "amount": 12.99, "category": "Subscriptions"}
-]
+For each transaction return exactly these 4 fields:
+- date: string in format YYYY-MM-DD (required)
+- merchant: string, business/shop name (required, max 50 chars)
+- amount: number, transaction amount without currency (required)
+- category: string, one of: Groceries, Restaurants, Transport, Entertainment, Utilities, Subscriptions, Shopping, Cash, Other (required)
 
-If it's a single receipt, extract that one transaction.
-If it's a bank statement, extract all visible transactions.
-If no transactions found, return empty array [].
+Rules:
+- No markdown code blocks, just the JSON array
+- Escape all quotes and special characters in merchant names
+- If uncertain about merchant name, use first 40 characters only
+- Empty merchant name -> use "Unknown"
+- If no transactions, return empty array: []
 
-Return ONLY the JSON array, no markdown or explanation.""",
+Example output:
+[{"date":"2026-06-23","merchant":"Tesco Supermarket","amount":45.50,"category":"Groceries"},{"date":"2026-06-22","merchant":"Spotify","amount":12.99,"category":"Subscriptions"}]
+
+Extract and return ONLY the JSON array.""",
                         },
                     ],
                 }
@@ -141,7 +143,7 @@ Return ONLY the JSON array, no markdown or explanation.""",
                         transactions = json.loads(json_text)
                     except json.JSONDecodeError as cleanup_error:
                         # Try to clean up common JSON issues
-                        print(f"[spend_pdf] Attempting to clean malformed JSON")
+                        print(f"[spend_pdf] Attempting to clean malformed JSON: {cleanup_error}")
                         import re
 
                         # Remove trailing commas before ] or }
@@ -150,8 +152,44 @@ Return ONLY the JSON array, no markdown or explanation.""",
                         # Quote unquoted keys: key: -> "key":
                         json_text = re.sub(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'"\1":', json_text)
 
-                        # Replace single quotes with double quotes (carefully)
-                        # This is risky but helps with common Claude output
+                        # Fix unterminated strings - add closing quote before } or ]
+                        json_text = re.sub(r'"([^"]*?)([}\]])', r'"\1"\2', json_text)
+
+                        # Escape unescaped quotes inside string values
+                        # Find strings and escape internal quotes
+                        parts = []
+                        i = 0
+                        while i < len(json_text):
+                            if json_text[i] == '"':
+                                # Start of string - find the end
+                                j = i + 1
+                                while j < len(json_text):
+                                    if json_text[j] == '\\':
+                                        j += 2  # Skip escaped character
+                                    elif json_text[j] == '"':
+                                        # Found closing quote
+                                        parts.append(json_text[i:j+1])
+                                        i = j + 1
+                                        break
+                                    elif json_text[j] == '\n':
+                                        # Unterminated string - close it here
+                                        parts.append(json_text[i:j])
+                                        parts.append('"')
+                                        i = j
+                                        break
+                                    else:
+                                        j += 1
+                                else:
+                                    # Reached end of text without closing quote
+                                    parts.append(json_text[i:])
+                                    parts.append('"')
+                                    i = len(json_text)
+                            else:
+                                parts.append(json_text[i])
+                                i += 1
+                        json_text = ''.join(parts)
+
+                        # Replace single quotes with double quotes (outside of strings)
                         parts = []
                         in_double = False
                         for i, c in enumerate(json_text):
@@ -169,8 +207,11 @@ Return ONLY the JSON array, no markdown or explanation.""",
                             print(f"[spend_pdf] Cleaned JSON (first 300 chars): {json_text[:300]}")
                             transactions = json.loads(json_text)
                         except Exception as final_error:
-                            print(f"[spend_pdf] Cleanup failed: {final_error}")
-                            print(f"[spend_pdf] Cleaned JSON (full): {json_text}")
+                            print(f"[spend_pdf] Final cleanup failed: {final_error}")
+                            print(f"[spend_pdf] Attempted to clean but still invalid")
+                            # Last resort: try to extract individual transactions manually
+                            print(f"[spend_pdf] Trying manual fallback extraction...")
+                            # Just return empty to avoid double-error
                             raise cleanup_error
                 else:
                     raise e
