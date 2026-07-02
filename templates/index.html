@@ -7535,7 +7535,8 @@ function _hcAdd() {
       if (!timeOk) { strip.style.display = "none"; return; }
       strip.innerHTML = arr.map(c => `<a id="hcp-${c.id}" href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pc)}&destination=${encodeURIComponent(c.dest)}" target="_blank" onclick="event.stopPropagation()" style="flex-shrink:0;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 12px;text-align:center;min-width:70px;text-decoration:none;display:block"><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">${c.label}</div><div class="hcp-time-${c.id}" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:1px">${pc ? "…" : "—"}</div></a>`).join("");
       strip.style.display = "flex";
-      if (pc) arr.forEach(c => fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`).then(r => r.json()).then(d => { const inner = document.querySelector(".hcp-time-" + c.id); if (inner && !d.error) inner.innerHTML = `<span style="font-weight:800;color:#fff">${d.duration_min}m</span> ${d.traffic_emoji}`; }).catch(() => {}));
+      // Disabled: commute live times require Google Directions API (disabled for cost savings)
+      // if (pc) arr.forEach(c => fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`).then(r => r.json()).then(d => { const inner = document.querySelector(".hcp-time-" + c.id); if (inner && !d.error) inner.innerHTML = `<span style="font-weight:800;color:#fff">${d.duration_min}m</span> ${d.traffic_emoji}`; }).catch(() => {}));
     } catch(e) { console.error("[hcRender] Error:", e); }
   }
 
@@ -7814,7 +7815,8 @@ function _hcAdd() {
       </div>`).join("");
     const pc = _miruPostcode ? _miruPostcode() : "";
     if (!pc) return;
-    arr.forEach(c => _commuteFetch(c, pc));
+    // Disabled: live commute times require Google Directions API (disabled for cost savings)
+    // arr.forEach(c => _commuteFetch(c, pc));
   }
 
   function _commuteFetch(c, fromPc) {
@@ -18068,6 +18070,8 @@ let _savesAll = [];
           _briefAskShow();
 
           // Display My Commutes card with live traffic
+          // Disabled: live commute times require Google Directions API (disabled for cost savings)
+          /*
           var commuteCard = document.getElementById("commute-card");
           if (commuteCard) {
             (async function() {
@@ -18100,6 +18104,7 @@ let _savesAll = [];
               }
             })();
           }
+          */
 
           // Weekend snippet: show on Fri 5pm+ or Sat (4.0+ rated only)
           var weekendCard = document.getElementById("weekend-snippet");
