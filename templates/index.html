@@ -28304,12 +28304,22 @@ document.addEventListener('keydown', function(e) {
         const topCafe = d.this_week.top_cafes[0];
         document.getElementById('sw-this-cafes-top').textContent = topCafe ? topCafe.name : '—';
 
-        // Spend breakdown with merchant examples
+        // Spend breakdown showing merchants per category
         const breakdownEl = document.getElementById('sw-spend-breakdown');
         const breakdown = Object.entries(d.this_week.spend_by_category)
           .sort((a,b) => b[1].total - a[1].total)
           .slice(0, 5)
-          .map(([cat, data]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px;background:rgba(255,255,255,0.5);border-radius:6px"><div><div style="font-weight:600">${cat}</div><div style="font-size:10px;color:var(--muted)">${data.count} ${data.count === 1 ? 'item' : 'items'}</div></div><strong style="color:#0369a1">£${data.total.toFixed(2)}</strong></div>`)
+          .map(([cat, data]) => {
+            const merchants = data.merchants || [];
+            const merchantsStr = merchants.map(m => `${m.name} £${m.amount.toFixed(2)}`).join(', ');
+            return `<div style="display:flex;flex-direction:column;padding:8px;background:rgba(255,255,255,0.5);border-radius:6px;gap:4px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-weight:600">${cat}</div>
+                <strong style="color:#0369a1">£${data.total.toFixed(2)}</strong>
+              </div>
+              <div style="font-size:10px;color:var(--muted)">${merchantsStr || 'No items'}</div>
+            </div>`;
+          })
           .join('');
         breakdownEl.innerHTML = breakdown || '<div style="color:var(--muted);font-size:12px;text-align:center">No spend data</div>';
 

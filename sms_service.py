@@ -27880,15 +27880,26 @@ def api_home_week_full():
 
         this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
 
-        # Categorize spend by merchant
+        # Categorize spend by merchant (also track merchants for detail)
+        merchants_by_cat = {}  # Track merchant details per category
         for r in spend_rows:
             merchant = r.get("merchant", "Unknown")
             cat = _receipt_category(merchant)
             amount = float(r.get("total", 0) or 0)
             if cat not in this_week["spend_by_category"]:
-                this_week["spend_by_category"][cat] = {"total": 0, "count": 0}
+                this_week["spend_by_category"][cat] = {"total": 0, "count": 0, "merchants": []}
+                merchants_by_cat[cat] = {}
             this_week["spend_by_category"][cat]["total"] += amount
             this_week["spend_by_category"][cat]["count"] += 1
+            # Track merchants per category
+            if merchant not in merchants_by_cat[cat]:
+                merchants_by_cat[cat][merchant] = 0
+            merchants_by_cat[cat][merchant] += amount
+
+        # Add merchant details to categories
+        for cat in this_week["spend_by_category"]:
+            merchants = sorted(merchants_by_cat.get(cat, {}).items(), key=lambda x: x[1], reverse=True)
+            this_week["spend_by_category"][cat]["merchants"] = [{"name": m[0], "amount": round(m[1], 2)} for m in merchants]
 
         # Cafe/restaurant visits (based on merchant categorization)
         food_categories = ["Coffee & Lunch", "Dining", "Takeaway", "Fast Food"]
