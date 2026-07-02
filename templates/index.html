@@ -19901,8 +19901,10 @@ let _savesAll = [];
         return;
       }
 
-      if (d.success && d.transactions && d.transactions.length > 0) {
-        _receiptsShowPdfPreview(d.transactions, file.name);
+      if (d.success && d.by_month) {
+        _receiptsShowPdfPreview(d.by_month, d.transactions, d.grand_total || 0, file.name, d.new_count, d.duplicate_count);
+      } else if (d.success && d.transactions && d.transactions.length > 0) {
+        _receiptsShowPdfPreview({"all": {"new": d.transactions}}, d.transactions, d.transactions.reduce((s,t)=>s+t.amount,0), file.name, d.transactions.length, 0);
       } else {
         alert("No transactions found in PDF. Try a bank statement or receipt.");
       }
@@ -19913,55 +19915,77 @@ let _savesAll = [];
     }
   }
 
-  window._receiptsShowPdfPreview = function(transactions, filename) {
+  window._receiptsShowPdfPreview = function(byMonth, allTransactions, grandTotal, filename, newCount, dupCount) {
     const sheet = document.createElement("div");
     sheet.dataset.pdfSheet = "1";
     sheet.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
 
-    const total = transactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    // Build month sections
+    let monthsHtml = '';
+    for (const [month, data] of Object.entries(byMonth)) {
+      if (month === "unknown") continue;
+      const txns = (data.new || []).concat(data.duplicates || []);
+      const monthTotal = txns.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 
-    const rows = transactions.map((t, i) => `
-      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">${t.merchant || "Unknown"}</div>
-          <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
-            <span>📅 ${t.date || "—"}</span>
-            <span>📂 ${t.category || "Other"}</span>
+      const txnHtml = txns.map(t => {
+        const isDup = t.is_duplicate;
+        return `
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;opacity:${isDup?'0.5':'1'};background:${isDup?'rgba(0,0,0,0.02)':'transparent'}">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;text-decoration:${isDup?'line-through':'none'}">${t.merchant || "Unknown"}</div>
+              <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
+                <span>📅 ${t.date || "—"}</span>
+                <span>📂 ${t.category || "Other"}</span>
+                ${isDup ? '<span style="color:#dc2626;font-weight:600">⚠️ Already imported</span>' : ''}
+              </div>
+            </div>
+            <div style="text-align:right;margin-left:12px">
+              <div style="font-size:14px;font-weight:700;color:#065f46">£${(parseFloat(t.amount) || 0).toFixed(2)}</div>
+            </div>
+          </div>`;
+      }).join("");
+
+      monthsHtml += `
+        <div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <div style="padding:12px 14px;background:#f9fafb;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${month}</div>
+            <div style="font-size:12px;font-weight:700;color:#065f46">£${monthTotal.toFixed(2)}</div>
           </div>
-        </div>
-        <div style="text-align:right;margin-left:12px">
-          <div style="font-size:14px;font-weight:700;color:#065f46">£${(parseFloat(t.amount) || 0).toFixed(2)}</div>
-        </div>
-      </div>`).join("");
+          ${txnHtml}
+        </div>`;
+    }
 
     sheet.innerHTML = `
       <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:0;width:100%;max-width:600px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
         <!-- Header -->
         <div style="padding:20px 18px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%)">
           <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">📄 ${filename.replace(/\.pdf$/i,"")}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Extracted ${transactions.length} transaction${transactions.length===1?'':'s'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+            <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;margin-right:8px">${newCount} new</span>
+            ${dupCount > 0 ? `<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px">${dupCount} already imported</span>` : ''}
+          </div>
           <div style="display:flex;align-items:baseline;gap:8px">
-            <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Total</div>
-            <div style="font-size:24px;font-weight:900;color:#065f46">£${total.toFixed(2)}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Grand Total</div>
+            <div style="font-size:28px;font-weight:900;color:#065f46">£${grandTotal.toFixed(2)}</div>
           </div>
         </div>
 
-        <!-- Transactions -->
-        <div style="flex:1;overflow-y:auto;background:var(--bg)">
-          ${rows}
+        <!-- Months -->
+        <div style="flex:1;overflow-y:auto;background:var(--bg);padding:16px">
+          ${monthsHtml}
         </div>
 
         <!-- Info banner -->
         <div style="padding:12px 14px;background:#f9fafb;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;gap:8px">
-          <span style="flex-shrink:0">🔒</span>
-          <span>Data encrypted. Not shared. Only you can see these transactions.</span>
+          <span style="flex-shrink:0">💡</span>
+          <span>Receipts marked "Already imported" will be skipped. Only new items will be added.</span>
         </div>
 
         <!-- Actions -->
         <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--bg)">
-          <button id="receipts-pdf-save-btn" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s"
+          <button id="receipts-pdf-import-btn" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s"
             onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#065f46'"
-            onclick="_receiptsConfirmPdfSave(this)">✓ Save All</button>
+            onclick="_receiptsConfirmPdfImport(this)">${newCount > 0 ? '✓ Import '+newCount+' Receipts' : 'No new receipts'}</button>
           <button style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s"
             onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='var(--border)'"
             onclick="this.closest('[data-pdf-sheet]').remove()">Cancel</button>
@@ -19970,26 +19994,42 @@ let _savesAll = [];
     document.body.appendChild(sheet);
     sheet.addEventListener("click", e => { if (e.target === sheet) sheet.remove(); });
 
-    // Store transactions for saving
-    sheet._transactions = transactions;
+    // Store for importing
+    sheet._allTransactions = allTransactions;
   }
 
-  window._receiptsConfirmPdfSave = async function(btn) {
-    const sheet = btn.closest('[data-pdf-sheet]');
-    const transactions = sheet._transactions;
+  window._receiptsConfirmPdfImport = async function(btn) {
+    if (btn.textContent.includes("No new")) {
+      btn.closest('[data-pdf-sheet]').remove();
+      return;
+    }
 
-    btn.textContent = "Saving…";
+    const sheet = btn.closest('[data-pdf-sheet]');
+    const transactions = sheet._allTransactions;
+
+    btn.textContent = "Importing…";
     btn.disabled = true;
 
     try {
-      // Transactions already saved to Supabase by the API
-      // Just close the modal and refresh the receipts view
+      const wa = localStorage.getItem("miru_phone");
+      const r = await fetch("/api/receipts/import-pdf", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({wa, transactions})
+      });
+      const d = await r.json();
+
       sheet.remove();
-      _receiptsAnalysisLoad('month');  // Refresh the receipts display
-      alert("✅ " + transactions.length + " transaction" + (transactions.length===1?"":"s") + " saved!");
+
+      if (d.success) {
+        _receiptsAnalysisLoad('month');  // Refresh the receipts display
+        alert("✅ Imported " + d.imported_count + " receipt" + (d.imported_count===1?"":"s") + " (£" + d.grand_total.toFixed(2) + ")");
+      } else {
+        alert("Error: " + (d.error || "Failed to import"));
+      }
     } catch (e) {
-      console.error("[receipts-save] Error:", e);
-      btn.textContent = "Error saving";
+      console.error("[receipts-import] Error:", e);
+      btn.textContent = "Error importing";
     }
   }
 

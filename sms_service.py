@@ -9917,37 +9917,132 @@ def api_v2_spend_upload_pdf():
         if not result["success"]:
             return jsonify(result), 400
 
-        # Store extracted transactions in receipts table
+        # Check for duplicates and organize by month
         if result["transactions"]:
             try:
                 sb = lib._sb()
                 phone_clean = from_number.replace("whatsapp:", "").strip()
 
-                # Add each transaction as a receipt
-                for txn in result["transactions"]:
-                    sb.table("receipts").insert({
-                        "phone": phone_clean,
-                        "merchant": txn.get("merchant", "Unknown"),
-                        "total": txn.get("amount", 0),
-                        "shop_date": txn.get("date"),
-                        "items": __import__("json").dumps([{"name": txn.get("category", "Other"), "qty": 1, "price": txn.get("amount", 0)}]),
-                        "raw_summary": f"PDF extracted: {txn.get('category', 'Other')}",
-                        "restaurant_type": classify_restaurant(txn.get("merchant", "")),
-                    }).execute()
+                # Check which transactions already exist
+                existing = sb.table("receipts").select("merchant,total,shop_date") \
+                    .eq("phone", phone_clean).execute().data or []
 
-                app.logger.info(f"[spend] Stored {result['count']} transactions from PDF to receipts table")
+                existing_set = set()
+                for e in existing:
+                    # Create unique key: merchant|amount|date
+                    key = f"{e.get('merchant', '')}|{e.get('total', 0)}|{e.get('shop_date', '')}"
+                    existing_set.add(key)
+
+                # Mark duplicates and organize by month
+                new_txns = []
+                duplicate_txns = []
+
+                for txn in result["transactions"]:
+                    key = f"{txn.get('merchant', '')}|{txn.get('amount', 0)}|{txn.get('date', '')}"
+                    if key in existing_set:
+                        duplicate_txns.append({**txn, "is_duplicate": True})
+                    else:
+                        new_txns.append({**txn, "is_duplicate": False})
+
+                # Return with duplicate info
+                import datetime as _dt
+                by_month = {}
+                for txn in new_txns + duplicate_txns:
+                    try:
+                        date_obj = _dt.datetime.fromisoformat(txn.get("date", ""))
+                        month_key = date_obj.strftime("%Y-%m")
+                    except:
+                        month_key = "unknown"
+
+                    if month_key not in by_month:
+                        by_month[month_key] = {"new": [], "duplicates": []}
+
+                    if txn.get("is_duplicate"):
+                        by_month[month_key]["duplicates"].append(txn)
+                    else:
+                        by_month[month_key]["new"].append(txn)
+
+                app.logger.info(f"[spend] PDF: {len(new_txns)} new, {len(duplicate_txns)} duplicates")
             except Exception as e:
-                app.logger.warning(f"[spend] Failed to store transactions: {e}")
+                app.logger.warning(f"[spend] Error checking duplicates: {e}")
+                new_txns = result["transactions"]
+                by_month = {"error": "Could not check for duplicates"}
 
         return jsonify({
             "success": True,
-            "count": result["count"],
+            "total_extracted": result["count"],
+            "new_count": len(new_txns) if result["transactions"] else 0,
+            "duplicate_count": len(duplicate_txns) if result["transactions"] else 0,
+            "by_month": by_month if result["transactions"] else {},
             "transactions": result["transactions"],
-            "message": f"Extracted {result['count']} transactions from PDF",
+            "message": f"Extracted {result['count']} transactions ({len(new_txns) if result['transactions'] else 0} new, {len(duplicate_txns) if result['transactions'] else 0} already imported)",
         })
 
     except Exception as e:
         app.logger.error(f"[spend] PDF upload error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/receipts/import-pdf", methods=["POST"])
+def import_pdf_receipts():
+    """Import selected receipts from PDF into database, organized by month."""
+    try:
+        data = request.get_json() or {}
+        from_number = _v2_resolve(data.get("wa", "") or request.cookies.get("miru_saves_phone", ""))
+        transactions = data.get("transactions", [])
+
+        if not transactions:
+            return jsonify({"error": "No transactions to import"}), 400
+
+        sb = lib._sb()
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+        imported = []
+
+        # Import only new transactions (skip duplicates)
+        for txn in transactions:
+            if not txn.get("is_duplicate"):  # Only import new ones
+                sb.table("receipts").insert({
+                    "phone": phone_clean,
+                    "merchant": txn.get("merchant", "Unknown"),
+                    "total": txn.get("amount", 0),
+                    "shop_date": txn.get("date"),
+                    "items": __import__("json").dumps([{"name": txn.get("category", "Other"), "qty": 1, "price": txn.get("amount", 0)}]),
+                    "raw_summary": f"PDF imported: {txn.get('category', 'Other')}",
+                    "restaurant_type": classify_restaurant(txn.get("merchant", "")),
+                }).execute()
+                imported.append(txn)
+
+        # Organize by month
+        import datetime as _dt
+        by_month = {}
+        grand_total = 0
+
+        for txn in imported:
+            try:
+                date_obj = _dt.datetime.fromisoformat(txn.get("date", ""))
+                month_key = date_obj.strftime("%b %Y")  # e.g., "Jun 2026"
+            except:
+                month_key = "Unknown Date"
+
+            if month_key not in by_month:
+                by_month[month_key] = {"transactions": [], "subtotal": 0}
+
+            by_month[month_key]["transactions"].append(txn)
+            by_month[month_key]["subtotal"] += txn.get("amount", 0)
+            grand_total += txn.get("amount", 0)
+
+        app.logger.info(f"[spend] Imported {len(imported)} PDF receipts for {phone_clean}")
+
+        return jsonify({
+            "success": True,
+            "imported_count": len(imported),
+            "grand_total": round(grand_total, 2),
+            "by_month": by_month,
+            "message": f"Imported {len(imported)} receipts (£{grand_total:.2f} total)",
+        })
+
+    except Exception as e:
+        app.logger.error(f"[spend] PDF import error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
