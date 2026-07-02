@@ -27804,8 +27804,8 @@ def api_home_week_full():
         cafe_merchants = Counter([r.get("merchant", "") for r in cafe_rows if r.get("merchant")])
         this_week["top_cafes"] = [{"name": m[0], "visits": m[1], "spent": round(sum(float(r.get("total", 0) or 0) for r in cafe_rows if r.get("merchant") == m[0]), 2)} for m in cafe_merchants.most_common(5)]
 
-        # Saves this week - by type
-        saves_rows = sb.table("wa_saves").select("category") \
+        # Saves this week - by type (with titles for recent ones)
+        saves_rows = sb.table("wa_saves").select("id,category,title,summary") \
             .eq("from_number", from_number) \
             .gte("created_at", week_start.isoformat()) \
             .lte("created_at", week_end.isoformat()).execute().data or []
@@ -27816,12 +27816,16 @@ def api_home_week_full():
                 this_week["saves"][cat] += 1
             this_week["saves"]["total"] += 1
 
+        # Get sample saves to display (first 5)
+        this_week["save_samples"] = [{"title": s.get("title", "Untitled"), "category": s.get("category", ""), "summary": (s.get("summary") or "")[:60]} for s in saves_rows[:5]]
+
         # School events this week
-        school_events = sb.table("school_events").select("id") \
+        school_events = sb.table("school_events").select("id,child_name,event_name,event_date") \
             .eq("from_number", from_number) \
             .gte("event_date", week_start.isoformat()) \
             .lte("event_date", week_end.isoformat()).execute().data or []
         this_week["school_events"] = len(school_events)
+        this_week["school_event_list"] = [{"child": e.get("child_name", ""), "event": e.get("event_name", ""), "date": e.get("event_date", "")} for e in school_events[:3]]
 
         # === LAST WEEK (for comparison) ===
         last_week = {
