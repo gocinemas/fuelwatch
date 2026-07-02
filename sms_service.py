@@ -34571,6 +34571,179 @@ def api_insights_full():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/insights/week", methods=["GET"])
+def api_insights_week():
+    """Your Week module enhanced with intelligence insights."""
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+
+    try:
+        from intelligence_engine import MiruIntelligence
+        from module_integrations import enhance_your_week_with_insights
+        import library as lib
+        import datetime as _dt
+
+        sb = lib._sb()
+        engine = MiruIntelligence()
+
+        # Get Your Week data (existing logic)
+        phone = from_number.replace("whatsapp:", "").strip()
+        now = _dt.datetime.utcnow()
+        today = now.date()
+
+        # Call existing week endpoint
+        week_data = {
+            "this_week": {},
+            "last_week": {},
+            "trends": {}
+        }
+
+        # Fetch receipts this week
+        receipts_this = sb.table("receipts").select("total,merchant,shop_date,restaurant_type") \
+            .eq("phone", phone) \
+            .gte("shop_date", (today - _dt.timedelta(days=7)).isoformat()) \
+            .execute().data or []
+
+        spend_this = sum(float(r.get("total", 0)) for r in receipts_this)
+        week_data["this_week"]["spend"] = spend_this
+
+        # Get intelligence
+        intelligence = engine.get_full_intelligence(from_number, sb)
+
+        # Enhance with insights
+        week_data = enhance_your_week_with_insights(week_data, intelligence)
+
+        return jsonify({
+            "success": True,
+            "week": week_data,
+            "insights": intelligence.get("insights")
+        })
+
+    except Exception as e:
+        print(f"[insights/week] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/insights/receipts", methods=["GET"])
+def api_insights_receipts():
+    """Receipts module enhanced with spend intelligence."""
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+
+    try:
+        from intelligence_engine import MiruIntelligence
+        from module_integrations import enhance_receipts_with_insights
+        import library as lib
+
+        sb = lib._sb()
+        engine = MiruIntelligence()
+
+        phone = from_number.replace("whatsapp:", "").strip()
+
+        # Get receipts data
+        receipts_data = {}
+
+        # Get intelligence
+        intelligence = engine.get_full_intelligence(from_number, sb)
+
+        # Enhance with insights
+        receipts_data = enhance_receipts_with_insights(receipts_data, intelligence)
+
+        return jsonify({
+            "success": True,
+            "receipts": receipts_data,
+            "insights": intelligence.get("insights")
+        })
+
+    except Exception as e:
+        print(f"[insights/receipts] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/insights/fuel", methods=["GET"])
+def api_insights_fuel():
+    """Fuel module enhanced with price intelligence."""
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+
+    try:
+        from intelligence_engine import MiruIntelligence
+        from module_integrations import enhance_fuel_with_insights
+        import library as lib
+
+        sb = lib._sb()
+        engine = MiruIntelligence()
+
+        fuel_data = {}
+
+        # Get intelligence
+        intelligence = engine.get_full_intelligence(from_number, sb)
+
+        # Enhance with insights
+        fuel_data = enhance_fuel_with_insights(fuel_data, intelligence)
+
+        return jsonify({
+            "success": True,
+            "fuel": fuel_data,
+            "insights": intelligence.get("insights")
+        })
+
+    except Exception as e:
+        print(f"[insights/fuel] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/insights/notifications", methods=["GET"])
+def api_insights_notifications():
+    """Get smart actionable notifications from insights."""
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+
+    try:
+        from intelligence_engine import MiruIntelligence
+        from module_integrations import get_smart_notifications
+        import library as lib
+
+        sb = lib._sb()
+        engine = MiruIntelligence()
+
+        # Get intelligence
+        intelligence = engine.get_full_intelligence(from_number, sb)
+
+        # Extract notifications
+        notifications = get_smart_notifications(intelligence)
+
+        return jsonify({
+            "success": True,
+            "notifications": notifications,
+            "count": len(notifications)
+        })
+
+    except Exception as e:
+        print(f"[insights/notifications] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 # ────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

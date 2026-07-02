@@ -730,6 +730,7 @@
     <button class="sb-btn"    id="sb-week" title="Your Week"   onclick="showScreen('week')">📊</button>
     <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">📦</button>
     <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
+    <button class="sb-btn"    id="sb-intelligence" title="Intelligence" onclick="showScreen('intelligence');_intelligenceLoad()">🧠</button>
     <div class="sb-spacer"></div>
     <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup')">⚙️</button>
   </nav>
@@ -17111,6 +17112,167 @@ _bkBadge();
     </div>
 
     <div id="receipts-list" style="display:none;background:#faf9f4;border:1px solid #e5e5e0;border-radius:12px;padding:16px;font-family:'Courier New', monospace;font-size:13px;line-height:1.6"></div>
+  </div>
+</div>
+
+<!-- ── INTELLIGENCE HUB ── -->
+<div id="screen-intelligence" class="screen pt-5">
+  <div style="padding:0 16px;max-width:700px;margin:0 auto">
+    <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">🧠 INTELLIGENCE HUB</div>
+    <div style="font-size:12px;font-weight:700;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px;display:inline-block;margin-bottom:16px" id="intel-timestamp">loading...</div>
+
+    <!-- Loading state -->
+    <div id="intel-loading" style="text-align:center;padding:60px 0;color:var(--muted)">
+      <div style="font-size:32px;margin-bottom:8px">⏳</div>
+      <div>Analyzing your data...</div>
+    </div>
+
+    <!-- Main content (hidden while loading) -->
+    <div id="intel-content" style="display:none">
+      <!-- 4-CARD INSIGHTS GRID -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+        <!-- Fuel Card -->
+        <div style="background:linear-gradient(135deg,#0369a1 0%,#0284c7 100%);border-radius:12px;padding:14px;color:white">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:0.85;margin-bottom:6px">⛽ Fuel</div>
+          <div id="intel-fuel-trend" style="font-size:14px;font-weight:800;margin-bottom:2px">—</div>
+          <div id="intel-fuel-next" style="font-size:11px;opacity:0.85">—</div>
+          <div id="intel-fuel-rec" style="font-size:10px;margin-top:6px;opacity:0.75;line-height:1.3">—</div>
+        </div>
+
+        <!-- Spend Card -->
+        <div style="background:linear-gradient(135deg,#16a34a 0%,#22c55e 100%);border-radius:12px;padding:14px;color:white">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:0.85;margin-bottom:6px">💳 Spend</div>
+          <div id="intel-spend-trend" style="font-size:14px;font-weight:800;margin-bottom:2px">—</div>
+          <div id="intel-spend-forecast" style="font-size:11px;opacity:0.85">—</div>
+          <div id="intel-spend-save" style="font-size:10px;margin-top:6px;opacity:0.75;line-height:1.3">—</div>
+        </div>
+
+        <!-- Lifestyle Card -->
+        <div style="background:linear-gradient(135deg,#d97706 0%,#f59e0b 100%);border-radius:12px;padding:14px;color:white">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:0.85;margin-bottom:6px">🎯 Lifestyle</div>
+          <div id="intel-lifestyle-change" style="font-size:14px;font-weight:800;margin-bottom:2px">—</div>
+          <div id="intel-lifestyle-level" style="font-size:11px;opacity:0.85">—</div>
+          <div id="intel-anomalies" style="font-size:10px;margin-top:6px;opacity:0.75;line-height:1.3">—</div>
+        </div>
+
+        <!-- Recommendations Card -->
+        <div style="background:linear-gradient(135deg,#7c3aed 0%,#a855f7 100%);border-radius:12px;padding:14px;color:white">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:0.85;margin-bottom:6px">⭐ Top Savings</div>
+          <div id="intel-rec-top" style="font-size:12px;font-weight:700;margin-bottom:6px">—</div>
+          <div id="intel-rec-list" style="font-size:10px;line-height:1.6;opacity:0.85">—</div>
+        </div>
+      </div>
+
+      <!-- FUEL DETAILS SECTION -->
+      <div style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #7dd3fc;border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:10px;text-transform:uppercase">⛽ Fuel Intelligence</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Last Fill</div>
+            <div id="intel-fuel-last" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Days Since Fill</div>
+            <div id="intel-fuel-days" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Current Price</div>
+            <div id="intel-fuel-current" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Price Comparison</div>
+            <div id="intel-fuel-compare" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div style="grid-column:1/-1">
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Best Day to Fill</div>
+            <div id="intel-fuel-best-day" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEND ANALYSIS SECTION -->
+      <div style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #86efac;border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:10px;text-transform:uppercase">💳 Spend Analysis</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-bottom:12px">
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">This Week</div>
+            <div id="intel-spend-this" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Last Week</div>
+            <div id="intel-spend-last" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+        </div>
+        <div style="background:white;border-radius:8px;padding:8px;margin-bottom:10px">
+          <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:6px">Next 4 Weeks Forecast</div>
+          <div id="intel-spend-forecast-chart" style="font-family:monospace;font-size:10px;color:var(--text);line-height:1.4">—</div>
+        </div>
+        <div style="background:white;border-radius:8px;padding:8px;margin-bottom:10px">
+          <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:6px">Category Breakdown</div>
+          <div id="intel-spend-categories" style="font-size:11px;line-height:1.5;color:var(--text)">—</div>
+        </div>
+        <div style="background:white;border-radius:8px;padding:8px">
+          <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:6px">Top 3 Ways to Save</div>
+          <div id="intel-spend-savings" style="font-size:11px;line-height:1.6;color:var(--text)">—</div>
+        </div>
+      </div>
+
+      <!-- LOCATION PATTERNS SECTION -->
+      <div style="background:linear-gradient(135deg,#fff5e6 0%,#ffe8cc 100%);border:1px solid #fed7aa;border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#d97706;margin-bottom:10px;text-transform:uppercase">📍 Location Patterns</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Most Visited</div>
+            <div id="intel-location-top" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Cost per Visit</div>
+            <div id="intel-location-cost" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div style="grid-column:1/-1">
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Cheaper Alternative</div>
+            <div id="intel-location-alt" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div style="grid-column:1/-1">
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Potential Savings</div>
+            <div id="intel-location-savings" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCHOOL & CALENDAR INTELLIGENCE -->
+      <div style="background:linear-gradient(135deg,#fef3c7 0%,#fed7aa 100%);border:1px solid #fde047;border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:10px;text-transform:uppercase">🏫 School & Calendar</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-bottom:12px">
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Busy Level</div>
+            <div id="intel-school-busy" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div>
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Busiest Day</div>
+            <div id="intel-school-busiest" style="font-weight:700;color:var(--text)">—</div>
+          </div>
+          <div style="grid-column:1/-1">
+            <div style="color:var(--muted);font-size:10px;margin-bottom:2px">Impact on Routine</div>
+            <div id="intel-school-impact" style="font-weight:700;color:var(--text);line-height:1.4">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION ITEMS CHECKLIST -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;text-transform:uppercase">✓ Action Items</div>
+        <div id="intel-actions" style="display:flex;flex-direction:column;gap:8px;font-size:12px">
+          <div style="color:var(--muted)">—</div>
+        </div>
+      </div>
+
+      <!-- ERROR STATE (if any) -->
+      <div id="intel-error" style="display:none;background:#fee2e2;border:1px solid #fecaca;border-radius:12px;padding:14px;margin-bottom:16px;color:#991b1b">
+        <div style="font-weight:700;margin-bottom:4px">⚠️ Could not generate insights</div>
+        <div id="intel-error-msg" style="font-size:12px">—</div>
+      </div>
+    </div>
   </div>
 </div>
 
