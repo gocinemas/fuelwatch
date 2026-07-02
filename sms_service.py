@@ -9734,18 +9734,47 @@ def api_v2_receipts_timeline():
         import json
         from datetime import datetime, timedelta
 
-        # Get receipts from last N days (stored in wa_saves as 🧾 clippings)
+        # Get receipts from last N days
+        # Query from BOTH: wa_saves (manual/WhatsApp) AND receipts (PDF imports)
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
 
-        print(f"[receipts-timeline] Querying wa_saves for user={from_number}, cutoff={cutoff}", flush=True)
-        rows = lib._sb().table("wa_saves").select("id,from_number,title,summary,amount,category,created_at") \
+        print(f"[receipts-timeline] Querying for user={from_number}, cutoff={cutoff}", flush=True)
+
+        # Get receipts from wa_saves (manual entries with 🧾 prefix)
+        wa_rows = lib._sb().table("wa_saves").select("id,from_number,title,summary,amount,category,created_at") \
             .eq("from_number", from_number) \
             .gte("created_at", cutoff) \
             .ilike("title", "🧾%") \
             .order("created_at", desc=True) \
             .execute().data or []
 
-        print(f"[receipts-timeline] Found {len(rows)} receipts", flush=True)
+        # Get receipts from receipts table (PDF imports)
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+        pdf_rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,items,raw_summary,created_at") \
+            .eq("phone", phone_clean) \
+            .gte("shop_date", cutoff[:10]) \
+            .order("shop_date", desc=True) \
+            .execute().data or []
+
+        # Convert pdf_rows to match wa_saves structure
+        converted_pdf = []
+        for row in pdf_rows:
+            converted_pdf.append({
+                "id": row.get("id"),
+                "from_number": from_number,
+                "title": f"🧾 {row.get('merchant', 'Unknown')}",
+                "summary": row.get("raw_summary", ""),
+                "amount": row.get("total"),
+                "category": "receipt",
+                "created_at": row.get("shop_date"),
+                "_source": "pdf"  # Mark as PDF import
+            })
+
+        # Combine both sources
+        rows = wa_rows + converted_pdf
+        rows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+        print(f"[receipts-timeline] Found {len(wa_rows)} from wa_saves + {len(converted_pdf)} from PDF = {len(rows)} total", flush=True)
 
         receipts = []
         total = 0
@@ -9762,10 +9791,11 @@ def api_v2_receipts_timeline():
             print(f"  All fields: {list(first.keys())}", flush=True)
 
         for row in rows:
-            # wa_saves stores receipts with 🧾 prefix in title
+            # Handle both wa_saves and receipts table sources
             title = row.get("title", "").replace("🧾 ", "").strip()
             summary = row.get("summary", "")
             category = row.get("category", "Unknown")
+            source = row.get("_source", "manual")
 
             # USE THE PRE-EXTRACTED AMOUNT FIELD!
             amount = 0
