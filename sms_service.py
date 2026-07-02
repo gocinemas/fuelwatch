@@ -27777,26 +27777,27 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # Spend this week - all receipts
-        spend_rows = sb.table("receipts").select("total,merchant,category") \
+        # Spend this week - all receipts (no category column, use merchant to categorize)
+        spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
             .eq("phone", phone) \
             .gte("shop_date", week_start.isoformat()) \
             .lte("shop_date", week_end.isoformat()).execute().data or []
 
         this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
 
-        # Categorize spend
+        # Categorize spend by merchant
         for r in spend_rows:
-            cat = (r.get("category") or "Other").strip()
+            merchant = r.get("merchant", "Unknown")
+            cat = _receipt_category(merchant)
             amount = float(r.get("total", 0) or 0)
             if cat not in this_week["spend_by_category"]:
                 this_week["spend_by_category"][cat] = {"total": 0, "count": 0}
             this_week["spend_by_category"][cat]["total"] += amount
             this_week["spend_by_category"][cat]["count"] += 1
 
-        # Cafe/restaurant visits
-        food_categories = ["cafe", "restaurant", "coffee", "bakery", "fast food", "pub"]
-        cafe_rows = [r for r in spend_rows if (r.get("category") or "").lower() in food_categories]
+        # Cafe/restaurant visits (based on merchant categorization)
+        food_categories = ["Coffee & Lunch", "Dining", "Takeaway", "Fast Food"]
+        cafe_rows = [r for r in spend_rows if _receipt_category(r.get("merchant", "")).strip() in food_categories]
         this_week["cafe_visits"] = len(cafe_rows)
 
         # Top cafes
@@ -27832,8 +27833,8 @@ def api_home_week_full():
             "school_events": 0,
         }
 
-        # Last week spend
-        last_spend_rows = sb.table("receipts").select("total,merchant,category") \
+        # Last week spend (no category column, use merchant to categorize)
+        last_spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
             .eq("phone", phone) \
             .gte("shop_date", last_week_start.isoformat()) \
             .lte("shop_date", last_week_end.isoformat()).execute().data or []
@@ -27841,7 +27842,7 @@ def api_home_week_full():
         last_week["spend"] = sum(float(r.get("total", 0) or 0) for r in last_spend_rows)
 
         # Last week cafe visits
-        last_cafe_rows = [r for r in last_spend_rows if (r.get("category") or "").lower() in food_categories]
+        last_cafe_rows = [r for r in last_spend_rows if _receipt_category(r.get("merchant", "")).strip() in food_categories]
         last_week["cafe_visits"] = len(last_cafe_rows)
 
         # Last week top cafes
