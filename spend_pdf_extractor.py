@@ -121,9 +121,8 @@ Return ONLY the JSON array, no markdown or explanation.""",
         except json.JSONDecodeError as e:
             print(f"[spend_pdf] JSON decode error: {e}")
             print(f"[spend_pdf] Response text (first 500 chars): {response_text[:500]}")
-            # Try to extract JSON array more carefully
-            import re
-            # Find matching brackets
+
+            # Try to extract and clean JSON array
             start = response_text.find('[')
             if start >= 0:
                 bracket_count = 0
@@ -140,9 +139,39 @@ Return ONLY the JSON array, no markdown or explanation.""",
                     json_text = response_text[start:end]
                     try:
                         transactions = json.loads(json_text)
-                    except:
-                        print(f"[spend_pdf] Extracted JSON also failed: {json_text[:200]}")
-                        raise e
+                    except json.JSONDecodeError as cleanup_error:
+                        # Try to clean up common JSON issues
+                        print(f"[spend_pdf] Attempting to clean malformed JSON")
+                        import re
+
+                        # Remove trailing commas before ] or }
+                        json_text = re.sub(r',(\s*[}\]])', r'\1', json_text)
+
+                        # Quote unquoted keys: key: -> "key":
+                        json_text = re.sub(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'"\1":', json_text)
+
+                        # Replace single quotes with double quotes (carefully)
+                        # This is risky but helps with common Claude output
+                        parts = []
+                        in_double = False
+                        for i, c in enumerate(json_text):
+                            if c == '"' and (i == 0 or json_text[i-1] != '\\'):
+                                in_double = not in_double
+                                parts.append(c)
+                            elif c == "'" and not in_double:
+                                parts.append('"')
+                            else:
+                                parts.append(c)
+                        json_text = ''.join(parts)
+
+                        # Try again
+                        try:
+                            print(f"[spend_pdf] Cleaned JSON (first 300 chars): {json_text[:300]}")
+                            transactions = json.loads(json_text)
+                        except Exception as final_error:
+                            print(f"[spend_pdf] Cleanup failed: {final_error}")
+                            print(f"[spend_pdf] Cleaned JSON (full): {json_text}")
+                            raise cleanup_error
                 else:
                     raise e
             else:
