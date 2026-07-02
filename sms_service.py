@@ -10901,6 +10901,21 @@ def _v2_fetch_school(from_number: str) -> dict:
         return {"schools": [], "upcoming": [], "recent": [], "events": [], "holiday_status": None}
 
 
+def classify_restaurant(merchant: str) -> str:
+    """Classify restaurant type based on merchant name."""
+    m = (merchant or "").lower().strip()
+    if "cafe" in m or "coffee" in m or "starbucks" in m or "costa" in m:
+        return "cafe"
+    elif "restaurant" in m or "pizza" in m or "curry" in m or "chinese" in m or "italian" in m:
+        return "restaurant"
+    elif "pub" in m or "bar" in m:
+        return "pub"
+    elif "takeaway" in m or "kebab" in m or "burger" in m:
+        return "takeaway"
+    else:
+        return "other"
+
+
 def _receipt_category(merchant: str) -> str:
     """Map a merchant name to a spend category based on UK merchant patterns."""
     m = (merchant or "").lower().strip()
