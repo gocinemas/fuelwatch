@@ -121,13 +121,29 @@ Return ONLY the JSON array, no markdown or explanation.""",
         except json.JSONDecodeError as e:
             print(f"[spend_pdf] JSON decode error: {e}")
             print(f"[spend_pdf] Response text (first 500 chars): {response_text[:500]}")
-            # Try to extract JSON if Claude added extra text
+            # Try to extract JSON array more carefully
             import re
-            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
-            if json_match:
-                try:
-                    transactions = json.loads(json_match.group(0))
-                except:
+            # Find matching brackets
+            start = response_text.find('[')
+            if start >= 0:
+                bracket_count = 0
+                end = -1
+                for i in range(start, len(response_text)):
+                    if response_text[i] == '[':
+                        bracket_count += 1
+                    elif response_text[i] == ']':
+                        bracket_count -= 1
+                        if bracket_count == 0:
+                            end = i + 1
+                            break
+                if end > 0:
+                    json_text = response_text[start:end]
+                    try:
+                        transactions = json.loads(json_text)
+                    except:
+                        print(f"[spend_pdf] Extracted JSON also failed: {json_text[:200]}")
+                        raise e
+                else:
                     raise e
             else:
                 raise e

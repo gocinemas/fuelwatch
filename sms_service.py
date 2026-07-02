@@ -27733,6 +27733,158 @@ def api_home_week_summary():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/home/week-full")
+def api_home_week_full():
+    """Comprehensive weekly analytics: spend, saves, school, trains, cafes, trends."""
+    import datetime as _dt
+    import zoneinfo as _zi
+    from collections import Counter
+
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+    now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
+    today = now.date()
+
+    # This week: today + 6 days (not Monday-Sunday)
+    week_start = today
+    week_end = today + _dt.timedelta(days=6)
+
+    # Last week for comparison
+    last_week_start = week_start - _dt.timedelta(days=7)
+    last_week_end = last_week_start + _dt.timedelta(days=6)
+
+    try:
+        sb = lib._sb()
+        phone = from_number.replace("whatsapp:", "")
+
+        # === THIS WEEK ===
+        this_week = {
+            "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
+            "spend": 0,
+            "spend_by_category": {},
+            "cafe_visits": 0,
+            "top_cafes": [],
+            "saves": {"books": 0, "shows": 0, "articles": 0, "music": 0, "places": 0, "total": 0},
+            "school_events": 0,
+            "train_journeys": 0,
+            "calendar_events": 0,
+        }
+
+        # Spend this week - all receipts
+        spend_rows = sb.table("receipts").select("total,merchant,category") \
+            .eq("phone", phone) \
+            .gte("shop_date", week_start.isoformat()) \
+            .lte("shop_date", week_end.isoformat()).execute().data or []
+
+        this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
+
+        # Categorize spend
+        for r in spend_rows:
+            cat = (r.get("category") or "Other").strip()
+            amount = float(r.get("total", 0) or 0)
+            if cat not in this_week["spend_by_category"]:
+                this_week["spend_by_category"][cat] = {"total": 0, "count": 0}
+            this_week["spend_by_category"][cat]["total"] += amount
+            this_week["spend_by_category"][cat]["count"] += 1
+
+        # Cafe/restaurant visits
+        food_categories = ["cafe", "restaurant", "coffee", "bakery", "fast food", "pub"]
+        cafe_rows = [r for r in spend_rows if (r.get("category") or "").lower() in food_categories]
+        this_week["cafe_visits"] = len(cafe_rows)
+
+        # Top cafes
+        cafe_merchants = Counter([r.get("merchant", "") for r in cafe_rows if r.get("merchant")])
+        this_week["top_cafes"] = [{"name": m[0], "visits": m[1], "spent": round(sum(float(r.get("total", 0) or 0) for r in cafe_rows if r.get("merchant") == m[0]), 2)} for m in cafe_merchants.most_common(5)]
+
+        # Saves this week - by type
+        saves_rows = sb.table("wa_saves").select("category") \
+            .eq("from_number", from_number) \
+            .gte("created_at", week_start.isoformat()) \
+            .lte("created_at", week_end.isoformat()).execute().data or []
+
+        for s in saves_rows:
+            cat = (s.get("category") or "").lower()
+            if cat in this_week["saves"]:
+                this_week["saves"][cat] += 1
+            this_week["saves"]["total"] += 1
+
+        # School events this week
+        school_events = sb.table("school_events").select("id") \
+            .eq("from_number", from_number) \
+            .gte("event_date", week_start.isoformat()) \
+            .lte("event_date", week_end.isoformat()).execute().data or []
+        this_week["school_events"] = len(school_events)
+
+        # === LAST WEEK (for comparison) ===
+        last_week = {
+            "period": f"{last_week_start.strftime('%b %d')} — {last_week_end.strftime('%b %d')}",
+            "spend": 0,
+            "cafe_visits": 0,
+            "top_cafes": [],
+            "saves": 0,
+            "school_events": 0,
+        }
+
+        # Last week spend
+        last_spend_rows = sb.table("receipts").select("total,merchant,category") \
+            .eq("phone", phone) \
+            .gte("shop_date", last_week_start.isoformat()) \
+            .lte("shop_date", last_week_end.isoformat()).execute().data or []
+
+        last_week["spend"] = sum(float(r.get("total", 0) or 0) for r in last_spend_rows)
+
+        # Last week cafe visits
+        last_cafe_rows = [r for r in last_spend_rows if (r.get("category") or "").lower() in food_categories]
+        last_week["cafe_visits"] = len(last_cafe_rows)
+
+        # Last week top cafes
+        last_cafe_merchants = Counter([r.get("merchant", "") for r in last_cafe_rows if r.get("merchant")])
+        last_week["top_cafes"] = [{"name": m[0], "visits": m[1]} for m in last_cafe_merchants.most_common(3)]
+
+        # Last week saves
+        last_saves = sb.table("wa_saves").select("id") \
+            .eq("from_number", from_number) \
+            .gte("created_at", last_week_start.isoformat()) \
+            .lte("created_at", last_week_end.isoformat()).execute().data or []
+        last_week["saves"] = len(last_saves)
+
+        # Last week school events
+        last_school_events = sb.table("school_events").select("id") \
+            .eq("from_number", from_number) \
+            .gte("event_date", last_week_start.isoformat()) \
+            .lte("event_date", last_week_end.isoformat()).execute().data or []
+        last_week["school_events"] = len(last_school_events)
+
+        # === TRENDS ===
+        spend_diff = this_week["spend"] - last_week["spend"]
+        spend_pct = round((spend_diff / last_week["spend"] * 100) if last_week["spend"] > 0 else 0)
+
+        trends = {
+            "spend_direction": "up" if spend_diff > 0 else "down" if spend_diff < 0 else "flat",
+            "spend_change": round(abs(spend_diff), 2),
+            "spend_pct": spend_pct,
+            "cafe_visits_change": this_week["cafe_visits"] - last_week["cafe_visits"],
+            "saves_change": this_week["saves"]["total"] - last_week["saves"],
+            "school_events_same": this_week["school_events"] == last_week["school_events"],
+        }
+
+        return jsonify({
+            "success": True,
+            "this_week": this_week,
+            "last_week": last_week,
+            "trends": trends,
+        })
+
+    except Exception as e:
+        print(f"[week-full] error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/diag")
 def school_diag():
     """Admin diagnostic: show profile/token/event state without sending anything."""
