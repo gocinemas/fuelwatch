@@ -51,9 +51,9 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
         # Encode PDF to base64
         pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
 
-        # Use Claude's vision to extract transactions
+        # Use Claude Sonnet for receipt extraction (70% cheaper than Opus)
         message = client.messages.create(
-            model="claude-opus-4-8",
+            model="claude-sonnet-4-6",
             max_tokens=2000,
             messages=[
                 {
