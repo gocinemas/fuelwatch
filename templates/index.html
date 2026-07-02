@@ -727,6 +727,7 @@
     <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
     <button class="sb-btn"    id="sb-school" title="School"     onclick="showScreen('school')">🏫</button>
     <button class="sb-btn"    id="sb-receipts" title="Receipt Analysis" onclick="showScreen('receipts');_receiptsAnalysisLoad()">💰</button>
+    <button class="sb-btn"    id="sb-week" title="Your Week"   onclick="showScreen('week')">📊</button>
     <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">📦</button>
     <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
     <div class="sb-spacer"></div>
@@ -4353,6 +4354,9 @@
     const bb = document.getElementById("back-btn");
     // Brief is the home screen — never show back button on it
     if (bb) { if (name === "brief") bb.classList.remove("visible"); else bb.classList.add("visible"); }
+    if (name === "week") {
+      _weekLoad();
+    }
     if (name === "fuel") {
       const _fpc = document.getElementById("fuel-postcode");
       _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()");
@@ -16942,6 +16946,115 @@ _bkBadge();
 </div>
 
 <!-- RECEIPT ANALYSIS SCREEN -->
+<div id="screen-week" class="screen pt-5">
+  <div style="padding:0 16px;max-width:600px;margin:0 auto">
+    <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">📊 YOUR WEEK</div>
+    <div id="week-period" style="font-size:12px;font-weight:700;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px;display:inline-block;margin-bottom:16px">loading...</div>
+
+    <!-- Loading state -->
+    <div id="week-loading" style="text-align:center;padding:40px 0;color:var(--muted)">⏳ Loading your week...</div>
+
+    <!-- Data content (hidden while loading) -->
+    <div id="week-content" style="display:none">
+      <!-- THIS WEEK -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">This Week</div>
+
+        <!-- 3-column grid: Spend, Saves, School -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+          <!-- Spend -->
+          <div style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #7dd3fc;border-radius:12px;padding:12px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:#0369a1;margin-bottom:4px">Spend</div>
+            <div id="week-this-spend" style="font-size:18px;font-weight:800;color:#111">—</div>
+            <div id="week-this-spend-cat" style="font-size:10px;color:var(--muted);margin-top:2px">—</div>
+          </div>
+
+          <!-- Saves -->
+          <div style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #86efac;border-radius:12px;padding:12px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:#16a34a;margin-bottom:4px">Saves</div>
+            <div id="week-this-saves" style="font-size:18px;font-weight:800;color:#111">—</div>
+            <div id="week-this-saves-types" style="font-size:10px;color:var(--muted);margin-top:2px">—</div>
+          </div>
+
+          <!-- School -->
+          <div style="background:linear-gradient(135deg,#fef3c7 0%,#fed7aa 100%);border:1px solid #fde047;border-radius:12px;padding:12px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:#b45309;margin-bottom:4px">School</div>
+            <div id="week-this-school" style="font-size:18px;font-weight:800;color:#111">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">events</div>
+          </div>
+        </div>
+
+        <!-- Row 2: Cafes, Trains, Calendar -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+          <!-- Cafes -->
+          <div style="background:linear-gradient(135deg,#fff5e6 0%,#ffe8cc 100%);border:1px solid #fed7aa;border-radius:12px;padding:12px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:#d97706;margin-bottom:4px">☕ Cafes</div>
+            <div id="week-this-cafes" style="font-size:18px;font-weight:800;color:#111">—</div>
+            <div id="week-this-cafes-top" style="font-size:10px;color:var(--muted);margin-top:2px">—</div>
+          </div>
+
+          <!-- Trains (placeholder for future) -->
+          <div style="background:linear-gradient(135deg,#f3e8ff 0%,#ede9fe 100%);border:1px solid #ddd6fe;border-radius:12px;padding:12px;text-align:center;opacity:0.5">
+            <div style="font-size:11px;font-weight:600;color:#6d28d9;margin-bottom:4px">🚆 Trains</div>
+            <div style="font-size:18px;font-weight:800;color:#111">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">journeys</div>
+          </div>
+
+          <!-- Calendar (placeholder for future) -->
+          <div style="background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%);border:1px solid #fecaca;border-radius:12px;padding:12px;text-align:center;opacity:0.5">
+            <div style="font-size:11px;font-weight:600;color:#dc2626;margin-bottom:4px">📅 Calendar</div>
+            <div style="font-size:18px;font-weight:800;color:#111">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">events</div>
+          </div>
+        </div>
+
+        <!-- Spend breakdown by category -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">Spend Breakdown</div>
+          <div id="week-spend-breakdown" style="display:flex;flex-direction:column;gap:6px">
+            <div style="color:var(--muted);font-size:12px;text-align:center">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LAST WEEK (Comparison) -->
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">Last Week</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <!-- Spend -->
+          <div style="background:linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%);border:1px solid #ddd6fe;border-radius:12px;padding:12px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:#6d28d9;margin-bottom:4px">Spend</div>
+            <div id="week-last-spend" style="font-size:16px;font-weight:800;color:#111">—</div>
+          </div>
+
+          <!-- Saves -->
+          <div style="background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%);border:1px solid #fecaca;border-radius:12px;padding:12px;text-align:center">
+            <div style="font-size:11px;font-weight:600;color:#dc2626;margin-bottom:4px">Saves</div>
+            <div id="week-last-saves" style="font-size:16px;font-weight:800;color:#111">—</div>
+          </div>
+        </div>
+
+        <!-- Top places last week -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">Top Places</div>
+          <div id="week-last-topplaces" style="display:flex;flex-direction:column;gap:6px">
+            <div style="color:var(--muted);font-size:12px;text-align:center">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRENDS -->
+      <div style="margin-top:24px;padding:16px;background:linear-gradient(135deg,#f0f9ff 0%,#f8fbff 100%);border:1px solid #7dd3fc;border-radius:12px">
+        <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:8px;text-transform:uppercase">📈 Trends</div>
+        <div id="week-trends" style="font-size:13px;color:var(--text);line-height:1.6">
+          <div style="color:var(--muted)">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="screen-receipts" class="screen pt-5">
   <div style="padding:0 16px;max-width:500px;margin:0 auto">
     <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">💰 <span id="receipts-period">JUNE</span></div>
@@ -28037,6 +28150,88 @@ document.addEventListener('keydown', function(e) {
     })
     .catch(e => console.error(e));
   };
+
+  // ========== YOUR WEEK SCREEN ==========
+  function _weekLoad() {
+    const loading = document.getElementById('week-loading');
+    const content = document.getElementById('week-content');
+    const wa = _miruPhone();
+
+    if (!wa) {
+      loading.textContent = '📌 Sign in with your phone number to see your week';
+      return;
+    }
+
+    loading.style.display = 'block';
+    content.style.display = 'none';
+
+    fetch(`/api/home/week-full?wa=${encodeURIComponent(wa)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) {
+          loading.textContent = '⚠️ Could not load your week';
+          return;
+        }
+
+        // Populate period
+        document.getElementById('week-period').textContent = d.this_week.period;
+
+        // THIS WEEK - Top row
+        document.getElementById('week-this-spend').textContent = '£' + d.this_week.spend.toFixed(2);
+        const topCat = Object.keys(d.this_week.spend_by_category).sort((a,b) =>
+          d.this_week.spend_by_category[b].total - d.this_week.spend_by_category[a].total)[0];
+        document.getElementById('week-this-spend-cat').textContent = topCat ? topCat : '—';
+
+        document.getElementById('week-this-saves').textContent = d.this_week.saves.total;
+        const savesTypes = [d.this_week.saves.books && d.this_week.saves.books + ' 📚',
+                           d.this_week.saves.shows && d.this_week.saves.shows + ' 📺',
+                           d.this_week.saves.articles && d.this_week.saves.articles + ' 📰'].filter(Boolean).join(', ');
+        document.getElementById('week-this-saves-types').textContent = savesTypes || '—';
+
+        document.getElementById('week-this-school').textContent = d.this_week.school_events;
+
+        // THIS WEEK - Bottom row
+        document.getElementById('week-this-cafes').textContent = d.this_week.cafe_visits;
+        const topCafe = d.this_week.top_cafes[0];
+        document.getElementById('week-this-cafes-top').textContent = topCafe ? topCafe.name : '—';
+
+        // Spend breakdown
+        const breakdownEl = document.getElementById('week-spend-breakdown');
+        const breakdown = Object.entries(d.this_week.spend_by_category)
+          .sort((a,b) => b[1].total - a[1].total)
+          .slice(0, 5)
+          .map(([cat, data]) => `<div style="display:flex;justify-content:space-between;font-size:12px"><span>${cat}</span><strong>£${data.total.toFixed(2)}</strong></div>`)
+          .join('');
+        breakdownEl.innerHTML = breakdown || '<div style="color:var(--muted);font-size:12px;text-align:center">No spend data</div>';
+
+        // LAST WEEK
+        document.getElementById('week-last-spend').textContent = '£' + d.last_week.spend.toFixed(2);
+        document.getElementById('week-last-saves').textContent = d.last_week.saves;
+
+        const topPlacesEl = document.getElementById('week-last-topplaces');
+        const topPlacesHtml = d.last_week.top_cafes
+          .map(p => `<div style="display:flex;justify-content:space-between;font-size:12px"><span>${p.name}</span><strong>${p.visits}x</strong></div>`)
+          .join('');
+        topPlacesEl.innerHTML = topPlacesHtml || '<div style="color:var(--muted);font-size:12px;text-align:center">No data</div>';
+
+        // TRENDS
+        const trendsEl = document.getElementById('week-trends');
+        const spendTrend = d.trends.spend_direction === 'up' ? '📈' : '📉';
+        const cafeTrend = d.trends.cafe_visits_change > 0 ? '📈' : d.trends.cafe_visits_change < 0 ? '📉' : '➡️';
+        trendsEl.innerHTML = `
+          <div>${spendTrend} Spend ${d.trends.spend_direction}: £${d.trends.spend_change.toFixed(2)} (${d.trends.spend_pct > 0 ? '+' : ''}${d.trends.spend_pct}%)</div>
+          <div>${cafeTrend} Cafe visits ${d.trends.cafe_visits_change > 0 ? '+' : ''}${d.trends.cafe_visits_change}</div>
+          <div>💾 Saves ${d.trends.saves_change > 0 ? '+' : ''}${d.trends.saves_change}</div>
+        `;
+
+        loading.style.display = 'none';
+        content.style.display = 'block';
+      })
+      .catch(e => {
+        console.error('Week load error:', e);
+        loading.textContent = '⚠️ Error loading your week';
+      });
+  }
 
   // Check onboarding on app load
   setTimeout(_onboardingCheckStatus, 500);
