@@ -10,6 +10,10 @@ Uses intelligence_optimizer for smart Groq/Anthropic routing:
 - Caching for repeated requests (90% savings)
 """
 
+# ⚠️  Patch gevent FIRST before any async HTTP imports (Groq, Anthropic, Supabase use httpx)
+from gevent import monkey as _gmonkey
+_gmonkey.patch_all(thread=True, socket=True, ssl=True)
+
 import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
@@ -29,7 +33,7 @@ class MiruIntelligence:
     """Main intelligence engine for Miru."""
 
     def __init__(self):
-        self.model = "mixtral-8x7b-32768"  # Fast, reasoning-capable
+        self.model = "llama-3.1-8b-instant"  # Fast, reasoning-capable (mixtral-8x7b-32768 decommissioned)
 
     def _format_data_summary(self, data: Dict) -> str:
         """Format user data for agentic reasoning prompt."""
@@ -166,10 +170,11 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
                         }
                     ]
                 )
+                response_text = message.content[0].text.strip()
             else:
                 # Use Groq Mixtral (60x cheaper, fast, good reasoning)
                 print("[intelligence] Using Groq (primary, cost-optimized)")
-                message = groq_client.messages.create(
+                message = groq_client.chat.completions.create(
                     model=self.model,
                     max_tokens=2000,
                     messages=[
@@ -179,8 +184,7 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
                         }
                     ]
                 )
-
-            response_text = message.content[0].text.strip()
+                response_text = message.choices[0].message.content.strip()
 
             # Extract JSON from response
             start = response_text.find('{')
