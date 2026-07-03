@@ -28085,11 +28085,43 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # Spend this week - all receipts (no category column, use merchant to categorize)
+        # Spend this week - ALL receipts (PDF uploads + manual camera scans)
+        # 1. PDF receipts table
         spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
             .eq("phone", phone) \
             .gte("shop_date", week_start.isoformat()) \
             .lte("shop_date", week_end.isoformat()).execute().data or []
+
+        # 2. Manual receipts from wa_saves (camera scans with amount in summary)
+        manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
+            .eq("from_number", from_number) \
+            .eq("source", "receipt") \
+            .gte("created_at", week_start.isoformat()) \
+            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
+            .execute().data or []
+
+        # Extract amount from manual receipt summaries (format: "🧾 Merchant · £amount")
+        import re as _re_week
+        for mr in manual_receipt_rows:
+            summary = mr.get("summary", "")
+            merchant = "Unknown"
+            amount = 0
+
+            # Try to extract merchant name and amount from summary
+            # Format: "🧾 Merchant Name · £12.34"
+            match = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary)
+            if match:
+                merchant = match.group(1).strip()
+                try:
+                    amount = float(match.group(2))
+                    # Add to spend_rows
+                    spend_rows.append({
+                        "total": amount,
+                        "merchant": merchant,
+                        "shop_date": mr.get("created_at", "").split("T")[0]  # Extract date part
+                    })
+                except ValueError:
+                    pass
 
         this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
 
