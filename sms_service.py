@@ -28061,13 +28061,16 @@ def api_home_week_full():
     now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
     today = now.date()
 
-    # This week: today + 6 days (not Monday-Sunday)
-    week_start = today
-    week_end = today + _dt.timedelta(days=6)
+    # This week: Monday of THIS week to Sunday (proper week definition)
+    # If today is Friday (weekday=4), Monday is 4 days ago
+    # If today is Monday (weekday=0), Monday is 0 days ago
+    days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
+    week_start = today - _dt.timedelta(days=days_since_monday)
+    week_end = week_start + _dt.timedelta(days=6)  # Sunday
 
-    # Last week for comparison
-    last_week_start = week_start - _dt.timedelta(days=7)
-    last_week_end = last_week_start + _dt.timedelta(days=6)
+    # Last week for comparison (previous Monday-Sunday)
+    last_week_end = week_start - _dt.timedelta(days=1)  # Previous Sunday
+    last_week_start = last_week_end - _dt.timedelta(days=6)  # Previous Monday
 
     try:
         print(f"[week-full] Starting: wa={wa}, from_number={from_number}")
@@ -28234,11 +28237,28 @@ def api_home_week_full():
             "school_events_same": this_week["school_events"] == last_week["school_events"],
         }
 
+        # === ADD INTELLIGENCE INSIGHTS ===
+        intelligence = {}
+        try:
+            from intelligence_engine import MiruIntelligence
+            engine = MiruIntelligence()
+            intel_result = engine.get_full_intelligence(from_number, sb)
+            if intel_result.get("success"):
+                intelligence = intel_result.get("insights", {})
+                print(f"[week-full] Intelligence loaded: {list(intelligence.keys())}")
+        except Exception as ie:
+            print(f"[week-full] Intelligence fetch skipped: {ie}")
+
         return jsonify({
             "success": True,
             "this_week": this_week,
             "last_week": last_week,
             "trends": trends,
+            "intelligence": intelligence,  # Add smart insights
+            "forecast": {
+                "next_week_spend": intelligence.get("forecast", {}).get("next_week_spend"),
+                "action_items": intelligence.get("recommendations", []),
+            } if intelligence else {},
         })
 
     except Exception as e:
