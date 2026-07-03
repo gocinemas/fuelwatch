@@ -16092,7 +16092,7 @@ def api_morning_brief():
                 pass
 
             # Parallel fetch — reuse V2 context engine functions
-            with _mcf.ThreadPoolExecutor(max_workers=7) as _mpool:
+            with _mcf.ThreadPoolExecutor(max_workers=9) as _mpool:
                 _mfutures = {}
                 if postcode:
                     _mfutures["weather"] = _mpool.submit(_v2_fetch_weather, postcode)
@@ -16102,6 +16102,8 @@ def api_morning_brief():
                         from cache_layer import get_cached_places
                         _mfutures["nearby_places"] = _mpool.submit(lambda pc=postcode: get_cached_places(pc))
                 _mfutures["school"]    = _mpool.submit(_v2_fetch_school, phone)
+                _mfutures["calendar"]  = _mpool.submit(_v2_fetch_calendar, phone)
+                _mfutures["intelligence"] = _mpool.submit(_get_brief_intelligence, phone, lib._sb())
                 # Trains: weekdays only, and not a bank holiday
                 _mfutures["trains"]    = _mpool.submit(
                     _v2_fetch_trains,
@@ -16263,6 +16265,44 @@ def api_morning_brief():
                             _msdate_dow = _msdate
                         _mparts.append(f"*{_msdate_dow}*")
                         _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')}")
+
+            # Calendar events — today's appointments
+            _mcal = _mctx.get("calendar", [])
+            if _mcal:
+                _mcal_today = [e for e in _mcal if e.get("date","") == today.isoformat()]
+                if _mcal_today:
+                    _mparts.append("")
+                    _mparts.append("📅 *Today's calendar*")
+                    for _mce in _mcal_today[:3]:
+                        _mce_time = _mce.get("time", "")
+                        _mce_title = _mce.get("summary", "")
+                        _mce_loc = _mce.get("location", "")
+                        _mce_line = f"• {_mce_time} {_mce_title}" if _mce_time else f"• {_mce_title}"
+                        if _mce_loc:
+                            _mce_line += f" ({_mce_loc})"
+                        _mparts.append(_mce_line)
+
+            # Intelligence insights — fuel refill, spend forecast, location savings
+            _mintel = _mctx.get("intelligence", {})
+            _mintel_lines = []
+            _mfuel_intel = _mintel.get("fuel", {})
+            if _mfuel_intel.get("next_fill_days") and _mfuel_intel["next_fill_days"] <= 4:
+                _mtrend = _mfuel_intel.get("price_trend", "stable").upper()
+                _mintel_lines.append(f"⛽ Fill up in {_mfuel_intel['next_fill_days']} days (prices {_mtrend})")
+
+            _mspend_intel = _mintel.get("spend", {})
+            if _mspend_intel.get("trend") == "up" and _mspend_intel.get("top_saving"):
+                _mintel_lines.append(f"💳 Spending up — {_mspend_intel['top_saving']}")
+
+            _mlocation = _mintel.get("location", {})
+            if _mlocation.get("savings"):
+                _mintel_lines.append(f"💰 Save {_mlocation['savings']} — try {_mlocation.get('alternative', 'nearby')}")
+
+            if _mintel_lines:
+                _mparts.append("")
+                _mparts.append("💡 *Today's smart insights*")
+                for _mil in _mintel_lines:
+                    _mparts.append(_mil)
 
             # 🏘️ Weekend nearby places (Sat/Sun only)
             _mnearby = _mctx.get("nearby_places", {})
