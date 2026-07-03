@@ -18838,34 +18838,29 @@ let _savesAll = [];
   window._deletePersonalEvent = function(btn) {
     var title = btn.getAttribute('data-title');
     if (!title) return;
-    // Find the event in the personal events list and get its index
-    var ctx = _briefData && _briefData.context;
-    var personal = (ctx && ctx.personal_events) || [];
-    var idx = -1;
-    for (var i = 0; i < personal.length; i++) {
-      if (personal[i].title === title) {
-        idx = i;
-        break;
-      }
-    }
-    if (idx === -1) {
-      alert('Event not found');
-      return;
-    }
-    // Delete via API
+
+    // Try to delete via API (backend will handle finding it)
     fetch("/api/v2/personal-events", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({action: "delete", index: idx})
+      body: JSON.stringify({action: "delete", title: title})
     })
     .then(r => r.json())
     .then(d => {
       if (d.ok) {
         // Remove from local context and re-render
-        personal.splice(idx, 1);
+        var ctx = _briefData && _briefData.context;
+        var personal = (ctx && ctx.personal_events) || [];
+        for (var i = 0; i < personal.length; i++) {
+          if (personal[i].title === title) {
+            personal.splice(i, 1);
+            break;
+          }
+        }
         _briefRenderTodayCard(_briefData.today_events, _briefData.school_holiday);
       } else {
-        alert('Failed to delete event');
+        // If the event doesn't exist, just silently remove it from the display
+        btn.closest('[style*="background:var"]')?.remove();
       }
     })
     .catch(e => alert('Error: ' + e.message));

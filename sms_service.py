@@ -12861,9 +12861,20 @@ def api_v2_personal_events():
     action = body.get("action", "add")
     if action == "delete":
         idx = body.get("index")
+        title = (body.get("title") or "").strip()
         evs = _v2_fetch_personal_events(from_number)
+
+        # Try to delete by index first, then by title
+        deleted = False
         if idx is not None and 0 <= idx < len(evs):
             evs.pop(idx)
+            deleted = True
+        elif title:
+            # Delete by title (match exactly)
+            evs = [e for e in evs if e.get("title") != title]
+            deleted = len(evs) < len(_v2_fetch_personal_events(from_number))
+
+        if deleted:
             _rows = lib._sb().table("ma_details").select("id").eq("device_id", from_number).eq("type","personal_events").limit(1).execute().data
             if _rows:
                 lib._sb().table("ma_details").update({"data": evs}).eq("id", _rows[0]["id"]).execute()
