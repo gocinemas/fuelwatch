@@ -13770,9 +13770,9 @@ def api_home_brief():
     fuel = ctx.get("fuel", {})
     # Check if user just filled up (within last 24 hours) using intelligence data
     intel = ctx.get("intelligence", {})
-    fuel_intel = intel.get("fuel", {})
-    days_since_fuel_intel = fuel_intel.get("days_since_fuel_from_data", 999)
-    just_filled = days_since_fuel_intel is not None and days_since_fuel_intel <= 1
+    data_summary = intel.get("data_summary", {}) if intel else {}
+    days_since_fuel = data_summary.get("days_since_fuel") if isinstance(data_summary, dict) else None
+    just_filled = isinstance(days_since_fuel, (int, float)) and days_since_fuel <= 1
 
     # ONLY show fuel price if:
     # 1. We have fuel data
