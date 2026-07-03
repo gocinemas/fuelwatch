@@ -475,8 +475,34 @@
     }
     .sb-spacer { flex: 1; min-height: 24px; }
 
+    /* Mobile Intelligence button (always visible) */
+    #mobile-intelligence-btn {
+      display: flex;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+      z-index: 40;
+      transition: all 0.2s;
+    }
+    #mobile-intelligence-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(124, 58, 237, 0.6);
+    }
+
     @media (min-width: 900px) {
       #desktop-sidebar { display: flex; }
+      #mobile-intelligence-btn { display: none !important; }
       #pill-nav { display: none !important; }
       #app-header .inner { max-width: none; margin: 0; padding: 0 24px; }
       #identity-bar { padding-left: 58px; }
@@ -734,6 +760,9 @@
     <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup')">⚙️</button>
   </nav>
   {% endif %}
+
+  <!-- Mobile Intelligence Button (bottom right, always visible) -->
+  <button id="mobile-intelligence-btn" title="Intelligence Hub" onclick="showScreen('intelligence');_intelligenceLoad()">🧠</button>
 
   <div id="app-main" class="max-w-xl mx-auto px-4 main-content">
 

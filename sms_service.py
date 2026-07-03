@@ -13043,12 +13043,26 @@ def _rank_evening_saves(place_saves: list, content_saves: list, event_saves: lis
 
 
 def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, weather, now, active_trip=None, recent_saves=None):
-    """Build AGENTIC brief using personal data & patterns."""
+    """
+    Build AGENTIC brief using personal data & patterns + Intelligence insights.
+
+    RULES:
+    - Use ACTUAL data (receipts, calendar, school) — not generic suggestions
+    - Don't repeat recent actions (just filled petrol? don't suggest it)
+    - Prioritize time-sensitive items (trains, deliveries, school TODAY)
+    - Add smart recommendations from intelligence (fuel forecast, spend trends, location savings)
+    - Be concise: max 3 insights
+    """
     import datetime as _dt
 
     try:
         insights = []
         priority_score = {}
+
+        # === EARLY RETURN: Check for must-do items ===
+        # If user has active trip, that's #1
+        if active_trip and active_trip.get("destination"):
+            return f"🛣️ On way to {active_trip['destination']}" + (f" (ETA {active_trip.get('eta')})" if active_trip.get('eta') else "") + "."
 
         # === ACTIVE TRIP (traveling right now) ===
         if active_trip and active_trip.get("destination"):
@@ -13754,7 +13768,18 @@ def api_home_brief():
             else:
                 facts.append(f"{_label} {_tleg['emoji']} {_tleg['mins']} min")
     fuel = ctx.get("fuel", {})
-    if fuel.get("price") and time_mode in ("morning_commute", "daytime") and not _car_at_service:
+    # Check if user just filled up (within last 24 hours) using intelligence data
+    intel = ctx.get("intelligence", {})
+    fuel_intel = intel.get("fuel", {})
+    days_since_fuel_intel = fuel_intel.get("days_since_fuel_from_data", 999)
+    just_filled = days_since_fuel_intel is not None and days_since_fuel_intel <= 1
+
+    # ONLY show fuel price if:
+    # 1. We have fuel data
+    # 2. It's morning or daytime (not evening/night)
+    # 3. User is not at car service
+    # 4. User did NOT just fill up in last 24 hours
+    if fuel.get("price") and time_mode in ("morning_commute", "daytime") and not _car_at_service and not just_filled:
         change = f" ({fuel['change']})" if fuel.get("change") else ""
         facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
     # School holiday status — Surrey term dates + Gmail inset days
