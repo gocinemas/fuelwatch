@@ -721,16 +721,15 @@
   {% if not intel_mode %}
   <nav id="desktop-sidebar" aria-label="Main navigation">
     <button class="sb-btn on" id="sb-home"   title="Home"      onclick="showHome()">🏠</button>
-    <button class="sb-btn"    id="sb-myarea" title="My Local"   onclick="showScreen('myarea')">🏡</button>
-    <button class="sb-btn"    id="sb-saves"  title="Clippings"  onclick="_pillNav('saves')">📌</button>
-    <button class="sb-btn"    id="sb-trains" title="Trains"     onclick="showScreen('trains')">🚆</button>
-    <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
-    <button class="sb-btn"    id="sb-school" title="School"     onclick="showScreen('school')">🏫</button>
-    <button class="sb-btn"    id="sb-receipts" title="Receipt Analysis" onclick="showScreen('receipts');_receiptsAnalysisLoad()">💰</button>
+    <button class="sb-btn"    id="sb-intelligence" title="Intelligence Hub" onclick="showScreen('intelligence');_intelligenceLoad()">🧠</button>
     <button class="sb-btn"    id="sb-week" title="Your Week"   onclick="showScreen('week')">📊</button>
-    <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">📦</button>
+    <button class="sb-btn"    id="sb-receipts" title="Receipts" onclick="showScreen('receipts');_receiptsAnalysisLoad()">💰</button>
+    <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
+    <button class="sb-btn"    id="sb-trains" title="Trains"     onclick="showScreen('trains')">🚆</button>
+    <button class="sb-btn"    id="sb-school" title="School"     onclick="showScreen('school')">🏫</button>
+    <button class="sb-btn"    id="sb-saves"  title="Clippings"  onclick="_pillNav('saves')">📌</button>
+    <button class="sb-btn"    id="sb-myarea" title="My Local"   onclick="showScreen('myarea')">🏡</button>
     <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
-    <button class="sb-btn"    id="sb-intelligence" title="Intelligence" onclick="showScreen('intelligence');_intelligenceLoad()">🧠</button>
     <div class="sb-spacer"></div>
     <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup')">⚙️</button>
   </nav>

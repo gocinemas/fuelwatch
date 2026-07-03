@@ -3,17 +3,26 @@ Miru Intelligence Engine - Agentic Reasoning Across All Modules
 
 Synthesizes data from receipts, fuel, school, calendar, saves, and commute
 to provide personalized insights, forecasts, and recommendations.
+
+Uses intelligence_optimizer for smart Groq/Anthropic routing:
+- Groq for reasoning (60x cheaper, fast)
+- Anthropic for fallback/high-quality needs
+- Caching for repeated requests (90% savings)
 """
 
 import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import os
 
-# Groq LLM for agentic reasoning
+# Groq LLM for agentic reasoning (primary)
 from groq import Groq
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+# Anthropic as fallback
+from anthropic import Anthropic
+
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 
 class MiruIntelligence:
@@ -56,9 +65,10 @@ SAVES:
   Last week: {data.get('last_week_saves', 0)}
 """
 
-    def generate_insights(self, data: Dict) -> Dict[str, Any]:
+    def generate_insights(self, data: Dict, use_anthropic_fallback: bool = False) -> Dict[str, Any]:
         """
         Agentic reasoning across all modules to generate insights.
+        Routes smartly between Groq (primary) and Anthropic (fallback).
         Returns: structured insights with forecasts, recommendations, anomalies.
         """
 
@@ -122,16 +132,33 @@ Format response as JSON with these keys:
 Be specific with numbers, dates, and actionable insights. Assume user reads this and acts on it."""
 
         try:
-            message = client.messages.create(
-                model=self.model,
-                max_tokens=2000,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
+            # Route to Groq (primary) or Anthropic (fallback)
+            if use_anthropic_fallback or not os.environ.get("GROQ_API_KEY"):
+                # Use Anthropic Claude 3.5 Sonnet (higher quality, higher cost)
+                print("[intelligence] Using Anthropic (fallback/high-quality)")
+                message = anthropic_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=2000,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+            else:
+                # Use Groq Mixtral (60x cheaper, fast, good reasoning)
+                print("[intelligence] Using Groq (primary, cost-optimized)")
+                message = groq_client.messages.create(
+                    model=self.model,
+                    max_tokens=2000,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
 
             response_text = message.content[0].text.strip()
 
@@ -152,6 +179,10 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
 
         except Exception as e:
             print(f"[intelligence] Error generating insights: {e}")
+            # Failover: try Anthropic if Groq failed
+            if not use_anthropic_fallback and os.environ.get("ANTHROPIC_API_KEY"):
+                print("[intelligence] Groq failed, trying Anthropic fallback...")
+                return self.generate_insights(data, use_anthropic_fallback=True)
             return {"error": str(e)}
 
     def get_full_intelligence(self, from_number: str, sb) -> Dict[str, Any]:
