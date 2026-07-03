@@ -13109,6 +13109,40 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
         # This reduces Places API calls by 99%
         # Users can ask "lunch ideas" if they want them
 
+        # === AGENTIC INTELLIGENCE INSIGHTS ===
+        intel = ctx.get("intelligence", {})
+
+        # Fuel intelligence — refill forecast
+        fuel = intel.get("fuel", {})
+        if fuel.get("next_fill_days") and fuel["next_fill_days"] <= 3:
+            insights.append(f"⛽ Fill up in {fuel['next_fill_days']} days — prices {fuel.get('price_trend', 'stable').upper()}")
+            priority_score["fuel_refill"] = 85
+
+        # Spend forecast from intelligence
+        spend_intel = intel.get("spend", {})
+        if spend_intel.get("trend") == "up":
+            savings_tip = spend_intel.get("top_saving", "switch stores")
+            insights.append(f"💳 Spending 📈 — {savings_tip}")
+            priority_score["spend_intel"] = 60
+
+        # Location recommendations
+        location = intel.get("location", {})
+        if location.get("savings"):
+            insights.append(f"💰 Save {location['savings']} by switching to {location.get('alternative', 'cheaper store')}")
+            priority_score["location_savings"] = 50
+
+        # Lifestyle alerts
+        lifestyle = intel.get("lifestyle", {})
+        if lifestyle.get("activity_level") == "decreased":
+            insights.append(f"🎯 Activity level down — try something new?")
+            priority_score["lifestyle"] = 35
+
+        # Anomalies from intelligence
+        anomalies = intel.get("anomalies", [])
+        if anomalies:
+            insights.append(f"⚠️ {anomalies[0][:50]}")
+            priority_score["anomaly"] = 45
+
         # === SPEND PATTERNS (behavioral insight) ===
         spend = ctx.get("spend", {})
         today_total = spend.get("today_total", 0)
@@ -13195,6 +13229,19 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
         print(f"[brief] Smart brief error: {e}")
         traceback.print_exc()
         return f"Have a good {dow}."
+
+
+def _get_brief_intelligence(from_number, sb):
+    """Fetch intelligence insights to enhance brief."""
+    try:
+        from intelligence_engine import MiruIntelligence
+        engine = MiruIntelligence()
+        result = engine.get_full_intelligence(from_number, sb)
+        if result.get("success"):
+            return result.get("insights", {})
+    except Exception as e:
+        app.logger.warning(f"[brief] Intelligence fetch failed: {e}")
+    return {}
 
 
 @app.route("/api/home/brief")
@@ -13362,6 +13409,7 @@ def api_home_brief():
             futures["thread"]           = pool.submit(_wa_load_thread, from_number)
             futures["today_activity"]   = pool.submit(_v2_fetch_today_activity, from_number)
             futures["weekend_patterns"] = pool.submit(_v2_fetch_weekend_patterns, from_number)
+            futures["intelligence"]     = pool.submit(_get_brief_intelligence, from_number, lib._sb())
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
@@ -14656,6 +14704,7 @@ def api_home_brief():
         "school_upcoming": school_upcoming[:3],  # Next 3 school events
         "weekend_snippet": _weekend_snippet,  # Food/Pubs/Parks for Fri evening & Sat
         "car_at_service":  _car_at_service,
+        "intelligence":    ctx.get("intelligence", {}),  # Agentic insights (fuel, spend, location, etc.)
     }
 
     # Include all events (don't filter personal events by date)
