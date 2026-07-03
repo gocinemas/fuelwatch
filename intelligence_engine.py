@@ -161,7 +161,7 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
                 # Use Anthropic Claude 3.5 Sonnet (higher quality, higher cost)
                 print("[intelligence] Using Anthropic (fallback/high-quality)")
                 message = anthropic_client.messages.create(
-                    model="claude-3-5-sonnet-20250514",
+                    model="claude-opus-4-1",  # Fallback: use Opus for high quality when Groq unavailable
                     max_tokens=2000,
                     messages=[
                         {
@@ -207,11 +207,19 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
 
         except Exception as e:
             print(f"[intelligence] Error generating insights: {type(e).__name__}: {e}")
-            # Failover: try Anthropic if Groq failed
-            if not use_anthropic_fallback and os.environ.get("ANTHROPIC_API_KEY"):
-                print("[intelligence] Groq failed, trying Anthropic fallback...")
-                return self.generate_insights(data, use_anthropic_fallback=True)
-            return {"error": str(e)}
+            # Don't cascade to Anthropic - just return empty insights with error
+            # (cascading causes additional errors and delays)
+            return {
+                "fuel": {},
+                "spend": {},
+                "location": {},
+                "school": {},
+                "lifestyle": {},
+                "anomalies": [],
+                "recommendations": [],
+                "forecast": {},
+                "error": f"Failed to generate insights: {str(e)[:100]}"
+            }
 
     def get_full_intelligence(self, from_number: str, sb) -> Dict[str, Any]:
         """
