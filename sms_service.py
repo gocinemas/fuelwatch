@@ -13270,16 +13270,17 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
 
 
 def _get_brief_intelligence(from_number, sb):
-    """Fetch intelligence insights to enhance brief."""
+    """Fetch intelligence insights to enhance brief. Returns full result with data_summary."""
     try:
         from intelligence_engine import MiruIntelligence
         engine = MiruIntelligence()
         result = engine.get_full_intelligence(from_number, sb)
         if result.get("success"):
-            return result.get("insights", {})
+            # Return full result (with insights + data_summary) so brief can check days_since_fuel
+            return result
     except Exception as e:
         app.logger.warning(f"[brief] Intelligence fetch failed: {e}")
-    return {}
+    return {"insights": {}, "data_summary": {}}
 
 
 @app.route("/api/home/brief")
