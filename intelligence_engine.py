@@ -74,15 +74,35 @@ SAVES:
 
         data_summary = self._format_data_summary(data)
 
+        # PRE-CHECK: If user filled up very recently (last 24h), don't suggest filling up
+        days_since_fuel = data.get('days_since_fuel', 999)
+        just_filled_up = days_since_fuel is not None and days_since_fuel <= 1
+
+        fuel_instruction = ""
+        if just_filled_up:
+            fuel_instruction = """
+CRITICAL: User JUST FILLED UP (within last 24 hours).
+DO NOT suggest filling up now. Instead:
+  - Note the recent fill (amount, price, date)
+  - Compare price to current (up/down)
+  - Suggest NEXT fill in 5-7 days based on typical usage
+  - NOT an urgent action right now
+"""
+        else:
+            fuel_instruction = """
+Based on days since last fill and consumption pattern, suggest when they should fill up next.
+"""
+
         prompt = f"""{data_summary}
 
 Based on this data, provide comprehensive insights across these dimensions:
 
 1. **FUEL INTELLIGENCE**
+   {fuel_instruction}
    - Is fuel price up or down since last fill? By how much?
-   - When should user fill up next? (forecast based on consumption pattern)
-   - Best day/price to fill up?
-   - Cost optimization: cheapest station?
+   - When should user fill up NEXT? (NOT today if just filled)
+   - Best day/price to fill up in future?
+   - Cost optimization: cheapest station for next fill?
 
 2. **SPEND INTELLIGENCE**
    - Is spending up/down/normal?

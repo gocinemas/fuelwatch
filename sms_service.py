@@ -13112,11 +13112,35 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
         # === AGENTIC INTELLIGENCE INSIGHTS ===
         intel = ctx.get("intelligence", {})
 
-        # Fuel intelligence — refill forecast
+        # Fuel intelligence — refill forecast (ONLY if not just filled up)
         fuel = intel.get("fuel", {})
-        if fuel.get("next_fill_days") and fuel["next_fill_days"] <= 3:
+
+        # Check if user filled up recently (look at spend context for last fuel date)
+        just_filled = False
+        last_fuel_receipt = None
+
+        # Use intelligence data if available
+        data_summary = intel.get("data_summary", {}) if intel else {}
+        days_since_fuel = data_summary.get("days_since_fuel") if isinstance(data_summary, dict) else None
+
+        # Fallback: check if days_since_fuel from intelligence shows recent fill
+        if isinstance(days_since_fuel, (int, float)) and days_since_fuel <= 1:
+            just_filled = True
+
+        # Fuel suggestion logic: only suggest if NOT just filled
+        if not just_filled and fuel.get("next_fill_days") and fuel["next_fill_days"] <= 3:
             insights.append(f"⛽ Fill up in {fuel['next_fill_days']} days — prices {fuel.get('price_trend', 'stable').upper()}")
             priority_score["fuel_refill"] = 85
+        elif just_filled and fuel.get("price_trend"):
+            # Just filled up — note the price change instead of suggesting to fill
+            price_change = fuel.get("percent_change", 0)
+            if price_change > 0.5:
+                insights.append(f"⛽ Filled yesterday — prices UP {price_change}% now")
+                priority_score["fuel_note"] = 15
+            elif price_change < -0.5:
+                insights.append(f"⛽ Filled yesterday — good timing, prices DOWN {abs(price_change)}%")
+                priority_score["fuel_note"] = 10
+            # No high priority — they just filled, not actionable
 
         # Spend forecast from intelligence
         spend_intel = intel.get("spend", {})
