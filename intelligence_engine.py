@@ -161,7 +161,7 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
                 # Use Anthropic Claude 3.5 Sonnet (higher quality, higher cost)
                 print("[intelligence] Using Anthropic (fallback/high-quality)")
                 message = anthropic_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
+                    model="claude-3-5-sonnet-20250514",
                     max_tokens=2000,
                     messages=[
                         {
@@ -185,6 +185,7 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
                     ]
                 )
                 response_text = message.choices[0].message.content.strip()
+            print(f"[intelligence] Groq response length: {len(response_text)} chars")
 
             # Extract JSON from response
             start = response_text.find('{')
@@ -192,8 +193,11 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
 
             if start >= 0 and end > start:
                 json_str = response_text[start:end]
+                print(f"[intelligence] Extracted JSON: {len(json_str)} chars")
                 insights = json.loads(json_str)
+                print(f"[intelligence] Parsed JSON successfully, keys: {list(insights.keys())}")
             else:
+                print(f"[intelligence] JSON parsing failed: start={start}, end={end}")
                 insights = {
                     "error": "Could not parse insights",
                     "raw": response_text[:500]
@@ -202,7 +206,7 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
             return insights
 
         except Exception as e:
-            print(f"[intelligence] Error generating insights: {e}")
+            print(f"[intelligence] Error generating insights: {type(e).__name__}: {e}")
             # Failover: try Anthropic if Groq failed
             if not use_anthropic_fallback and os.environ.get("ANTHROPIC_API_KEY"):
                 print("[intelligence] Groq failed, trying Anthropic fallback...")
