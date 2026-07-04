@@ -16251,6 +16251,27 @@ def api_morning_brief():
             _mparts.append(f"*{dow} morning*{_mwx_str}")
             _mparts.append("")
 
+            # Event follow-up — ask how yesterday's major events went
+            try:
+                import datetime as _mdt_follow
+                yesterday = today - _mdt_follow.timedelta(days=1)
+                _personal_events = _v2_fetch_personal_events(phone)
+                _yesterday_events = [e for e in _personal_events if e.get("date") == yesterday.isoformat()]
+                # Ask about non-work events (concert, dinner, sports, etc.)
+                _followup_events = []
+                for _ev in _yesterday_events:
+                    _title = _ev.get("title", "").lower()
+                    # Skip work meetings
+                    if any(w in _title for w in ["meeting", "standup", "sync", "1:1", "review"]):
+                        continue
+                    _followup_events.append(_ev.get("title", "event"))
+
+                if _followup_events:
+                    _mparts.append(f"✨ How was {' / '.join(_followup_events[:2])}?")
+                    _mparts.append("")
+            except Exception:
+                pass
+
             # Recurring activities today
             for _ra in (_mctx.get("recurring") or []):
                 _ra_who  = _ra.get("child") or _ra.get("person") or ""
