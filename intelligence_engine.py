@@ -99,61 +99,48 @@ Based on days since last fill and consumption pattern, suggest when they should 
 
         prompt = f"""{data_summary}
 
-Based on this data, provide comprehensive insights across these dimensions:
+ANALYZE AND RESPOND WITH VALID JSON ONLY (no markdown, no text outside JSON).
 
-1. **FUEL INTELLIGENCE**
-   {fuel_instruction}
-   - Is fuel price up or down since last fill? By how much?
-   - When should user fill up NEXT? (NOT today if just filled)
-   - Best day/price to fill up in future?
-   - Cost optimization: cheapest station for next fill?
+For each section, fill in CONCRETE VALUES. Never use "N/A" or "—". Make estimates if needed.
 
-2. **SPEND INTELLIGENCE**
-   - Is spending up/down/normal?
-   - What's the trend? (increasing, decreasing, stable?)
-   - When will user run out of money if trend continues?
-   - Where can they save? (category recommendations)
-
-3. **LOCATION INTELLIGENCE**
-   - Most frequent locations and spend there
-   - Cost per visit to top locations
-   - Alternative locations that save money?
-   - Neighborhood patterns?
-
-4. **SCHOOL CALENDAR INTELLIGENCE**
-   - Is school busier than usual?
-   - Impact on routine (less cafe visits, less time)?
-   - Forecast busy days next week?
-
-5. **LIFESTYLE PATTERNS**
-   - Are habits changing? (saves down, cafe visits down, etc.)
-   - Is user busier/slower than usual?
-   - Activity level trend?
-
-6. **ANOMALIES & ALERTS**
-   - What's unusual this week?
-   - Any spending spikes?
-   - Any missing patterns (e.g., no cafe visits when they usually do)?
-
-7. **SMART RECOMMENDATIONS**
-   - Top 3 ways to save money
-   - Best time to fill fuel
-   - Forecast what they'll need next week
-   - Optimization opportunities
-
-Format response as JSON with these keys:
 {{
-  "fuel": {{"price_trend": "up/down/stable", "percent_change": number, "next_fill_days": number, "recommendation": "string"}},
-  "spend": {{"trend": "up/down/stable", "vs_normal": "percent", "forecast_next_week": number, "top_saving": "string"}},
-  "location": {{"most_visited": "string", "cost_per_visit": number, "alternative": "string", "savings": "string"}},
-  "school": {{"busy_level": "normal/busy/very_busy", "impact": "string", "next_busy_day": "string"}},
-  "lifestyle": {{"change": "string", "activity_level": "normal/increased/decreased"}},
-  "anomalies": ["string", "string"],
-  "recommendations": ["string", "string", "string"],
-  "forecast": {{"next_week_spend": number, "next_fuel_date": "string", "action_items": ["string"]}}
+  "fuel": {{
+    "price_trend": "up or down or stable",
+    "percent_change": [number, e.g. 2.5],
+    "next_fill_days": [number, 3-7 days typical],
+    "recommendation": "one sentence action"
+  }},
+  "spend": {{
+    "trend": "up or down or stable",
+    "vs_normal": "e.g. +15 percent",
+    "forecast_next_week": [number, £ amount],
+    "top_saving": "one specific way to save"
+  }},
+  "location": {{
+    "most_visited": "store or cafe name",
+    "cost_per_visit": [number],
+    "alternative": "cheaper place name",
+    "savings": "e.g. save £20/month"
+  }},
+  "school": {{
+    "busy_level": "normal or busy or very_busy",
+    "impact": "one sentence effect on routine",
+    "next_busy_day": "day name and why"
+  }},
+  "lifestyle": {{
+    "change": "one sentence trend",
+    "activity_level": "normal or increased or decreased"
+  }},
+  "anomalies": ["thing 1", "thing 2"],
+  "recommendations": ["action 1", "action 2", "action 3"],
+  "forecast": {{
+    "next_week_spend": [number],
+    "next_fuel_date": "date or day name",
+    "action_items": ["do this", "check this"]
+  }}
 }}
 
-Be specific with numbers, dates, and actionable insights. Assume user reads this and acts on it."""
+CRITICAL: Return ONLY the JSON object. No markdown. No text. Valid JSON."""
 
         try:
             # Route to Groq (primary) or Anthropic (fallback)
@@ -185,7 +172,7 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
                     ]
                 )
                 response_text = message.choices[0].message.content.strip()
-            print(f"[intelligence] Groq response length: {len(response_text)} chars")
+            print(f"[intelligence] Response: {response_text[:100]}...")
 
             # Extract JSON from response
             start = response_text.find('{')
@@ -193,17 +180,24 @@ Be specific with numbers, dates, and actionable insights. Assume user reads this
 
             if start >= 0 and end > start:
                 json_str = response_text[start:end]
-                print(f"[intelligence] Extracted JSON: {len(json_str)} chars")
-                insights = json.loads(json_str)
-                print(f"[intelligence] Parsed JSON successfully, keys: {list(insights.keys())}")
-            else:
-                print(f"[intelligence] JSON parsing failed: start={start}, end={end}")
-                insights = {
-                    "error": "Could not parse insights",
-                    "raw": response_text[:500]
-                }
+                try:
+                    insights = json.loads(json_str)
+                    print(f"[intelligence] ✅ Parsed successfully")
+                    return insights
+                except json.JSONDecodeError as je:
+                    print(f"[intelligence] JSON error: {je}")
+                    # Try to fix common issues (trailing commas, unescaped quotes)
+                    json_str = json_str.replace(",}", "}").replace(",]", "]")
+                    try:
+                        insights = json.loads(json_str)
+                        print(f"[intelligence] ✅ Fixed and parsed")
+                        return insights
+                    except:
+                        print(f"[intelligence] ❌ Still invalid after fixes")
+                        pass
 
-            return insights
+            print(f"[intelligence] Failed to extract JSON")
+            insights = {}
 
         except Exception as e:
             print(f"[intelligence] Error generating insights: {type(e).__name__}: {e}")
