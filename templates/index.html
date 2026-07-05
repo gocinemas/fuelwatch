@@ -28563,20 +28563,32 @@ document.addEventListener('keydown', function(e) {
     const loading = document.getElementById('intel-loading');
     const content = document.getElementById('intel-content');
     const errorDiv = document.getElementById('intel-error');
+    const errorMsg = document.getElementById('intel-error-msg');
+
+    if (!loading || !content || !errorDiv) {
+      console.error('Intelligence Hub UI elements not found');
+      return;
+    }
 
     loading.style.display = 'block';
     content.style.display = 'none';
     errorDiv.style.display = 'none';
 
+    console.log('[intel] Loading for phone:', phone);
+
     fetch(`/api/insights/full?wa=${encodeURIComponent(phone)}`)
-      .then(r => r.json())
+      .then(r => {
+        console.log('[intel] Response status:', r.status);
+        return r.json();
+      })
       .then(d => {
-        if (!d.success) {
-          throw new Error(d.error || 'Failed to generate insights');
+        console.log('[intel] Response data:', d);
+        if (!d || !d.success) {
+          throw new Error(d?.error || 'Failed to generate insights');
         }
 
-        const insights = d.insights;
-        const summary = d.data_summary;
+        const insights = d.insights || {};
+        const summary = d.data_summary || {};
 
         // Update timestamp
         const ts = new Date(d.timestamp);
@@ -28660,14 +28672,20 @@ document.addEventListener('keydown', function(e) {
           : '<div style="color:var(--muted)">All caught up! 🎉</div>';
         document.getElementById('intel-actions').innerHTML = actionItems;
 
+        console.log('[intel] ✅ Success, showing content');
         loading.style.display = 'none';
         content.style.display = 'block';
       })
       .catch(e => {
-        console.error('Intelligence load error:', e);
-        errorDiv.style.display = 'block';
-        document.getElementById('intel-error-msg').textContent = e.message || 'Failed to load insights. Please try again.';
+        console.error('[intel] ❌ Error:', e);
         loading.style.display = 'none';
+        if (errorDiv && errorMsg) {
+          errorDiv.style.display = 'block';
+          errorMsg.textContent = e.message || 'Failed to load insights. Please try again.';
+        } else {
+          console.error('[intel] Error div not found, showing in alert');
+          alert('Error: ' + (e.message || 'Failed to load insights'));
+        }
       });
   }
 
