@@ -2617,65 +2617,6 @@
       <!-- Weekly summary card -->
       <div id="brief-week-summary" style="display:none;margin-bottom:14px">
         <!-- School summary link (if schools set up) -->
-        <div id="week-school-link" style="display:none;margin-bottom:10px">
-          <button onclick="showScreen('school')" style="width:100%;background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:#fff;border:none;border-radius:14px;padding:14px;text-align:left;cursor:pointer;font-family:inherit">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-              <div>
-                <div style="font-size:13px;font-weight:700">🏫 School Summary</div>
-                <div id="week-school-count" style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px"></div>
-              </div>
-              <span style="font-size:14px;color:rgba(255,255,255,.7)">›</span>
-            </div>
-          </button>
-        </div>
-
-        <!-- Miru weekly summary -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
-          <div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">📊 Your Week</div>
-
-          <!-- This week -->
-          <div id="week-this-week" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <div style="font-size:13px;font-weight:600;color:var(--text)">This Week</div>
-              <div id="week-this-period" style="font-size:11px;color:var(--muted)"></div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-              <div style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:10px;padding:10px;text-align:center">
-                <div style="font-size:11px;color:#0369a1;font-weight:600">Spend</div>
-                <div id="week-this-spend" style="font-size:16px;font-weight:800;color:#111;margin-top:4px">—</div>
-              </div>
-              <div style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border-radius:10px;padding:10px;text-align:center">
-                <div style="font-size:11px;color:#16a34a;font-weight:600">Saves</div>
-                <div id="week-this-saves" style="font-size:16px;font-weight:800;color:#111;margin-top:4px">—</div>
-              </div>
-              <div style="background:linear-gradient(135deg,#fef3c7 0%,#fed7aa 100%);border-radius:10px;padding:10px;text-align:center">
-                <div style="font-size:11px;color:#b45309;font-weight:600">Activities</div>
-                <div id="week-this-activities" style="font-size:13px;font-weight:700;color:#111;margin-top:4px">—</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Last week -->
-          <div id="week-last-week" style="margin-bottom:8px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <div style="font-size:13px;font-weight:600;color:var(--text)">Last Week</div>
-              <div id="week-last-period" style="font-size:11px;color:var(--muted)"></div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <div style="background:linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%);border-radius:10px;padding:10px;text-align:center">
-                <div style="font-size:11px;color:#6d28d9;font-weight:600">Spend</div>
-                <div id="week-last-spend" style="font-size:16px;font-weight:800;color:#111;margin-top:4px">—</div>
-              </div>
-              <div style="background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%);border-radius:10px;padding:10px;text-align:center">
-                <div style="font-size:11px;color:#dc2626;font-weight:600">Top Places</div>
-                <div id="week-last-topplace" style="font-size:12px;font-weight:700;color:#111;margin-top:4px">—</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Trend indicator -->
-          <div id="week-trend" style="background:var(--bg);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:var(--muted)"></div>
-        </div>
       </div>
 
       <!-- Today section label + card -->
