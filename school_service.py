@@ -755,7 +755,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
 
         query = _build_gmail_query(all_senders, days_back=days_back)
         try:
-            res = _gmail_get("messages", {"q": query, "maxResults": 50}, access_token=access_token)
+            res = _gmail_get("messages", {"q": query, "maxResults": 100}, access_token=access_token)
         except Exception as e:
             print(f"[school] Gmail list error for {from_number}: {e}")
             if not skip_error_flag and ("400" in str(e) or "401" in str(e)):
@@ -765,48 +765,57 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
         msg_stubs = res.get("messages", [])
         total_emails += len(msg_stubs)
 
-        for stub in msg_stubs:
+        # Pre-build sender→profile lookup (O(1) instead of O(n²))
+        sender_to_profile = {}
+        for p in parent_profiles:
+            for se in (p.get("sender_emails") or []):
+                sender_to_profile[se.lower()] = p
+
+        # Parallel fetch of full messages (10 concurrent)
+        from concurrent.futures import ThreadPoolExecutor
+        def _fetch_msg(stub):
             msg_id = stub["id"]
             try:
                 msg = _gmail_get(f"messages/{msg_id}", {"format": "full"}, access_token=access_token)
+                headers = {h["name"].lower(): h["value"] for h in msg.get("payload", {}).get("headers", [])}
+                sender = headers.get("from", "").lower()
+
+                matched_profile = None
+                for registered_sender, profile in sender_to_profile.items():
+                    if registered_sender in sender:
+                        matched_profile = profile
+                        break
+                if not matched_profile:
+                    return None
+
+                subject, body, sent_date = _extract_email_text(msg, msg_id=msg_id, refresh_token=gmail_token)
+                if not body.strip():
+                    return None
+
+                skip_keywords = ("payment successful", "thank you", "receipt", "invoice", "confirmation", "unsubscribe")
+                if any(kw in subject.lower() for kw in skip_keywords):
+                    return None
+
+                return (msg_id, subject, body, sent_date, matched_profile)
             except Exception as e:
                 print(f"[school] Gmail fetch error {msg_id}: {e}")
+                return None
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            parsed_emails = list(executor.map(_fetch_msg, msg_stubs, timeout=15))
+
+        # Process valid emails
+        for result in parsed_emails:
+            if not result:
                 continue
 
-            # Determine which profile this sender belongs to
-            headers = {h["name"].lower(): h["value"]
-                       for h in msg.get("payload", {}).get("headers", [])}
-            sender = headers.get("from", "").lower()
-
-            matched_profile = None
-            for p in parent_profiles:
-                for se in (p.get("sender_emails") or []):
-                    if se.lower() in sender:
-                        matched_profile = p
-                        break
-                if matched_profile:
-                    break
-            if not matched_profile:
-                print(f"[school] skipping msg {msg_id} — sender {sender!r} not in any registered sender_emails")
-                continue
+            msg_id, subject, body, sent_date, matched_profile = result
 
             if force:
-                # Wipe existing events for this email so we reparse fresh
                 try:
                     lib._sb().table("school_events").delete().eq("gmail_msg_id", msg_id).execute()
                 except Exception as e:
                     print(f"[school] force-delete error {msg_id}: {e}")
-
-            subject, body, sent_date = _extract_email_text(msg, msg_id=msg_id, refresh_token=gmail_token)
-            if not body.strip():
-                print(f"[school] empty body for msg {msg_id} subject={subject!r}")
-                continue
-
-            # Skip low-value emails to reduce Groq token usage
-            skip_keywords = ("payment successful", "thank you", "receipt", "invoice", "confirmation", "unsubscribe")
-            if any(kw in subject.lower() for kw in skip_keywords):
-                print(f"[school] skipping {msg_id} subject={subject!r} (low-value email)")
-                continue
 
             events = _groq_parse_events(
                 subject, body,
