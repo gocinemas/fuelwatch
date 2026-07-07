@@ -28471,6 +28471,48 @@ document.addEventListener('keydown', function(e) {
         // Populate period
         document.getElementById('sw-period').textContent = d.this_week.period;
 
+        // ─── SHARP INSIGHTS ───
+        const insightsList = [];
+
+        // Spend comparison
+        const spendDiff = d.this_week.spend - d.last_week.spend;
+        const spendPct = d.last_week.spend > 0 ? Math.round((spendDiff / d.last_week.spend) * 100) : 0;
+        if (spendDiff < 0) {
+          insightsList.push(`✅ Down £${Math.abs(spendDiff).toFixed(2)} (${Math.abs(spendPct)}%) vs last week`);
+        } else if (spendDiff > 0) {
+          insightsList.push(`⚠️ Up £${spendDiff.toFixed(2)} (${spendPct}%) vs last week`);
+        }
+
+        // Top category
+        if (topCat) {
+          const topCatAmount = d.this_week.spend_by_category[topCat].total;
+          const topCatPct = Math.round((topCatAmount / d.this_week.spend) * 100);
+          insightsList.push(`💳 ${topCat}: £${topCatAmount.toFixed(2)} (${topCatPct}% of spend)`);
+        }
+
+        // Cafe pattern
+        if (d.this_week.cafe_visits > 0 && topCafe) {
+          insightsList.push(`☕ ${topCafe.name}: ${d.this_week.cafe_visits}x visits`);
+        }
+
+        // Savings activity
+        if (d.this_week.saves.total > 0) {
+          const savesDiff = d.this_week.saves.total - d.last_week.saves;
+          if (savesDiff > 0) {
+            insightsList.push(`📌 Saved ${d.this_week.saves.total} items (+${savesDiff} vs last week)`);
+          } else if (savesDiff < 0) {
+            insightsList.push(`📌 Saved ${d.this_week.saves.total} items (${savesDiff} vs last week)`);
+          }
+        }
+
+        // Display insights if any
+        if (insightsList.length > 0) {
+          const insightsDiv = document.createElement('div');
+          insightsDiv.style.cssText = 'background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #7dd3fc;border-radius:12px;padding:12px;margin-bottom:16px;font-size:12px;line-height:1.6;color:#0369a1';
+          insightsDiv.innerHTML = insightsList.map(i => `<div>• ${i}</div>`).join('');
+          document.getElementById('sw-content').insertBefore(insightsDiv, document.getElementById('sw-content').firstChild);
+        }
+
         // THIS WEEK - Top row
         document.getElementById('sw-this-spend').textContent = '£' + d.this_week.spend.toFixed(2);
         const topCat = Object.keys(d.this_week.spend_by_category).sort((a,b) =>
@@ -28490,14 +28532,14 @@ document.addEventListener('keydown', function(e) {
         const topCafe = d.this_week.top_cafes[0];
         document.getElementById('sw-this-cafes-top').textContent = topCafe ? topCafe.name : '—';
 
-        // Spend breakdown showing merchants per category
+        // Spend breakdown showing merchants per category (clickable)
         const breakdownEl = document.getElementById('sw-spend-breakdown');
         const breakdown = Object.entries(d.this_week.spend_by_category)
           .sort((a,b) => b[1].total - a[1].total)
           .slice(0, 5)
           .map(([cat, data]) => {
             const merchants = data.merchants || [];
-            const merchantsStr = merchants.map(m => `${m.name} £${m.amount.toFixed(2)}`).join(', ');
+            const merchantsStr = merchants.map(m => `<span style="cursor:pointer;color:#0369a1;text-decoration:underline" title="Details for ${m.name}">${m.name} £${m.amount.toFixed(2)}</span>`).join(', ');
             return `<div style="display:flex;flex-direction:column;padding:8px;background:rgba(255,255,255,0.5);border-radius:6px;gap:4px">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <div style="font-weight:600">${cat}</div>
