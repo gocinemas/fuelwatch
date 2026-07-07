@@ -20374,13 +20374,6 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                                     # Fallback: store as-is if normalization fails
                                     receipt_data["shop_date"] = _d
                                     app.logger.warning(f"[receipt] Date normalization failed: {e}, storing raw: {_d}")
-
-                    # FALLBACK: If no date extracted, use today's date (upload time)
-                    if not receipt_data.get("shop_date"):
-                        from datetime import datetime
-                        today = datetime.utcnow().date().isoformat()
-                        receipt_data["shop_date"] = today
-                        print(f"[receipt] No date found, using upload date: {today}")
                         elif _ru.startswith("TOTAL:"):
                             try:
                                 receipt_data["total"] = float(_rl.split(":", 1)[1].strip().replace("£","").replace(",",""))
@@ -20398,6 +20391,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     receipt_data["items"] = _rcpt_items
                     if receipt_data.get("merchant"):
                         title = f"🧾 {receipt_data['merchant']}"
+
+                    # FALLBACK: If no date extracted, use today's date (upload time)
+                    if not receipt_data.get("shop_date"):
+                        from datetime import datetime
+                        today = datetime.utcnow().date().isoformat()
+                        receipt_data["shop_date"] = today
+                        print(f"[receipt] No date found, using upload date: {today}")
 
                     # VALIDATE receipt data before storing
                     merchant = receipt_data.get("merchant", "").strip()
