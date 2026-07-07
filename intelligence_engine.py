@@ -99,48 +99,48 @@ Based on days since last fill and consumption pattern, suggest when they should 
 
         prompt = f"""{data_summary}
 
-ANALYZE AND RESPOND WITH VALID JSON ONLY (no markdown, no text outside JSON).
+SHARP, SPECIFIC INSIGHTS. Use actual data above. No generic advice.
 
-For each section, fill in CONCRETE VALUES. Never use "N/A" or "—". Make estimates if needed.
+RESPOND WITH VALID JSON ONLY (no markdown, no text outside JSON).
 
 {{
   "fuel": {{
     "price_trend": "up or down or stable",
-    "percent_change": [number, e.g. 2.5],
-    "next_fill_days": [number, 3-7 days typical],
-    "recommendation": "one sentence action"
+    "percent_change": 2.5,
+    "next_fill_days": 5,
+    "recommendation": "SPECIFIC action: e.g. 'Fill at Tesco (saves 3p/L)'"
   }},
   "spend": {{
     "trend": "up or down or stable",
-    "vs_normal": "e.g. +15 percent",
-    "forecast_next_week": [number, £ amount],
-    "top_saving": "one specific way to save"
+    "vs_normal": "e.g. '-15% vs normal'",
+    "forecast_next_week": 120,
+    "top_saving": "SPECIFIC: e.g. 'Coffee at home 2x/week = £50/month saved'"
   }},
   "location": {{
-    "most_visited": "store or cafe name",
-    "cost_per_visit": [number],
-    "alternative": "cheaper place name",
-    "savings": "e.g. save £20/month"
+    "most_visited": "actual top merchant",
+    "cost_per_visit": 26.5,
+    "alternative": "specific competitor name",
+    "savings": "e.g. 'Switch from X to Y = £120/year'"
   }},
   "school": {{
     "busy_level": "normal or busy or very_busy",
-    "impact": "one sentence effect on routine",
-    "next_busy_day": "day name and why"
+    "impact": "SPECIFIC effect: e.g. 'Wednesday adds 30min drive'",
+    "next_busy_day": "actual busiest day"
   }},
   "lifestyle": {{
-    "change": "one sentence trend",
+    "change": "OBSERVED from data: e.g. 'Cafe visits up 40%'",
     "activity_level": "normal or increased or decreased"
   }},
-  "anomalies": ["thing 1", "thing 2"],
-  "recommendations": ["action 1", "action 2", "action 3"],
+  "anomalies": ["REAL issues: e.g. 'No fuel in 8 days (risky)'"],
+  "recommendations": ["High-impact action with £ estimate", "Action 2", "Action 3"],
   "forecast": {{
-    "next_week_spend": [number],
-    "next_fuel_date": "date or day name",
-    "action_items": ["do this", "check this"]
+    "next_week_spend": 125,
+    "next_fuel_date": "specific date",
+    "action_items": ["Exact action to take"]
   }}
 }}
 
-CRITICAL: Return ONLY the JSON object. No markdown. No text. Valid JSON."""
+Return ONLY valid JSON. No markdown, no text."""
 
         try:
             # Route to Groq (primary) or Anthropic (fallback)
