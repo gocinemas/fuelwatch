@@ -34789,6 +34789,40 @@ def api_insights_full():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/receipts/fix-date", methods=["POST"])
+def api_receipts_fix_date():
+    """Fix receipts with missing dates by using upload timestamp."""
+    try:
+        from datetime import datetime
+        phone = request.json.get("phone", "").strip()
+        merchant = request.json.get("merchant", "").strip()
+
+        if not phone or not merchant:
+            return jsonify({"error": "phone and merchant required"}), 400
+
+        sb = lib._sb()
+
+        # Get receipts without dates for this merchant
+        result = sb.table("receipts").select("id,created_at,merchant") \
+            .eq("phone", phone) \
+            .eq("merchant", merchant) \
+            .is_("shop_date", "null") \
+            .order("created_at", desc=True) \
+            .execute()
+
+        updated = 0
+        for receipt in (result.data or []):
+            created_at = receipt.get("created_at", "")
+            if created_at:
+                upload_date = created_at.split("T")[0]
+                sb.table("receipts").update({"shop_date": upload_date}).eq("id", receipt["id"]).execute()
+                updated += 1
+
+        return jsonify({"success": True, "updated": updated, "merchant": merchant})
+    except Exception as e:
+        print(f"[fix-date] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/insights/week", methods=["GET"])
 def api_insights_week():
     """Your Week module enhanced with intelligence insights."""
