@@ -20299,34 +20299,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             """Merge with recent receipt if complementary (one has items, one has total)."""
             if not receipt_data or not receipt_data.get("merchant"):
                 return receipt_data
-            try:
-                from datetime import datetime, timedelta
-                _plain_fn = from_number.replace("whatsapp:", "").strip()
-                now = datetime.utcnow()
-                five_min_ago = (now - timedelta(minutes=5)).isoformat()
-                rows = lib._sb().table("wa_saves").select("data").eq("from_number", _plain_fn)\
-                    .eq("status", "receipt").gt("created_at", five_min_ago).order("created_at", desc=True).limit(5).execute().data or []
-                if not rows:
-                    return receipt_data
-                current_has_items = bool(receipt_data.get("items"))
-                current_has_total = receipt_data.get("total") is not None
-                for row in rows:
-                    prev_data = row.get("data") or {}
-                    if prev_data.get("merchant", "").lower() != receipt_data.get("merchant", "").lower():
-                        continue
-                    prev_has_items = bool(prev_data.get("items"))
-                    prev_has_total = prev_data.get("total") is not None
-                    if (not current_has_items and prev_has_items) or (not current_has_total and prev_has_total):
-                        merged = receipt_data.copy()
-                        if not current_has_items and prev_has_items:
-                            merged["items"] = prev_data.get("items")
-                        if not current_has_total and prev_has_total:
-                            merged["total"] = prev_data.get("total")
-                        return merged
-                return receipt_data
-            except Exception as e:
-                print(f"[receipt merge] {e}")
-                return receipt_data
+            # Note: merge logic removed (wa_saves.data column doesn't exist)
+            # Receipt data is complete from Groq extraction
+            return receipt_data
 
         receipt_data = {}
         if img_type == "receipt":
