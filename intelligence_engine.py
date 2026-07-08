@@ -229,12 +229,18 @@ Return ONLY valid JSON. No markdown, no text."""
         today = now.date()
         week_ago = today - _dt.timedelta(days=7)
 
+        # This week: Monday-Sunday (same as Your Week endpoint)
+        days_since_monday = today.weekday()
+        week_start = today - _dt.timedelta(days=days_since_monday)
+        week_end = week_start + _dt.timedelta(days=6)
+
         # Aggregate all data
         try:
-            # This week's receipts
+            # This week's receipts (Monday-Sunday only)
             receipts = sb.table("receipts").select("total,merchant,shop_date,restaurant_type") \
                 .eq("phone", phone) \
-                .gte("shop_date", (today - _dt.timedelta(days=7)).isoformat()) \
+                .gte("shop_date", week_start.isoformat()) \
+                .lte("shop_date", week_end.isoformat()) \
                 .execute().data or []
 
             spend_total = sum(float(r.get("total", 0)) for r in receipts)
@@ -256,11 +262,13 @@ Return ONLY valid JSON. No markdown, no text."""
                 merchants[m] = merchants.get(m, 0) + float(r.get("total", 0))
             top_merchants = sorted(merchants.items(), key=lambda x: x[1], reverse=True)[:5]
 
-            # Last week comparison
+            # Last week comparison (previous Monday-Sunday)
+            last_week_end = week_start - _dt.timedelta(days=1)
+            last_week_start = last_week_end - _dt.timedelta(days=6)
             last_week_receipts = sb.table("receipts").select("total") \
                 .eq("phone", phone) \
-                .gte("shop_date", (week_ago - _dt.timedelta(days=7)).isoformat()) \
-                .lte("shop_date", week_ago.isoformat()) \
+                .gte("shop_date", last_week_start.isoformat()) \
+                .lte("shop_date", last_week_end.isoformat()) \
                 .execute().data or []
             last_week_spend = sum(float(r.get("total", 0)) for r in last_week_receipts)
 
