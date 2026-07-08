@@ -28753,6 +28753,60 @@ def school_digest():
     return jsonify(result)
 
 
+@app.route("/api/school/list")
+def api_school_list():
+    """List all schools for a user."""
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+    try:
+        sb = lib._sb()
+        schools = sb.table("school_profiles").select("*") \
+            .eq("from_number", from_number) \
+            .execute().data or []
+
+        return jsonify({
+            "success": True,
+            "schools": [
+                {
+                    "child_name": s.get("child_name", ""),
+                    "school_name": s.get("school_name", ""),
+                    "address": s.get("address", "")
+                }
+                for s in schools
+            ]
+        })
+    except Exception as e:
+        print(f"[school/list] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/school/delete", methods=["POST"])
+def api_school_delete():
+    """Delete a school for a user."""
+    data = request.get_json() or {}
+    wa = data.get("wa", "").strip()
+    school_name = data.get("school_name", "").strip()
+
+    if not wa or not school_name:
+        return jsonify({"error": "wa and school_name required"}), 400
+
+    from_number = _v2_resolve(wa)
+    try:
+        sb = lib._sb()
+        sb.table("school_profiles").delete() \
+            .eq("from_number", from_number) \
+            .eq("school_name", school_name) \
+            .execute()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"[school/delete] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/user-token")
 def api_user_token():
     """Exchange a phone number for a stable per-user HMAC token.

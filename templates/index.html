@@ -3634,6 +3634,15 @@
         <input id="setup-pref-pc" type="hidden" value="">
       </div>
 
+      <!-- ── YOUR SCHOOLS ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Your Schools</div>
+      <div id="setup-schools-list" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px">
+        <!-- Schools will be populated here -->
+      </div>
+      <button onclick="_setupAddSchool()" style="width:100%;background:#059669;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:20px">
+        + Add School
+      </button>
+
       <!-- ── BIN COLLECTION ── -->
       <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Bin Collection</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
@@ -9300,6 +9309,81 @@ function _hcAdd() {
       if (name === "setup") _setupLoad();
     };
   })();
+
+  async function _setupLoad() {
+    await _setupLoadSchools();
+  }
+
+  // ── School Management ──────────────────────────────────────────────────────
+  async function _setupLoadSchools() {
+    const phone = _miruPhone();
+    if (!phone) return;
+
+    const list = document.getElementById("setup-schools-list");
+    if (!list) return;
+
+    try {
+      const r = await fetch(`/api/school/list?wa=${encodeURIComponent(phone)}`);
+      if (!r.ok) throw new Error("Failed to load schools");
+      const d = await r.json();
+      const schools = d.schools || [];
+
+      if (schools.length === 0) {
+        list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No schools added yet</div>';
+        return;
+      }
+
+      list.innerHTML = schools.map((s, i) => `
+        <div style="padding:13px 15px;border-bottom:${i < schools.length - 1 ? '1px solid var(--border)' : 'none'};display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${s.child_name || '?'}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">${s.school_name || '?'}${s.address ? ' · ' + s.address : ''}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="_setupEditSchool('${(s.school_name || '').replace(/'/g, "\\'")}', '${(s.child_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#2563eb;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Edit</button>
+            <button onclick="_setupDeleteSchool('${(s.school_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) {
+      console.error("[schools]", e);
+      list.innerHTML = '<div style="padding:16px;text-align:center;color:#ef4444;font-size:12px">Error loading schools</div>';
+    }
+  }
+
+  function _setupAddSchool() {
+    const phone = _miruPhone();
+    if (!phone) {
+      alert('Please link your phone first (identity bar above)');
+      return;
+    }
+    const wa = phone.replace(/^\+/, "");
+    window.location.href = `/school/signup?wa=${encodeURIComponent(wa)}`;
+  }
+
+  function _setupEditSchool(schoolName, childName) {
+    alert(`Edit ${childName} @ ${schoolName}\n\n(Coming soon — will open edit form)`);
+  }
+
+  async function _setupDeleteSchool(schoolName) {
+    if (!confirm(`Delete "${schoolName}"?\n\nThis cannot be undone.`)) return;
+
+    const phone = _miruPhone();
+    if (!phone) return;
+
+    try {
+      const r = await fetch(`/api/school/delete`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({wa: phone, school_name: schoolName})
+      });
+      if (!r.ok) throw new Error("Delete failed");
+      _setupLoadSchools(); // Reload list
+    } catch(e) {
+      alert("Error deleting school");
+      console.error(e);
+    }
+  }
 
   async function _clubsLoad() {
     const list = document.getElementById("clubs-list");
