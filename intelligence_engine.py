@@ -186,8 +186,10 @@ Return ONLY valid JSON. No markdown, no text."""
                     return insights
                 except json.JSONDecodeError as je:
                     print(f"[intelligence] JSON error: {je}")
-                    # Try to fix common issues (trailing commas, unescaped quotes)
+                    # Try to fix common issues
                     json_str = json_str.replace(",}", "}").replace(",]", "]")
+                    # Replace null with defaults (0 for numbers, empty string for text)
+                    json_str = json_str.replace(": null,", ': 0,').replace(": null}", ': 0}')
                     try:
                         insights = json.loads(json_str)
                         print(f"[intelligence] ✅ Fixed and parsed")
