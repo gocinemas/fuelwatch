@@ -9353,7 +9353,7 @@ function _hcAdd() {
               <div style="font-size:12px;color:var(--muted);margin-top:2px">${s.school_name || '?'}${s.address ? ' · ' + s.address : ''}</div>
             </div>
             <div style="display:flex;gap:8px">
-              <button onclick="_setupEditSchool('${(s.school_name || '').replace(/'/g, "\\'")}', '${(s.child_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#2563eb;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Edit</button>
+              <button onclick="_setupEditSchool('${s.id || ''}', '${(s.school_name || '').replace(/'/g, "\\'")}', '${(s.child_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#2563eb;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Edit</button>
               <button onclick="_setupDeleteSchool('${(s.school_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Delete</button>
             </div>
           </div>
@@ -9375,8 +9375,31 @@ function _hcAdd() {
     window.location.href = `/school/signup?wa=${encodeURIComponent(wa)}`;
   }
 
-  function _setupEditSchool(schoolName, childName) {
-    alert(`Edit ${childName} @ ${schoolName}\n\n(Coming soon — will open edit form)`);
+  function _setupEditSchool(schoolId, schoolName, childName) {
+    const newName = prompt(`Edit child name:\n\nCurrent: ${childName}`, childName);
+    if (!newName || newName === childName) return;
+
+    const phone = _miruPhone();
+    if (!phone) return;
+
+    fetch(`/api/school/edit`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        id: schoolId,
+        child_name: newName,
+        school_name: schoolName,
+        address: ""
+      })
+    })
+      .then(r => {
+        if (!r.ok) throw new Error("Edit failed");
+        _setupLoadSchools(); // Reload list
+      })
+      .catch(e => {
+        alert("Error editing school");
+        console.error(e);
+      });
   }
 
   function _setupDeleteSchool(schoolName) {

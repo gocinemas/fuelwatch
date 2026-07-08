@@ -28771,6 +28771,7 @@ def api_school_list():
             "success": True,
             "schools": [
                 {
+                    "id": s.get("id", ""),
                     "child_name": s.get("child_name", ""),
                     "school_name": s.get("school_name", ""),
                     "address": s.get("address", "")
