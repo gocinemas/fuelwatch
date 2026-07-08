@@ -8954,6 +8954,7 @@ function _hcAdd() {
   };
 
   window._setupLoad = function() {
+    console.log("[setupLoad] Starting...");
     // Account identity display
     var phoneDisp = document.getElementById("setup-phone-display");
     var pcDisp    = document.getElementById("setup-postcode-display");
@@ -9018,9 +9019,12 @@ function _hcAdd() {
     if (statusEl && maStatusEl && maStatusEl.innerHTML.trim()) statusEl.innerHTML = maStatusEl.innerHTML;
     else if (statusEl) _setupLoadSchoolStatus();
     // Clubs (setup-clubs-list)
+    console.log("[setupLoad] About to load clubs and schools...");
     _setupLoadClubs();
     // Schools (setup-schools-list)
+    console.log("[setupLoad] About to load schools...");
     _setupLoadSchools();
+    console.log("[setupLoad] Done loading schools");
     // Motoring / bills — mirror from My Area
     var setupMot = document.getElementById("setup-vehicles-list");
     var maMot    = document.getElementById("myarea-vehicles-list");
