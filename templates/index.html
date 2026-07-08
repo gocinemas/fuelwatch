@@ -18700,9 +18700,12 @@ let _savesAll = [];
       var _wxDescParts = [];
       if (_wx.desc) _wxDescParts.push(_wx.desc);
       if (_wx.wind) _wxDescParts.push("Wind " + _wx.wind + " km/h");
-      document.getElementById("brief-wx-icon").textContent = _wxIco;
-      document.getElementById("brief-wx-temp").textContent = _wx.temp + "°C";
-      document.getElementById("brief-wx-desc").textContent = _wxDescParts.join(" · ");
+      var _wxIcon = document.getElementById("brief-wx-icon");
+      var _wxTemp = document.getElementById("brief-wx-temp");
+      var _wxDesc = document.getElementById("brief-wx-desc");
+      if (_wxIcon) _wxIcon.textContent = _wxIco;
+      if (_wxTemp) _wxTemp.textContent = _wx.temp + "°C";
+      if (_wxDesc) _wxDesc.textContent = _wxDescParts.join(" · ");
       _wxBar.style.display = "flex";
     } else if (_wxBar) {
       _wxBar.style.display = "none";
