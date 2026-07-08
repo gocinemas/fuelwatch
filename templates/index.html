@@ -784,7 +784,7 @@
     <button class="sb-btn"    id="sb-myarea" title="My Local"   onclick="showScreen('myarea')">🏡</button>
     <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
     <div class="sb-spacer"></div>
-    <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup')">⚙️</button>
+    <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup'); setTimeout(() => _setupLoadSchools(), 200)">⚙️</button>
   </nav>
   {% endif %}
 
