@@ -28413,6 +28413,11 @@ document.addEventListener('keydown', function(e) {
         document.getElementById('sw-period').textContent = d.this_week.period;
 
         // ─── SHARP INSIGHTS ───
+        // Define topCat and topCafe first (used in insights)
+        const topCat = Object.keys(d.this_week.spend_by_category).sort((a,b) =>
+          d.this_week.spend_by_category[b].total - d.this_week.spend_by_category[a].total)[0];
+        const topCafe = d.this_week.top_cafes && d.this_week.top_cafes[0];
+
         const insightsList = [];
 
         // Spend comparison
@@ -28456,8 +28461,6 @@ document.addEventListener('keydown', function(e) {
 
         // THIS WEEK - Top row
         document.getElementById('sw-this-spend').textContent = '£' + d.this_week.spend.toFixed(2);
-        const topCat = Object.keys(d.this_week.spend_by_category).sort((a,b) =>
-          d.this_week.spend_by_category[b].total - d.this_week.spend_by_category[a].total)[0];
         document.getElementById('sw-this-spend-cat').textContent = topCat ? topCat : '—';
 
         document.getElementById('sw-this-saves').textContent = d.this_week.saves.total;
@@ -28470,7 +28473,6 @@ document.addEventListener('keydown', function(e) {
 
         // THIS WEEK - Bottom row
         document.getElementById('sw-this-cafes').textContent = d.this_week.cafe_visits;
-        const topCafe = d.this_week.top_cafes[0];
         document.getElementById('sw-this-cafes-top').textContent = topCafe ? topCafe.name : '—';
 
         // Spend breakdown showing merchants per category (clickable)
