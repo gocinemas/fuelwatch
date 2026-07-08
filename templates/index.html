@@ -9019,6 +9019,8 @@ function _hcAdd() {
     else if (statusEl) _setupLoadSchoolStatus();
     // Clubs (setup-clubs-list)
     _setupLoadClubs();
+    // Schools (setup-schools-list)
+    _setupLoadSchools();
     // Motoring / bills — mirror from My Area
     var setupMot = document.getElementById("setup-vehicles-list");
     var maMot    = document.getElementById("myarea-vehicles-list");
@@ -9299,21 +9301,6 @@ function _hcAdd() {
           + '</div>';
       }).join("");
     } catch(e) { list.innerHTML = '<div style="font-size:12px;color:#dc2626">Failed to load</div>'; }
-  }
-
-  // Hook showScreen to init setup screen when navigating to it
-  (function() {
-    var _prevShow = window.showScreen;
-    window.showScreen = function(name) {
-      _prevShow(name);
-      if (name === "setup") {
-        setTimeout(() => _setupLoad(), 100); // Wait for DOM to render
-      }
-    };
-  })();
-
-  async function _setupLoad() {
-    await _setupLoadSchools();
   }
 
   // ── School Management ──────────────────────────────────────────────────────
