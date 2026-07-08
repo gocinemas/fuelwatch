@@ -9021,10 +9021,12 @@ function _hcAdd() {
     // Clubs (setup-clubs-list)
     console.log("[setupLoad] About to load clubs and schools...");
     _setupLoadClubs();
-    // Schools (setup-schools-list)
-    console.log("[setupLoad] About to load schools...");
-    _setupLoadSchools();
-    console.log("[setupLoad] Done loading schools");
+    // Schools (setup-schools-list) - defer to let clubs finish
+    setTimeout(function() {
+      console.log("[setupLoad] About to load schools...");
+      _setupLoadSchools();
+      console.log("[setupLoad] Done loading schools");
+    }, 100);
     // Motoring / bills — mirror from My Area
     var setupMot = document.getElementById("setup-vehicles-list");
     var maMot    = document.getElementById("myarea-vehicles-list");
