@@ -9306,7 +9306,9 @@ function _hcAdd() {
     var _prevShow = window.showScreen;
     window.showScreen = function(name) {
       _prevShow(name);
-      if (name === "setup") _setupLoad();
+      if (name === "setup") {
+        setTimeout(() => _setupLoad(), 100); // Wait for DOM to render
+      }
     };
   })();
 
@@ -9317,18 +9319,31 @@ function _hcAdd() {
   // ── School Management ──────────────────────────────────────────────────────
   async function _setupLoadSchools() {
     const phone = _miruPhone();
-    if (!phone) return;
+    console.log("[schools] Phone:", phone);
+    if (!phone) {
+      console.log("[schools] No phone number");
+      return;
+    }
 
     const list = document.getElementById("setup-schools-list");
-    if (!list) return;
+    console.log("[schools] List element:", list);
+    if (!list) {
+      console.log("[schools] List element not found");
+      return;
+    }
 
     try {
+      console.log("[schools] Fetching from API...");
       const r = await fetch(`/api/school/list?wa=${encodeURIComponent(phone)}`);
+      console.log("[schools] Response status:", r.status);
       if (!r.ok) throw new Error("Failed to load schools");
       const d = await r.json();
+      console.log("[schools] Data:", d);
       const schools = d.schools || [];
+      console.log("[schools] Schools count:", schools.length);
 
       if (schools.length === 0) {
+        console.log("[schools] No schools found");
         list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No schools added yet</div>';
         return;
       }
