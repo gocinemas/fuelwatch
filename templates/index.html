@@ -9304,7 +9304,7 @@ function _hcAdd() {
   }
 
   // ── School Management ──────────────────────────────────────────────────────
-  async function _setupLoadSchools() {
+  function _setupLoadSchools() {
     const phone = _miruPhone();
     console.log("[schools] Phone:", phone);
     if (!phone) {
@@ -9319,38 +9319,41 @@ function _hcAdd() {
       return;
     }
 
-    try {
-      console.log("[schools] Fetching from API...");
-      const r = await fetch(`/api/school/list?wa=${encodeURIComponent(phone)}`);
-      console.log("[schools] Response status:", r.status);
-      if (!r.ok) throw new Error("Failed to load schools");
-      const d = await r.json();
-      console.log("[schools] Data:", d);
-      const schools = d.schools || [];
-      console.log("[schools] Schools count:", schools.length);
+    console.log("[schools] Fetching from API...");
+    fetch(`/api/school/list?wa=${encodeURIComponent(phone)}`)
+      .then(r => {
+        console.log("[schools] Response status:", r.status);
+        if (!r.ok) throw new Error("Failed to load schools");
+        return r.json();
+      })
+      .then(d => {
+        console.log("[schools] Data:", d);
+        const schools = d.schools || [];
+        console.log("[schools] Schools count:", schools.length);
 
-      if (schools.length === 0) {
-        console.log("[schools] No schools found");
-        list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No schools added yet</div>';
-        return;
-      }
+        if (schools.length === 0) {
+          console.log("[schools] No schools found");
+          list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No schools added yet</div>';
+          return;
+        }
 
-      list.innerHTML = schools.map((s, i) => `
-        <div style="padding:13px 15px;border-bottom:${i < schools.length - 1 ? '1px solid var(--border)' : 'none'};display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${s.child_name || '?'}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px">${s.school_name || '?'}${s.address ? ' · ' + s.address : ''}</div>
+        list.innerHTML = schools.map((s, i) => `
+          <div style="padding:13px 15px;border-bottom:${i < schools.length - 1 ? '1px solid var(--border)' : 'none'};display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${s.child_name || '?'}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">${s.school_name || '?'}${s.address ? ' · ' + s.address : ''}</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button onclick="_setupEditSchool('${(s.school_name || '').replace(/'/g, "\\'")}', '${(s.child_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#2563eb;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Edit</button>
+              <button onclick="_setupDeleteSchool('${(s.school_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Delete</button>
+            </div>
           </div>
-          <div style="display:flex;gap:8px">
-            <button onclick="_setupEditSchool('${(s.school_name || '').replace(/'/g, "\\'")}', '${(s.child_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#2563eb;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Edit</button>
-            <button onclick="_setupDeleteSchool('${(s.school_name || '').replace(/'/g, "\\'")}')" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px">Delete</button>
-          </div>
-        </div>
-      `).join('');
-    } catch(e) {
-      console.error("[schools]", e);
-      list.innerHTML = '<div style="padding:16px;text-align:center;color:#ef4444;font-size:12px">Error loading schools</div>';
-    }
+        `).join('');
+      })
+      .catch(e => {
+        console.error("[schools]", e);
+        list.innerHTML = '<div style="padding:16px;text-align:center;color:#ef4444;font-size:12px">Error loading schools</div>';
+      });
   }
 
   function _setupAddSchool() {
@@ -9367,24 +9370,25 @@ function _hcAdd() {
     alert(`Edit ${childName} @ ${schoolName}\n\n(Coming soon — will open edit form)`);
   }
 
-  async function _setupDeleteSchool(schoolName) {
+  function _setupDeleteSchool(schoolName) {
     if (!confirm(`Delete "${schoolName}"?\n\nThis cannot be undone.`)) return;
 
     const phone = _miruPhone();
     if (!phone) return;
 
-    try {
-      const r = await fetch(`/api/school/delete`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({wa: phone, school_name: schoolName})
+    fetch(`/api/school/delete`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({wa: phone, school_name: schoolName})
+    })
+      .then(r => {
+        if (!r.ok) throw new Error("Delete failed");
+        _setupLoadSchools(); // Reload list
+      })
+      .catch(e => {
+        alert("Error deleting school");
+        console.error(e);
       });
-      if (!r.ok) throw new Error("Delete failed");
-      _setupLoadSchools(); // Reload list
-    } catch(e) {
-      alert("Error deleting school");
-      console.error(e);
-    }
   }
 
   async function _clubsLoad() {
