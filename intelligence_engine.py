@@ -272,16 +272,25 @@ Return ONLY valid JSON. No markdown, no text."""
                 .execute().data or []
             last_week_spend = sum(float(r.get("total", 0)) for r in last_week_receipts)
 
-            # Fuel data
+            # Fuel data - look at ALL receipts (not just this week) for last fill
+            all_receipts = sb.table("receipts").select("total,merchant,shop_date") \
+                .eq("phone", phone) \
+                .order("shop_date", desc=True).limit(100).execute().data or []
+
             fuel_receipts = [r for r in receipts if _receipt_category(r.get("merchant", "")) == "Fuel"]
             last_fuel = fuel_receipts[0] if fuel_receipts else None
 
-            # Get current fuel price (use last saved if available)
-            current_fuel_price = None
+            # If no fuel this week, check last month
+            if not last_fuel:
+                all_fuel = [r for r in all_receipts if _receipt_category(r.get("merchant", "")) == "Fuel"]
+                last_fuel = all_fuel[0] if all_fuel else None
+
+            # Get current fuel price (try fuel_prices table, then default to 150p as reference)
+            current_fuel_price = 150  # Default UK average
             try:
                 fuel_prices = sb.table("fuel_prices").select("price_ppl").order("created_at", desc=True).limit(1).execute().data or []
                 if fuel_prices:
-                    current_fuel_price = fuel_prices[0].get("price_ppl")
+                    current_fuel_price = fuel_prices[0].get("price_ppl", 150)
             except:
                 pass
 
@@ -303,6 +312,16 @@ Return ONLY valid JSON. No markdown, no text."""
                 .lte("created_at", week_ago.isoformat()) \
                 .execute().data or []
 
+            # Extract fuel price from merchant name if available (e.g. "Shell 145p")
+            last_fuel_price = None
+            if last_fuel:
+                merchant = last_fuel.get("merchant", "")
+                # Try to extract price from merchant name (e.g. "Tesco Petrol 145p")
+                import re
+                price_match = re.search(r'(\d{2,3})p', merchant)
+                if price_match:
+                    last_fuel_price = int(price_match.group(1))
+
             # Build data summary for intelligence engine
             data = {
                 "spend_total": spend_total,
@@ -313,7 +332,7 @@ Return ONLY valid JSON. No markdown, no text."""
                 "spend_trend": "up" if spend_total > last_week_spend else "down" if spend_total < last_week_spend else "stable",
                 "last_fuel_amount": float(last_fuel.get("total", 0)) if last_fuel else 0,
                 "last_fuel_date": last_fuel.get("shop_date", "N/A") if last_fuel else "N/A",
-                "last_fuel_price": None,  # Will extract from merchant name if available
+                "last_fuel_price": last_fuel_price,
                 "current_fuel_price": current_fuel_price,
                 "days_since_fuel": (today - _dt.datetime.fromisoformat(last_fuel.get("shop_date", today.isoformat())).date()).days if last_fuel else 0,
                 "school_events_count": len(school_events),
