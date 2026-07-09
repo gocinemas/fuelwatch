@@ -19878,13 +19878,19 @@ let _savesAll = [];
     // Receipt category update function
     window._updateReceiptCategory = function(id, newCategory, merchant, amount) {
       if (!newCategory) return;
-      var token = localStorage.getItem('_miruToken') || localStorage.getItem('miru_token');
+      var phone = localStorage.getItem('miru_phone') || localStorage.getItem('miru_saves_phone') || '';
+      var token = localStorage.getItem('miru_saves_token') || '';
+      if (!phone && !token) {
+        alert('Not authenticated. Please reload.');
+        return;
+      }
       fetch('/api/receipt/recategorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: id,
           new_category: newCategory,
+          wa: phone,
           token: token
         })
       }).then(r => r.json()).then(data => {

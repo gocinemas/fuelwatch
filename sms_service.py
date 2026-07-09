@@ -16082,13 +16082,20 @@ def api_admin_fix_receipt_category():
 @app.route("/api/receipt/recategorize", methods=["POST"])
 def api_receipt_recategorize():
     """User endpoint: Change category of a receipt.
-    POST body: {"id": "uuid", "new_category": "Fuel"}
+    POST body: {"id": "uuid", "new_category": "Fuel", "token": "..."}
     Or identify by: {"merchant": "Tesco Petrol", "amount": 60.11, "new_category": "Fuel"}
     """
     try:
         data = request.get_json() or {}
-        token = data.get("token") or request.args.get("token", "").strip()
-        phone = _v2_resolve(token) if token else None
+        wa = data.get("wa", "").strip() or request.args.get("wa", "").strip()
+        token = data.get("token", "").strip() or request.args.get("token", "").strip()
+
+        phone = None
+        if wa:
+            phone = _normalise_from_number(wa)
+        elif token:
+            phone = _v2_resolve(token)
+
         if not phone:
             return jsonify({"error": "Not authenticated"}), 401
 
