@@ -60,11 +60,42 @@ One-time Gmail auth setup:  python3 school_auth.py
 import json
 import os
 import re
+import time
 from datetime import date, datetime, timedelta
+from threading import Lock
 
 import requests
 
 import library as lib
+
+# ── Groq Rate Limiter ──────────────────────────────────────────────────────────
+class GroqRateLimiter:
+  """Global queue to prevent Groq rate limit hits by processing emails serially."""
+  def __init__(self):
+    self._lock = Lock()
+    self._last_request_time = 0
+    self._min_delay = 0.5  # 500ms minimum between requests (stay well under 6000 TPM)
+
+  def wait_if_needed(self):
+    """Enforce minimum delay between requests."""
+    with self._lock:
+      elapsed = time.time() - self._last_request_time
+      if elapsed < self._min_delay:
+        time.sleep(self._min_delay - elapsed)
+      self._last_request_time = time.time()
+
+  def handle_rate_limit(self, error_msg: str) -> float:
+    """Extract suggested wait time from Groq rate limit error and update delay."""
+    import re
+    match = re.search(r'Please try again in ([\d.]+)s', error_msg)
+    if match:
+      wait_seconds = float(match.group(1)) + 1.0  # Add 1s buffer
+      with self._lock:
+        self._min_delay = max(self._min_delay, wait_seconds / 6)  # Spread over 6 requests
+      return wait_seconds
+    return 0
+
+_groq_limiter = GroqRateLimiter()
 
 # ── Gmail OAuth ────────────────────────────────────────────────────────────────
 
@@ -315,6 +346,7 @@ JSON array:"""
 
     for attempt in range(3):
         try:
+            _groq_limiter.wait_if_needed()
             r = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={
@@ -336,9 +368,13 @@ JSON array:"""
             if "choices" not in rj or not rj["choices"]:
                 err_msg = rj.get("error", {}).get("message", str(rj))
                 print(f"[school] groq parse error (attempt {attempt+1}): {err_msg}")
+                if "rate limit" in err_msg.lower() and attempt < 2:
+                    wait = _groq_limiter.handle_rate_limit(err_msg)
+                    print(f"[school] rate limit hit, waiting {wait:.1f}s before retry")
+                    time.sleep(wait)
+                    continue
                 if "overloaded" in err_msg.lower() and attempt < 2:
-                    import time as _time
-                    _time.sleep(10 * (attempt + 1))
+                    time.sleep(10 * (attempt + 1))
                     continue
                 return []
             raw = rj["choices"][0]["message"]["content"].strip()
@@ -351,8 +387,7 @@ JSON array:"""
         except Exception as e:
             print(f"[school] groq parse error (attempt {attempt+1}): {e}")
             if attempt < 2:
-                import time as _time
-                _time.sleep(5)
+                time.sleep(5)
     return []
 
 
