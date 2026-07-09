@@ -27483,16 +27483,22 @@ def school_auth_google():
             return redirect("/?screen=school&oauth_error=invalid_params")
 
         # Create school profile (will be updated with refresh_token on callback)
-        result = lib._sb().table("school_profiles").insert({
-            "school_name": name,
-            "child_name": child,
-            "address": address,
-            "sender_emails": [email],
-            "gmail_token_error": False,
-        }).execute()
+        import json
+        try:
+            result = lib._sb().table("school_profiles").insert({
+                "school_name": name,
+                "child_name": child,
+                "address": address,
+                "sender_emails": json.dumps([email]),  # JSON encode the emails
+                "gmail_token_error": False,
+            }).execute()
 
-        profile_id = (result.data or [{}])[0].get("id", "")
-        if not profile_id:
+            profile_id = (result.data or [{}])[0].get("id", "")
+            if not profile_id:
+                print(f"[school auth] no profile_id in response: {result.data}")
+                return redirect("/?screen=school&oauth_error=create_failed")
+        except Exception as profile_err:
+            print(f"[school auth] profile creation failed: {profile_err}")
             return redirect("/?screen=school&oauth_error=create_failed")
 
         # Redirect to Google OAuth with profile_id as state
