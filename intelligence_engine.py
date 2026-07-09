@@ -276,6 +276,15 @@ Return ONLY valid JSON. No markdown, no text."""
             fuel_receipts = [r for r in receipts if _receipt_category(r.get("merchant", "")) == "Fuel"]
             last_fuel = fuel_receipts[0] if fuel_receipts else None
 
+            # Get current fuel price (use last saved if available)
+            current_fuel_price = None
+            try:
+                fuel_prices = sb.table("fuel_prices").select("price_ppl").order("created_at", desc=True).limit(1).execute().data or []
+                if fuel_prices:
+                    current_fuel_price = fuel_prices[0].get("price_ppl")
+            except:
+                pass
+
             # School events
             school_events = sb.table("school_events").select("event_date") \
                 .eq("from_number", from_number) \
@@ -304,12 +313,15 @@ Return ONLY valid JSON. No markdown, no text."""
                 "spend_trend": "up" if spend_total > last_week_spend else "down" if spend_total < last_week_spend else "stable",
                 "last_fuel_amount": float(last_fuel.get("total", 0)) if last_fuel else 0,
                 "last_fuel_date": last_fuel.get("shop_date", "N/A") if last_fuel else "N/A",
+                "last_fuel_price": None,  # Will extract from merchant name if available
+                "current_fuel_price": current_fuel_price,
                 "days_since_fuel": (today - _dt.datetime.fromisoformat(last_fuel.get("shop_date", today.isoformat())).date()).days if last_fuel else 0,
                 "school_events_count": len(school_events),
                 "cafe_visits": len([r for r in receipts if _receipt_category(r.get("merchant", "")) in ["Coffee & Lunch", "Dining", "Takeaway"]]),
                 "top_location": top_merchants[0][0] if top_merchants else "N/A",
                 "saves_count": len(saves_this_week),
                 "last_week_saves": len(saves_last_week),
+                "receipts_count": len(receipts),
             }
 
             # Generate insights using agentic reasoning
