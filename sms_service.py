@@ -28808,38 +28808,6 @@ def api_school_delete():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/school/search")
-def api_school_search():
-    """Search UK schools by name. Returns top 5 matches with address."""
-    q = request.args.get("q", "").strip().lower()
-    if not q or len(q) < 2:
-        return jsonify({"schools": []}), 200
-
-    try:
-        sb = lib._sb()
-        # Search schools table by name (fuzzy match)
-        schools = sb.table("schools").select("*") \
-            .ilike("name", f"%{q}%") \
-            .limit(5) \
-            .execute().data or []
-
-        return jsonify({
-            "schools": [
-                {
-                    "id": s.get("id", ""),
-                    "name": s.get("name", ""),
-                    "address": s.get("address", ""),
-                    "postcode": s.get("postcode", ""),
-                    "town": s.get("town", "")
-                }
-                for s in schools
-            ]
-        })
-    except Exception as e:
-        print(f"[school/search] Error: {e}")
-        return jsonify({"schools": []}), 200
-
-
 @app.route("/api/user-token")
 def api_user_token():
     """Exchange a phone number for a stable per-user HMAC token.
