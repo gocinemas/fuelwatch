@@ -323,9 +323,9 @@
       </div>
 
       <div class="field">
-        <label>School Email Address <span style="font-weight: 400; color: var(--gray-400);">(optional)</span></label>
-        <input type="email" id="schoolEmail" placeholder="e.g. office@school.surrey.sch.uk">
-        <div class="hint">Where school sends updates from</div>
+        <label>School Email Address *</label>
+        <input type="email" id="schoolEmail" placeholder="e.g. office@school.surrey.sch.uk" required>
+        <div class="hint">Required — where Miru fetches school announcements</div>
       </div>
 
       <div class="button-group">
@@ -430,9 +430,20 @@
     if (step === 3) {
       const childName = document.getElementById('childName').value.trim();
       const schoolName = document.getElementById('schoolName').value.trim();
+      const schoolEmail = document.getElementById('schoolEmail').value.trim();
 
       if (!childName || !schoolName) {
         alert('Please fill in child name and school name');
+        return;
+      }
+
+      if (!schoolEmail) {
+        alert('School email is required — Miru needs this to fetch announcements');
+        return;
+      }
+
+      if (!schoolEmail.includes('@')) {
+        alert('Please enter a valid email address');
         return;
       }
     }
