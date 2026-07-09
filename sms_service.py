@@ -27485,9 +27485,9 @@ def school_auth_google():
         # Create school profile (will be updated with refresh_token on callback)
         import json
         try:
-            # from_number will be populated during OAuth callback when user connects
+            # from_number placeholder (will stay this way since school comms doesn't need WhatsApp)
             result = lib._sb().table("school_profiles").insert({
-                "from_number":    "",  # Will be set during OAuth
+                "from_number":    f"school:{email}",  # Placeholder: school email as identifier
                 "school_name":    name,
                 "child_name":     child,
                 "address":        address,
