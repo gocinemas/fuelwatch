@@ -512,9 +512,12 @@
       return;
     }
 
-    // Get the school profile first to create the profile_id
-    // Then redirect to Gmail auth
-    window.location.href = `/school/auth/google?email=${encodeURIComponent(schoolEmail)}&name=${encodeURIComponent(schoolName)}&child=${encodeURIComponent(childName)}&address=${encodeURIComponent(schoolAddress)}`;
+    // Get user's phone/wa from URL parameter to link school to user
+    const urlParams = new URLSearchParams(window.location.search);
+    const wa = urlParams.get('wa') || '';
+
+    // Redirect to Gmail auth with all params including wa for proper linking
+    window.location.href = `/school/auth/google?email=${encodeURIComponent(schoolEmail)}&name=${encodeURIComponent(schoolName)}&child=${encodeURIComponent(childName)}&address=${encodeURIComponent(schoolAddress)}&wa=${encodeURIComponent(wa)}`;
   }
 </script>
 

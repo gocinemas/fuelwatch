@@ -27478,6 +27478,7 @@ def school_auth_google():
         name = request.args.get("name", "").strip()
         child = request.args.get("child", "").strip()
         address = request.args.get("address", "").strip()
+        wa = request.args.get("wa", "").strip()
 
         if not email or not name:
             return redirect("/?screen=school&oauth_error=invalid_params")
@@ -27485,9 +27486,11 @@ def school_auth_google():
         # Create school profile (will be updated with refresh_token on callback)
         import json
         try:
-            # from_number placeholder (will stay this way since school comms doesn't need WhatsApp)
+            # Use wa (phone number) if provided, otherwise use email as identifier
+            from_number = _v2_resolve(wa) if wa else f"school:{email}"
+
             result = lib._sb().table("school_profiles").insert({
-                "from_number":    f"school:{email}",  # Placeholder: school email as identifier
+                "from_number":    from_number,  # Link to user's phone or use school email
                 "school_name":    name,
                 "child_name":     child,
                 "address":        address,
