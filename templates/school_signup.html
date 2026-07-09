@@ -325,7 +325,13 @@
       <div class="field">
         <label>School Email Address *</label>
         <input type="email" id="schoolEmail" placeholder="e.g. office@school.surrey.sch.uk" required>
-        <div class="hint">Required — where Miru fetches school announcements</div>
+        <div class="hint">Primary email — where Miru fetches announcements</div>
+      </div>
+
+      <div class="field">
+        <label>Additional Email (optional)</label>
+        <input type="email" id="schoolEmail2" placeholder="e.g. comms@school.surrey.sch.uk">
+        <div class="hint">CC email if school sends updates from multiple addresses</div>
       </div>
 
       <div class="button-group">
@@ -443,7 +449,13 @@
       }
 
       if (!schoolEmail.includes('@')) {
-        alert('Please enter a valid email address');
+        alert('Please enter a valid primary email address');
+        return;
+      }
+
+      const schoolEmail2 = document.getElementById('schoolEmail2').value.trim();
+      if (schoolEmail2 && !schoolEmail2.includes('@')) {
+        alert('Please enter a valid secondary email address');
         return;
       }
     }
@@ -480,13 +492,18 @@
     const schoolName = document.getElementById('schoolName').value.trim();
     const schoolAddress = document.getElementById('schoolAddress').value.trim();
     const schoolEmail = document.getElementById('schoolEmail').value.trim();
+    const schoolEmail2 = document.getElementById('schoolEmail2').value.trim();
+
+    // Collect both emails as array
+    const sender_emails = [schoolEmail];
+    if (schoolEmail2) sender_emails.push(schoolEmail2);
 
     // Save to localStorage for post-OAuth callback
     localStorage.setItem('_schoolSetup', JSON.stringify({
       childName,
       schoolName,
       schoolAddress,
-      schoolEmail
+      sender_emails
     }));
 
     // Redirect to Google OAuth (implement actual OAuth flow)
