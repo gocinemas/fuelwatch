@@ -97,6 +97,54 @@ class GroqRateLimiter:
 
 _groq_limiter = GroqRateLimiter()
 
+# ── Claude Fallback for accuracy ───────────────────────────────────────────────
+def _claude_parse_events(subject: str, body: str, school_name: str, year_group: str,
+                         sent_date: str = "") -> list[dict]:
+  """Fallback to Claude for complex/new schools. Higher accuracy, used sparingly."""
+  try:
+    ref = date.fromisoformat(sent_date) if sent_date else date.today()
+  except ValueError:
+    ref = date.today()
+
+  ref_str = ref.isoformat()
+  weekday = ref.strftime("%A")
+  days_map = {}
+  for i, d in enumerate(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]):
+    delta = (i - ref.weekday()) % 7
+    days_map[d] = (ref + timedelta(days=delta if delta else 7)).isoformat()
+  days_hint = "  ".join(f"this {d} = {v}" for d, v in days_map.items())
+
+  body_truncated = body[:3000] if len(body) > 3000 else body
+  prompt = f"""School: {school_name}  Year group: {year_group}
+Email sent: {ref_str} ({weekday})
+Relative dates: {days_hint}
+
+Subject: {subject}
+Body:
+{body_truncated}
+
+Extract all school events/reminders as JSON array. Return ONLY the array, no markdown.
+Each item: {{event_title, event_type, event_date, description, action_needed, deadline, link_url}}
+Types: activity|reminder|club|dinner|newsletter|info
+"""
+
+  try:
+    import anthropic
+    client = anthropic.Anthropic()
+    msg = client.messages.create(
+      model="claude-3-5-sonnet-20241022",
+      max_tokens=1500,
+      messages=[{"role": "user", "content": prompt}]
+    )
+    raw = msg.content[0].text.strip()
+    raw = re.sub(r"^```[a-z]*\n?", "", raw)
+    raw = re.sub(r"\n?```$", "", raw)
+    events = json.loads(raw)
+    return events if isinstance(events, list) else []
+  except Exception as e:
+    print(f"[school] claude fallback error: {e}")
+    return []
+
 # ── Gmail OAuth ────────────────────────────────────────────────────────────────
 
 _GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -381,14 +429,30 @@ JSON array:"""
             raw = re.sub(r"^```[a-z]*\n?", "", raw)
             raw = re.sub(r"\n?```$", "", raw)
             events = json.loads(raw)
-            if isinstance(events, list):
+            if isinstance(events, list) and len(events) > 0:
                 return events
-            return []
+            # If Groq returned empty, try Claude fallback for accuracy
+            print(f"[school] groq returned empty, trying claude fallback for '{subject[:40]}'")
+            claude_events = _claude_parse_events(subject, body, school_name, year_group, sent_date)
+            if claude_events:
+                print(f"[school] claude fallback succeeded: {len(claude_events)} events")
+            return claude_events
+        except json.JSONDecodeError as e:
+            print(f"[school] groq json error (attempt {attempt+1}): {e}, trying claude fallback")
+            claude_events = _claude_parse_events(subject, body, school_name, year_group, sent_date)
+            if claude_events:
+                print(f"[school] claude fallback succeeded: {len(claude_events)} events")
+            return claude_events
         except Exception as e:
             print(f"[school] groq parse error (attempt {attempt+1}): {e}")
             if attempt < 2:
                 time.sleep(5)
-    return []
+    # Final fallback: try Claude
+    print(f"[school] groq exhausted retries, trying claude fallback")
+    claude_events = _claude_parse_events(subject, body, school_name, year_group, sent_date)
+    if claude_events:
+        print(f"[school] claude fallback succeeded: {len(claude_events)} events")
+    return claude_events
 
 
 # ── Supabase helpers ───────────────────────────────────────────────────────────
