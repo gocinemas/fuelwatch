@@ -8910,7 +8910,7 @@ def api_home_last_receipt():
     try:
         # Get most recent REAL receipt by UPLOAD timestamp (created_at)
         # Skip "Online:" merchants (broken data) — find first real receipt
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date,created_at,items").eq("phone", phone) \
+        rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items,category").eq("phone", phone) \
             .order("created_at", desc=True).limit(20).execute().data or []  # Get 20 to filter through
 
         if not rows:
@@ -8976,7 +8976,14 @@ def api_home_last_receipt():
         except:
             pass
 
-        return jsonify({"merchant": merchant, "total": total, "shop_date": shop_date, "items": items})
+        return jsonify({
+            "id": r.get("id"),
+            "merchant": merchant,
+            "total": total,
+            "shop_date": shop_date,
+            "category": r.get("category", "Other"),
+            "items": items
+        })
     except Exception as e:
         app.logger.warning(f"[last-receipt] {e}")
         return jsonify({"error": str(e), "merchant": None}), 500
