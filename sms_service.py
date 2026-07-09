@@ -28812,6 +28812,37 @@ def api_school_delete():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/receipts/debug", methods=["GET"])
+def api_receipts_debug():
+    """Debug: Show all receipts and wa_saves with merchant/title containing digits."""
+    token = request.args.get("token", "").strip()
+    if token != "debug-2026":
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        sb = lib._sb()
+        # Get all receipts
+        receipts = sb.table("receipts").select("id,merchant,total,shop_date").execute().data or []
+        suspect_receipts = [r for r in receipts if any(c.isdigit() for c in r.get("merchant", ""))]
+
+        # Get all wa_saves with receipt title
+        saves = sb.table("wa_saves").select("id,title,summary,created_at").ilike("title", "🧾%").execute().data or []
+        suspect_saves = [s for s in saves if any(c.isdigit() for c in s.get("title", "").replace("🧾", ""))]
+
+        return jsonify({
+            "receipts": {
+                "total": len(receipts),
+                "suspect": [{"id": r["id"], "merchant": r["merchant"], "total": r["total"], "date": r["shop_date"]} for r in suspect_receipts[:20]]
+            },
+            "wa_saves": {
+                "total": len(saves),
+                "suspect": [{"id": s["id"], "title": s["title"], "summary": s["summary"][:50]} for s in suspect_saves[:20]]
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/receipts/cleanup", methods=["POST"])
 def api_receipts_cleanup():
     """Admin: Delete bad receipts (numeric merchants, etc)."""
@@ -28825,7 +28856,9 @@ def api_receipts_cleanup():
         receipts = sb.table("receipts").select("id,merchant").execute().data or []
         deleted = []
         for r in receipts:
-            if r.get("merchant", "").isdigit():
+            merchant = r.get("merchant", "").strip()
+            # Delete if starts with digit and mostly numeric
+            if merchant and merchant[0].isdigit() and merchant.replace(" ", "").isdigit():
                 deleted.append(r["id"])
                 sb.table("receipts").delete().eq("id", r["id"]).execute()
 
@@ -28833,7 +28866,7 @@ def api_receipts_cleanup():
         saves = sb.table("wa_saves").select("id,title").execute().data or []
         for s in saves:
             title = s.get("title", "").replace("🧾", "").strip()
-            if title.isdigit():
+            if title and title[0].isdigit() and title.replace(" ", "").isdigit():
                 deleted.append(s["id"])
                 sb.table("wa_saves").delete().eq("id", s["id"]).execute()
 
