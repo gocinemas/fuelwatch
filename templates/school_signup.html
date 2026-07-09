@@ -394,13 +394,16 @@
         return;
       }
 
-      dropdown.innerHTML = schools.map(s => `
+      dropdown.innerHTML = schools.map(s => {
+        const badge = s.source === 'GIAS' ? '<span style="background: var(--accent); color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-left: 4px;">Official</span>' : '<span style="background: var(--gray-300); color: var(--gray-700); padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-left: 4px;">Local</span>';
+        return `
         <div onclick="selectSchool('${(s.name || '').replace(/'/g, "\\'")}', '${(s.address || '').replace(/'/g, "\\'")}')"
              style="padding: 12px 14px; border-bottom: 1px solid var(--gray-100); cursor: pointer; font-size: 14px; transition: background .15s;">
-          <div style="font-weight: 600; color: var(--primary)">${s.name}</div>
-          <div style="font-size: 12px; color: var(--gray-600); margin-top: 2px">${s.town || s.postcode || ''}</div>
+          <div style="font-weight: 600; color: var(--primary); display: flex; align-items: center;">${s.name}${badge}</div>
+          <div style="font-size: 12px; color: var(--gray-600); margin-top: 4px">${s.address || s.town || s.postcode || '(address from database)'}</div>
         </div>
-      `).join('');
+      `;
+      }).join('');
       dropdown.style.display = 'block';
     } catch(e) {
       console.error('School search error:', e);

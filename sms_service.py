@@ -27618,15 +27618,17 @@ def api_school_search():
                     "name": name,
                     "address": school.get("address", "").strip(),
                     "town": school.get("town", ""),
-                    "postcode": school.get("postcode", "")
+                    "postcode": school.get("postcode", ""),
+                    "source": "GIAS"  # Official database
                 })
 
-        # Fallback: fuzzy match from memory cache if needed
-        if len(schools) < 5 and _UK_SCHOOLS_CACHE:
+        # Add fuzzy matches from memory cache (local/alternative names)
+        if _UK_SCHOOLS_CACHE:
             fuzzy_matches = _fuzzy_match_schools(query, _UK_SCHOOLS_CACHE)
             for school in fuzzy_matches:
                 if school["name"] not in seen and len(schools) < 10:
                     seen.add(school["name"])
+                    school["source"] = "Local"  # Fuzzy/local match
                     schools.append(school)
 
         return jsonify({"schools": schools[:10]}), 200
