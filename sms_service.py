@@ -16087,7 +16087,8 @@ def api_receipt_recategorize():
     """
     try:
         data = request.get_json() or {}
-        phone = _getPhoneFromRequest()
+        token = data.get("token") or request.args.get("token", "").strip()
+        phone = _v2_resolve(token) if token else None
         if not phone:
             return jsonify({"error": "Not authenticated"}), 401
 
