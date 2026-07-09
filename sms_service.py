@@ -20308,8 +20308,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             try:
                 _rcpt_prompt = (
                     "CRITICAL: Extract EVERY field from this UK shopping receipt or fuel pump receipt.\n\n"
+                    "FUEL PUMP RECEIPTS: If you see 'filling station', 'fuel station', 'petrol station', or 'pump' keywords:\n"
+                    "  • Extract the BRAND name (Tesco, Shell, BP, Sainsburys, Asda, Moto, etc) — NOT pump numbers\n"
+                    "  • Pump IDs are typically 5-6 digit numbers — IGNORE these\n"
+                    "  • Look for store/brand name at top or bottom of receipt\n\n"
                     "OUTPUT FORMAT (ONE FIELD PER LINE):\n"
-                    "MERCHANT: [store name or fuel station name (e.g. Shell, BP, Tesco, Sainsburys) — NOT pump/transaction numbers]\n"
+                    "MERCHANT: [store name or fuel station brand (e.g. Tesco, Shell, BP, Sainsburys) — NEVER pump/transaction numbers]\n"
                     "DATE: [look for: date/time line, printed near top/middle/bottom. Convert ANY format to YYYY-MM-DD. If unsure, leave blank]\n"
                     "TOTAL: [BOTTOM-most total line showing customer paid. Look for: 'Total', 'Payable', 'Amount Due', 'Paid', 'Cash', '£', etc. Numbers only, 1-4 digits + decimal, e.g. 34.72 or 102.50]\n"
                     "ITEM: [name] | [qty if shown] | [price]\n"
