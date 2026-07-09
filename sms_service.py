@@ -27470,6 +27470,40 @@ def api_ms_calendar_disconnect():
     return _cors(jsonify({"ok": True}))
 
 
+@app.route("/school/auth/google")
+def school_auth_google():
+    """Initiate Google OAuth for school email access."""
+    try:
+        email = request.args.get("email", "").strip()
+        name = request.args.get("name", "").strip()
+        child = request.args.get("child", "").strip()
+        address = request.args.get("address", "").strip()
+
+        if not email or not name:
+            return redirect("/?screen=school&oauth_error=invalid_params")
+
+        # Create school profile (will be updated with refresh_token on callback)
+        result = lib._sb().table("school_profiles").insert({
+            "school_name": name,
+            "child_name": child,
+            "address": address,
+            "sender_emails": [email],
+            "gmail_token_error": False,
+        }).execute()
+
+        profile_id = (result.data or [{}])[0].get("id", "")
+        if not profile_id:
+            return redirect("/?screen=school&oauth_error=create_failed")
+
+        # Redirect to Google OAuth with profile_id as state
+        oauth_url = _school_oauth_url(profile_id)
+        return redirect(oauth_url)
+
+    except Exception as e:
+        print(f"[school auth google] error: {e}")
+        return redirect("/?screen=school&oauth_error=server_error")
+
+
 @app.route("/school/oauth/callback")
 def school_oauth_callback():
     code       = request.args.get("code", "")

@@ -506,13 +506,15 @@
       sender_emails
     }));
 
-    // Redirect to Google OAuth (implement actual OAuth flow)
-    const clientId = 'YOUR_CLIENT_ID'; // Replace with actual
-    const redirectUri = encodeURIComponent(window.location.origin + '/auth/google/callback');
-    const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
+    // Redirect to backend OAuth endpoint (which will handle Google OAuth)
+    if (!schoolEmail) {
+      alert('School email is required');
+      return;
+    }
 
-    // For now, just show success
-    alert('Gmail connection flow would start here.\n\nChild: ' + childName + '\nSchool: ' + schoolName);
+    // Get the school profile first to create the profile_id
+    // Then redirect to Gmail auth
+    window.location.href = `/school/auth/google?email=${encodeURIComponent(schoolEmail)}&name=${encodeURIComponent(schoolName)}&child=${encodeURIComponent(childName)}&address=${encodeURIComponent(schoolAddress)}`;
   }
 </script>
 
