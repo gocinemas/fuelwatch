@@ -22756,6 +22756,23 @@ let _savesAll = [];
 
     const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:7px 11px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626" title="Delete">🗑</button>`;
 
+    // Category dropdown for receipts
+    const categoryDropdown = _cat === "receipt"
+      ? `<select id="cat_clipping_${s.id}" onchange="_updateReceiptCategory('${s.id}', this.value, '${(s.title||'').replace(/'/g, "\\'")}', 0)" style="font-size:11px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:6px;background:white;cursor:pointer;flex:1">
+          <option value="">Category</option>
+          <option value="Groceries" ${s.category === 'Groceries' ? 'selected' : ''}>Groceries</option>
+          <option value="Fuel" ${s.category === 'Fuel' ? 'selected' : ''}>Fuel</option>
+          <option value="Dining" ${s.category === 'Dining' ? 'selected' : ''}>Dining</option>
+          <option value="Fast Food" ${s.category === 'Fast Food' ? 'selected' : ''}>Fast Food</option>
+          <option value="Coffee & Lunch" ${s.category === 'Coffee & Lunch' ? 'selected' : ''}>Coffee & Lunch</option>
+          <option value="Takeaway" ${s.category === 'Takeaway' ? 'selected' : ''}>Takeaway</option>
+          <option value="Transport" ${s.category === 'Transport' ? 'selected' : ''}>Transport</option>
+          <option value="Clothes" ${s.category === 'Clothes' ? 'selected' : ''}>Clothes</option>
+          <option value="Accessories" ${s.category === 'Accessories' ? 'selected' : ''}>Accessories</option>
+          <option value="Other" ${s.category === 'Other' ? 'selected' : ''}>Other</option>
+        </select>`
+      : "";
+
     // Category chip label + color
     const _cat = _saveCat(s);
     const _catMeta = {
@@ -22797,6 +22814,7 @@ let _savesAll = [];
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           ${openBtn}
           ${exportBtns}
+          ${categoryDropdown}
           ${deleteBtn}
           ${enrichBtn}
           ${rescanBtn}
