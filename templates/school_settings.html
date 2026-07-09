@@ -360,8 +360,9 @@
     </div>
 
     <div style="margin-bottom: 16px;">
-      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">School Email <span style="color: #9ca3af; font-weight: 400;">(optional)</span></label>
-      <input type="email" id="editSchoolEmail" placeholder="e.g. office@school.sch.uk" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">School Emails <span style="color: #9ca3af; font-weight: 400;">(optional)</span></label>
+      <div id="editSchoolEmailsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      <button type="button" onclick="addEditEmailField()" style="margin-top: 8px; padding: 8px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--primary); font-weight: 500;">+ Add Email</button>
     </div>
 
     <div style="display: flex; gap: 8px;">
@@ -683,7 +684,24 @@
     document.getElementById('editChildName').value = school.child_name || '';
     document.getElementById('editSchoolName').value = school.school_name || '';
     document.getElementById('editSchoolAddress').value = school.address || '';
-    document.getElementById('editSchoolEmail').value = (school.sender_emails && school.sender_emails[0]) || '';
+
+    // Populate email fields
+    const container = document.getElementById('editSchoolEmailsContainer');
+    container.innerHTML = '';
+    const emails = school.sender_emails || [];
+    if (emails.length === 0) {
+      container.innerHTML = '<input type="email" class="edit-email-field" placeholder="e.g. office@school.sch.uk" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">';
+    } else {
+      emails.forEach((email, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+        wrapper.innerHTML = `
+          <input type="email" class="edit-email-field" value="${email}" placeholder="e.g. office@school.sch.uk" style="flex: 1; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+          <button type="button" onclick="removeEditEmailField(this)" style="padding: 8px 12px; background: #fee2e2; color: #991b1b; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Remove</button>
+        `;
+        container.appendChild(wrapper);
+      });
+    }
 
     document.getElementById('editSchoolModal').classList.add('show');
   }
@@ -734,16 +752,24 @@
     const childName = document.getElementById('editChildName').value.trim();
     const schoolName = document.getElementById('editSchoolName').value.trim();
     const address = document.getElementById('editSchoolAddress').value.trim();
-    const schoolEmail = document.getElementById('editSchoolEmail').value.trim();
 
     if (!childName || !schoolName) {
       alert('Please enter child name and school name');
       return;
     }
 
-    if (schoolEmail && !schoolEmail.includes('@')) {
-      alert('Please enter a valid email address');
-      return;
+    // Collect all email fields
+    const emailFields = document.querySelectorAll('.edit-email-field');
+    const emails = Array.from(emailFields)
+      .map(f => f.value.trim())
+      .filter(e => e.length > 0);
+
+    // Validate emails
+    for (const email of emails) {
+      if (!email.includes('@')) {
+        alert('Please enter valid email addresses');
+        return;
+      }
     }
 
     try {
@@ -755,7 +781,7 @@
           child_name: childName,
           school_name: schoolName,
           address: address,
-          sender_emails: schoolEmail ? [schoolEmail] : []
+          sender_emails: emails
         })
       });
 
@@ -771,6 +797,21 @@
       console.error('Save error:', e);
       alert('Error saving school: ' + e.message);
     }
+  }
+
+  function addEditEmailField() {
+    const container = document.getElementById('editSchoolEmailsContainer');
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+    wrapper.innerHTML = `
+      <input type="email" class="edit-email-field" placeholder="e.g. office@school.sch.uk" style="flex: 1; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      <button type="button" onclick="removeEditEmailField(this)" style="padding: 8px 12px; background: #fee2e2; color: #991b1b; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Remove</button>
+    `;
+    container.appendChild(wrapper);
+  }
+
+  function removeEditEmailField(btn) {
+    btn.parentElement.remove();
   }
 
   // Load on page load
