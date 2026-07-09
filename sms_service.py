@@ -28831,7 +28831,12 @@ def api_school_list():
     if not wa:
         return jsonify({"error": "wa required"}), 400
 
-    from_number = _v2_resolve(wa)
+    # Handle both phone number tokens and school: prefixed identifiers
+    if wa.startswith("school:"):
+        from_number = wa  # Already in correct format
+    else:
+        from_number = _v2_resolve(wa)
+
     try:
         sb = lib._sb()
         schools = sb.table("school_profiles").select("*") \
