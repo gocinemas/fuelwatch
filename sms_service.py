@@ -10990,10 +10990,13 @@ def _receipt_category(merchant: str) -> str:
 
     # Fuel / Petrol — check BEFORE Groceries (so "Asda Fuel" → Fuel, not Groceries)
     if any(k in m for k in ["fuel", "petrol", "shell", "bp", "esso", "texaco", "total",
-                              "applegreen", "murco", "service station", "fuel station"]):
+                              "applegreen", "murco", "service station", "fuel station",
+                              "tesco petrol", "asda petrol", "sainsbury petrol", "morrisons petrol",
+                              "sainsburys fuel", "tesco fuel", "asda fuel"]):
         return "Fuel"
 
     # Groceries — supermarkets only (as specified)
+    # Note: Tesco/Sainsbury/Asda petrol stations now filtered above
     if any(k in m for k in ["tesco", "sainsbury", "asda", "morrisons", "waitrose",
                               "aldi", "lidl", "marks & spencer", "m&s food", "co-op", "coop",
                               "co op", "booths", "iceland food", "budgens", "costco",
@@ -20308,12 +20311,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             try:
                 _rcpt_prompt = (
                     "CRITICAL: Extract EVERY field from this UK shopping receipt or fuel pump receipt.\n\n"
-                    "FUEL PUMP RECEIPTS: If you see 'filling station', 'fuel station', 'petrol station', or 'pump' keywords:\n"
-                    "  • Extract the BRAND name (Tesco, Shell, BP, Sainsburys, Asda, Moto, etc) — NOT pump numbers\n"
-                    "  • Pump IDs are typically 5-6 digit numbers — IGNORE these\n"
+                    "FUEL PUMP RECEIPTS: If you see 'filling station', 'fuel station', 'petrol station', 'pump', 'litres', 'L', 'ppl', or 'per litre' keywords:\n"
+                    "  • Extract FULL LOCATION: 'Tesco Petrol', 'Shell', 'BP', 'Sainsburys Fuel', 'Asda Petrol', 'Moto', etc\n"
+                    "  • CRITICAL: Include 'Petrol', 'Fuel' or brand name (e.g., 'Tesco Petrol' NOT 'Tesco')\n"
+                    "  • Pump IDs are typically 5-6 digit numbers — IGNORE these, only extract brand\n"
                     "  • Look for store/brand name at top or bottom of receipt\n\n"
                     "OUTPUT FORMAT (ONE FIELD PER LINE):\n"
-                    "MERCHANT: [store name or fuel station brand (e.g. Tesco, Shell, BP, Sainsburys) — NEVER pump/transaction numbers]\n"
+                    "MERCHANT: [store name or fuel station (e.g. 'Tesco Petrol', 'Shell', 'BP', 'Sainsburys Fuel', 'Asda Petrol') — NEVER pump/transaction numbers]\n"
                     "DATE: [look for: date/time line, printed near top/middle/bottom. Convert ANY format to YYYY-MM-DD. If unsure, leave blank]\n"
                     "TOTAL: [BOTTOM-most total line showing customer paid. Look for: 'Total', 'Payable', 'Amount Due', 'Paid', 'Cash', '£', etc. Numbers only, 1-4 digits + decimal, e.g. 34.72 or 102.50]\n"
                     "ITEM: [name] | [qty if shown] | [price]\n"
