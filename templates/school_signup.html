@@ -309,14 +309,17 @@
 
       <div class="field">
         <label>School Name *</label>
-        <input type="text" id="schoolName" placeholder="e.g. Stanns Heath Junior School">
-        <div class="hint">Full school name</div>
+        <div style="position: relative;">
+          <input type="text" id="schoolName" placeholder="e.g. Stanns Heath Junior" autocomplete="off" oninput="searchSchools(this.value)">
+          <div id="schoolDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-200); border-top: none; border-radius: 0 0 10px 10px; max-height: 200px; overflow-y: auto; display: none; z-index: 10;"></div>
+        </div>
+        <div class="hint">Start typing to search UK schools</div>
       </div>
 
       <div class="field">
         <label>School Address</label>
-        <input type="text" id="schoolAddress" placeholder="e.g. Virginia Water, Surrey">
-        <div class="hint">Postcode or town (for transit lookups)</div>
+        <input type="text" id="schoolAddress" placeholder="Auto-populated when you select a school" readonly style="background: var(--gray-100); cursor: not-allowed;">
+        <div class="hint">Auto-filled from school database</div>
       </div>
 
       <div class="field">
@@ -372,6 +375,53 @@
 </div>
 
 <script>
+  // School autocomplete
+  async function searchSchools(query) {
+    const dropdown = document.getElementById('schoolDropdown');
+    if (!query || query.length < 2) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
+    try {
+      const r = await fetch(`/api/school/search?q=${encodeURIComponent(query)}`);
+      const d = await r.json();
+      const schools = d.schools || [];
+
+      if (schools.length === 0) {
+        dropdown.innerHTML = '<div style="padding: 10px; color: var(--gray-400); font-size: 12px;">No schools found</div>';
+        dropdown.style.display = 'block';
+        return;
+      }
+
+      dropdown.innerHTML = schools.map(s => `
+        <div onclick="selectSchool('${(s.name || '').replace(/'/g, "\\'")}', '${(s.address || '').replace(/'/g, "\\'")}')"
+             style="padding: 12px 14px; border-bottom: 1px solid var(--gray-100); cursor: pointer; font-size: 14px; transition: background .15s;">
+          <div style="font-weight: 600; color: var(--primary)">${s.name}</div>
+          <div style="font-size: 12px; color: var(--gray-600); margin-top: 2px">${s.town || s.postcode || ''}</div>
+        </div>
+      `).join('');
+      dropdown.style.display = 'block';
+    } catch(e) {
+      console.error('School search error:', e);
+    }
+  }
+
+  function selectSchool(name, address) {
+    document.getElementById('schoolName').value = name;
+    document.getElementById('schoolAddress').value = address;
+    document.getElementById('schoolDropdown').style.display = 'none';
+  }
+
+  // Hide dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    const input = document.getElementById('schoolName');
+    const dropdown = document.getElementById('schoolDropdown');
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+
   function nextStep(step) {
     // Validate step 2 before showing step 3
     if (step === 3) {
