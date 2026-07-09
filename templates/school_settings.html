@@ -280,7 +280,7 @@
     <p>Track school emails for Riaan & Inaaya. Set up Gmail scanning to get event alerts on WhatsApp.</p>
   </div>
 
-  <button class="btn-add-school" onclick="showAddSchoolModal()">+ Add a School</button>
+  <button class="btn-add-school" onclick="redirectToSignup()">+ Add a School</button>
 
   <div class="schools-grid" id="schoolsGrid">
     <!-- Schools loaded here -->
@@ -289,7 +289,7 @@
   <div class="empty-state" id="emptyState" style="display: none;">
     <div class="empty-state-icon">📍</div>
     <p>No schools added yet</p>
-    <button class="btn-add-school" onclick="showAddSchoolModal()">Add First School</button>
+    <button class="btn-add-school" onclick="redirectToSignup()">Add First School</button>
   </div>
 
   <!-- Week ahead section -->
@@ -373,6 +373,16 @@
 
 <script>
   let schools = [];
+
+  function redirectToSignup() {
+    const params = new URLSearchParams(window.location.search);
+    let wa = params.get('wa') || localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
+    if (wa) {
+      window.location.href = `/school/signup?wa=${encodeURIComponent(wa)}`;
+    } else {
+      window.location.href = '/school/signup';
+    }
+  }
 
   async function loadSchools() {
     try {
