@@ -28812,6 +28812,36 @@ def api_school_delete():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/receipts/cleanup", methods=["POST"])
+def api_receipts_cleanup():
+    """Admin: Delete bad receipts (numeric merchants, etc)."""
+    token = request.args.get("token", "").strip()
+    if token != os.environ.get("ADMIN_TOKEN", "cleanup-2026"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        sb = lib._sb()
+        # Delete receipts with numeric-only merchants
+        receipts = sb.table("receipts").select("id,merchant").execute().data or []
+        deleted = []
+        for r in receipts:
+            if r.get("merchant", "").isdigit():
+                deleted.append(r["id"])
+                sb.table("receipts").delete().eq("id", r["id"]).execute()
+
+        # Also delete from wa_saves
+        saves = sb.table("wa_saves").select("id,title").execute().data or []
+        for s in saves:
+            title = s.get("title", "").replace("🧾", "").strip()
+            if title.isdigit():
+                deleted.append(s["id"])
+                sb.table("wa_saves").delete().eq("id", s["id"]).execute()
+
+        return jsonify({"deleted": deleted, "count": len(deleted)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/user-token")
 def api_user_token():
     """Exchange a phone number for a stable per-user HMAC token.
