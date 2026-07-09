@@ -16079,6 +16079,60 @@ def api_admin_fix_receipt_category():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/receipt/recategorize", methods=["POST"])
+def api_receipt_recategorize():
+    """User endpoint: Change category of a receipt.
+    POST body: {"id": "uuid", "new_category": "Fuel"}
+    Or identify by: {"merchant": "Tesco Petrol", "amount": 60.11, "new_category": "Fuel"}
+    """
+    try:
+        data = request.get_json() or {}
+        phone = _getPhoneFromRequest()
+        if not phone:
+            return jsonify({"error": "Not authenticated"}), 401
+
+        # Either find by ID or by merchant+amount
+        receipt_id = data.get("id", "").strip()
+        merchant = (data.get("merchant") or "").strip()
+        amount = data.get("amount")
+        new_category = (data.get("new_category") or "").strip()
+
+        if not new_category:
+            return jsonify({"error": "new_category required"}), 400
+
+        # Find receipt
+        found = None
+        if receipt_id:
+            # Look up by ID
+            rows = lib._sb().table("wa_saves").select("id,title,category,from_number").eq("id", receipt_id).execute().data or []
+            if rows and rows[0].get("from_number") == phone:
+                found = rows[0]
+        elif merchant and amount is not None:
+            # Look up by merchant + amount
+            rows = lib._sb().table("wa_saves").select("id,title,category,from_number,summary").ilike("title", f"%{merchant}%").eq("from_number", phone).execute().data or []
+            for r in rows:
+                summary = r.get("summary", "")
+                if str(amount) in summary or f"£{amount}" in summary:
+                    found = r
+                    break
+
+        if not found:
+            return jsonify({"error": "Receipt not found"}), 404
+
+        # Update category
+        lib._sb().table("wa_saves").update({"category": new_category}).eq("id", found["id"]).execute()
+        return jsonify({
+            "ok": True,
+            "id": found["id"],
+            "old_category": found.get("category"),
+            "new_category": new_category,
+            "merchant": merchant or found.get("title", "")
+        })
+    except Exception as e:
+        print(f"[receipt-recategorize] {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/background/refresh-ask-miru", methods=["POST"])
 def api_background_refresh_ask_miru():
     """Background task: rebuild Ask Miru Intelligence (context) for all active users.

@@ -19846,9 +19846,23 @@ let _savesAll = [];
                       itemsHtml += '</div>';
                     }
                   }
+                  var catDropdown = '<select id="cat_' + d.id + '" onchange="_updateReceiptCategory(\'' + d.id + '\', this.value, \'' + d.merchant.replace(/'/g, "\\'") + '\', ' + d.total + ')" style="font-size:11px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer">'
+                    + '<option value="">Category</option>'
+                    + '<option value="Groceries" ' + (d.category === 'Groceries' ? 'selected' : '') + '>Groceries</option>'
+                    + '<option value="Fuel" ' + (d.category === 'Fuel' ? 'selected' : '') + '>Fuel</option>'
+                    + '<option value="Dining" ' + (d.category === 'Dining' ? 'selected' : '') + '>Dining</option>'
+                    + '<option value="Fast Food" ' + (d.category === 'Fast Food' ? 'selected' : '') + '>Fast Food</option>'
+                    + '<option value="Coffee & Lunch" ' + (d.category === 'Coffee & Lunch' ? 'selected' : '') + '>Coffee & Lunch</option>'
+                    + '<option value="Takeaway" ' + (d.category === 'Takeaway' ? 'selected' : '') + '>Takeaway</option>'
+                    + '<option value="Transport" ' + (d.category === 'Transport' ? 'selected' : '') + '>Transport</option>'
+                    + '<option value="Clothes" ' + (d.category === 'Clothes' ? 'selected' : '') + '>Clothes</option>'
+                    + '<option value="Accessories" ' + (d.category === 'Accessories' ? 'selected' : '') + '>Accessories</option>'
+                    + '<option value="Other" ' + (d.category === 'Other' ? 'selected' : '') + '>Other</option>'
+                    + '</select>';
                   el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
                     + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Last shopped at <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + d.merchant + '</strong></div>'
                     + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div>'
+                    + '<div style="margin-top:4px">' + catDropdown + '</div>'
                     + itemsHtml
                     + '</div>'
                     + '<div style="text-align:right;font-size:13px;font-weight:700;color:var(--accent)">£' + parseFloat(d.total).toFixed(2) + '</div>'
@@ -19860,6 +19874,30 @@ let _savesAll = [];
           .catch(err => { console.log('[receipt-fetch] Error:', err); });
       }
     }
+
+    // Receipt category update function
+    window._updateReceiptCategory = function(id, newCategory, merchant, amount) {
+      if (!newCategory) return;
+      var token = localStorage.getItem('_miruToken');
+      fetch('/api/receipt/recategorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: id,
+          new_category: newCategory
+        })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          console.log('[receipt] Updated:', merchant, '→', newCategory);
+        } else {
+          alert('Error: ' + (data.error || 'Failed to update'));
+          document.getElementById('cat_' + id).value = data.old_category || '';
+        }
+      }).catch(e => {
+        console.error('[receipt-update]', e);
+        alert('Error updating category');
+      });
+    };
 
     // My Commutes card — show active commutes from traffic data
     var traffic = ctx && ctx.traffic;
