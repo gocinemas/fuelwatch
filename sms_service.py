@@ -20307,9 +20307,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if img_type == "receipt":
             try:
                 _rcpt_prompt = (
-                    "CRITICAL: Extract EVERY field from this UK shopping receipt.\n\n"
+                    "CRITICAL: Extract EVERY field from this UK shopping receipt or fuel pump receipt.\n\n"
                     "OUTPUT FORMAT (ONE FIELD PER LINE):\n"
-                    "MERCHANT: [store name — MUST find this]\n"
+                    "MERCHANT: [store name or fuel station name (e.g. Shell, BP, Tesco, Sainsburys) — NOT pump/transaction numbers]\n"
                     "DATE: [look for: date/time line, printed near top/middle/bottom. Convert ANY format to YYYY-MM-DD. If unsure, leave blank]\n"
                     "TOTAL: [BOTTOM-most total line showing customer paid. Look for: 'Total', 'Payable', 'Amount Due', 'Paid', 'Cash', '£', etc. Numbers only, 1-4 digits + decimal, e.g. 34.72 or 102.50]\n"
                     "ITEM: [name] | [qty if shown] | [price]\n"
@@ -20410,6 +20410,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     if not merchant:
                         is_valid = False
                         issues.append("no merchant")
+                    elif merchant.isdigit():
+                        # Reject numeric-only merchants (pump IDs, transaction IDs, etc)
+                        is_valid = False
+                        issues.append(f"merchant is numeric only ({merchant})")
 
                     if total and (total <= 0 or total > 10000):
                         is_valid = False
