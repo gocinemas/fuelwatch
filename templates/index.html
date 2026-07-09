@@ -22756,6 +22756,9 @@ let _savesAll = [];
 
     const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:7px 11px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626" title="Delete">🗑</button>`;
 
+    // Category chip label + color
+    const _cat = _saveCat(s);
+
     // Category dropdown for receipts
     const categoryDropdown = _cat === "receipt"
       ? `<select id="cat_clipping_${s.id}" onchange="_updateReceiptCategory('${s.id}', this.value, '${(s.title||'').replace(/'/g, "\\'")}', 0)" style="font-size:11px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:6px;background:white;cursor:pointer;flex:1">
@@ -22772,9 +22775,6 @@ let _savesAll = [];
           <option value="Other" ${s.category === 'Other' ? 'selected' : ''}>Other</option>
         </select>`
       : "";
-
-    // Category chip label + color
-    const _cat = _saveCat(s);
     const _catMeta = {
       dining:  {label:"Dining",    color:"#c2410c", bg:"#fff7ed"},
       place:   {label:"Place",     color:"#1d4ed8", bg:"#eff6ff"},
