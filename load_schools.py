@@ -30,9 +30,10 @@ import sys
 from datetime import datetime
 from supabase import create_client, Client
 
-# Initialize Supabase
+# Initialize Supabase — use service role key to bypass RLS
 url = os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co")
-key = os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+# Try service role key first (for admin operations), fall back to public
+key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
 
 sb: Client = create_client(url, key)
 

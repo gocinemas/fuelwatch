@@ -27604,8 +27604,25 @@ def api_school_search():
                 seen.add(name)
                 schools.append({"name": name, "address": r.get("address", "").strip()})
 
-        # Add fuzzy-matched schools from UK database
-        if _UK_SCHOOLS_CACHE:
+        # Add schools from Supabase (freshly loaded GIAS data)
+        db_schools = sb.table("schools").select("name,address,town,postcode") \
+            .ilike("name", f"%{query}%") \
+            .order("name", desc=False) \
+            .limit(20).execute().data or []
+
+        for school in db_schools:
+            name = school.get("name", "").strip()
+            if name and name not in seen and len(schools) < 10:
+                seen.add(name)
+                schools.append({
+                    "name": name,
+                    "address": school.get("address", "").strip(),
+                    "town": school.get("town", ""),
+                    "postcode": school.get("postcode", "")
+                })
+
+        # Fallback: fuzzy match from memory cache if needed
+        if len(schools) < 5 and _UK_SCHOOLS_CACHE:
             fuzzy_matches = _fuzzy_match_schools(query, _UK_SCHOOLS_CACHE)
             for school in fuzzy_matches:
                 if school["name"] not in seen and len(schools) < 10:
