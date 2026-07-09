@@ -27485,11 +27485,13 @@ def school_auth_google():
         # Create school profile (will be updated with refresh_token on callback)
         import json
         try:
+            # from_number will be populated during OAuth callback when user connects
             result = lib._sb().table("school_profiles").insert({
-                "school_name": name,
-                "child_name": child,
-                "address": address,
-                "sender_emails": json.dumps([email]),  # JSON encode the emails
+                "from_number":    "",  # Will be set during OAuth
+                "school_name":    name,
+                "child_name":     child,
+                "address":        address,
+                "sender_emails":  json.dumps([email]),  # JSON encode the emails
                 "gmail_token_error": False,
             }).execute()
 
@@ -27499,6 +27501,8 @@ def school_auth_google():
                 return redirect("/?screen=school&oauth_error=create_failed")
         except Exception as profile_err:
             print(f"[school auth] profile creation failed: {profile_err}")
+            import traceback
+            traceback.print_exc()
             return redirect("/?screen=school&oauth_error=create_failed")
 
         # Redirect to Google OAuth with profile_id as state
