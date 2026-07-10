@@ -19797,12 +19797,20 @@ let _savesAll = [];
         fetch("/api/home/last-receipt" + (_token ? "?token=" + encodeURIComponent(_token) : ""))
           .then(r => r.json())
           .then(d => {
+            console.log('[receipt] Full API response:', d);
             if (d.merchant && d.total) {
               var el = document.getElementById("brief-spend-last-receipt");
               if (el) {
                 var dateStr = d.shop_date || '';
                 var formattedDate = '';
-                console.log('[receipt] Raw API date:', dateStr);
+                var merchant = String(d.merchant || 'Unknown').trim();
+
+                // Safeguard: if merchant looks like UUID, it's probably an error
+                if (merchant.match(/^[a-f0-9\-]{36}$/i)) {
+                  console.warn('[receipt] Merchant appears to be UUID, using fallback');
+                  merchant = 'Receipt';
+                }
+                console.log('[receipt] Merchant:', merchant, '| Raw API date:', dateStr);
 
                 if (dateStr) {
                   // FORCE FIX: Detect MM/DD/YY and swap to DD/MM/YY
@@ -19875,7 +19883,7 @@ let _savesAll = [];
                     + '<option value="Other" ' + (d.category === 'Other' ? 'selected' : '') + '>Other</option>'
                     + '</select>';
                   el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-                    + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Last shopped at <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + d.merchant + '</strong></div>'
+                    + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Last shopped at <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + merchant + '</strong></div>'
                     + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div>'
                     + '<div style="margin-top:4px">' + catDropdown + '</div>'
                     + itemsHtml

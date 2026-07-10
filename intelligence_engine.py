@@ -237,7 +237,7 @@ Return ONLY valid JSON. No markdown, no text."""
         # Aggregate all data
         try:
             # This week's receipts (Monday-Sunday only)
-            receipts = sb.table("receipts").select("total,merchant,shop_date,restaurant_type") \
+            receipts = sb.table("receipts").select("total,merchant,shop_date,restaurant_type,category") \
                 .eq("phone", phone) \
                 .gte("shop_date", week_start.isoformat()) \
                 .lte("shop_date", week_end.isoformat()) \
@@ -245,12 +245,16 @@ Return ONLY valid JSON. No markdown, no text."""
 
             spend_total = sum(float(r.get("total", 0)) for r in receipts)
 
-            # Category breakdown
+            # Category breakdown - use manually-set category if available
             spend_by_category = {}
             for r in receipts:
-                merchant = r.get("merchant", "Unknown")
                 from sms_service import _receipt_category
-                cat = _receipt_category(merchant)
+                # Check manually-set category FIRST, then fall back to merchant-based categorization
+                if r.get("category") and r.get("category") != "Other":
+                    cat = r.get("category")
+                else:
+                    merchant = r.get("merchant", "Unknown")
+                    cat = _receipt_category(merchant)
                 if cat not in spend_by_category:
                     spend_by_category[cat] = 0
                 spend_by_category[cat] += float(r.get("total", 0))
@@ -273,16 +277,22 @@ Return ONLY valid JSON. No markdown, no text."""
             last_week_spend = sum(float(r.get("total", 0)) for r in last_week_receipts)
 
             # Fuel data - look at ALL receipts (not just this week) for last fill
-            all_receipts = sb.table("receipts").select("total,merchant,shop_date") \
+            all_receipts = sb.table("receipts").select("total,merchant,shop_date,category") \
                 .eq("phone", phone) \
                 .order("shop_date", desc=True).limit(100).execute().data or []
 
-            fuel_receipts = [r for r in receipts if _receipt_category(r.get("merchant", "")) == "Fuel"]
+            # Check manually-set category FIRST, then fall back to merchant-based categorization
+            def _get_effective_category(r):
+                if r.get("category") and r.get("category") != "Other":
+                    return r.get("category")
+                return _receipt_category(r.get("merchant", ""))
+
+            fuel_receipts = [r for r in receipts if _get_effective_category(r) == "Fuel"]
             last_fuel = fuel_receipts[0] if fuel_receipts else None
 
             # If no fuel this week, check last month
             if not last_fuel:
-                all_fuel = [r for r in all_receipts if _receipt_category(r.get("merchant", "")) == "Fuel"]
+                all_fuel = [r for r in all_receipts if _get_effective_category(r) == "Fuel"]
                 last_fuel = all_fuel[0] if all_fuel else None
 
             # Get current fuel price (try fuel_prices table, then default to 150p as reference)
