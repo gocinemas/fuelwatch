@@ -28265,7 +28265,7 @@ def api_home_week_full():
 
         # Spend this week - ALL receipts (PDF uploads + manual camera scans)
         # 1. PDF receipts table
-        spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
+        spend_rows = sb.table("receipts").select("total,merchant,shop_date,category") \
             .eq("phone", phone) \
             .gte("shop_date", week_start.isoformat()) \
             .lte("shop_date", week_end.isoformat()).execute().data or []
@@ -28307,7 +28307,11 @@ def api_home_week_full():
         merchants_by_cat = {}  # Track merchant details per category
         for r in spend_rows:
             merchant = r.get("merchant", "Unknown")
-            cat = _receipt_category(merchant)
+            # Use manually-set category if available, otherwise fall back to merchant-based categorization
+            if r.get("category") and r.get("category") != "Other":
+                cat = r.get("category")
+            else:
+                cat = _receipt_category(merchant)
             amount = float(r.get("total", 0) or 0)
             if cat not in this_week["spend_by_category"]:
                 this_week["spend_by_category"][cat] = {"total": 0, "count": 0, "merchants": []}
@@ -28324,9 +28328,13 @@ def api_home_week_full():
             merchants = sorted(merchants_by_cat.get(cat, {}).items(), key=lambda x: x[1], reverse=True)
             this_week["spend_by_category"][cat]["merchants"] = [{"name": m[0], "amount": round(m[1], 2)} for m in merchants]
 
-        # Cafe/restaurant visits (based on merchant categorization)
+        # Cafe/restaurant visits (based on merchant categorization, respecting manual categories)
         food_categories = ["Coffee & Lunch", "Dining", "Takeaway", "Fast Food"]
-        cafe_rows = [r for r in spend_rows if _receipt_category(r.get("merchant", "")).strip() in food_categories]
+        def _get_category_for_row(r):
+            if r.get("category") and r.get("category") != "Other":
+                return r.get("category")
+            return _receipt_category(r.get("merchant", ""))
+        cafe_rows = [r for r in spend_rows if _get_category_for_row(r).strip() in food_categories]
         this_week["cafe_visits"] = len(cafe_rows)
 
         # Top cafes
