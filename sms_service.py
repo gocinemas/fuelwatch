@@ -27965,6 +27965,57 @@ def api_school_edit():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/school/share", methods=["POST"])
+def api_school_share():
+    """Share a school with another WhatsApp user (partner's phone number)."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        school_id = data.get("id", "").strip()
+        share_phone = data.get("share_phone", "").strip()
+        action = data.get("action", "add").strip()  # "add" or "remove"
+
+        if not school_id:
+            return jsonify({"error": "School ID required"}), 400
+        if not share_phone:
+            return jsonify({"error": "Phone number required"}), 400
+
+        # Normalize phone to whatsapp: format
+        import re as _re3
+        digits = _re3.sub(r"[^\d+]", "", share_phone)
+        if not digits.startswith("+"):
+            if digits.startswith("07"):
+                digits = "+44" + digits[1:]
+            elif not digits.startswith("44"):
+                digits = "+" + digits
+            else:
+                digits = "+" + digits
+        share_phone_norm = "whatsapp:" + digits
+
+        sb = lib._sb()
+        school = sb.table("school_profiles").select("shared_with").eq("id", school_id).execute().data
+        if not school:
+            return jsonify({"error": "School not found"}), 404
+
+        shared_with = school[0].get("shared_with") or []
+        if action == "add":
+            if share_phone_norm not in shared_with:
+                shared_with.append(share_phone_norm)
+        elif action == "remove":
+            if share_phone_norm in shared_with:
+                shared_with.remove(share_phone_norm)
+
+        sb.table("school_profiles").update({
+            "shared_with": shared_with
+        }).eq("id", school_id).execute()
+
+        print(f"[school-share] {action} {share_phone_norm} for school {school_id}")
+        return jsonify({"ok": True, "shared_with": shared_with}), 200
+
+    except Exception as e:
+        print(f"[school-share] error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/signup", methods=["POST"])
 def school_signup_api():
     import re as _re2

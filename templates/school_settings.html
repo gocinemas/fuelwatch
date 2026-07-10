@@ -365,6 +365,16 @@
       <button type="button" onclick="addEditEmailField()" style="margin-top: 8px; padding: 8px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--primary); font-weight: 500;">+ Add Email</button>
     </div>
 
+    <div style="margin-bottom: 16px; padding: 12px; background: #f3f4f6; border-radius: 10px;">
+      <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">👥 Share with Partner</label>
+      <div style="font-size: 13px; color: #6b7280; margin-bottom: 10px;">Share this school's comms with your partner's WhatsApp number</div>
+      <div style="display: flex; gap: 8px;">
+        <input type="tel" id="editSharePhone" placeholder="Partner's WhatsApp number (e.g. +447700123456)" style="flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit; font-size: 14px;">
+        <button type="button" onclick="shareSchoolWithPartner()" style="padding: 10px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px;">Add</button>
+      </div>
+      <div id="editSharedWithList" style="margin-top: 12px; font-size: 13px;"></div>
+    </div>
+
     <div style="display: flex; gap: 8px;">
       <button class="btn-add-school" onclick="saveEditedSchool()" style="margin-top: 24px; flex: 1;">Save Changes</button>
       <button class="btn-add-school" onclick="closeEditModal()" style="margin-top: 24px; flex: 1; background: #9ca3af;">Cancel</button>
@@ -856,6 +866,85 @@
 
   function removeEditEmailField(btn) {
     btn.parentElement.remove();
+  }
+
+  async function shareSchoolWithPartner() {
+    const partnerPhone = document.getElementById('editSharePhone').value.trim();
+    if (!partnerPhone) {
+      alert('Please enter your partner\'s WhatsApp number');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/school/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentEditSchoolId,
+          share_phone: partnerPhone,
+          action: 'add'
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('editSharePhone').value = '';
+        renderSharedWithList();
+        alert('✓ School shared! Your partner can now access it on their phone.');
+      } else {
+        alert('Error: ' + (data.error || 'Failed to share'));
+      }
+    } catch (e) {
+      console.error('Share error:', e);
+      alert('Error sharing school');
+    }
+  }
+
+  function renderSharedWithList() {
+    const schools_array = schools || [];
+    const school = schools_array.find(s => s.id === currentEditSchoolId);
+    if (!school) return;
+
+    const shared_with = school.shared_with || [];
+    const listEl = document.getElementById('editSharedWithList');
+
+    if (shared_with.length === 0) {
+      listEl.innerHTML = '<div style="color: #9ca3af; font-style: italic;">Not shared yet</div>';
+    } else {
+      listEl.innerHTML = '<div style="font-weight: 600; margin-bottom: 8px;">Shared with:</div>' +
+        shared_with.map(phone => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: white; border-radius: 6px; margin-bottom: 6px;">
+            <span style="color: #4b5563;">${phone}</span>
+            <button type="button" onclick="removeSchoolShare('${currentEditSchoolId}', '${phone}')" style="padding: 4px 8px; background: #fee2e2; color: #991b1b; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
+          </div>
+        `).join('');
+    }
+  }
+
+  async function removeSchoolShare(schoolId, phone) {
+    if (!confirm(`Remove access for ${phone}?`)) return;
+
+    try {
+      const res = await fetch('/api/school/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: schoolId,
+          share_phone: phone,
+          action: 'remove'
+        })
+      });
+
+      if (res.ok) {
+        renderSharedWithList();
+        alert('✓ Access removed');
+      } else {
+        alert('Error removing access');
+      }
+    } catch (e) {
+      console.error('Remove share error:', e);
+      alert('Error removing access');
+    }
   }
 
   // Load on page load

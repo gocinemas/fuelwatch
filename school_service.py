@@ -19,12 +19,14 @@ CREATE TABLE IF NOT EXISTS school_profiles (
   phone           text NOT NULL DEFAULT '',
   class_wa_group  text NOT NULL DEFAULT '',
   sender_emails   jsonb NOT NULL DEFAULT '[]',
+  shared_with     jsonb NOT NULL DEFAULT '[]',
   active          boolean NOT NULL DEFAULT true,
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS class_wa_group text NOT NULL DEFAULT '';
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS gmail_refresh_token text;
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS gmail_token_error boolean NOT NULL DEFAULT false;
+-- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS shared_with jsonb NOT NULL DEFAULT '[]';
 CREATE INDEX ON school_profiles(from_number);
 
 CREATE TABLE IF NOT EXISTS school_events (
@@ -509,10 +511,29 @@ JSON array:"""
 # ── Supabase helpers ───────────────────────────────────────────────────────────
 
 def _get_profiles(from_number: str = None) -> list[dict]:
-    q = lib._sb().table("school_profiles").select("*").eq("active", True)
-    if from_number:
-        q = q.eq("from_number", from_number)
-    return q.execute().data or []
+    """Get school profiles owned by or shared with the user."""
+    if not from_number:
+        q = lib._sb().table("school_profiles").select("*").eq("active", True)
+        return q.execute().data or []
+
+    # Normalize phone number (remove whatsapp: prefix if present)
+    phone = from_number.replace("whatsapp:", "").strip()
+    normalized_wa = f"whatsapp:{phone}" if not from_number.startswith("whatsapp:") else from_number
+
+    try:
+        # Get schools owned by user OR shared with user
+        all_schools = lib._sb().table("school_profiles").select("*").eq("active", True).execute().data or []
+        owned = [s for s in all_schools if s.get("from_number") == normalized_wa or s.get("from_number") == phone]
+        shared = [s for s in all_schools if phone in (s.get("shared_with") or []) or normalized_wa in (s.get("shared_with") or [])]
+
+        # Merge, dedup by id
+        seen = {s["id"] for s in owned}
+        result = owned + [s for s in shared if s["id"] not in seen]
+        return result
+    except:
+        # Fallback to simple query
+        q = lib._sb().table("school_profiles").select("*").eq("active", True).eq("from_number", normalized_wa)
+        return q.execute().data or []
 
 
 def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_date: str = "") -> list[dict]:
