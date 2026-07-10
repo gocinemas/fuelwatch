@@ -598,6 +598,8 @@
       const params = new URLSearchParams(window.location.search);
       let wa = params.get('wa') || localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
 
+      console.log('[deleteSchool] Attempting to delete:', {school_name: school.school_name, wa: wa});
+
       const res = await fetch('/api/school/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -607,15 +609,19 @@
         })
       });
 
+      console.log('[deleteSchool] Response status:', res.status);
       const data = await res.json();
+      console.log('[deleteSchool] Response data:', data);
+
       if (res.ok) {
         alert('✓ School removed');
         loadSchools(); // Reload from API
       } else {
+        console.error('[deleteSchool] Error response:', data);
         alert('Error: ' + (data.error || 'Failed to remove'));
       }
     } catch (e) {
-      console.error('Delete error:', e);
+      console.error('[deleteSchool] Exception:', e);
       alert('Error removing school: ' + e.message);
     }
   }
