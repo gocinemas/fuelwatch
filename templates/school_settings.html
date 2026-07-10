@@ -677,8 +677,30 @@
   let currentEditSchoolId = null;
 
   async function editSchool(schoolId) {
-    const school = schools.find(s => s.id === schoolId);
-    if (!school) return;
+    console.log('[editSchool] Opening edit modal for:', schoolId);
+    let school = schools.find(s => s.id === schoolId);
+
+    // If not found locally, fetch from API
+    if (!school) {
+      console.log('[editSchool] School not in array, fetching from API');
+      try {
+        const params = new URLSearchParams(window.location.search);
+        let wa = params.get('wa') || localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
+        const res = await fetch(`/api/school/settings?wa=${encodeURIComponent(wa)}`);
+        const data = await res.json();
+        const profiles = data.profiles || [];
+        school = profiles.find(s => s.id === schoolId);
+        if (!school) {
+          console.error('[editSchool] School not found');
+          alert('School not found. Please reload and try again.');
+          return;
+        }
+      } catch (e) {
+        console.error('[editSchool] Failed to fetch school:', e);
+        alert('Error loading school data');
+        return;
+      }
+    }
 
     currentEditSchoolId = schoolId;
     document.getElementById('editChildName').value = school.child_name || '';
