@@ -525,14 +525,26 @@ JSON array:"""
 
 def _groq_batch_parse_events(batch_items: list[tuple]) -> list[list[dict]]:
     """
-    Parse multiple emails in one Groq call to reduce token usage by ~70%.
+    Parse multiple emails using Claude (Anthropic) instead of Groq.
+    Groq TPD limit exhausted — using Claude as primary parser.
     batch_items: list of (msg_id, subject, sent_date, profile) tuples
     Returns: list of event lists, one per email
-
-    TEMPORARILY DISABLED: Groq TPD limit exhausted. Return empty events to stop token burn.
     """
-    print(f"[school] TEMP: Skipping Groq parse for {len(batch_items)} emails (TPD limit exceeded)")
-    return [[] for _ in batch_items]
+    if not batch_items:
+        return []
+
+    # Use Claude to parse all emails at once
+    results = []
+    for msg_id, subject, sent_date, profile in batch_items:
+        try:
+            events = _claude_parse_events(subject, "", profile.get("school_name", ""), profile.get("year_group", ""), sent_date=sent_date)
+            results.append(events if events else [])
+            print(f"[school] Claude parsed {msg_id}: {len(events)} events")
+        except Exception as e:
+            print(f"[school] Claude parse error for {msg_id}: {e}")
+            results.append([])
+
+    return results
 
 
 # ── Supabase helpers ───────────────────────────────────────────────────────────
@@ -1032,11 +1044,11 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             if not batch:
                 continue
 
-            # For single email, use normal parse; for batch, use batch parse
+            # For single email, use Claude (Groq exhausted)
             if len(batch) == 1:
                 msg_id, subject, body, sent_date, matched_profile = batch[0]
-                events = _groq_parse_events(subject, body, matched_profile["school_name"], matched_profile.get("year_group", ""), sent_date=sent_date)
-                print(f"[school] {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
+                events = _claude_parse_events(subject, body, matched_profile["school_name"], matched_profile.get("year_group", ""), sent_date=sent_date)
+                print(f"[school] Claude: {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
                 if events:
                     inserted = _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
                     total_events += len(events)
