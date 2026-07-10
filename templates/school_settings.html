@@ -764,6 +764,14 @@
     container.innerHTML = '';
     // Ensure emails is always an array
     let emails = school.sender_emails || [];
+    // Parse if it's a JSON string
+    if (typeof emails === 'string') {
+      try {
+        emails = JSON.parse(emails);
+      } catch {
+        emails = [];
+      }
+    }
     if (!Array.isArray(emails)) {
       emails = emails ? [emails] : [];
     }
