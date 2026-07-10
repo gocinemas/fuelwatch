@@ -28997,7 +28997,7 @@ def api_school_list():
 
 @app.route("/api/school/delete", methods=["POST"])
 def api_school_delete():
-    """Delete a school for a user."""
+    """Delete a school for a user and all associated events."""
     data = request.get_json() or {}
     wa = data.get("wa", "").strip()
     school_name = data.get("school_name", "").strip()
@@ -29008,11 +29008,28 @@ def api_school_delete():
     from_number = _v2_resolve(wa)
     try:
         sb = lib._sb()
+
+        # Find the school profile to get its ID
+        school = sb.table("school_profiles").select("id") \
+            .eq("from_number", from_number) \
+            .eq("school_name", school_name) \
+            .execute().data or []
+
+        if school:
+            school_id = school[0].get("id")
+            # Delete all events for this school (explicit, not relying on cascade)
+            sb.table("school_events").delete() \
+                .eq("profile_id", school_id) \
+                .execute()
+            print(f"[school/delete] Deleted events for school {school_id}")
+
+        # Delete the school profile
         sb.table("school_profiles").delete() \
             .eq("from_number", from_number) \
             .eq("school_name", school_name) \
             .execute()
 
+        print(f"[school/delete] Deleted school {school_name} for {from_number}")
         return jsonify({"success": True})
     except Exception as e:
         print(f"[school/delete] Error: {e}")
