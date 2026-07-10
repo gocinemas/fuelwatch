@@ -642,12 +642,15 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
                 "deadline":      ev.get("deadline") or None,
                 "gmail_msg_id":  gmail_msg_id,
             }
-            lib._sb().table("school_events").insert(row).execute()
+            result = lib._sb().table("school_events").insert(row).execute()
             existing_titles.add(title.lower())
             newly_inserted.append({**row, "child_name": profile.get("child_name", ""), "school_name": profile.get("school_name", "")})
         except Exception as e:
-            if "unique" not in str(e).lower():
-                print(f"[school] insert error: {e}")
+            err_str = str(e)
+            if "unique" not in err_str.lower():
+                print(f"[school] insert error for '{title}': {type(e).__name__}: {err_str[:200]}")
+                import traceback
+                traceback.print_exc()
     return newly_inserted
 
 
