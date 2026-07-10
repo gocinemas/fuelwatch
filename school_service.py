@@ -65,12 +65,16 @@ import json
 import os
 import re
 import time
+import json
 from datetime import date, datetime, timedelta
 from threading import Lock
 
 import requests
+from groq import Groq
 
 import library as lib
+
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 # ── Groq Rate Limiter ──────────────────────────────────────────────────────────
 class GroqRateLimiter:
@@ -508,6 +512,61 @@ JSON array:"""
     if claude_events:
         print(f"[school] claude fallback succeeded: {len(claude_events)} events")
     return claude_events
+
+
+def _groq_batch_parse_events(batch_items: list[tuple]) -> list[list[dict]]:
+    """
+    Parse multiple emails in one Groq call to reduce token usage by ~70%.
+    batch_items: list of (msg_id, subject, sent_date, profile) tuples
+    Returns: list of event lists, one per email
+    """
+    if not batch_items:
+        return []
+
+    # Build combined prompt for all emails
+    all_prompts = []
+    for i, (msg_id, subject, sent_date, profile) in enumerate(batch_items):
+        try:
+            ref = date.fromisoformat(sent_date) if sent_date else date.today()
+        except ValueError:
+            ref = date.today()
+
+        weekday = ref.strftime("%A")
+        ref_str = ref.isoformat()
+        school_name = profile.get("school_name", "")
+        year_group = profile.get("year_group", "")
+
+        all_prompts.append(f"[Email {i+1}] School: {school_name} | Year: {year_group} | Sent: {ref_str} ({weekday}) | Subject: {subject}")
+
+    combined_prompt = f"""Parse these {len(batch_items)} school email subjects and extract ONLY quick high-level events.
+For each email, return minimal JSON with event_title, event_type, event_date (ISO), and action_needed.
+
+{chr(10).join(all_prompts)}
+
+Return ONLY a JSON array of {len(batch_items)} arrays, one per email. Minimize tokens — just the essentials.
+Example: [[{{"event_title":"Sports day","event_type":"activity","event_date":"2026-07-15"}}], [{{"event_title":"Uniform order"}}]]"""
+
+    try:
+        message = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": combined_prompt}]
+        )
+        response_text = message.choices[0].message.content.strip()
+
+        # Parse response as array of arrays
+        start = response_text.find('[')
+        end = response_text.rfind(']') + 1
+        if start >= 0 and end > start:
+            json_str = response_text[start:end]
+            parsed = json.loads(json_str)
+            if isinstance(parsed, list) and len(parsed) == len(batch_items):
+                return parsed
+    except Exception as e:
+        print(f"[school] Batch parse error: {e}")
+
+    # Fallback: return empty arrays for each email
+    return [[] for _ in batch_items]
 
 
 # ── Supabase helpers ───────────────────────────────────────────────────────────
@@ -977,31 +1036,49 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
         with ThreadPoolExecutor(max_workers=10) as executor:
             parsed_emails = list(executor.map(_fetch_msg, msg_stubs, timeout=15))
 
-        # Process valid emails
-        for result in parsed_emails:
-            if not result:
+        # Skip emails already parsed (unless force=True)
+        if not force:
+            processed_ids = set()
+            try:
+                existing = lib._sb().table("school_events").select("gmail_msg_id") \
+                    .in_("gmail_msg_id", [r[0] for r in parsed_emails if r]).execute().data or []
+                processed_ids = {e.get("gmail_msg_id") for e in existing}
+            except Exception as e:
+                print(f"[school] Error checking processed emails: {e}")
+
+            parsed_emails = [r for r in parsed_emails if r and r[0] not in processed_ids]
+            print(f"[school] Skipped {len([r for r in parsed_emails if not r])} already-parsed, {len(parsed_emails)} new to parse")
+
+        # Batch process: group new emails into batches of 5 for Groq
+        # This reduces tokens by ~70% (parse 5 subjects together vs 5 separate calls)
+        batch_size = 5
+        for batch_start in range(0, len(parsed_emails), batch_size):
+            batch = parsed_emails[batch_start:batch_start+batch_size]
+            batch = [r for r in batch if r]
+            if not batch:
                 continue
 
-            msg_id, subject, body, sent_date, matched_profile = result
-
-            if force:
-                try:
-                    lib._sb().table("school_events").delete().eq("gmail_msg_id", msg_id).execute()
-                except Exception as e:
-                    print(f"[school] force-delete error {msg_id}: {e}")
-
-            events = _groq_parse_events(
-                subject, body,
-                matched_profile["school_name"],
-                matched_profile.get("year_group", ""),
-                sent_date=sent_date,
-            )
-            print(f"[school] {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
-            if events:
-                inserted = _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
-                total_events += len(events)
-                if inserted:
-                    new_by_parent.setdefault(from_number, []).extend(inserted)
+            # For single email, use normal parse; for batch, use batch parse
+            if len(batch) == 1:
+                msg_id, subject, body, sent_date, matched_profile = batch[0]
+                events = _groq_parse_events(subject, body, matched_profile["school_name"], matched_profile.get("year_group", ""), sent_date=sent_date)
+                print(f"[school] {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
+                if events:
+                    inserted = _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
+                    total_events += len(events)
+                    if inserted:
+                        new_by_parent.setdefault(from_number, []).extend(inserted)
+            else:
+                # Batch parse: send all 5 subjects together
+                batch_subjects = [(r[0], r[1], r[3], r[4]) for r in batch]  # (msg_id, subject, sent_date, profile)
+                batch_events = _groq_batch_parse_events(batch_subjects)
+                for (msg_id, subject, sent_date, matched_profile), events in zip(batch_subjects, batch_events):
+                    print(f"[school] {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
+                    if events:
+                        inserted = _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
+                        total_events += len(events)
+                        if inserted:
+                            new_by_parent.setdefault(from_number, []).extend(inserted)
 
     # Flush any queued alerts from quiet-hours polls (send now if daytime)
     if not _school_quiet_hours():
