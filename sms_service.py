@@ -34307,17 +34307,48 @@ def api_clippings_ask():
         if not query:
             return jsonify({"error": "question required"}), 400
 
-        # Fetch user's clippings
+        # Fetch user's clippings + receipts with items
         sb = lib._sb()
+
+        # Get clippings
         result = sb.table("wa_saves").select("id,title,url,category,created_at,summary,amount") \
             .eq("from_number", from_number) \
             .order("created_at", desc=True) \
             .limit(50) \
             .execute()
-
         clippings = result.data or []
+
+        # Get recent receipts with items (last 30 days)
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+        from datetime import datetime, timedelta
+        thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).date().isoformat()
+
+        receipts_result = sb.table("receipts").select("id,merchant,total,shop_date,items") \
+            .eq("phone", phone_clean) \
+            .gte("shop_date", thirty_days_ago) \
+            .order("shop_date", desc=True) \
+            .limit(50) \
+            .execute()
+        receipts = receipts_result.data or []
+
+        # Enrich clippings with receipt data
+        for r in receipts:
+            try:
+                items = json.loads(r.get("items", "[]")) if isinstance(r.get("items"), str) else r.get("items", [])
+                items_text = ", ".join([i.get("name", "") for i in items if i.get("name")]) if items else ""
+                clippings.append({
+                    "id": r.get("id"),
+                    "title": f"🧾 {r.get('merchant', 'Receipt')} - {r.get('shop_date', '')}",
+                    "category": "receipt",
+                    "created_at": r.get("shop_date", ""),
+                    "summary": f"Total: £{r.get('total', 0):.2f}. Items: {items_text}" if items_text else f"Total: £{r.get('total', 0):.2f}",
+                    "amount": r.get("total", 0)
+                })
+            except:
+                pass
+
         if not clippings:
-            return jsonify({"success": True, "answer": "You haven't saved any clippings yet."})
+            return jsonify({"success": True, "answer": "You haven't saved any clippings or receipts yet."})
 
         # Detect query type: simple keywords or complex question?
         is_complex = (
