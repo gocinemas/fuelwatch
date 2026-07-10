@@ -28045,7 +28045,23 @@ def school_signup_api():
                 digits = "+" + digits
         from_number = "whatsapp:" + digits
 
-        result = lib._sb().table("school_profiles").insert({
+        sb = lib._sb()
+
+        # Check if this school already exists for this user
+        existing = sb.table("school_profiles").select("id") \
+            .eq("from_number", from_number) \
+            .eq("school_name", school) \
+            .eq("active", True) \
+            .execute().data or []
+
+        if existing:
+            # School already exists, just return it instead of creating duplicate
+            profile_id = existing[0].get("id")
+            print(f"[school signup] school {school} already exists for {from_number}, returning existing ID {profile_id}")
+            oauth_url = _school_oauth_url(profile_id)
+            return jsonify({"ok": True, "profile_id": profile_id, "oauth_url": oauth_url, "duplicate": True})
+
+        result = sb.table("school_profiles").insert({
             "from_number":    from_number,
             "child_name":     child,
             "school_name":    school,
