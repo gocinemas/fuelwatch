@@ -149,7 +149,7 @@ Types: activity|reminder|club|dinner|newsletter|info
     import anthropic
     client = anthropic.Anthropic()
     msg = client.messages.create(
-      model="claude-3-5-sonnet-20241022",
+      model="claude-opus-4-1",
       max_tokens=1500,
       messages=[{"role": "user", "content": prompt}]
     )
