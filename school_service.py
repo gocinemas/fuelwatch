@@ -962,7 +962,13 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
         all_senders: list[str] = []
         for p in parent_profiles:
             senders = p.get("sender_emails") or []
-            if senders:
+            # Handle case where sender_emails is stored as JSON string
+            if isinstance(senders, str):
+                try:
+                    senders = json.loads(senders)
+                except:
+                    senders = []
+            if senders and isinstance(senders, list):
                 all_senders.extend(senders)
         all_senders = list(set(all_senders))
 
