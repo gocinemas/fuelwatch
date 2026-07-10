@@ -217,6 +217,50 @@ def _extract_pdf_text(msg_id: str, att_id: str, filename: str, refresh_token: st
         return ""
 
 
+def _extract_url_text(url: str) -> str:
+    """Fetch and extract text from a newsletter URL. Returns up to 3000 chars."""
+    try:
+        from html.parser import HTMLParser
+
+        # Safelist: only fetch from common school domains and trusted newsletter hosts
+        safelist = [
+            'chartersschool.org.uk', 'stannshealth.co.uk', 'newhaw.co.uk',
+            'docs.google.com', 'notion.so', 'mailchimp.com', 'campaignmonitor.com',
+            'getresponse.com', 'constant-contact.com'
+        ]
+        if not any(safe in url.lower() for safe in safelist):
+            print(f"[school] URL {url} not on safelist, skipping")
+            return ""
+
+        r = requests.get(url, timeout=10, allow_redirects=True)
+        r.raise_for_status()
+
+        if r.status_code != 200:
+            return ""
+
+        html = r.text
+
+        # Strip scripts, styles, and HTML tags
+        html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.S | re.I)
+        html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.S | re.I)
+        html = re.sub(r"<(?:br|p|div|tr|li|h[1-6])[^>]*>", "\n", html, flags=re.I)
+        html = re.sub(r"<[^>]+>", "", html)
+
+        # Decode entities
+        for ent, ch in [("&nbsp;", " "), ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
+                        ("&quot;", '"'), ("&#39;", "'")]:
+            html = html.replace(ent, ch)
+
+        text = re.sub(r"\n{3,}", "\n\n", html.strip())
+        text = re.sub(r"[ \t]{2,}", " ", text)
+
+        print(f"[school] fetched URL {url}: {len(text)} chars extracted")
+        return text[:3000]
+    except Exception as e:
+        print(f"[school] URL fetch error {url}: {e}")
+        return ""
+
+
 def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) -> tuple[str, str, str]:
     """Return (subject, body_text, sent_date_iso) from a Gmail message resource.
     Reads text/plain, falls back to stripped HTML, then appends any PDF attachments."""
@@ -299,6 +343,13 @@ def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) 
                 print(f"[school] fetched gdoc {doc_id}: {len(doc_text)} chars")
         except Exception as e:
             print(f"[school] gdoc fetch error {doc_id}: {e}")
+
+    # Follow newsletter URLs — schools often send emails linking to website newsletters
+    newsletter_urls = re.findall(r'https?://[^\s<>"{}|\\^`\[\]]*(?:/\d+)?/newsletter[^\s<>"{}|\\^`\[\]]*', body, re.I)
+    for url in newsletter_urls[:2]:  # cap at 2 URLs per email
+        url_text = _extract_url_text(url)
+        if url_text:
+            body = (body + f"\n\n[Newsletter from {re.sub(r'https?://([^/]+)/.*', r'\\1', url)}]\n{url_text}").strip()
 
     # Append text from PDF attachments (newsletters often arrive as attached PDFs)
     if msg_id:
