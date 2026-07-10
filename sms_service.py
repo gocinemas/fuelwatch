@@ -29042,6 +29042,8 @@ def api_school_delete():
         return jsonify({"error": "wa and school_name required"}), 400
 
     from_number = _v2_resolve(wa)
+    print(f"[school/delete] Attempting to delete '{school_name}' for {from_number}")
+
     try:
         sb = lib._sb()
 
@@ -29051,31 +29053,36 @@ def api_school_delete():
             .eq("school_name", school_name) \
             .execute().data or []
 
+        print(f"[school/delete] Found {len(schools)} instances to delete")
+
         deleted_count = 0
         for school in schools:
             school_id = school.get("id")
             # Delete all events for this school (explicit, not relying on cascade)
-            sb.table("school_events").delete() \
+            event_delete = sb.table("school_events").delete() \
                 .eq("profile_id", school_id) \
                 .execute()
             deleted_count += 1
             print(f"[school/delete] Deleted events for school {school_id}")
 
         # Delete ALL instances of the school profile
-        sb.table("school_profiles").delete() \
+        profile_delete = sb.table("school_profiles").delete() \
             .eq("from_number", from_number) \
             .eq("school_name", school_name) \
             .execute()
 
-        print(f"[school/delete] Deleted {deleted_count} instances of school {school_name} for {from_number}")
+        print(f"[school/delete] ✅ Deleted {deleted_count} instances of school '{school_name}' for {from_number}")
 
         # Clear brief cache so deleted school disappears immediately
         if from_number in _v2_brief_cache:
             del _v2_brief_cache[from_number]
+            print(f"[school/delete] Cleared brief cache for {from_number}")
 
         return jsonify({"success": True, "deleted_count": deleted_count})
     except Exception as e:
-        print(f"[school/delete] Error: {e}")
+        print(f"[school/delete] ❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
