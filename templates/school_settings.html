@@ -815,7 +815,18 @@
   }
 
   // Load on page load
-  loadSchools();
+  (async () => {
+    await loadSchools();
+    // If editing a specific school (from Edit button), open edit modal
+    const params = new URLSearchParams(window.location.search);
+    const schoolId = params.get('id');
+    if (schoolId) {
+      const school = schools.find(s => s.id === schoolId);
+      if (school) {
+        editSchool(schoolId);
+      }
+    }
+  })();
   loadWeekAhead();
 </script>
 
