@@ -509,8 +509,8 @@
       return;
     }
 
-    if (schoolEmail && !schoolEmail.includes('@')) {
-      alert('Please enter a valid email address');
+    if (!schoolEmail || !schoolEmail.includes('@')) {
+      alert('School email is required (e.g., office@school.org.uk)');
       return;
     }
 
