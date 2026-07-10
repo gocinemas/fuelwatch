@@ -946,9 +946,15 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
         # Collect all sender emails across this parent's schools
         all_senders: list[str] = []
         for p in parent_profiles:
-            all_senders.extend(p.get("sender_emails") or [])
+            senders = p.get("sender_emails") or []
+            if senders:
+                all_senders.extend(senders)
         all_senders = list(set(all_senders))
+
+        # CRITICAL: Skip if no senders configured — prevents malformed Gmail query that fetches ALL emails
         if not all_senders:
+            profiles_no_senders = [p["school_name"] for p in parent_profiles if not (p.get("sender_emails") or [])]
+            print(f"[school] ⚠️  Skipping {from_number} — no sender emails configured for: {profiles_no_senders}")
             continue
 
         query = _build_gmail_query(all_senders, days_back=days_back)
