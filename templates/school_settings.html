@@ -331,7 +331,7 @@
     </div>
 
     <div style="display: flex; gap: 8px; margin-top: 24px;">
-      <button class="btn-add-school" onclick="saveSchool()" style="flex: 1;">Save School</button>
+      <button id="saveSchoolBtn" class="btn-add-school" onclick="saveSchool()" style="flex: 1;">Save School</button>
       <button class="btn-add-school" onclick="closeModal()" style="flex: 1; background: #9ca3af;">Cancel</button>
     </div>
   </div>
@@ -509,8 +509,12 @@
     }
 
     _schoolSaving = true;
-    const saveBtn = document.querySelector('[onclick="saveSchool()"]');
-    if (saveBtn) saveBtn.disabled = true;
+    const saveBtn = document.getElementById('saveSchoolBtn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.style.opacity = '0.6';
+      saveBtn.textContent = '⏳ Saving...';
+    }
 
     try {
       // Get phone from URL or localStorage
@@ -548,7 +552,11 @@
       alert('Error saving school: ' + e.message);
     } finally {
       _schoolSaving = false;
-      if (saveBtn) saveBtn.disabled = false;
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.style.opacity = '1';
+        saveBtn.textContent = 'Save School';
+      }
     }
   }
 
