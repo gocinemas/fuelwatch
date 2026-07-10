@@ -631,6 +631,10 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
             ev_date = ev.get("event_date") or None
             if not ev_date and raw_type == "newsletter" and sent_date:
                 ev_date = sent_date
+            action_needed = ev.get("action_needed", "") or ""
+            if not isinstance(action_needed, str):
+                action_needed = ""
+
             row = {
                 "profile_id":    profile["id"],
                 "from_number":   profile["from_number"],
@@ -638,7 +642,7 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
                 "event_type":    raw_type.lower().strip(),
                 "event_date":    ev_date,
                 "description":   desc[:500],
-                "action_needed": ev.get("action_needed", "")[:300],
+                "action_needed": action_needed[:300],
                 "deadline":      ev.get("deadline") or None,
                 "gmail_msg_id":  gmail_msg_id,
             }
