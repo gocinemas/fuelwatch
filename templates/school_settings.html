@@ -378,6 +378,7 @@
     <div style="display: flex; gap: 8px;">
       <button class="btn-add-school" onclick="saveEditedSchool()" style="margin-top: 24px; flex: 1;">Save Changes</button>
       <button class="btn-add-school" onclick="closeEditModal()" style="margin-top: 24px; flex: 1; background: #9ca3af;">Cancel</button>
+      <button class="btn-add-school" onclick="deleteEditingSchool()" style="margin-top: 24px; flex: 1; background: #ef4444;">🗑 Delete</button>
     </div>
   </div>
 </div>
@@ -406,6 +407,8 @@
         wa = localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
       }
 
+      console.log('[loadSchools] Using phone:', wa);
+
       let url = '/api/user/schools';
       if (wa) {
         url += `?wa=${encodeURIComponent(wa)}`;
@@ -414,12 +417,15 @@
         if (token) url += `?token=${encodeURIComponent(token)}`;
       }
 
+      console.log('[loadSchools] Fetching from:', url);
       const res = await fetch(url);
       const data = await res.json();
+      console.log('[loadSchools] Response:', data);
       schools = data.profiles || data.schools || [];
+      console.log('[loadSchools] Loaded schools:', schools.length);
       renderSchools();
     } catch (e) {
-      console.error('Failed to load schools:', e);
+      console.error('[loadSchools] Failed:', e);
     }
   }
 
@@ -521,6 +527,8 @@
       const params = new URLSearchParams(window.location.search);
       let wa = params.get('wa') || localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
 
+      console.log('[saveSchool] Using phone:', wa);
+
       let url = '/api/school/signup';
       const body = {
         child_name: childName,
@@ -530,6 +538,8 @@
       };
       if (wa) body.wa_number = wa;
 
+      console.log('[saveSchool] Request body:', body);
+
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -537,12 +547,14 @@
       });
 
       const data = await res.json();
+      console.log('[saveSchool] Response:', data);
       if (res.ok) {
         document.getElementById('childName').value = '';
         document.getElementById('schoolName').value = '';
         document.getElementById('schoolEmail').value = '';
         closeModal();
         alert('✓ School added! Gmail connection needed next.');
+        console.log('[saveSchool] About to reload schools...');
         loadSchools();
       } else {
         alert('Error: ' + (data.error || 'Failed to save'));
@@ -623,6 +635,18 @@
     } catch (e) {
       console.error('[deleteSchool] Exception:', e);
       alert('Error removing school: ' + e.message);
+    }
+  }
+
+  function deleteEditingSchool() {
+    if (!currentEditSchoolId) {
+      alert('No school selected');
+      return;
+    }
+    const index = schools.findIndex(s => s.id === currentEditSchoolId);
+    if (index !== -1) {
+      closeEditModal();
+      deleteSchool(index);
     }
   }
 
