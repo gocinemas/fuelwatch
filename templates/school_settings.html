@@ -590,10 +590,33 @@
     }
   }
 
-  function deleteSchool(i) {
-    if (confirm(`Remove ${schools[i].school_name}?`)) {
-      schools.splice(i, 1);
-      renderSchools();
+  async function deleteSchool(i) {
+    const school = schools[i];
+    if (!confirm(`Remove ${school.school_name}?\n\nThis cannot be undone.`)) return;
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      let wa = params.get('wa') || localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
+
+      const res = await fetch('/api/school/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wa: wa,
+          school_name: school.school_name
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert('✓ School removed');
+        loadSchools(); // Reload from API
+      } else {
+        alert('Error: ' + (data.error || 'Failed to remove'));
+      }
+    } catch (e) {
+      console.error('Delete error:', e);
+      alert('Error removing school: ' + e.message);
     }
   }
 
