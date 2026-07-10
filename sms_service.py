@@ -28352,7 +28352,7 @@ def api_home_week_full():
 
         # Spend this week - ALL receipts (PDF uploads + manual camera scans)
         # 1. PDF receipts table
-        spend_rows = sb.table("receipts").select("total,merchant,shop_date,category") \
+        spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
             .eq("phone", phone) \
             .gte("shop_date", week_start.isoformat()) \
             .lte("shop_date", week_end.isoformat()).execute().data or []

@@ -237,7 +237,7 @@ Return ONLY valid JSON. No markdown, no text."""
         # Aggregate all data
         try:
             # This week's receipts (Monday-Sunday only)
-            receipts = sb.table("receipts").select("total,merchant,shop_date,restaurant_type,category") \
+            receipts = sb.table("receipts").select("total,merchant,shop_date,restaurant_type") \
                 .eq("phone", phone) \
                 .gte("shop_date", week_start.isoformat()) \
                 .lte("shop_date", week_end.isoformat()) \
