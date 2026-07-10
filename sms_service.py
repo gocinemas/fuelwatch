@@ -8910,7 +8910,7 @@ def api_home_last_receipt():
     try:
         # Get most recent REAL receipt by UPLOAD timestamp (created_at)
         # Skip "Online:" merchants (broken data) — find first real receipt
-        rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items,category").eq("phone", phone) \
+        rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
             .order("created_at", desc=True).limit(20).execute().data or []  # Get 20 to filter through
 
         if not rows:
@@ -11217,7 +11217,7 @@ def _v2_fetch_today_activity(from_number: str) -> list:
     import datetime as _tadt
     try:
         _since = (_tadt.datetime.now() - _tadt.timedelta(hours=8)).strftime("%Y-%m-%dT%H:%M:%S")
-        rows = lib._sb().table("receipts").select("merchant,category,total,shop_date") \
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date") \
             .eq("phone", from_number) \
             .gte("shop_date", _since) \
             .order("shop_date", desc=False).limit(6).execute().data or []
@@ -13339,7 +13339,7 @@ def api_home_brief():
     _response_time_hour = _cur_hour
     import time as _time
     cached = _v2_brief_cache.get(from_number or postcode)
-    cache_hit = (not force_refresh) and cached and time.time() - cached["ts"] < 900
+    cache_hit = (not force_refresh) and cached and _time.time() - cached["ts"] < 900
 
     # Load prefs + loc_profile + active_trip in parallel with a 5s hard cap.
     # postgrest-py has a 120s default — without this, one hung Supabase call
