@@ -74,7 +74,16 @@ from groq import Groq
 
 import library as lib
 
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+# Lazy-initialize groq_client to avoid startup failures
+_groq_client = None
+def _get_groq_client():
+    global _groq_client
+    if _groq_client is None:
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            return None
+        _groq_client = Groq(api_key=api_key)
+    return _groq_client
 
 # ── Groq Rate Limiter ──────────────────────────────────────────────────────────
 class GroqRateLimiter:
@@ -547,7 +556,12 @@ Return ONLY a JSON array of {len(batch_items)} arrays, one per email. Minimize t
 Example: [[{{"event_title":"Sports day","event_type":"activity","event_date":"2026-07-15"}}], [{{"event_title":"Uniform order"}}]]"""
 
     try:
-        message = groq_client.chat.completions.create(
+        client = _get_groq_client()
+        if not client:
+            print(f"[school] Groq API key not set, skipping batch parse")
+            return [[] for _ in batch_items]
+
+        message = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             max_tokens=1500,
             messages=[{"role": "user", "content": combined_prompt}]
