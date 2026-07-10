@@ -762,7 +762,11 @@
     // Populate email fields
     const container = document.getElementById('editSchoolEmailsContainer');
     container.innerHTML = '';
-    const emails = school.sender_emails || [];
+    // Ensure emails is always an array
+    let emails = school.sender_emails || [];
+    if (!Array.isArray(emails)) {
+      emails = emails ? [emails] : [];
+    }
     if (emails.length === 0) {
       container.innerHTML = '<input type="email" class="edit-email-field" placeholder="e.g. office@school.sch.uk" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">';
     } else {
