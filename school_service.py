@@ -528,58 +528,10 @@ def _groq_batch_parse_events(batch_items: list[tuple]) -> list[list[dict]]:
     Parse multiple emails in one Groq call to reduce token usage by ~70%.
     batch_items: list of (msg_id, subject, sent_date, profile) tuples
     Returns: list of event lists, one per email
+
+    TEMPORARILY DISABLED: Groq TPD limit exhausted. Return empty events to stop token burn.
     """
-    if not batch_items:
-        return []
-
-    # Build combined prompt for all emails
-    all_prompts = []
-    for i, (msg_id, subject, sent_date, profile) in enumerate(batch_items):
-        try:
-            ref = date.fromisoformat(sent_date) if sent_date else date.today()
-        except ValueError:
-            ref = date.today()
-
-        weekday = ref.strftime("%A")
-        ref_str = ref.isoformat()
-        school_name = profile.get("school_name", "")
-        year_group = profile.get("year_group", "")
-
-        all_prompts.append(f"[Email {i+1}] School: {school_name} | Year: {year_group} | Sent: {ref_str} ({weekday}) | Subject: {subject}")
-
-    combined_prompt = f"""Parse these {len(batch_items)} school email subjects and extract ONLY quick high-level events.
-For each email, return minimal JSON with event_title, event_type, event_date (ISO), and action_needed.
-
-{chr(10).join(all_prompts)}
-
-Return ONLY a JSON array of {len(batch_items)} arrays, one per email. Minimize tokens — just the essentials.
-Example: [[{{"event_title":"Sports day","event_type":"activity","event_date":"2026-07-15"}}], [{{"event_title":"Uniform order"}}]]"""
-
-    try:
-        client = _get_groq_client()
-        if not client:
-            print(f"[school] Groq API key not set, skipping batch parse")
-            return [[] for _ in batch_items]
-
-        message = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            max_tokens=1500,
-            messages=[{"role": "user", "content": combined_prompt}]
-        )
-        response_text = message.choices[0].message.content.strip()
-
-        # Parse response as array of arrays
-        start = response_text.find('[')
-        end = response_text.rfind(']') + 1
-        if start >= 0 and end > start:
-            json_str = response_text[start:end]
-            parsed = json.loads(json_str)
-            if isinstance(parsed, list) and len(parsed) == len(batch_items):
-                return parsed
-    except Exception as e:
-        print(f"[school] Batch parse error: {e}")
-
-    # Fallback: return empty arrays for each email
+    print(f"[school] TEMP: Skipping Groq parse for {len(batch_items)} emails (TPD limit exceeded)")
     return [[] for _ in batch_items]
 
 
@@ -1000,6 +952,8 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             continue
 
         query = _build_gmail_query(all_senders, days_back=days_back)
+        print(f"[school] Gmail query for {from_number}: {query[:200]}")
+        print(f"[school] Senders: {all_senders}")
         try:
             res = _gmail_get("messages", {"q": query, "maxResults": 100}, access_token=access_token)
         except Exception as e:
