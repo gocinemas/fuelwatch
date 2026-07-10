@@ -478,7 +478,11 @@
     document.getElementById('addSchoolModal').classList.remove('show');
   }
 
+  let _schoolSaving = false; // Prevent double submissions
+
   async function saveSchool() {
+    if (_schoolSaving) return; // Already saving
+
     const childName = document.getElementById('childName').value.trim();
     const schoolName = document.getElementById('schoolName').value.trim();
     const address = document.getElementById('schoolAddress').value.trim();
@@ -493,6 +497,10 @@
       alert('Please enter a valid email address');
       return;
     }
+
+    _schoolSaving = true;
+    const saveBtn = document.querySelector('[onclick="saveSchool()"]');
+    if (saveBtn) saveBtn.disabled = true;
 
     try {
       // Get phone from URL or localStorage
@@ -528,6 +536,9 @@
     } catch (e) {
       console.error('Save failed:', e);
       alert('Error saving school: ' + e.message);
+    } finally {
+      _schoolSaving = false;
+      if (saveBtn) saveBtn.disabled = false;
     }
   }
 
@@ -770,7 +781,11 @@
     document.getElementById('editSchoolSearchResults').style.display = 'none';
   }
 
+  let _editSaving = false; // Prevent double submissions
+
   async function saveEditedSchool() {
+    if (_editSaving) return; // Already saving
+
     const childName = document.getElementById('editChildName').value.trim();
     const schoolName = document.getElementById('editSchoolName').value.trim();
     const address = document.getElementById('editSchoolAddress').value.trim();
@@ -793,6 +808,10 @@
         return;
       }
     }
+
+    _editSaving = true;
+    const saveBtn = document.querySelector('[onclick="saveEditedSchool()"]');
+    if (saveBtn) saveBtn.disabled = true;
 
     try {
       const res = await fetch('/api/school/edit', {
@@ -818,6 +837,9 @@
     } catch (e) {
       console.error('Save error:', e);
       alert('Error saving school: ' + e.message);
+    } finally {
+      _editSaving = false;
+      if (saveBtn) saveBtn.disabled = false;
     }
   }
 
