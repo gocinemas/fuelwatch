@@ -19152,15 +19152,19 @@ let _savesAll = [];
       // Only holiday status, no events
       html = `<div style="color:#1e40af;font-weight:600">📅 ${holidays}</div>`;
     } else if (upcoming.length > 0) {
-      // Group by week (Monday-Friday of that week)
+      // Group by week starting from TODAY (not previous Monday)
+      const today = new Date();
+      today.setHours(0,0,0,0);
       const byWeek = {};
       const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
       upcoming.forEach(e => {
         const d = new Date(e.event_date || new Date());
+        d.setHours(0,0,0,0);
+
+        // Calculate Monday of the week containing this date
         const dow = d.getDay(); // 0=Sun, 6=Sat
-        // Calculate Monday of this week (0=Sun, 1=Mon, 6=Sat)
         const daysSinceMonday = (dow === 0 ? 6 : dow - 1);
         const monday = new Date(d);
         monday.setDate(monday.getDate() - daysSinceMonday);
@@ -19173,12 +19177,23 @@ let _savesAll = [];
       });
 
       // Render by week, showing Mon-Fri together
-      Object.entries(byWeek).forEach((weekEntry, widx) => {
+      Object.entries(byWeek).sort().forEach((weekEntry, widx) => {
         const [weekKey, dayMap] = weekEntry;
         const weekDays = Object.keys(dayMap).sort(); // chronological order
+        const weekMonday = new Date(weekKey);
+        const weekSunday = new Date(weekMonday);
+        weekSunday.setDate(weekSunday.getDate() + 6);
+
+        // Determine week label
+        let weekLabel = "📋 SUMMARY OF WEEK AHEAD";
+        const todayDate = new Date();
+        todayDate.setHours(0,0,0,0);
+        if (weekMonday <= todayDate && todayDate <= weekSunday) {
+          weekLabel = "📋 THIS WEEK";
+        }
 
         html += `<div style="${widx > 0 ? 'margin-top:18px;padding-top:18px;border-top:2px solid #d1e7f0;' : ''}">
-          <div style="font-weight:700;color:#0f766e;font-size:13px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">📋 SUMMARY OF WEEK AHEAD</div>`;
+          <div style="font-weight:700;color:#0f766e;font-size:13px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">${weekLabel}</div>`;
 
         weekDays.forEach(dayKey => {
           const dayEvs = dayMap[dayKey];
