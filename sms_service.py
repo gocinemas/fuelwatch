@@ -28061,22 +28061,42 @@ def school_signup_api():
             oauth_url = _school_oauth_url(profile_id)
             return jsonify({"ok": True, "profile_id": profile_id, "oauth_url": oauth_url, "duplicate": True})
 
-        result = sb.table("school_profiles").insert({
-            "from_number":    from_number,
-            "child_name":     child,
-            "school_name":    school,
-            "class_name":     data.get("class_name", ""),
-            "teacher_name":   data.get("teacher_name", ""),
-            "year_group":     data.get("year_group", ""),
-            "address":        data.get("address", ""),
-            "phone":          data.get("phone", ""),
-            "class_wa_group": data.get("class_wa_group", ""),
-            "sender_emails":  emails,
-        }).execute()
-        profile_id = (result.data or [{}])[0].get("id", "")
-        print(f"[school signup] created profile {profile_id} for {from_number}")
+        try:
+            result = sb.table("school_profiles").insert({
+                "from_number":    from_number,
+                "child_name":     child,
+                "school_name":    school,
+                "class_name":     data.get("class_name", ""),
+                "teacher_name":   data.get("teacher_name", ""),
+                "year_group":     data.get("year_group", ""),
+                "address":        data.get("address", ""),
+                "phone":          data.get("phone", ""),
+                "class_wa_group": data.get("class_wa_group", ""),
+                "sender_emails":  emails,
+            }).execute()
+            profile_id = (result.data or [{}])[0].get("id", "")
+            print(f"[school signup] created profile {profile_id} for {from_number}")
+        except Exception as insert_err:
+            # If unique constraint violated, school already exists — fetch it instead
+            if "unique" in str(insert_err).lower():
+                print(f"[school signup] school {school} already exists for {from_number}, fetching existing")
+                existing = sb.table("school_profiles").select("id") \
+                    .eq("from_number", from_number) \
+                    .eq("school_name", school) \
+                    .execute().data or []
+                if existing:
+                    profile_id = existing[0].get("id")
+                else:
+                    raise insert_err
+            else:
+                raise insert_err
 
         oauth_url = _school_oauth_url(profile_id)
+
+        # Clear brief cache for this user so new school appears immediately
+        if from_number in _v2_brief_cache:
+            del _v2_brief_cache[from_number]
+
         return jsonify({"ok": True, "profile_id": profile_id, "oauth_url": oauth_url})
 
     except Exception as e:
@@ -29048,6 +29068,11 @@ def api_school_delete():
             .execute()
 
         print(f"[school/delete] Deleted {deleted_count} instances of school {school_name} for {from_number}")
+
+        # Clear brief cache so deleted school disappears immediately
+        if from_number in _v2_brief_cache:
+            del _v2_brief_cache[from_number]
+
         return jsonify({"success": True, "deleted_count": deleted_count})
     except Exception as e:
         print(f"[school/delete] Error: {e}")

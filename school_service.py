@@ -21,12 +21,14 @@ CREATE TABLE IF NOT EXISTS school_profiles (
   sender_emails   jsonb NOT NULL DEFAULT '[]',
   shared_with     jsonb NOT NULL DEFAULT '[]',
   active          boolean NOT NULL DEFAULT true,
-  created_at      timestamptz NOT NULL DEFAULT now()
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(from_number, school_name)
 );
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS class_wa_group text NOT NULL DEFAULT '';
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS gmail_refresh_token text;
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS gmail_token_error boolean NOT NULL DEFAULT false;
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS shared_with jsonb NOT NULL DEFAULT '[]';
+-- Migration: ALTER TABLE school_profiles ADD CONSTRAINT IF NOT EXISTS school_profiles_unique_user_school UNIQUE(from_number, school_name);
 CREATE INDEX ON school_profiles(from_number);
 
 CREATE TABLE IF NOT EXISTS school_events (
