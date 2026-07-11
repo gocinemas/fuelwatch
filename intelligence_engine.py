@@ -318,13 +318,23 @@ Return ONLY valid JSON. No markdown, no text."""
 
             # Extract fuel price from merchant name if available (e.g. "Shell 145p")
             last_fuel_price = None
+            last_fuel_merchant = "N/A"
             if last_fuel:
-                merchant = last_fuel.get("merchant", "")
+                merchant = last_fuel.get("merchant", "").strip()
+                # Normalize merchant name (testco → Tesco, etc.)
+                if merchant.lower() in ["testco", "test", "tesco"]:
+                    last_fuel_merchant = "Tesco"
+                else:
+                    last_fuel_merchant = merchant or "N/A"
+
                 # Try to extract price from merchant name (e.g. "Tesco Petrol 145p")
                 import re
                 price_match = re.search(r'(\d{2,3})p', merchant)
                 if price_match:
                     last_fuel_price = int(price_match.group(1))
+                else:
+                    # If no price in merchant name, use current fuel price as estimate
+                    last_fuel_price = current_fuel_price
 
             # Build data summary for intelligence engine
             data = {
@@ -335,6 +345,7 @@ Return ONLY valid JSON. No markdown, no text."""
                 "avg_weekly_spend": (spend_total + last_week_spend) / 2,
                 "spend_trend": "up" if spend_total > last_week_spend else "down" if spend_total < last_week_spend else "stable",
                 "last_fuel_amount": float(last_fuel.get("total", 0)) if last_fuel else 0,
+                "last_fuel_merchant": last_fuel_merchant,  # Normalized merchant name
                 "last_fuel_date": last_fuel.get("shop_date", "N/A") if last_fuel else "N/A",
                 "last_fuel_price": last_fuel_price,
                 "current_fuel_price": current_fuel_price,
