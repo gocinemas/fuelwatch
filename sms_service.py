@@ -11661,7 +11661,28 @@ def _v2_fetch_personal_events(from_number: str) -> list:
     try:
         rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number) \
             .eq("type", "personal_events").limit(1).execute().data or []
-        return rows[0]["data"] if rows else []
+        evs = rows[0]["data"] if rows else []
+
+        # Also fetch WhatsApp-extracted events from personal_events table
+        try:
+            import personal_events_service as pes
+            wa_events = pes.get_personal_events(days_ahead=30)
+            # Normalize WhatsApp events to match manual event format
+            for we in wa_events:
+                if we.get("event_title"):
+                    evs.append({
+                        "title": we.get("event_title", ""),
+                        "date": we.get("event_date", ""),
+                        "time": we.get("event_time", ""),
+                        "end_time": None,
+                        "location": we.get("location", ""),
+                        "notes": we.get("description", ""),
+                        "wa_event": True  # Mark as WhatsApp-sourced
+                    })
+        except:
+            pass
+
+        return evs
     except Exception:
         return []
 
