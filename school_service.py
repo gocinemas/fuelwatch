@@ -215,6 +215,48 @@ def _build_gmail_query(sender_emails: list[str], days_back: int = 7) -> str:
     return f"in:inbox ({froms}) after:{after}"
 
 
+def _extract_pptx_text(msg_id: str, att_id: str, filename: str, refresh_token: str = None) -> str:
+    """Extract text from PowerPoint attachment via Gmail API."""
+    try:
+        import base64
+        import zipfile
+        from io import BytesIO
+        import xml.etree.ElementTree as ET
+
+        # Download attachment
+        att = _gmail_get(f"messages/{msg_id}/attachments/{att_id}", refresh_token=refresh_token)
+        data_b64 = att.get("data", "")
+        if not data_b64:
+            return ""
+
+        att_bytes = base64.urlsafe_b64decode(data_b64 + "==")
+
+        # PowerPoint is a ZIP file containing XML
+        texts = []
+        try:
+            with zipfile.ZipFile(BytesIO(att_bytes)) as zf:
+                # Extract text from all slides
+                for name in zf.namelist():
+                    if name.startswith("ppt/slides/slide") and name.endswith(".xml"):
+                        xml_data = zf.read(name).decode("utf-8", errors="ignore")
+                        # Simple XML text extraction
+                        root = ET.fromstring(xml_data)
+                        for elem in root.iter():
+                            if elem.text and elem.text.strip():
+                                texts.append(elem.text.strip())
+        except Exception as e:
+            print(f"[school] pptx parse error {filename}: {e}")
+            return ""
+
+        result = "\n".join(texts)[:4000]
+        print(f"[school] attachment {filename}: {len(result)} chars extracted from PowerPoint")
+        return result
+
+    except Exception as e:
+        print(f"[school] pptx extract error {filename}: {e}")
+        return ""
+
+
 def _extract_pdf_text(msg_id: str, att_id: str, filename: str, refresh_token: str = None) -> str:
     """Fetch a Gmail attachment and extract text via PyMuPDF. Returns up to 4000 chars."""
     try:
@@ -368,7 +410,7 @@ def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) 
         if url_text:
             body = (body + f"\n\n[Newsletter from {re.sub(r'https?://([^/]+)/.*', r'\\1', url)}]\n{url_text}").strip()
 
-    # Append text from PDF attachments (newsletters often arrive as attached PDFs)
+    # Append text from attachments (PDFs, PowerPoints, Word docs, etc)
     if msg_id:
         att_texts = []
         def _find_atts(parts):
@@ -378,10 +420,19 @@ def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) 
                 mime = part.get("mimeType", "")
                 fname = part.get("filename", "")
                 att_id = part.get("body", {}).get("attachmentId", "")
+
+                # Extract PDFs
                 if att_id and (mime == "application/pdf" or fname.lower().endswith(".pdf")):
                     txt = _extract_pdf_text(msg_id, att_id, fname, refresh_token=refresh_token)
                     if txt:
                         att_texts.append(f"[Attachment: {fname}]\n{txt}")
+
+                # Extract PowerPoints
+                elif att_id and (fname.lower().endswith(".pptx") or "presentation" in mime.lower()):
+                    txt = _extract_pptx_text(msg_id, att_id, fname, refresh_token=refresh_token)
+                    if txt:
+                        att_texts.append(f"[Attachment: {fname}]\n{txt}")
+
         _find_atts(payload.get("parts", []))
         if att_texts:
             body = (body + "\n\n" + "\n\n".join(att_texts)).strip()
