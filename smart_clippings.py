@@ -152,7 +152,7 @@ Be conversational and helpful. Keep answer brief (1-2 sentences)."""
 
     try:
         response = client.messages.create(
-            model="claude-opus-4-8",
+            model="claude-opus-4-1",
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}]
         )

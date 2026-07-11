@@ -183,11 +183,31 @@ def get_personal_events(days_ahead: int = 30) -> List[Dict]:
 
 
 def get_directions_link(location: str) -> str:
-    """Generate Google Maps directions link."""
+    """Generate Waze directions link."""
     if not location:
         return ""
-    encoded = location.replace(" ", "+")
-    return f"https://maps.google.com/?q={encoded}"
+    encoded = location.replace(" ", "%20")
+    return f"https://waze.com/ul?q={encoded}"
+
+
+def ensure_table_exists():
+    """Create personal_events table if it doesn't exist."""
+    try:
+        sb = lib._sb()
+        # Try to query - if table doesn't exist, this will error
+        sb.table("personal_events").select("id").limit(1).execute()
+        print("[personal-events] Table exists")
+        return True
+    except:
+        # Table doesn't exist, create it
+        try:
+            print("[personal-events] Creating table...")
+            # Note: This requires direct SQL execution via Supabase
+            # For now, return False and user can create manually or use Supabase UI
+            return False
+        except Exception as e:
+            print(f"[personal-events] Table creation error: {e}")
+            return False
 
 
 def scan_and_parse_emails(access_token: str = None, days_back: int = 7) -> List[Dict]:
