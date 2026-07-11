@@ -29086,6 +29086,32 @@ def api_school_delete():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Personal Events ────────────────────────────────────────────────────────────
+
+@app.route("/api/personal/events")
+def api_personal_events():
+    """Get upcoming personal events (extracted from mekala@gmail.com emails)."""
+    days_ahead = int(request.args.get("days", "30"))
+
+    try:
+        import personal_events_service as pes
+        events = pes.get_personal_events(days_ahead=days_ahead)
+
+        # Add directions link for each event
+        for ev in events:
+            if ev.get("location"):
+                ev["directions_url"] = pes.get_directions_link(ev["location"])
+
+        return jsonify({
+            "success": True,
+            "events": events,
+            "count": len(events)
+        })
+    except Exception as e:
+        print(f"[personal/events] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/receipts/debug", methods=["GET"])
 def api_receipts_debug():
     """Debug: Show all receipts and wa_saves with merchant/title containing digits."""
