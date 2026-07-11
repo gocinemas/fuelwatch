@@ -14857,9 +14857,30 @@ def api_home_brief():
         "intelligence":    ctx.get("intelligence", {}),  # Agentic insights (fuel, spend, location, etc.)
     }
 
-    # Include all events (don't filter personal events by date)
+    # Include all events (calendar + personal)
     # Personal events may use old dates but recur based on weekday
-    _final_cal = _cal_events
+    _final_cal = _cal_events.copy() if _cal_events else []
+
+    # Add personal events (manual + WhatsApp-extracted) to today's events
+    _personal_events = ctx.get("personal_events", [])
+    if _personal_events:
+        today_iso = now.date().isoformat()
+        for pe in _personal_events:
+            # Only include events for today
+            pe_date = pe.get("date", "").split("T")[0] if pe.get("date") else ""
+            if pe_date == today_iso:
+                # Normalize field names for rendering (event_title → title, event_time → time)
+                normalized = {
+                    "title": pe.get("title") or pe.get("event_title") or "",
+                    "start": pe.get("time") or pe.get("event_time") or "",
+                    "end_time": pe.get("end_time") or pe.get("event_end_time") or "",
+                    "location": pe.get("location") or "",
+                    "date": pe_date,
+                    "personal": True
+                }
+                if normalized["title"]:
+                    _final_cal.append(normalized)
+
     result["today_events"] = _final_cal
 
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
