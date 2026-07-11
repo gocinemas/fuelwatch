@@ -15241,7 +15241,7 @@ def api_home_ask():
 
     # Personal: questions that need the user's own data
     _PERSONAL   = ["my ", " my ", "i saved", "i've saved", "i have saved", "did i save",
-                   "what did i", "how much did i", "how much have i", "what have i",
+                   "what did i", "when did i", "how much did i", "how much have i", "what have i",
                    "school", "riaan", "inaaya", "train", "fuel", "spend", "spent",
                    "event", "letter", "newsletter", "permission", "consent", "trip",
                    "delivery", "calendar", "saves", "clipping", "saved",
