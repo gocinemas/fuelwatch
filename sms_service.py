@@ -34608,6 +34608,36 @@ def api_clippings_ask():
         if not clippings:
             return jsonify({"success": True, "answer": "You haven't saved any clippings or receipts yet."})
 
+        # Extract merchant name from query if asking about a specific store
+        merchant_filter = None
+        query_lower = query.lower()
+
+        # Check for common merchant patterns
+        merchants_to_check = {
+            "costco": "Costco",
+            "waitrose": "Waitrose",
+            "tesco": "Tesco",
+            "sainsbury": "Sainsbury",
+            "asda": "Asda",
+            "morrisons": "Morrisons",
+            "costa": "Costa",
+            "starbucks": "Starbucks",
+            "marks & spencer": "Marks & Spencer",
+            "m&s": "M&S",
+            "boots": "Boots",
+            "pret": "Pret",
+            "greggs": "Greggs"
+        }
+
+        for keyword, merchant_name in merchants_to_check.items():
+            if keyword in query_lower:
+                merchant_filter = merchant_name
+                # Filter receipts to only those matching this merchant
+                receipts = [r for r in receipts if merchant_name.lower() in r.get('merchant', '').lower()]
+                # Also filter clippings to receipts only
+                clippings = [c for c in clippings if c.get('category') == 'receipt' and merchant_name.lower() in c.get('title', '').lower()]
+                break
+
         # Detect query type: simple keywords or complex question?
         is_complex = (
             len(query) > 30 or
@@ -34622,6 +34652,9 @@ def api_clippings_ask():
             if matches:
                 matches_text = "\n".join([f"• {m.get('title')} - {m.get('summary', '')}" for m in matches[:5]])
                 return jsonify({"success": True, "answer": f"Found {len(matches)} match(es):\n\n{matches_text}", "type": "search"})
+            elif merchant_filter:
+                # If filtering by merchant and no matches, give clear answer
+                return jsonify({"success": True, "answer": f"No receipts found from {merchant_filter}.", "type": "search"})
 
         # Smart path: AI analysis for complex queries
         from smart_clippings import ask_about_clippings
