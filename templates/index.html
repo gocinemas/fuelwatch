@@ -21072,59 +21072,75 @@ let _savesAll = [];
     var token = _miruPhone() || "";
     var container = document.getElementById("brief-saved-events");
     if (!container || !token) return;
-    fetch("/api/v2/personal-events?token=" + encodeURIComponent(token))
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        var now = new Date();
-        var todayStr = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
-        var nowMins = now.getHours() * 60 + now.getMinutes();
 
-        // Filter: only show today's events that are in the future
-        var evs = (d.events || []).slice().reverse(); // newest first
-        evs = evs.filter(function(ev) {
-          // Only show events from today
-          if (!ev.date || ev.date !== todayStr) return false;
+    var now = new Date();
+    var todayStr = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+    var nowMins = now.getHours() * 60 + now.getMinutes();
 
-          // Only show future events
-          if (ev.time) {
-            var timeMatch = String(ev.time).match(/^(\d{1,2}):(\d{2})/);
-            if (timeMatch) {
-              var eMins = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
-              var endTime = ev.end_time;
-              var cutoff;
-              if (endTime) {
-                var endMatch = String(endTime).match(/^(\d{1,2}):(\d{2})/);
-                cutoff = endMatch ? parseInt(endMatch[1], 10) * 60 + parseInt(endMatch[2], 10) : eMins + 120;
-              } else {
-                cutoff = eMins + 120; // 2 hours default for personal
-              }
-              if (nowMins > cutoff) return false; // Past event
-            }
+    // Fetch from BOTH sources
+    Promise.all([
+      fetch("/api/v2/personal-events?token=" + encodeURIComponent(token)).then(r => r.json()),
+      fetch("/api/personal/events?days=30").then(r => r.json())
+    ]).then(function(results) {
+      var allEvs = [];
+
+      // Add manual events (from ma_details)
+      if (results[0] && results[0].events) {
+        allEvs = allEvs.concat(results[0].events);
+      }
+
+      // Add WhatsApp-extracted events (from personal_events table)
+      if (results[1] && results[1].events) {
+        results[1].events.forEach(function(ev) {
+          // Normalize field names: event_date → date, event_time → time, event_title → title
+          var normalized = {
+            title: ev.event_title || ev.title || "",
+            date: ev.event_date || ev.date || "",
+            time: ev.event_time || ev.time || "",
+            location: ev.location || "",
+            directions_url: ev.directions_url || ""
+          };
+          if (normalized.date && normalized.title) {
+            allEvs.push(normalized);
           }
-          return true;
         });
+      }
 
-        if (!evs.length) { container.style.display = "none"; return; }
-        container.innerHTML = evs.map(function(ev, ri) {
-          var idx = evs.length - 1 - ri;
-          var timeStr = ev.time ? ev.time.slice(0,5) : "";
-          var endStr  = ev.end_time ? "–" + ev.end_time.slice(0,5) : "";
-          var locStr  = ev.location ? ' · 📍 ' + ev.location : "";
-          var noEnd   = !ev.end_time;
-          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">'
-            + '<div style="flex:1;min-width:0;cursor:pointer" onclick="_briefEditEvent(' + idx + ')">'
-            + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + (ev.title || "") + '</div>'
-            + '<div style="font-size:11px;color:var(--muted);margin-top:2px">'
-            + (ev.date || "") + (timeStr ? ' · ' + timeStr + endStr : "")
-            + (noEnd && timeStr ? ' <span style="color:#d97706;font-weight:600">· tap to add end time</span>' : "")
-            + locStr
-            + '</div></div>'
-            + '<button onclick="_briefDeleteEvent(' + idx + ')" style="margin-left:10px;background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:4px 6px">✕</button>'
-            + '</div>';
-        }).join("");
-        container.style.display = "block";
-      })
-      .catch(function() {});
+      // Filter: only show today's events that are in the future
+      var evs = allEvs.filter(function(ev) {
+        if (!ev.date || ev.date !== todayStr) return false;
+        if (ev.time) {
+          var timeMatch = String(ev.time).match(/^(\d{1,2}):(\d{2})/);
+          if (timeMatch) {
+            var eMins = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+            var endTime = ev.end_time;
+            var cutoff = endTime
+              ? (endTime.match(/^(\d{1,2}):(\d{2})/) || [])[1] ? parseInt(endTime.match(/^(\d{1,2}):(\d{2})/)[1], 10) * 60 + parseInt(endTime.match(/^(\d{1,2}):(\d{2})/)[2], 10) : eMins + 120
+              : eMins + 120;
+            if (nowMins > cutoff) return false;
+          }
+        }
+        return true;
+      });
+
+      if (!evs.length) { container.style.display = "none"; return; }
+      container.innerHTML = evs.map(function(ev) {
+        var timeStr = ev.time ? ev.time.slice(0,5) : "";
+        var endStr  = ev.end_time ? "–" + ev.end_time.slice(0,5) : "";
+        var locStr  = ev.location ? ' · 📍 ' + ev.location : "";
+        var mapBtn = ev.directions_url ? '<a href="' + ev.directions_url + '" target="_blank" style="margin-left:8px;font-size:12px;color:#2563eb;text-decoration:none;font-weight:600">Maps →</a>' : '';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + (ev.title || "") + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);margin-top:2px">'
+          + (ev.date || "") + (timeStr ? ' · ' + timeStr + endStr : "")
+          + locStr
+          + '</div></div>'
+          + mapBtn
+          + '</div>';
+      }).join("");
+      container.style.display = "block";
+    }).catch(function() {});
   };
 
   window._briefEditEvent = function(idx) {

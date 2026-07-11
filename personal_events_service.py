@@ -187,7 +187,7 @@ def get_directions_link(location: str) -> str:
     if not location:
         return ""
     encoded = location.replace(" ", "%20")
-    return f"https://waze.com/ul?q={encoded}"
+    return f"https://www.waze.com/?q={encoded}&navigate=yes"
 
 
 def ensure_table_exists():
