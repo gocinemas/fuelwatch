@@ -277,14 +277,12 @@ Return ONLY valid JSON. No markdown, no text."""
             last_week_spend = sum(float(r.get("total", 0)) for r in last_week_receipts)
 
             # Fuel data - look at ALL receipts (not just this week) for last fill
-            all_receipts = sb.table("receipts").select("total,merchant,shop_date,category") \
+            all_receipts = sb.table("receipts").select("total,merchant,shop_date") \
                 .eq("phone", phone) \
                 .order("shop_date", desc=True).limit(100).execute().data or []
 
-            # Check manually-set category FIRST, then fall back to merchant-based categorization
+            # Categorize receipts based on merchant name
             def _get_effective_category(r):
-                if r.get("category") and r.get("category") != "Other":
-                    return r.get("category")
                 return _receipt_category(r.get("merchant", ""))
 
             fuel_receipts = [r for r in receipts if _get_effective_category(r) == "Fuel"]
