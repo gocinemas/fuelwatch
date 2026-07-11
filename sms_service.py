@@ -29112,6 +29112,33 @@ def api_personal_events():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/personal/scan")
+def api_personal_scan():
+    """Scan mekala@gmail.com for emails from reddyaemalla@gmail.com and extract events."""
+    token = request.args.get("token", "").strip()
+    if token != "personal-scan-2026":
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        import personal_events_service as pes
+        # Get Gmail access token (from school comms setup, or direct API)
+        access_token = os.environ.get("GMAIL_ACCESS_TOKEN")
+
+        if not access_token:
+            return jsonify({"error": "No Gmail access token configured"}), 400
+
+        events = pes.scan_and_parse_emails(access_token=access_token, days_back=7)
+
+        return jsonify({
+            "success": True,
+            "events_found": len(events),
+            "events": events
+        })
+    except Exception as e:
+        print(f"[personal/scan] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/receipts/debug", methods=["GET"])
 def api_receipts_debug():
     """Debug: Show all receipts and wa_saves with merchant/title containing digits."""

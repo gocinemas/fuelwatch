@@ -6,11 +6,76 @@ from typing import Dict, List, Any, Optional
 import json
 import re
 import os
+import base64
+import requests
 from groq import Groq
 
 import library as lib
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+# Gmail API helper
+def _gmail_get(resource: str, params: dict = None, access_token: str = None):
+    """Call Gmail API."""
+    if not access_token:
+        access_token = os.environ.get("GMAIL_ACCESS_TOKEN", "")
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    url = f"https://www.googleapis.com/gmail/v1/users/me/{resource}"
+    r = requests.get(url, params=params, headers=headers, timeout=30)
+    r.raise_for_status()
+    return r.json()
+
+
+def _extract_email_text(msg: dict) -> tuple[str, str, str]:
+    """Extract subject, body, sent_date from Gmail message."""
+    from email.utils import parsedate_to_datetime
+
+    headers = {h["name"].lower(): h["value"] for h in msg.get("payload", {}).get("headers", [])}
+    subject = headers.get("subject", "")
+
+    # Extract date
+    sent_date = ""
+    raw_date = headers.get("date", "")
+    if raw_date:
+        try:
+            sent_date = parsedate_to_datetime(raw_date).date().isoformat()
+        except:
+            sent_date = date.today().isoformat()
+
+    # Extract body
+    payload = msg.get("payload", {})
+    body = ""
+
+    def _walk(parts):
+        nonlocal body
+        for part in parts:
+            if part.get("parts"):
+                _walk(part["parts"])
+            mime = part.get("mimeType", "")
+            data = part.get("body", {}).get("data", "")
+            if not data:
+                continue
+            try:
+                decoded = base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore")
+                if mime == "text/plain":
+                    body = decoded
+                elif mime == "text/html" and not body:
+                    body = decoded
+            except:
+                pass
+
+    if payload.get("parts"):
+        _walk(payload["parts"])
+    else:
+        data = payload.get("body", {}).get("data", "")
+        if data:
+            try:
+                body = base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore")
+            except:
+                pass
+
+    return subject, body, sent_date
 
 def parse_event_email(subject: str, body: str, sent_date: str = "") -> Optional[Dict]:
     """
@@ -123,3 +188,56 @@ def get_directions_link(location: str) -> str:
         return ""
     encoded = location.replace(" ", "+")
     return f"https://maps.google.com/?q={encoded}"
+
+
+def scan_and_parse_emails(access_token: str = None, days_back: int = 7) -> List[Dict]:
+    """
+    Scan mekala@gmail.com for emails from reddyaemalla@gmail.com.
+    Parse for events and store in database.
+    """
+    if not access_token:
+        access_token = os.environ.get("GMAIL_ACCESS_TOKEN", "")
+
+    if not access_token:
+        print("[personal-events] No Gmail access token available")
+        return []
+
+    try:
+        # Search for emails from reddyaemalla@gmail.com to mekala@gmail.com from last week
+        after_date = (date.today() - timedelta(days=days_back)).strftime("%Y/%m/%d")
+        query = f'from:reddyaemalla@gmail.com to:mekala@gmail.com after:{after_date}'
+
+        print(f"[personal-events] Scanning Gmail: {query}")
+
+        res = _gmail_get("messages", {"q": query, "maxResults": 50}, access_token=access_token)
+        msg_stubs = res.get("messages", [])
+        print(f"[personal-events] Found {len(msg_stubs)} emails")
+
+        stored_events = []
+
+        for stub in msg_stubs:
+            msg_id = stub["id"]
+            try:
+                # Fetch full message
+                msg = _gmail_get(f"messages/{msg_id}", {"format": "full"}, access_token=access_token)
+                subject, body, sent_date = _extract_email_text(msg)
+
+                print(f"[personal-events] Parsing: {subject[:60]}")
+
+                # Parse for event details
+                event = parse_event_email(subject, body, sent_date)
+
+                if event:
+                    # Store in database
+                    if store_personal_event(msg_id, "reddyaemalla@gmail.com", event):
+                        stored_events.append(event)
+                        print(f"[personal-events] ✅ Stored: {event.get('event_title')}")
+
+            except Exception as e:
+                print(f"[personal-events] Error processing {msg_id}: {e}")
+
+        return stored_events
+
+    except Exception as e:
+        print(f"[personal-events] Scan error: {e}")
+        return []
