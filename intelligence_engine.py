@@ -245,16 +245,12 @@ Return ONLY valid JSON. No markdown, no text."""
 
             spend_total = sum(float(r.get("total", 0)) for r in receipts)
 
-            # Category breakdown - use manually-set category if available
+            # Category breakdown - categorize based on merchant name only
             spend_by_category = {}
             for r in receipts:
                 from sms_service import _receipt_category
-                # Check manually-set category FIRST, then fall back to merchant-based categorization
-                if r.get("category") and r.get("category") != "Other":
-                    cat = r.get("category")
-                else:
-                    merchant = r.get("merchant", "Unknown")
-                    cat = _receipt_category(merchant)
+                merchant = r.get("merchant", "Unknown")
+                cat = _receipt_category(merchant)
                 if cat not in spend_by_category:
                     spend_by_category[cat] = 0
                 spend_by_category[cat] += float(r.get("total", 0))
