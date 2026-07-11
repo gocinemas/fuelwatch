@@ -1156,6 +1156,64 @@ def sms_reply():
 
     resp = MessagingResponse()
 
+    # Handle "event" command with poster image
+    if body.lower().startswith("event") and request.form.get("NumMedia", "0") != "0":
+        try:
+            import personal_events_service as pes
+            from anthropic import Anthropic
+
+            num_media = int(request.form.get("NumMedia", 0))
+            if num_media > 0:
+                # Get image URL from Twilio
+                media_url = request.form.get(f"MediaUrl0", "")
+                media_type = request.form.get(f"MediaContentType0", "")
+
+                if media_url and media_type.startswith("image"):
+                    # Download image
+                    img_response = requests.get(media_url)
+                    img_data = img_response.content
+
+                    # Use Claude to read the poster
+                    client = Anthropic()
+                    import base64
+                    img_b64 = base64.standard_b64encode(img_data).decode()
+
+                    message = client.messages.create(
+                        model="claude-opus-4-1",
+                        max_tokens=500,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Extract event details from this poster. Return JSON: {event_title, event_date (ISO), event_time (HH:MM), location, description}"},
+                                {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_b64}}
+                            ]
+                        }]
+                    )
+
+                    # Parse response
+                    response_text = message.content[0].text
+                    start = response_text.find('{')
+                    end = response_text.rfind('}') + 1
+                    if start >= 0 and end > start:
+                        event = json.loads(response_text[start:end])
+                        if event.get("event_title"):
+                            # Store event
+                            pes.store_personal_event("whatsapp_" + from_number, from_number, event)
+                            directions = pes.get_directions_link(event.get("location", ""))
+                            reply = f"\u2705 Event saved: {event.get('event_title')}\nDate: {event.get('event_date')}\nTime: {event.get('event_time')}\nLocation: {event.get('location')}"
+                            if directions:
+                                reply += f"\nDirections: {directions}"
+                            resp.message(reply)
+                            return str(resp)
+
+            resp.message("\u274c Couldn't read event from image. Try a clear poster/flyer.")
+            return str(resp)
+
+        except Exception as e:
+            print(f"[event] Error: {e}")
+            resp.message(f"Error: {str(e)[:100]}")
+            return str(resp)
+
     if not body:
         resp.message("FuelWatch UK\nText your postcode to get fuel prices.\nExample: KT16 0DA\nOr: KT16 0DA diesel 10")
         return str(resp)
