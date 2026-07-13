@@ -20664,7 +20664,16 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 if search_url:
                     update_data["url"] = search_url
                 if img_type == "receipt" and receipt_data.get("merchant"):
-                    update_data["category"] = _receipt_category(receipt_data["merchant"])
+                    auto_category = _receipt_category(receipt_data["merchant"])
+                    try:
+                        existing = lib._sb().table("wa_saves").select("category").eq("id", sid).execute().data
+                        if existing and existing[0].get("category"):
+                            # Preserve user's manual reclassification (don't override)
+                            pass
+                        else:
+                            update_data["category"] = auto_category
+                    except Exception:
+                        update_data["category"] = auto_category
                 elif img_type == "store":
                     # Derive category from venue name so the brief can filter it correctly
                     update_data["category"] = _receipt_category(venue_tag or title.replace("🏪","").strip()) or "place"
