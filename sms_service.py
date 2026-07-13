@@ -11229,8 +11229,8 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
             except ValueError:
                 continue
             total += amt; count += 1
-            # Determine category — always recategorize with latest logic
-            cat = _receipt_category(merchant)
+            # Use stored category if available, otherwise auto-detect
+            cat = (r.get("category") or "").strip() or _receipt_category(merchant)
             # Also check items for better categorization (clothes/accessories)
             summary = (r.get("summary") or "").lower()
             if "clothes" not in cat.lower() and "accessories" not in cat.lower():
