@@ -16174,6 +16174,11 @@ def api_admin_fix_receipt_category():
 
         # Update category
         lib._sb().table("wa_saves").update({"category": new_category}).eq("id", found["id"]).execute()
+        # Clear brief cache for all users so they see the updated receipt
+        try:
+            _v2_brief_cache.clear()
+        except Exception:
+            pass
         return jsonify({
             "ok": True,
             "id": found["id"],
@@ -16236,6 +16241,11 @@ def api_receipt_recategorize():
 
         # Update category
         lib._sb().table("wa_saves").update({"category": new_category}).eq("id", found["id"]).execute()
+        # Clear brief cache so user sees updated receipt immediately
+        try:
+            _v2_brief_cache.clear()
+        except Exception:
+            pass
         return jsonify({
             "ok": True,
             "id": found["id"],
