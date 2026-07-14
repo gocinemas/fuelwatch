@@ -35400,25 +35400,8 @@ def admin_migrate_restaurant_types():
 @app.route("/api/insights/full", methods=["GET"])
 def api_insights_full():
     """Get comprehensive intelligence across all modules."""
-    wa = request.args.get("wa", "").strip()
-    if not wa:
-        wa = (request.cookies.get("miru_saves_phone") or "").strip()
-    if not wa:
-        return jsonify({"error": "wa required"}), 400
-
-    from_number = _v2_resolve(wa)
-
-    try:
-        from intelligence_engine import MiruIntelligence
-        engine = MiruIntelligence()
-        sb = lib._sb()
-
-        intelligence = engine.get_full_intelligence(from_number, sb)
-        return jsonify(intelligence)
-
-    except Exception as e:
-        print(f"[insights] Error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+    # Temporarily disabled due to timeout issues — will be re-enabled after optimization
+    return jsonify({"success": False, "error": "Intelligence Hub is temporarily unavailable. Please check back soon."}), 503
 
 
 @app.route("/api/receipts/fix-date", methods=["POST"])
