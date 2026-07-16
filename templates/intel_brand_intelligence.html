@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Intelligence — Intel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f97316;
+            --primary-light: #fb923c;
+            --primary-dark: #ea580c;
+            --bg-dark: #020617;
+            --bg-light: #f8fafc;
+            --border: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --accent: #06b6d4;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 50%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-light);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 6px;
+            color: var(--primary-light);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .nav-link:hover {
+            background: rgba(249, 115, 22, 0.2);
+            border-color: rgba(249, 115, 22, 0.5);
+        }
+
+        .main {
+            padding: 40px 20px;
+        }
+
+        .search-box {
+            background: rgba(30, 27, 75, 0.6);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            padding: 32px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-inputs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        #brandInput, #marketSelect {
+            flex: 1;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .search-button {
+            padding: 12px 32px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(249, 115, 22, 0.3);
+        }
+
+        .help-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .brand-header {
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(249, 115, 22, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            backdrop-filter: blur(8px);
+        }
+
+        .brand-name {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .brand-score {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary-light);
+            margin-bottom: 16px;
+        }
+
+        .section {
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(249, 115, 22, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            backdrop-filter: blur(8px);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            color: var(--primary-light);
+        }
+
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%);
+            border: 2px solid rgba(249, 115, 22, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(249, 115, 22, 0.5);
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(251, 146, 60, 0.1) 100%);
+            transform: translateY(-4px);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary-light);
+        }
+
+        .list-items {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .list-item {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 3px solid var(--primary-light);
+            padding: 16px;
+            border-radius: 4px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(249, 115, 22, 0.2);
+            border-top-color: var(--primary-light);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 40px;
+            padding: 12px 24px;
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 8px;
+            color: var(--primary-light);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: rgba(249, 115, 22, 0.2);
+            transform: translateX(-4px);
+        }
+
+        .expansion-link {
+            display: inline-block;
+            margin-top: 20px;
+            margin-left: 16px;
+            padding: 12px 24px;
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            border-radius: 8px;
+            color: #14b8a6;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .expansion-link:hover {
+            background: rgba(20, 184, 166, 0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state h2 {
+            font-size: 28px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">🎯 Intel</a>
+                <div class="nav-links">
+                    <a href="/brand/intelligence" class="nav-link" style="background: rgba(249, 115, 22, 0.2); border-color: rgba(249, 115, 22, 0.5);">🔍 Brand Intelligence</a>
+                    <a href="/brand/expansion" class="nav-link">📈 Brand Expansion</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main container">
+        <div class="error-message" id="errorMessage"></div>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing brand across 5 dimensions...</p>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <h2>Brand Intelligence Dashboard</h2>
+            <p>Track everything about your brand: AI visibility, pricing, social sentiment, growth signals, and catalog performance.</p>
+        </div>
+
+        <div class="search-box">
+            <div class="search-inputs">
+                <input
+                    type="text"
+                    id="brandInput"
+                    placeholder="Nike, Zara, Glossier, Apple... search ANY brand"
+                    autocomplete="off"
+                >
+                <select id="marketSelect">
+                    <option value="GB">🇬🇧 UK Market</option>
+                    <option value="US">🇺🇸 US Market</option>
+                    <option value="IN">🇮🇳 India Market</option>
+                </select>
+                <button class="search-button" id="searchBtn">Search Brand</button>
+            </div>
+            <div class="help-text">💡 5 dimensions: AI visibility, pricing intelligence, social signals, growth, catalog</div>
+        </div>
+
+        <div class="results-section" id="results">
+            <div class="brand-header">
+                <div class="brand-name" id="brandName"></div>
+                <div class="brand-score" id="brandScore"></div>
+            </div>
+
+            <div class="section" id="aiSection" style="display: none;">
+                <div class="section-title">🤖 AI Search Visibility</div>
+                <div id="aiContent"></div>
+            </div>
+
+            <div class="section" id="pricingSection" style="display: none;">
+                <div class="section-title">💰 Pricing Intelligence</div>
+                <div id="pricingContent"></div>
+            </div>
+
+            <div class="section" id="socialSection" style="display: none;">
+                <div class="section-title">💬 Social Intelligence</div>
+                <div id="socialContent"></div>
+            </div>
+
+            <div class="section" id="growthSection" style="display: none;">
+                <div class="section-title">📈 Growth Signals</div>
+                <div id="growthContent"></div>
+            </div>
+
+            <div class="section" id="catalogSection" style="display: none;">
+                <div class="section-title">📦 D2C Catalog Intelligence</div>
+                <div id="catalogContent"></div>
+            </div>
+
+            <a href="/" class="back-link">← Back to Intel</a>
+            <a href="/brand/expansion" class="expansion-link">📈 View Brand Expansion →</a>
+        </div>
+    </div>
+
+    <script>
+        const brandInput = document.getElementById('brandInput');
+        const marketSelect = document.getElementById('marketSelect');
+        const searchBtn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const emptyState = document.getElementById('emptyState');
+        const errorMessage = document.getElementById('errorMessage');
+
+        brandInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchBrand();
+        });
+
+        searchBtn.addEventListener('click', searchBrand);
+
+        async function searchBrand() {
+            const brand = brandInput.value.trim();
+            const market = marketSelect.value;
+            if (!brand) return;
+
+            loading.classList.add('show');
+            results.classList.remove('show');
+            emptyState.style.display = 'none';
+            errorMessage.classList.remove('show');
+
+            try {
+                const response = await fetch(`/api/brand/intelligence?name=${encodeURIComponent(brand)}&market=${market}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    errorMessage.textContent = '❌ ' + data.error;
+                    errorMessage.classList.add('show');
+                } else {
+                    displayResults(data);
+                }
+            } catch (error) {
+                errorMessage.textContent = '❌ Failed to fetch brand data.';
+                errorMessage.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        function displayResults(data) {
+            results.classList.add('show');
+            emptyState.style.display = 'none';
+
+            // Brand Header
+            document.getElementById('brandName').textContent = data.name || 'N/A';
+            document.getElementById('brandScore').textContent = `${data.overall_score}/100`;
+
+            // AI Visibility
+            if (data.ai_visibility) {
+                const ai = data.ai_visibility;
+                document.getElementById('aiContent').innerHTML = `
+                    <div class="grid-cards">
+                        <div class="stat-card">
+                            <div class="stat-label">Visibility Score</div>
+                            <div class="stat-value">${ai.visibility_score}/100</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Overall Sentiment</div>
+                            <div class="stat-value">${ai.sentiment}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px; color: var(--text-secondary);">
+                        <strong>Key Themes:</strong> ${ai.key_themes?.join(', ') || 'N/A'}
+                    </div>
+                `;
+                document.getElementById('aiSection').style.display = 'block';
+            }
+
+            // Pricing
+            if (data.pricing_intelligence) {
+                const pricing = data.pricing_intelligence;
+                document.getElementById('pricingContent').innerHTML = `
+                    <div class="grid-cards">
+                        <div class="stat-card">
+                            <div class="stat-label">Current Price</div>
+                            <div class="stat-value">${pricing.current_price}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Price Position</div>
+                            <div class="stat-value">${pricing.price_position}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">SKUs Tracked</div>
+                            <div class="stat-value">${pricing.skus_tracked}</div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('pricingSection').style.display = 'block';
+            }
+
+            // Social
+            if (data.social_signals) {
+                const social = data.social_signals;
+                document.getElementById('socialContent').innerHTML = `
+                    <div class="grid-cards">
+                        <div class="stat-card">
+                            <div class="stat-label">Mentions (30d)</div>
+                            <div class="stat-value">${social.mentions_30d}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Sentiment</div>
+                            <div class="stat-value">${social.overall_sentiment}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Trending</div>
+                            <div class="stat-value">${social.trending ? '🔥 Yes' : 'No'}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px; color: var(--text-secondary);">
+                        <strong>Top Topics:</strong> ${social.top_topics?.join(', ') || 'N/A'}
+                    </div>
+                `;
+                document.getElementById('socialSection').style.display = 'block';
+            }
+
+            // Growth
+            if (data.growth_signals) {
+                const growth = data.growth_signals;
+                document.getElementById('growthContent').innerHTML = `
+                    <div class="grid-cards">
+                        <div class="stat-card">
+                            <div class="stat-label">Hiring Activity</div>
+                            <div class="stat-value">${growth.hiring_activity}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Recent Hires</div>
+                            <div class="stat-value">${growth.recent_hires}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Growth Score</div>
+                            <div class="stat-value">${growth.growth_score}/100</div>
+                        </div>
+                    </div>
+                    ${growth.expansion_markets?.length > 0 ? `
+                        <div style="margin-top: 16px; color: var(--text-secondary);">
+                            <strong>Expansion Markets:</strong> ${growth.expansion_markets.join(', ')}
+                        </div>
+                    ` : ''}
+                `;
+                document.getElementById('growthSection').style.display = 'block';
+            }
+
+            // Catalog
+            if (data.catalog_intelligence) {
+                const catalog = data.catalog_intelligence;
+                document.getElementById('catalogContent').innerHTML = `
+                    <div class="grid-cards">
+                        <div class="stat-card">
+                            <div class="stat-label">Total SKUs</div>
+                            <div class="stat-value">${catalog.total_skus}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Rating</div>
+                            <div class="stat-value">${catalog.review_average}/5</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Review Count</div>
+                            <div class="stat-value">${catalog.review_count}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Catalog Velocity</div>
+                            <div class="stat-value">${catalog.catalog_velocity}</div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('catalogSection').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
