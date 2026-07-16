@@ -4335,10 +4335,10 @@ def api_company_intelligence():
 
     Query params:
     - name: Company name (required)
-    - country: Country code (US, GB, INT) - defaults to US
+    - country: Country code (optional) - if not provided, searches globally (US, GB, INT)
     """
     name = request.args.get("name", "").strip()
-    country = request.args.get("country", "US").strip()
+    country = request.args.get("country", "").strip()
 
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
@@ -4346,11 +4346,53 @@ def api_company_intelligence():
     try:
         from company_intelligence import fetch_company_intelligence
 
-        # Fetch company data from multiple sources (EDGAR, OpenCorporates, etc.)
-        result = fetch_company_intelligence(name, country)
+        # Common company name aliases/rebrands
+        aliases = {
+            "facebook": "Meta",
+            "google": "Alphabet",
+            "twitter": "X",
+            "instagram": "Meta",
+            "whatsapp": "Meta",
+            "volkswagen": "VW",
+            "mcdonalds": "McDonald's",
+            "coca cola": "Coca-Cola",
+            "pepsico": "PepsiCo",
+        }
 
-        if not result:
-            return jsonify({"error": f"No data found for {name}"}), 404
+        search_name = name
+        suggested_name = None
+
+        # Check if user input matches an alias
+        name_lower = name.lower().strip()
+        if name_lower in aliases:
+            suggested_name = aliases[name_lower]
+            search_name = suggested_name
+
+        result = None
+
+        # If country specified, search that country
+        if country:
+            result = fetch_company_intelligence(search_name, country)
+        else:
+            # Search globally: try US first (most companies), then GB, then international
+            for search_country in ["US", "GB", "INT"]:
+                result = fetch_company_intelligence(search_name, search_country)
+                if result and result.get("name"):
+                    break
+
+        if not result or not result.get("name"):
+            # If search failed and we have a suggestion, inform user
+            if suggested_name and suggested_name != name:
+                return jsonify({
+                    "error": f"'{name}' not found. Did you mean '{suggested_name}'?",
+                    "suggestion": suggested_name
+                }), 404
+            return jsonify({"error": f"Company '{name}' not found in any market (EDGAR, OpenCorporates, Companies House, Crunchbase)"}), 404
+
+        # If we used a suggestion, note it in the response
+        if suggested_name:
+            result["searched_as"] = suggested_name
+            result["original_query"] = name
 
         return jsonify(result)
     except Exception as e:

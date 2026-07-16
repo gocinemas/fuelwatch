@@ -131,10 +131,9 @@
             flex-wrap: wrap;
         }
 
-        input[type="text"],
-        select {
+        input[type="text"] {
             flex: 1;
-            min-width: 200px;
+            min-width: 300px;
             padding: 14px 18px;
             background: rgba(15, 23, 42, 0.8);
             border: 2px solid rgba(148, 163, 184, 0.2);
@@ -145,8 +144,7 @@
             font-family: inherit;
         }
 
-        input[type="text"]:focus,
-        select:focus {
+        input[type="text"]:focus {
             outline: none;
             border-color: var(--primary-light);
             background: rgba(15, 23, 42, 1);
@@ -246,6 +244,7 @@
             font-size: 18px;
             font-weight: 700;
             color: var(--text-primary);
+            word-break: break-word;
         }
 
         .section {
@@ -273,7 +272,7 @@
 
         .grid-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 16px;
         }
 
@@ -300,9 +299,10 @@
         }
 
         .stat-value {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 800;
             color: var(--primary-light);
+            word-break: break-word;
         }
 
         .list-items {
@@ -380,6 +380,13 @@
             color: var(--accent);
         }
 
+        .help-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            text-align: center;
+        }
+
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 32px;
@@ -394,9 +401,9 @@
             }
 
             input[type="text"],
-            select,
             .search-button {
                 width: 100%;
+                min-width: unset;
             }
         }
     </style>
@@ -422,7 +429,7 @@
         <div class="search-container">
             <div class="hero">
                 <h1>Company Intelligence</h1>
-                <p class="hero-subtitle">Real-time financials, strategy & market positioning</p>
+                <p class="hero-subtitle">Real-time financials, strategy & market positioning — any company, any market</p>
             </div>
 
             <div class="search-box">
@@ -430,16 +437,12 @@
                     <input
                         type="text"
                         id="companyInput"
-                        placeholder="Enter company name (e.g., Apple, Microsoft, Unilever)"
+                        placeholder="Apple, Alibaba, LVMH, Samsung, TSMC, Unilever... search ANY company"
                         autocomplete="off"
                     >
-                    <select id="countrySelect">
-                        <option value="US">🇺🇸 United States</option>
-                        <option value="GB">🇬🇧 United Kingdom</option>
-                        <option value="INT">🌍 International</option>
-                    </select>
-                    <button class="search-button" id="searchBtn">Search</button>
+                    <button class="search-button" id="searchBtn">Search Globally</button>
                 </div>
+                <div class="help-text">💡 Works for any public company worldwide — EDGAR, OpenCorporates, Crunchbase data</div>
             </div>
         </div>
     </div>
@@ -508,7 +511,6 @@
 
     <script>
         const companyInput = document.getElementById('companyInput');
-        const countrySelect = document.getElementById('countrySelect');
         const searchBtn = document.getElementById('searchBtn');
         const loading = document.getElementById('loading');
         const results = document.getElementById('results');
@@ -532,12 +534,12 @@
             errorMessage.classList.remove('show');
 
             try {
-                const country = countrySelect.value;
-                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}&country=${country}`);
+                // Search globally - no country restriction
+                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`);
                 const data = await response.json();
 
                 if (data.error) {
-                    showError(data.error);
+                    showError(data.error, data.suggestion);
                 } else {
                     displayResults(data);
                 }
@@ -549,122 +551,104 @@
             }
         }
 
-        function showError(message) {
-            errorMessage.textContent = '❌ ' + message;
+        function showError(message, suggestion = null) {
+            if (suggestion) {
+                errorMessage.innerHTML = `❌ ${message} <button style="margin-left: 12px; padding: 6px 16px; background: #14b8a6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="searchCompanyByName('${suggestion}')">Try ${suggestion}</button>`;
+            } else {
+                errorMessage.textContent = '❌ ' + message;
+            }
             errorMessage.classList.add('show');
             results.classList.remove('show');
             emptyState.style.display = 'none';
+        }
+
+        function searchCompanyByName(companyName) {
+            companyInput.value = companyName;
+            searchCompany();
         }
 
         function displayResults(data) {
             results.classList.add('show');
             emptyState.style.display = 'none';
 
-            // Company Header
+            // Company Header with all basic info
             const header = document.getElementById('companyHeader');
-            header.innerHTML = `
+            let headerHTML = `
                 <div class="company-name-section">
                     <div class="company-name">${data.name || 'N/A'}</div>
-                    ${data.ticker ? `<div class="company-ticker">Ticker: ${data.ticker}</div>` : ''}
+                    ${data.ticker ? `<div class="company-ticker">📊 ${data.ticker}</div>` : ''}
+                    ${data.searched_as ? `<div class="company-ticker" style="color: #fbbf24; font-size: 13px;">🔄 Searched as: ${data.searched_as}</div>` : ''}
+                    ${data.source ? `<div class="company-ticker" style="color: #a7f3d0; font-size: 13px;">Source: ${data.source}</div>` : ''}
                 </div>
                 <div class="company-grid">
-                    ${data.hq ? `
-                        <div class="info-card">
-                            <div class="info-label">Headquarters</div>
-                            <div class="info-value">${formatLocation(data.hq)}</div>
-                        </div>
-                    ` : ''}
-                    ${data.industry ? `
-                        <div class="info-card">
-                            <div class="info-label">Industry</div>
-                            <div class="info-value">${data.industry}</div>
-                        </div>
-                    ` : ''}
-                    ${data.founded_year ? `
-                        <div class="info-card">
-                            <div class="info-label">Founded</div>
-                            <div class="info-value">${data.founded_year}</div>
-                        </div>
-                    ` : ''}
-                </div>
             `;
 
-            // Financials Section
-            if (data.financials) {
+            // Build dynamic info cards from all available data
+            const infoFields = [
+                { key: 'hq', label: '🏢 Headquarters', format: (v) => formatLocation(v) },
+                { key: 'industry', label: '🏭 Industry', format: (v) => v },
+                { key: 'founded_year', label: '📅 Founded', format: (v) => v },
+                { key: 'cik', label: '🔐 SEC CIK', format: (v) => v },
+                { key: 'company_number', label: '🇬🇧 Companies House', format: (v) => v },
+                { key: 'employees', label: '👥 Employees', format: (v) => typeof v === 'number' ? formatNumber(v) : v }
+            ];
+
+            infoFields.forEach(field => {
+                if (data[field.key]) {
+                    const value = field.format(data[field.key]);
+                    headerHTML += `
+                        <div class="info-card">
+                            <div class="info-label">${field.label}</div>
+                            <div class="info-value">${value}</div>
+                        </div>
+                    `;
+                }
+            });
+
+            headerHTML += '</div>';
+            header.innerHTML = headerHTML;
+
+            // Financials Section - show ALL financial data
+            if (data.financials && Object.keys(data.financials).length > 0) {
                 const financials = data.financials;
                 const financialsGrid = document.getElementById('financialsGrid');
-                financialsGrid.innerHTML = `
-                    ${financials.current_price ? `
-                        <div class="stat-card">
-                            <div class="stat-label">Current Price</div>
-                            <div class="stat-value">$${financials.current_price.toLocaleString()}</div>
-                        </div>
-                    ` : ''}
-                    ${financials.market_cap ? `
-                        <div class="stat-card">
-                            <div class="stat-label">Market Cap</div>
-                            <div class="stat-value">${formatNumber(financials.market_cap)}</div>
-                        </div>
-                    ` : ''}
-                    ${financials.pe_ratio ? `
-                        <div class="stat-card">
-                            <div class="stat-label">P/E Ratio</div>
-                            <div class="stat-value">${financials.pe_ratio.toFixed(2)}</div>
-                        </div>
-                    ` : ''}
-                    ${financials['52_week_high'] ? `
-                        <div class="stat-card">
-                            <div class="stat-label">52-Week High</div>
-                            <div class="stat-value">$${financials['52_week_high'].toLocaleString()}</div>
-                        </div>
-                    ` : ''}
-                    ${financials['52_week_low'] ? `
-                        <div class="stat-card">
-                            <div class="stat-label">52-Week Low</div>
-                            <div class="stat-value">$${financials['52_week_low'].toLocaleString()}</div>
-                        </div>
-                    ` : ''}
-                    ${financials.exchange ? `
-                        <div class="stat-card">
-                            <div class="stat-label">Exchange</div>
-                            <div class="stat-value">${financials.exchange}</div>
-                        </div>
-                    ` : ''}
-                `;
-                document.getElementById('financialsSection').style.display = 'block';
-            }
+                let financialsHTML = '';
 
-            // Info Section
-            if (data.employees || data.cik || data.company_number) {
-                const infoGrid = document.getElementById('infoGrid');
-                infoGrid.innerHTML = `
-                    ${data.employees ? `
-                        <div class="stat-card">
-                            <div class="stat-label">Employees</div>
-                            <div class="stat-value">${formatNumber(data.employees)}</div>
-                        </div>
-                    ` : ''}
-                    ${data.cik ? `
-                        <div class="stat-card">
-                            <div class="stat-label">SEC CIK</div>
-                            <div class="stat-value">${data.cik}</div>
-                        </div>
-                    ` : ''}
-                    ${data.company_number ? `
-                        <div class="stat-card">
-                            <div class="stat-label">Companies House</div>
-                            <div class="stat-value">${data.company_number}</div>
-                        </div>
-                    ` : ''}
-                `;
-                document.getElementById('infoSection').style.display = 'block';
+                // Define financial fields to display
+                const finFields = [
+                    { key: 'current_price', label: 'Current Price', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
+                    { key: 'market_cap', label: 'Market Cap', format: (v) => formatNumber(v) },
+                    { key: 'pe_ratio', label: 'P/E Ratio', format: (v) => v ? v.toFixed(2) : 'N/A' },
+                    { key: '52_week_high', label: '52-Week High', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
+                    { key: '52_week_low', label: '52-Week Low', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
+                    { key: 'dividend_yield', label: 'Dividend Yield', format: (v) => (v * 100).toFixed(2) + '%' },
+                    { key: 'exchange', label: 'Exchange', format: (v) => v },
+                    { key: 'currency', label: 'Currency', format: (v) => v }
+                ];
+
+                finFields.forEach(field => {
+                    if (financials[field.key]) {
+                        const value = field.format(financials[field.key]);
+                        financialsHTML += `
+                            <div class="stat-card">
+                                <div class="stat-label">${field.label}</div>
+                                <div class="stat-value">${value}</div>
+                            </div>
+                        `;
+                    }
+                });
+
+                if (financialsHTML) {
+                    financialsGrid.innerHTML = financialsHTML;
+                    document.getElementById('financialsSection').style.display = 'block';
+                }
             }
 
             // AI Strategy Section
             if (data.ai_strategy && data.ai_strategy.ai_focus && data.ai_strategy.ai_focus.length > 0) {
                 const aiList = document.getElementById('aiList');
                 aiList.innerHTML = data.ai_strategy.ai_focus
-                    .map(focus => `<div class="list-item">🔬 ${focus}</div>`)
+                    .map(focus => `<div class="list-item">🤖 ${focus}</div>`)
                     .join('');
                 document.getElementById('aiSection').style.display = 'block';
             }
@@ -675,7 +659,7 @@
                 competitorsList.innerHTML = data.competitors.competitors
                     .map(comp => `
                         <div class="stat-card">
-                            <div class="stat-value">${comp}</div>
+                            <div class="stat-value">⚡ ${comp}</div>
                         </div>
                     `)
                     .join('');
@@ -684,6 +668,7 @@
         }
 
         function formatLocation(hq) {
+            if (typeof hq === 'string') return hq;
             const parts = [];
             if (hq.city) parts.push(hq.city);
             if (hq.state) parts.push(hq.state);
@@ -696,7 +681,8 @@
             if (num >= 1e12) return '$' + (num / 1e12).toFixed(1) + 'T';
             if (num >= 1e9) return '$' + (num / 1e9).toFixed(1) + 'B';
             if (num >= 1e6) return '$' + (num / 1e6).toFixed(1) + 'M';
-            return num.toLocaleString();
+            if (num >= 1e3) return '$' + (num / 1e3).toFixed(1) + 'K';
+            return '$' + num.toLocaleString();
         }
 
         // Focus input on load
