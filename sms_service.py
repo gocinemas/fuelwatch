@@ -1334,8 +1334,8 @@ def brand_search():
 
 @app.route("/company")
 def company_intelligence():
-    """Company intelligence - Phase 2 (coming soon)"""
-    return render_template("intel_company_coming_soon.html")
+    """Company intelligence - Live with real data from EDGAR, OpenCorporates, Crunchbase"""
+    return render_template("intel_company.html")
 
 
 @app.route("/brand/compare")
@@ -4331,49 +4331,26 @@ def submit_research_request():
 
 @app.route("/api/company/intelligence", methods=["GET"])
 def api_company_intelligence():
-    """Fetch real company intelligence using yfinance + AI strategy.
+    """Fetch real company intelligence from EDGAR, OpenCorporates, Crunchbase, Companies House.
 
     Query params:
     - name: Company name (required)
+    - country: Country code (US, GB, INT) - defaults to US
     """
     name = request.args.get("name", "").strip()
+    country = request.args.get("country", "US").strip()
 
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
 
     try:
-        from company_data_fetcher_v2 import fetch_and_populate_company
-        import library as lib
-        sb = lib._sb()
+        from company_intelligence import fetch_company_intelligence
 
-        # Normalize company name
-        name_normalized = name.title()
+        # Fetch company data from multiple sources (EDGAR, OpenCorporates, etc.)
+        result = fetch_company_intelligence(name, country)
 
-        # Fetch if not in DB
-        fetch_and_populate_company(name_normalized)
-
-        # Get company fundamentals
-        fundamentals = sb.table("company_fundamentals").select("*").eq("name", name_normalized).execute().data
-        financials = sb.table("company_financials").select("*").eq("company_name", name_normalized).order("year", desc=True).limit(1).execute().data
-        ai_strategy = sb.table("company_ai_strategy").select("*").eq("company_name", name_normalized).execute().data
-
-        result = {
-            "name": name_normalized,
-            "ticker": fundamentals[0].get("ticker") if fundamentals else "—",
-            "industry": fundamentals[0].get("industry") if fundamentals else "—",
-            "sector": fundamentals[0].get("sector") if fundamentals else "—",
-            "website": fundamentals[0].get("website") if fundamentals else "—",
-            "financials": {
-                "revenue": financials[0].get("revenue") if financials else "—",
-                "net_profit": financials[0].get("net_profit") if financials else "—",
-                "market_cap": financials[0].get("market_cap") if financials else "—",
-                "pe_ratio": financials[0].get("pe_ratio") if financials else "—",
-                "profit_margin": financials[0].get("profit_margin") if financials else "—",
-                "high_52w": financials[0].get("high_52w") if financials else "—",
-                "low_52w": financials[0].get("low_52w") if financials else "—",
-            },
-            "ai_strategy": ai_strategy or []
-        }
+        if not result:
+            return jsonify({"error": f"No data found for {name}"}), 404
 
         return jsonify(result)
     except Exception as e:

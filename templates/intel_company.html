@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intel Company - Company Intelligence</title>
+    <title>Company Intelligence — Intel</title>
     <style>
         * {
             margin: 0;
@@ -11,178 +11,317 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #0f766e;
+            --primary-light: #14b8a6;
+            --primary-dark: #0d5e57;
+            --bg-dark: #020617;
+            --bg-light: #f8fafc;
+            --border: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --accent: #06b6d4;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 50%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid rgba(15, 118, 110, 0.2);
+            padding: 24px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
-        }
-
-        header {
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 24px 0;
-            margin-bottom: 32px;
+            padding: 0 20px;
         }
 
         .header-content {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
         }
 
         .logo {
             font-size: 24px;
             font-weight: 800;
-            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        h1 {
-            font-size: 32px;
+        .nav {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav a:hover {
+            color: var(--primary-light);
+        }
+
+        .search-section {
+            padding: 60px 20px 40px;
+        }
+
+        .search-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
             font-weight: 800;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .subtitle {
-            color: #64748b;
-            font-size: 15px;
+        .hero-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            font-weight: 300;
         }
 
         .search-box {
-            background: white;
-            padding: 32px;
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(15, 118, 110, 0.3);
             border-radius: 12px;
-            margin-bottom: 32px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            padding: 32px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s;
+        }
+
+        .search-box:hover {
+            border-color: rgba(15, 118, 110, 0.6);
+            background: rgba(30, 27, 75, 0.6);
         }
 
         .search-inputs {
             display: flex;
             gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
         }
 
-        input[type="text"] {
+        input[type="text"],
+        select {
             flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
+            min-width: 200px;
+            padding: 14px 18px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(148, 163, 184, 0.2);
             border-radius: 8px;
+            color: var(--text-primary);
             font-size: 15px;
+            transition: all 0.3s;
+            font-family: inherit;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus,
+        select:focus {
             outline: none;
-            border-color: #10b981;
+            border-color: var(--primary-light);
+            background: rgba(15, 23, 42, 1);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
         }
 
-        button {
-            padding: 12px 24px;
-            background: #10b981;
+        input[type="text"]::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-button {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
             color: white;
             border: none;
             border-radius: 8px;
             font-weight: 600;
+            font-size: 15px;
             cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
         }
 
-        button:hover {
-            background: #059669;
+        .search-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(15, 118, 110, 0.3);
         }
 
-        .company-card {
-            background: white;
-            border-radius: 12px;
-            padding: 32px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        .search-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .results-section {
+            padding: 40px 20px;
             display: none;
         }
 
-        .company-card.show {
+        .results-section.show {
             display: block;
         }
 
+        .results-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
         .company-header {
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(15, 118, 110, 0.3);
+            border-radius: 12px;
+            padding: 40px;
             margin-bottom: 32px;
-            padding-bottom: 24px;
-            border-bottom: 2px solid #e2e8f0;
+            backdrop-filter: blur(8px);
+        }
+
+        .company-name-section {
+            margin-bottom: 24px;
         }
 
         .company-name {
-            font-size: 28px;
+            font-size: 36px;
             font-weight: 800;
-            margin-bottom: 12px;
-        }
-
-        .company-hq {
-            color: #64748b;
-            font-size: 15px;
-        }
-
-        .section {
-            margin-bottom: 32px;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            display: flex;
-            gap: 8px;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .card {
-            background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
-            border: 2px solid #86efac;
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .label {
-            font-size: 11px;
-            color: #15803d;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 1px;
             margin-bottom: 8px;
         }
 
-        .value {
-            font-size: 18px;
-            font-weight: 800;
-            color: #1e293b;
-        }
-
-        .list-item {
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px;
-        }
-
-        .item-title {
+        .company-ticker {
+            font-size: 16px;
+            color: var(--text-secondary);
             font-weight: 600;
         }
 
-        .empty {
-            color: #64748b;
-            text-align: center;
+        .company-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary-light);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .section {
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(15, 118, 110, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            backdrop-filter: blur(8px);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            color: var(--primary-light);
+        }
+
+        .section-icon {
+            font-size: 28px;
+        }
+
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%);
+            border: 2px solid rgba(20, 184, 166, 0.2);
+            border-radius: 12px;
             padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(20, 184, 166, 0.5);
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%);
+            transform: translateY(-4px);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-light);
+        }
+
+        .list-items {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .list-item {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 3px solid var(--primary-light);
+            padding: 16px;
+            border-radius: 4px;
         }
 
         .loading {
             display: none;
             text-align: center;
-            padding: 40px;
+            padding: 60px 20px;
         }
 
         .loading.show {
@@ -190,250 +329,380 @@
         }
 
         .spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid #e2e8f0;
-            border-top-color: #10b981;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(20, 184, 166, 0.2);
+            border-top-color: var(--primary-light);
             border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-            margin: 0 auto 12px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #64748b;
+            color: var(--text-secondary);
         }
 
-        .empty-state h2 {
-            font-size: 24px;
-            margin-bottom: 8px;
-            color: #1e293b;
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
         }
 
-        .nav-tabs {
-            display: flex;
-            gap: 12px;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .nav-link {
-            padding: 8px 16px;
-            background: #f1f5f9;
-            border-radius: 8px;
+        .back-link {
+            display: inline-block;
+            color: var(--primary-light);
             text-decoration: none;
-            color: #64748b;
-            font-size: 13px;
             font-weight: 600;
+            margin-top: 20px;
+            transition: all 0.3s;
         }
 
-        .nav-link:hover {
-            background: #e2e8f0;
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 32px;
+            }
+
+            .company-name {
+                font-size: 24px;
+            }
+
+            .search-inputs {
+                flex-direction: column;
+            }
+
+            input[type="text"],
+            select,
+            .search-button {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="logo">💼 Intel Company</div>
-            <h1>Company Intelligence</h1>
-            <p class="subtitle">Financial performance, AI strategy, and competitive position.</p>
-        </div>
-    </header>
-
-    <div class="container">
-        <div class="search-box">
-            <div class="search-inputs">
-                <input type="text" id="searchInput" placeholder="Search company (e.g., Nike, Apple, Microsoft)..." autocomplete="off">
-                <button onclick="search()">Search</button>
-            </div>
-        </div>
-
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Loading company data...</p>
-        </div>
-
-        <div id="emptyState" class="empty-state">
-            <h2>💼 Find a Company</h2>
-            <p>Search to see financial results, performance metrics, and AI strategy.</p>
-        </div>
-
-        <div id="companyCard" class="company-card">
-            <div class="company-header">
-                <div class="company-name" id="companyName">—</div>
-                <div class="company-hq" id="companyHQ">—</div>
-            </div>
-
-            <!-- Financials -->
-            <div class="section">
-                <div class="section-title">💰 Financial Results</div>
-                <div class="grid">
-                    <div class="card">
-                        <div class="label">Revenue</div>
-                        <div class="value" id="revenue">—</div>
-                    </div>
-                    <div class="card">
-                        <div class="label">Net Profit</div>
-                        <div class="value" id="profit">—</div>
-                    </div>
-                    <div class="card">
-                        <div class="label">Market Cap</div>
-                        <div class="value" id="marketCap">—</div>
-                    </div>
-                    <div class="card">
-                        <div class="label">P/E Ratio</div>
-                        <div class="value" id="peRatio">—</div>
-                    </div>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" style="text-decoration: none;">
+                    <div class="logo">🎯 Intel</div>
+                </a>
+                <div class="nav">
+                    <a href="/brand">Brand Intelligence</a>
+                    <a href="/">Back to Intel</a>
                 </div>
-            </div>
-
-            <!-- Performance -->
-            <div class="section">
-                <div class="section-title">📊 Performance Metrics</div>
-                <div class="grid">
-                    <div class="card">
-                        <div class="label">Industry</div>
-                        <div class="value" id="industry">—</div>
-                    </div>
-                    <div class="card">
-                        <div class="label">Ticker</div>
-                        <div class="value" id="ticker">—</div>
-                    </div>
-                    <div class="card">
-                        <div class="label">52W High</div>
-                        <div class="value" id="high52w">—</div>
-                    </div>
-                    <div class="card">
-                        <div class="label">52W Low</div>
-                        <div class="value" id="low52w">—</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI Strategy -->
-            <div class="section">
-                <div class="section-title">🤖 AI Strategy</div>
-                <div id="aiStrategyList" class="grid"></div>
-            </div>
-
-            <!-- Competitors -->
-            <div class="section">
-                <div class="section-title">🏆 Competitors</div>
-                <div id="competitorsList" class="grid"></div>
-            </div>
-
-            <!-- Navigation -->
-            <div class="nav-tabs">
-                <a href="intel.humanagency.co/brand" class="nav-link">← Switch to Brand Mode</a>
             </div>
         </div>
     </div>
 
-    <script>
-        let currentCompany = null;
+    <!-- Search Section -->
+    <div class="search-section">
+        <div class="search-container">
+            <div class="hero">
+                <h1>Company Intelligence</h1>
+                <p class="hero-subtitle">Real-time financials, strategy & market positioning</p>
+            </div>
 
-        document.getElementById('searchInput').focus();
-        document.getElementById('searchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') search();
+            <div class="search-box">
+                <div class="search-inputs">
+                    <input
+                        type="text"
+                        id="companyInput"
+                        placeholder="Enter company name (e.g., Apple, Microsoft, Unilever)"
+                        autocomplete="off"
+                    >
+                    <select id="countrySelect">
+                        <option value="US">🇺🇸 United States</option>
+                        <option value="GB">🇬🇧 United Kingdom</option>
+                        <option value="INT">🌍 International</option>
+                    </select>
+                    <button class="search-button" id="searchBtn">Search</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Fetching company intelligence...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-message" id="errorMessage"></div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+        <div class="empty-state-icon">📊</div>
+        <h2>Type a company name to get started</h2>
+        <p>Search for any public or private company to see real-time financials, strategy, and market data</p>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section" id="results">
+        <div class="results-container">
+            <!-- Company Header -->
+            <div class="company-header" id="companyHeader"></div>
+
+            <!-- Financials Section -->
+            <div class="section" id="financialsSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">💰</span>
+                    Financial Data
+                </div>
+                <div class="grid-cards" id="financialsGrid"></div>
+            </div>
+
+            <!-- Headquarters & Info Section -->
+            <div class="section" id="infoSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">🏢</span>
+                    Company Overview
+                </div>
+                <div class="grid-cards" id="infoGrid"></div>
+            </div>
+
+            <!-- AI Strategy Section -->
+            <div class="section" id="aiSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">🤖</span>
+                    AI & Innovation Focus
+                </div>
+                <div class="list-items" id="aiList"></div>
+            </div>
+
+            <!-- Competitors Section -->
+            <div class="section" id="competitorsSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">⚡</span>
+                    Key Competitors
+                </div>
+                <div class="grid-cards" id="competitorsList"></div>
+            </div>
+
+            <a href="/" class="back-link">← Back to Intel</a>
+        </div>
+    </div>
+
+    <script>
+        const companyInput = document.getElementById('companyInput');
+        const countrySelect = document.getElementById('countrySelect');
+        const searchBtn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const emptyState = document.getElementById('emptyState');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Handle Enter key
+        companyInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchCompany();
         });
 
-        async function search() {
-            const name = document.getElementById('searchInput').value.trim();
-            if (!name) return;
+        searchBtn.addEventListener('click', searchCompany);
 
-            showLoading();
+        async function searchCompany() {
+            const company = companyInput.value.trim();
+            if (!company) return;
+
+            loading.classList.add('show');
+            results.classList.remove('show');
+            emptyState.style.display = 'none';
+            errorMessage.classList.remove('show');
 
             try {
-                // Always refresh to get latest data with enrichment
-                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(name)}&refresh=true`);
+                const country = countrySelect.value;
+                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}&country=${country}`);
                 const data = await response.json();
 
-                if (data.error || !data.name) {
-                    hideLoading();
-                    return;
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayResults(data);
                 }
-
-                currentCompany = data;
-                displayCompany(data);
-                showCompanyCard();
-            } catch (e) {
-                hideLoading();
+            } catch (error) {
+                showError('Failed to fetch company data. Please try again.');
+                console.error(error);
+            } finally {
+                loading.classList.remove('show');
             }
         }
 
-        function displayCompany(data) {
-            document.getElementById('companyName').textContent = data.name || '—';
-            const hq = data.hq;
-            document.getElementById('companyHQ').textContent = hq && hq.city ? `${hq.city}, ${hq.country || ''}` : '—';
-
-            document.getElementById('industry').textContent = data.industry || '—';
-            // Use ticker from financials or top level
-            const ticker = data.ticker || (data.financials && data.financials.ticker) || '—';
-            document.getElementById('ticker').textContent = ticker;
-
-            // Financial data - use correct field names from API
-            const financials = data.financials || {};
-            document.getElementById('revenue').textContent = formatValue(financials.total_revenue || financials.revenue || '—');
-            document.getElementById('profit').textContent = formatValue(financials.net_income || financials.net_profit || '—');
-            document.getElementById('marketCap').textContent = formatValue(financials.market_cap || '—');
-            document.getElementById('peRatio').textContent = formatValue(financials.pe_ratio || '—');
-            document.getElementById('high52w').textContent = formatValue(financials['52_week_high'] || '—');
-            document.getElementById('low52w').textContent = formatValue(financials['52_week_low'] || '—');
-
-            // AI Strategy
-            const aiStrategy = data.ai_strategy || {};
-            const aiFocus = aiStrategy.ai_focus || [];
-            document.getElementById('aiStrategyList').innerHTML = aiFocus.length ?
-                aiFocus.map(f => `
-                    <div class="card">
-                        <div class="label">AI Focus Area</div>
-                        <div class="value" style="font-size: 14px;">${f}</div>
-                    </div>
-                `).join('') :
-                '<div class="empty">No AI strategy data available</div>';
-
-            // Competitors
-            const competitors = data.competitors?.competitors || [];
-            document.getElementById('competitorsList').innerHTML = competitors.length ?
-                competitors.map(c => `
-                    <div class="list-item">
-                        <div class="item-title">${c}</div>
-                    </div>
-                `).join('') :
-                '<div class="empty">No competitor data available</div>';
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.classList.add('show');
+            results.classList.remove('show');
+            emptyState.style.display = 'none';
         }
 
-        function formatValue(val) {
-            if (!val || val === '—') return '—';
-            // Format large numbers with commas
-            if (typeof val === 'number' || !isNaN(val)) {
-                return Number(val).toLocaleString();
+        function displayResults(data) {
+            results.classList.add('show');
+            emptyState.style.display = 'none';
+
+            // Company Header
+            const header = document.getElementById('companyHeader');
+            header.innerHTML = `
+                <div class="company-name-section">
+                    <div class="company-name">${data.name || 'N/A'}</div>
+                    ${data.ticker ? `<div class="company-ticker">Ticker: ${data.ticker}</div>` : ''}
+                </div>
+                <div class="company-grid">
+                    ${data.hq ? `
+                        <div class="info-card">
+                            <div class="info-label">Headquarters</div>
+                            <div class="info-value">${formatLocation(data.hq)}</div>
+                        </div>
+                    ` : ''}
+                    ${data.industry ? `
+                        <div class="info-card">
+                            <div class="info-label">Industry</div>
+                            <div class="info-value">${data.industry}</div>
+                        </div>
+                    ` : ''}
+                    ${data.founded_year ? `
+                        <div class="info-card">
+                            <div class="info-label">Founded</div>
+                            <div class="info-value">${data.founded_year}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Financials Section
+            if (data.financials) {
+                const financials = data.financials;
+                const financialsGrid = document.getElementById('financialsGrid');
+                financialsGrid.innerHTML = `
+                    ${financials.current_price ? `
+                        <div class="stat-card">
+                            <div class="stat-label">Current Price</div>
+                            <div class="stat-value">$${financials.current_price.toLocaleString()}</div>
+                        </div>
+                    ` : ''}
+                    ${financials.market_cap ? `
+                        <div class="stat-card">
+                            <div class="stat-label">Market Cap</div>
+                            <div class="stat-value">${formatNumber(financials.market_cap)}</div>
+                        </div>
+                    ` : ''}
+                    ${financials.pe_ratio ? `
+                        <div class="stat-card">
+                            <div class="stat-label">P/E Ratio</div>
+                            <div class="stat-value">${financials.pe_ratio.toFixed(2)}</div>
+                        </div>
+                    ` : ''}
+                    ${financials['52_week_high'] ? `
+                        <div class="stat-card">
+                            <div class="stat-label">52-Week High</div>
+                            <div class="stat-value">$${financials['52_week_high'].toLocaleString()}</div>
+                        </div>
+                    ` : ''}
+                    ${financials['52_week_low'] ? `
+                        <div class="stat-card">
+                            <div class="stat-label">52-Week Low</div>
+                            <div class="stat-value">$${financials['52_week_low'].toLocaleString()}</div>
+                        </div>
+                    ` : ''}
+                    ${financials.exchange ? `
+                        <div class="stat-card">
+                            <div class="stat-label">Exchange</div>
+                            <div class="stat-value">${financials.exchange}</div>
+                        </div>
+                    ` : ''}
+                `;
+                document.getElementById('financialsSection').style.display = 'block';
             }
-            return String(val);
+
+            // Info Section
+            if (data.employees || data.cik || data.company_number) {
+                const infoGrid = document.getElementById('infoGrid');
+                infoGrid.innerHTML = `
+                    ${data.employees ? `
+                        <div class="stat-card">
+                            <div class="stat-label">Employees</div>
+                            <div class="stat-value">${formatNumber(data.employees)}</div>
+                        </div>
+                    ` : ''}
+                    ${data.cik ? `
+                        <div class="stat-card">
+                            <div class="stat-label">SEC CIK</div>
+                            <div class="stat-value">${data.cik}</div>
+                        </div>
+                    ` : ''}
+                    ${data.company_number ? `
+                        <div class="stat-card">
+                            <div class="stat-label">Companies House</div>
+                            <div class="stat-value">${data.company_number}</div>
+                        </div>
+                    ` : ''}
+                `;
+                document.getElementById('infoSection').style.display = 'block';
+            }
+
+            // AI Strategy Section
+            if (data.ai_strategy && data.ai_strategy.ai_focus && data.ai_strategy.ai_focus.length > 0) {
+                const aiList = document.getElementById('aiList');
+                aiList.innerHTML = data.ai_strategy.ai_focus
+                    .map(focus => `<div class="list-item">🔬 ${focus}</div>`)
+                    .join('');
+                document.getElementById('aiSection').style.display = 'block';
+            }
+
+            // Competitors Section
+            if (data.competitors && data.competitors.competitors && data.competitors.competitors.length > 0) {
+                const competitorsList = document.getElementById('competitorsList');
+                competitorsList.innerHTML = data.competitors.competitors
+                    .map(comp => `
+                        <div class="stat-card">
+                            <div class="stat-value">${comp}</div>
+                        </div>
+                    `)
+                    .join('');
+                document.getElementById('competitorsSection').style.display = 'block';
+            }
         }
 
-        function showLoading() {
-            document.getElementById('loading').classList.add('show');
-            document.getElementById('emptyState').style.display = 'none';
-            document.getElementById('companyCard').classList.remove('show');
+        function formatLocation(hq) {
+            const parts = [];
+            if (hq.city) parts.push(hq.city);
+            if (hq.state) parts.push(hq.state);
+            if (hq.country) parts.push(hq.country);
+            return parts.filter(p => p).join(', ');
         }
 
-        function hideLoading() {
-            document.getElementById('loading').classList.remove('show');
+        function formatNumber(num) {
+            if (typeof num !== 'number') return num;
+            if (num >= 1e12) return '$' + (num / 1e12).toFixed(1) + 'T';
+            if (num >= 1e9) return '$' + (num / 1e9).toFixed(1) + 'B';
+            if (num >= 1e6) return '$' + (num / 1e6).toFixed(1) + 'M';
+            return num.toLocaleString();
         }
 
-        function showCompanyCard() {
-            hideLoading();
-            document.getElementById('emptyState').style.display = 'none';
-            document.getElementById('companyCard').classList.add('show');
-        }
+        // Focus input on load
+        window.addEventListener('load', () => {
+            companyInput.focus();
+        });
     </script>
 </body>
 </html>
