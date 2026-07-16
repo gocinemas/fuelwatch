@@ -494,6 +494,74 @@ def _extract_level(job_title: str) -> str:
     return "Mid-level"
 
 
+def _extract_skills_from_description(description: str) -> list:
+    """Extract technical skills from job description."""
+    if not description:
+        return []
+
+    description_lower = description.lower()
+
+    skills = {
+        "Python": ["python"],
+        "JavaScript": ["javascript", "js", "node.js"],
+        "React": ["react", "reactjs"],
+        "AWS": ["aws", "amazon web services"],
+        "Cloud": ["cloud", "gcp", "azure"],
+        "Kubernetes": ["kubernetes", "k8s"],
+        "Docker": ["docker"],
+        "SQL": ["sql", "mysql", "postgres"],
+        "Java": ["java"],
+        "Go": ["golang", "go"],
+        "Rust": ["rust"],
+        "Machine Learning": ["machine learning", "ml", "tensorflow", "pytorch"],
+        "Data Science": ["data science", "data scientist"],
+        "AI/LLM": ["ai", "llm", "gpt", "transformer"],
+        "DevOps": ["devops", "ci/cd"],
+        "Microservices": ["microservices"],
+        "GraphQL": ["graphql"],
+        "REST API": ["rest", "api"],
+        "Mobile": ["ios", "android", "flutter", "react native"],
+        "Blockchain": ["blockchain", "ethereum", "web3"]
+    }
+
+    found_skills = []
+    for skill, keywords in skills.items():
+        if any(kw in description_lower for kw in keywords):
+            found_skills.append(skill)
+
+    return found_skills[:10]  # Top 10 skills
+
+
+def _extract_country_from_location(location: str) -> str:
+    """Extract country code from location string."""
+    if not location:
+        return "Unknown"
+
+    location_lower = location.lower()
+
+    countries = {
+        "US": ["usa", "united states", "california", "new york", "san francisco", "seattle", "austin"],
+        "IN": ["india", "bangalore", "hyderabad", "delhi", "mumbai", "pune"],
+        "GB": ["uk", "united kingdom", "london", "england", "manchester"],
+        "DE": ["germany", "berlin", "munich"],
+        "CA": ["canada", "toronto", "vancouver"],
+        "AU": ["australia", "sydney", "melbourne"],
+        "SG": ["singapore"],
+        "JP": ["japan", "tokyo"],
+        "FR": ["france", "paris"],
+        "NL": ["netherlands", "amsterdam"],
+        "IE": ["ireland", "dublin"],
+        "SE": ["sweden", "stockholm"],
+        "CH": ["switzerland", "zurich"]
+    }
+
+    for country_code, keywords in countries.items():
+        if any(kw in location_lower for kw in keywords):
+            return country_code
+
+    return "Other"
+
+
 def _analyze_jobs(company_name: str, jobs_data: list) -> dict:
     """Analyze job data to extract hiring signals."""
 
@@ -508,26 +576,49 @@ def _analyze_jobs(company_name: str, jobs_data: list) -> dict:
             },
             "top_departments": [],
             "growth_signals": [],
+            "country_breakdown": [],
+            "role_profiles": [],
+            "top_skills": [],
             "sample_roles": []
         }
 
-    # Count by department, region, level
+    # Count by department, region, level, country, and skills
     dept_counts = defaultdict(int)
     region_counts = defaultdict(int)
+    country_counts = defaultdict(int)
     levels = defaultdict(int)
+    all_skills = defaultdict(int)
 
     for job in jobs_data:
         dept = job.get("department", "OTHER")
         location = job.get("location", "Various")
         region = _extract_region(location)
+        country = _extract_country_from_location(location)
         level = job.get("level", "Mid-level")
+        description = job.get("description", "")
 
         dept_counts[dept] += 1
         region_counts[region] += 1
+        country_counts[country] += 1
         levels[level] += 1
+
+        # Extract and count skills from description
+        skills = _extract_skills_from_description(description)
+        for skill in skills:
+            all_skills[skill] += 1
 
     # Top departments
     top_depts = sorted(dept_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    # Country breakdown
+    country_breakdown = sorted(country_counts.items(), key=lambda x: x[1], reverse=True)[:8]
+    total_jobs = len(jobs_data)
+
+    # Role profiles (seniority levels)
+    role_profiles = sorted(levels.items(), key=lambda x: x[1], reverse=True)
+
+    # Top skills
+    top_skills = sorted(all_skills.items(), key=lambda x: x[1], reverse=True)[:8]
 
     # Detect growth signals
     signals = _detect_signals(dept_counts, levels, region_counts, company_name)
@@ -551,15 +642,41 @@ def _analyze_jobs(company_name: str, jobs_data: list) -> dict:
             }
             for dept, count in top_depts
         ],
+        "country_breakdown": [
+            {
+                "country": country,
+                "count": count,
+                "percentage": round((count / total_jobs) * 100, 1)
+            }
+            for country, count in country_breakdown
+        ],
+        "role_profiles": [
+            {
+                "level": level,
+                "count": count,
+                "percentage": round((count / total_jobs) * 100, 1)
+            }
+            for level, count in role_profiles
+        ],
+        "top_skills": [
+            {
+                "skill": skill,
+                "count": count
+            }
+            for skill, count in top_skills
+        ],
         "growth_signals": signals,
         "sample_roles": [
             {
                 "title": job["title"],
                 "location": job["location"],
+                "country": _extract_country_from_location(job["location"]),
                 "department": job["department"],
-                "level": job["level"]
+                "level": job["level"],
+                "description": job.get("description", "")[:250],
+                "url": job.get("url", "")
             }
-            for job in jobs_data[:5]
+            for job in jobs_data[:8]  # Show up to 8 sample roles
         ]
     }
 

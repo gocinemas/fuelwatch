@@ -771,11 +771,65 @@
                         </div>
                     `;
 
+                    // Country Breakdown Section
+                    if (data.hiring.country_breakdown && data.hiring.country_breakdown.length > 0) {
+                        hiringHTML += `
+                            <div style="margin-top: 20px; margin-bottom: 20px;">
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">🌍 Hiring by Country</h4>
+                                <div class="list-items">
+                                    ${data.hiring.country_breakdown.map(country => {
+                                        const flags = {"US": "🇺🇸", "IN": "🇮🇳", "GB": "🇬🇧", "DE": "🇩🇪", "CA": "🇨🇦", "AU": "🇦🇺", "SG": "🇸🇬", "JP": "🇯🇵"};
+                                        const flag = flags[country.country] || "🌍";
+                                        return `
+                                            <div class="list-item">
+                                                <strong>${flag} ${country.country}: ${country.count} roles (${country.percentage}%)</strong>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Role Profiles (Seniority) Section
+                    if (data.hiring.role_profiles && data.hiring.role_profiles.length > 0) {
+                        hiringHTML += `
+                            <div style="margin-top: 20px; margin-bottom: 20px;">
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">📊 Role Profiles (By Seniority)</h4>
+                                <div class="grid-cards">
+                                    ${data.hiring.role_profiles.map(profile => `
+                                        <div class="stat-card">
+                                            <div class="stat-label">${profile.level}</div>
+                                            <div class="stat-value">${profile.count} roles (${profile.percentage}%)</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Top Skills Section
+                    if (data.hiring.top_skills && data.hiring.top_skills.length > 0) {
+                        hiringHTML += `
+                            <div style="margin-top: 20px; margin-bottom: 20px;">
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">🛠️ Top Skills They're Hiring For</h4>
+                                <div class="grid-cards">
+                                    ${data.hiring.top_skills.slice(0, 6).map(skill => `
+                                        <div class="stat-card">
+                                            <div class="stat-label">${skill.skill}</div>
+                                            <div class="stat-value">${skill.count} roles</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
                     // Top Departments Section
                     if (data.hiring.top_departments && data.hiring.top_departments.length > 0) {
                         hiringHTML += `
                             <div style="margin-top: 20px; margin-bottom: 20px;">
-                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">Job Types (Departments)</h4>
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">💼 Job Types (Departments)</h4>
                                 <div class="grid-cards">
                                     ${data.hiring.top_departments.slice(0, 5).map(dept => `
                                         <div class="stat-card">
@@ -805,22 +859,25 @@
                         `;
                     }
 
-                    // Sample Roles
+                    // Sample Roles with Full Details
                     if (data.hiring.sample_roles && data.hiring.sample_roles.length > 0) {
+                        const countryFlags = {"US": "🇺🇸", "IN": "🇮🇳", "GB": "🇬🇧", "DE": "🇩🇪", "CA": "🇨🇦", "AU": "🇦🇺", "SG": "🇸🇬", "JP": "🇯🇵"};
                         hiringHTML += `
                             <div style="margin-top: 20px;">
-                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">Sample Open Roles</h4>
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">💼 Sample Open Roles</h4>
                                 <div class="list-items">
-                                    ${data.hiring.sample_roles.slice(0, 8).map(role => `
-                                        <div class="list-item">
-                                            <strong>${role.title}</strong><br>
-                                            <span style="color: var(--text-secondary); font-size: 13px;">
-                                                🌍 ${role.location || 'Location TBD'}
-                                                ${role.department ? '• ' + role.department : ''}
-                                                ${role.level ? '• ' + role.level : ''}
-                                            </span>
-                                        </div>
-                                    `).join('')}
+                                    ${data.hiring.sample_roles.slice(0, 8).map(role => {
+                                        const flag = countryFlags[role.country] || "🌍";
+                                        return `
+                                            <div class="list-item">
+                                                <strong>${role.title}</strong><br>
+                                                <span style="color: var(--text-secondary); font-size: 12px;">
+                                                    ${flag} ${role.location || 'Location TBD'} • ${role.department} • ${role.level}
+                                                </span>
+                                                ${role.description ? `<br><span style="color: var(--text-secondary); font-size: 12px; margin-top: 6px; display: block;">${role.description}...</span>` : ''}
+                                            </div>
+                                        `;
+                                    }).join('')}
                                 </div>
                             </div>
                         `;
