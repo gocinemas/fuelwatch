@@ -1340,8 +1340,14 @@ def company_intelligence():
 
 @app.route("/brand/intelligence")
 def brand_intelligence_page():
+    """Brand Intelligence — AI visibility, pricing, social, growth, catalog all-in-one"""
+    return render_template("intel_brand_intelligence.html")
+
+
+@app.route("/brand/expansion")
+def brand_expansion_page():
     """Brand Expansion Intelligence — Market positioning, expansion signals, competitor tracking"""
-    return render_template("intel_brand.html")
+    return render_template("intel_brand_expansion.html")
 
 
 @app.route("/brand/compare")
@@ -4408,7 +4414,7 @@ def api_company_intelligence():
 
 @app.route("/api/brand/intelligence", methods=["GET"])
 def api_brand_intelligence():
-    """Fetch real brand expansion intelligence.
+    """Fetch unified brand intelligence (AI, pricing, social, growth, catalog).
 
     Query params:
     - name: Brand name (required)
@@ -4423,12 +4429,38 @@ def api_brand_intelligence():
     try:
         from brand_intelligence import fetch_brand_intelligence
 
-        # Fetch real data on brand positioning, expansion, competitors
+        # Fetch unified brand intelligence: AI visibility, pricing, social, growth, catalog
         result = fetch_brand_intelligence(name, market)
 
         return jsonify(result)
     except Exception as e:
         app.logger.error(f"[brand/intelligence] ERROR: {e}", exc_info=True)
+        return jsonify({"error": str(e), "brand": name}), 500
+
+
+@app.route("/api/brand/expansion", methods=["GET"])
+def api_brand_expansion():
+    """Fetch brand expansion intelligence (market positioning, opportunities, competitors).
+
+    Query params:
+    - name: Brand name (required)
+    - market: Market code (GB, US, IN) - defaults to GB
+    """
+    name = request.args.get("name", "").strip()
+    market = request.args.get("market", "GB").strip()
+
+    if not name or len(name) < 2:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        from brand_expansion_intelligence import fetch_brand_intelligence as fetch_expansion
+
+        # Fetch brand expansion data (market positioning, competitors, TAM)
+        result = fetch_expansion(name, market)
+
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"[brand/expansion] ERROR: {e}", exc_info=True)
         return jsonify({"error": str(e), "brand": name}), 500
 
 
