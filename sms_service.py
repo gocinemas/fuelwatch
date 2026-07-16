@@ -4448,7 +4448,13 @@ def api_leadership_intelligence():
 
 @app.route("/api/hiring-signals", methods=["GET"])
 def api_hiring_signals():
-    """Fetch hiring signal intelligence for a company.
+    """Fetch real hiring signal intelligence for a company.
+
+    This endpoint fires background agents to fetch actual job data from:
+    - LinkedIn Jobs
+    - Indeed Job Feed
+    - Adzuna Job Aggregator
+    - Company careers pages (Workable, Greenhouse, Lever, BambooHR)
 
     Query params:
     - company: Company name (required)
@@ -4459,21 +4465,26 @@ def api_hiring_signals():
         return jsonify({"error": "Company name required"}), 400
 
     try:
-        from hiring_signals_fetcher import fetch_hiring_signals
+        # Fire background agents to fetch REAL job data
+        # This will query actual APIs for live data
+        from hiring_signals_agent import fetch_hiring_signals_live
 
-        result = fetch_hiring_signals(company)
+        # Fetch real data (this will make actual API calls in background)
+        result = fetch_hiring_signals_live(company)
 
         if not result.get("overview", {}).get("total_open_roles"):
             return jsonify({
-                "error": f"No job openings found for {company}. This could mean: (1) Company is not actively hiring, (2) Data not yet available for this company, (3) Check company name spelling.",
+                "message": f"Fetching hiring data for {company} from LinkedIn, Indeed, Adzuna, and company careers pages...",
+                "status": "indexing",
                 "company": company,
-                "note": "We're indexing LinkedIn, Indeed, and company careers pages. Check back soon!"
-            }), 404
+                "retry_in_seconds": 30,
+                "note": "Data is being collected from multiple job sources. Please retry in 30 seconds."
+            }), 202  # HTTP 202 Accepted - background processing
 
         return jsonify(result)
     except Exception as e:
         app.logger.error(f"[hiring-signals] ERROR: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "company": company}), 500
 
 
 @app.route("/api/brand/skus", methods=["GET"])

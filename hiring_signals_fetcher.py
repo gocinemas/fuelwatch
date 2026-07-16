@@ -2,10 +2,11 @@
 Real Hiring Signals Intelligence Fetcher
 
 Fetches actual job openings from multiple sources:
-- LinkedIn jobs (via web scraping or API)
-- Indeed
-- Company careers pages
-- Job aggregators (Adzuna, ZipRecruiter)
+- LinkedIn jobs API + careers page scraping
+- Indeed API + job feed
+- Company careers pages (Workable, Greenhouse, Lever, BambooHR)
+- Job aggregators (Adzuna, ZipRecruiter API)
+- Google Jobs API
 
 Analyzes hiring trends to spot:
 - Growth signals (expanding headcount)
@@ -21,86 +22,6 @@ from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
-
-# Sample hiring data for known companies (for demo/testing)
-SAMPLE_HIRING_DATA = {
-    "microsoft": {
-        "jobs": [
-            {"title": "Senior AI Research Scientist", "department": "AI/ML", "location": "Seattle, USA", "level": "Senior"},
-            {"title": "ML Engineer", "department": "AI/ML", "location": "Seattle, USA", "level": "Senior"},
-            {"title": "Machine Learning Engineer", "department": "AI/ML", "location": "London, UK", "level": "Mid-level"},
-            {"title": "Data Scientist - LLMs", "department": "AI/ML", "location": "Redmond, USA", "level": "Senior"},
-            {"title": "AI Product Manager", "department": "PRODUCT", "location": "New York, USA", "level": "Mid-level"},
-            {"title": "Software Engineer (Cloud)", "department": "ENGINEERING", "location": "Dublin, Ireland", "level": "Mid-level"},
-            {"title": "Infrastructure Engineer", "department": "INFRASTRUCTURE", "location": "Singapore", "level": "Senior"},
-            {"title": "Security Engineer", "department": "SECURITY", "location": "Bangalore, India", "level": "Mid-level"},
-            {"title": "Sales Executive - Enterprise AI", "department": "SALES", "location": "San Francisco, USA", "level": "Mid-level"},
-            {"title": "Account Manager", "department": "SALES", "location": "London, UK", "level": "Mid-level"},
-            {"title": "Engineering Manager", "department": "ENGINEERING", "location": "New York, USA", "level": "Executive"},
-        ],
-        "signals": ["🤖 AI/ML Expansion", "🚀 Copilot Investment"]
-    },
-    "google": {
-        "jobs": [
-            {"title": "AI/ML Research Scientist", "department": "AI/ML", "location": "Mountain View, USA", "level": "Senior"},
-            {"title": "Gemini Model Engineer", "department": "AI/ML", "location": "Mountain View, USA", "level": "Senior"},
-            {"title": "Brain Team Researcher", "department": "AI/ML", "location": "London, UK", "level": "Senior"},
-            {"title": "Software Engineer - Search", "department": "ENGINEERING", "location": "Mountain View, USA", "level": "Mid-level"},
-            {"title": "DevOps Engineer", "department": "INFRASTRUCTURE", "location": "Dublin, Ireland", "level": "Mid-level"},
-            {"title": "Cloud Infrastructure Specialist", "department": "INFRASTRUCTURE", "location": "Warsaw, Poland", "level": "Mid-level"},
-            {"title": "Sales Manager - Cloud AI", "department": "SALES", "location": "San Francisco, USA", "level": "Senior"},
-        ],
-        "signals": ["🤖 Gemini AI Push", "☁️ Cloud Expansion"]
-    },
-    "apple": {
-        "jobs": [
-            {"title": "ML Engineer - On-Device AI", "department": "AI/ML", "location": "Cupertino, USA", "level": "Senior"},
-            {"title": "Neural Engine Engineer", "department": "AI/ML", "location": "Cupertino, USA", "level": "Senior"},
-            {"title": "Hardware Engineer", "department": "ENGINEERING", "location": "Cupertino, USA", "level": "Mid-level"},
-            {"title": "Software Engineer - iOS", "department": "ENGINEERING", "location": "San Francisco, USA", "level": "Mid-level"},
-            {"title": "VP Engineering", "department": "ENGINEERING", "location": "Cupertino, USA", "level": "Executive"},
-        ],
-        "signals": ["🤖 On-Device AI Focus", "🏆 Hardware Innovation"]
-    },
-    "meta": {
-        "jobs": [
-            {"title": "AI Research Scientist", "department": "AI/ML", "location": "Menlo Park, USA", "level": "Senior"},
-            {"title": "LLaMA Model Engineer", "department": "AI/ML", "location": "Menlo Park, USA", "level": "Senior"},
-            {"title": "AI Infrastructure Engineer", "department": "INFRASTRUCTURE", "location": "London, UK", "level": "Senior"},
-            {"title": "Software Engineer - AI Platform", "department": "ENGINEERING", "location": "Dublin, Ireland", "level": "Mid-level"},
-            {"title": "Product Manager - AI", "department": "PRODUCT", "location": "Menlo Park, USA", "level": "Mid-level"},
-        ],
-        "signals": ["🤖 Open Source AI (LLaMA)", "🚀 AI Agents"]
-    },
-    "openai": {
-        "jobs": [
-            {"title": "Researcher", "department": "AI/ML", "location": "San Francisco, USA", "level": "Senior"},
-            {"title": "Machine Learning Engineer", "department": "AI/ML", "location": "San Francisco, USA", "level": "Senior"},
-            {"title": "Safety Researcher", "department": "AI/ML", "location": "San Francisco, USA", "level": "Senior"},
-            {"title": "Product Manager", "department": "PRODUCT", "location": "San Francisco, USA", "level": "Mid-level"},
-            {"title": "Sales Engineer", "department": "SALES", "location": "San Francisco, USA", "level": "Mid-level"},
-        ],
-        "signals": ["🤖 GPT-5 Development", "💼 Enterprise APIs"]
-    },
-    "stripe": {
-        "jobs": [
-            {"title": "Software Engineer", "department": "ENGINEERING", "location": "San Francisco, USA", "level": "Mid-level"},
-            {"title": "ML Engineer - Fraud Detection", "department": "AI/ML", "location": "San Francisco, USA", "level": "Senior"},
-            {"title": "Backend Engineer", "department": "ENGINEERING", "location": "Dublin, Ireland", "level": "Mid-level"},
-            {"title": "Sales Development Rep", "department": "SALES", "location": "London, UK", "level": "Junior"},
-        ],
-        "signals": ["💰 Payment AI", "🌍 Global Expansion"]
-    },
-    "netflix": {
-        "jobs": [
-            {"title": "ML Engineer - Recommendations", "department": "AI/ML", "location": "Los Gatos, USA", "level": "Senior"},
-            {"title": "Data Scientist", "department": "AI/ML", "location": "Los Gatos, USA", "level": "Mid-level"},
-            {"title": "Content Production Manager", "department": "PRODUCT", "location": "London, UK", "level": "Mid-level"},
-            {"title": "Software Engineer", "department": "ENGINEERING", "location": "Los Gatos, USA", "level": "Mid-level"},
-        ],
-        "signals": ["🎬 Content AI", "🎮 Gaming Expansion"]
-    }
-}
 
 class HiringSignalsFetcher:
     def __init__(self):
