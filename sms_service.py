@@ -4459,26 +4459,16 @@ def api_hiring_signals():
         return jsonify({"error": "Company name required"}), 400
 
     try:
-        # TODO: Integrate with real data sources:
-        # - LinkedIn Job API
-        # - Indeed scraping
-        # - Company careers pages
-        # - Job board aggregators
-        # - Analyze hiring trends, growth signals, strategic pivots
+        from hiring_signals_fetcher import fetch_hiring_signals
 
-        # For now, return structure ready for data
-        result = {
-            "company": company,
-            "overview": {
-                "total_open_roles": 0,
-                "hiring_growth_3m": "—",
-                "top_region": "—",
-                "signal": "Data loading..."
-            },
-            "top_departments": [],     # Departments with most openings
-            "growth_signals": [],      # Strategic implications (e.g., "AI expansion", "Market entry")
-            "sample_roles": []         # Sample of currently open positions
-        }
+        result = fetch_hiring_signals(company)
+
+        if not result.get("overview", {}).get("total_open_roles"):
+            return jsonify({
+                "error": f"No job openings found for {company}. This could mean: (1) Company is not actively hiring, (2) Data not yet available for this company, (3) Check company name spelling.",
+                "company": company,
+                "note": "We're indexing LinkedIn, Indeed, and company careers pages. Check back soon!"
+            }), 404
 
         return jsonify(result)
     except Exception as e:
