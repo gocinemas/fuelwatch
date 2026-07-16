@@ -1338,6 +1338,12 @@ def company_intelligence():
     return render_template("intel_company.html")
 
 
+@app.route("/brand/intelligence")
+def brand_intelligence_page():
+    """Brand Expansion Intelligence — Market positioning, expansion signals, competitor tracking"""
+    return render_template("intel_brand.html")
+
+
 @app.route("/brand/compare")
 def brand_compare():
     """Compare 2-3 brands side by side"""
@@ -4398,6 +4404,32 @@ def api_company_intelligence():
     except Exception as e:
         app.logger.error(f"[company/intelligence] ERROR: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/intelligence", methods=["GET"])
+def api_brand_intelligence():
+    """Fetch real brand expansion intelligence.
+
+    Query params:
+    - name: Brand name (required)
+    - market: Market code (GB, US, IN) - defaults to GB
+    """
+    name = request.args.get("name", "").strip()
+    market = request.args.get("market", "GB").strip()
+
+    if not name or len(name) < 2:
+        return jsonify({"error": "Brand name required"}), 400
+
+    try:
+        from brand_intelligence import fetch_brand_intelligence
+
+        # Fetch real data on brand positioning, expansion, competitors
+        result = fetch_brand_intelligence(name, market)
+
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"[brand/intelligence] ERROR: {e}", exc_info=True)
+        return jsonify({"error": str(e), "brand": name}), 500
 
 
 @app.route("/api/leadership/intelligence", methods=["GET"])
