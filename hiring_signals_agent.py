@@ -418,13 +418,34 @@ def _fetch_company_careers_live(company_name: str) -> list:
 
 
 def _deduplicate_jobs(jobs: list) -> list:
-    """Remove duplicate job postings."""
+    """Remove duplicate job postings and filter out irrelevant results."""
     seen = set()
     unique = []
 
+    # Filter out irrelevant job types
+    blacklist_titles = [
+        "retail", "sales team member", "store associate", "sales associate",
+        "teacher", "childcare", "nurse", "doctor", "therapist",
+        "cleaner", "housekeeping", "catering", "chef", "cook",
+        "delivery driver", "delivery person", "driver",
+        "recruiter", "recruiter",  # Often fake job postings
+        "nanny", "babysitter", "au pair",
+        "personal trainer", "fitness", "coach",
+        "beauty", "hairdresser", "salon",
+        "fashion retail", "clothing store"
+    ]
+
     for job in jobs:
+        title = job.get("title", "").lower()
+        company = job.get("company", "").lower()
+
+        # Skip if title contains blacklisted keywords
+        if any(blacklisted in title for blacklisted in blacklist_titles):
+            logger.debug(f"[filter] Skipping {title} (blacklisted)")
+            continue
+
         # Create a unique key from title + location
-        key = (job.get("title", "").lower(), job.get("location", "").lower())
+        key = (title, job.get("location", "").lower())
 
         if key not in seen:
             seen.add(key)
