@@ -677,12 +677,38 @@
             }
 
             // AI Strategy Section
-            if (data.ai_strategy && data.ai_strategy.ai_focus && data.ai_strategy.ai_focus.length > 0) {
-                const aiList = document.getElementById('aiList');
-                aiList.innerHTML = data.ai_strategy.ai_focus
-                    .map(focus => `<div class="list-item">🤖 ${focus}</div>`)
-                    .join('');
-                document.getElementById('aiSection').style.display = 'block';
+            if (data.ai_strategy) {
+                if (data.ai_strategy.ai_focus && data.ai_strategy.ai_focus.length > 0) {
+                    const aiList = document.getElementById('aiList');
+                    let aiHTML = `
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: var(--primary-light); margin-bottom: 12px;">🤖 AI Focus Areas</h4>
+                            <div class="list-items">
+                                ${data.ai_strategy.ai_focus.map(focus => `
+                                    <div class="list-item">
+                                        🤖 ${focus}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    if (data.ai_strategy.recent_ai_announcements && data.ai_strategy.recent_ai_announcements.length > 0) {
+                        aiHTML += `
+                            <div style="margin-top: 16px;">
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">Recent AI Announcements</h4>
+                                <div class="list-items">
+                                    ${data.ai_strategy.recent_ai_announcements.slice(0, 3).map(announcement => `
+                                        <div class="list-item">
+                                            📢 ${announcement}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    aiList.innerHTML = aiHTML;
+                    document.getElementById('aiSection').style.display = 'block';
+                }
             }
 
             // Competitors Section
@@ -745,15 +771,54 @@
                         </div>
                     `;
 
+                    // Top Departments Section
+                    if (data.hiring.top_departments && data.hiring.top_departments.length > 0) {
+                        hiringHTML += `
+                            <div style="margin-top: 20px; margin-bottom: 20px;">
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">Job Types (Departments)</h4>
+                                <div class="grid-cards">
+                                    ${data.hiring.top_departments.slice(0, 5).map(dept => `
+                                        <div class="stat-card">
+                                            <div class="stat-label">${dept.department}</div>
+                                            <div class="stat-value">${dept.open_count} roles</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Strategic Signals
                     if (data.hiring.growth_signals && data.hiring.growth_signals.length > 0) {
                         hiringHTML += `
-                            <div style="margin-top: 20px;">
+                            <div style="margin-top: 20px; margin-bottom: 20px;">
                                 <h4 style="color: var(--primary-light); margin-bottom: 12px;">Strategic Signals</h4>
                                 <div class="list-items">
                                     ${data.hiring.growth_signals.map(signal => `
                                         <div class="list-item">
                                             <strong>${signal.title}</strong><br>
                                             <span style="color: var(--text-secondary); font-size: 14px;">${signal.description}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Sample Roles
+                    if (data.hiring.sample_roles && data.hiring.sample_roles.length > 0) {
+                        hiringHTML += `
+                            <div style="margin-top: 20px;">
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">Sample Open Roles</h4>
+                                <div class="list-items">
+                                    ${data.hiring.sample_roles.slice(0, 8).map(role => `
+                                        <div class="list-item">
+                                            <strong>${role.title}</strong><br>
+                                            <span style="color: var(--text-secondary); font-size: 13px;">
+                                                🌍 ${role.location || 'Location TBD'}
+                                                ${role.department ? '• ' + role.department : ''}
+                                                ${role.level ? '• ' + role.level : ''}
+                                            </span>
                                         </div>
                                     `).join('')}
                                 </div>
