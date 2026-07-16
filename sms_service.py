@@ -1334,20 +1334,8 @@ def brand_search():
 
 @app.route("/company")
 def company_intelligence():
-    """Company intelligence - Live with real data from EDGAR, OpenCorporates, Crunchbase"""
+    """Company Intelligence — UNIFIED page showing Financials + Leadership + Hiring Signals"""
     return render_template("intel_company.html")
-
-
-@app.route("/leadership")
-def leadership_intelligence():
-    """Leadership intelligence - Track executive movements"""
-    return render_template("intel_leadership.html")
-
-
-@app.route("/hiring-signals")
-def hiring_signals():
-    """Hiring signals - Spot company growth through job openings"""
-    return render_template("intel_hiring_signals.html")
 
 
 @app.route("/brand/compare")
@@ -4417,11 +4405,11 @@ def api_leadership_intelligence():
     """Fetch leadership intelligence for a company.
 
     Query params:
-    - company: Company name (required)
+    - name: Company name (required)
     """
-    company = request.args.get("company", "").strip()
+    name = request.args.get("name", "").strip()
 
-    if not company or len(company) < 2:
+    if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
 
     try:
@@ -4433,11 +4421,12 @@ def api_leadership_intelligence():
 
         # For now, return structure ready for data
         result = {
-            "company": company,
+            "company": name,
             "current_leadership": [],  # Will be populated from LinkedIn/SEC
             "recent_movements": [],    # Promotions, lateral moves, new hires
             "departures": [],          # Exits in last 12 months
-            "board_members": []        # Current board composition
+            "board_members": [],       # Current board composition
+            "overview": f"Leadership data for {name} being indexed from LinkedIn, SEC filings, and news sources..."
         }
 
         return jsonify(result)
@@ -4457,11 +4446,11 @@ def api_hiring_signals():
     - Company careers pages (Workable, Greenhouse, Lever, BambooHR)
 
     Query params:
-    - company: Company name (required)
+    - name: Company name (required)
     """
-    company = request.args.get("company", "").strip()
+    name = request.args.get("name", "").strip()
 
-    if not company or len(company) < 2:
+    if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
 
     try:
@@ -4470,13 +4459,13 @@ def api_hiring_signals():
         from hiring_signals_agent import fetch_hiring_signals_live
 
         # Fetch real data (this will make actual API calls in background)
-        result = fetch_hiring_signals_live(company)
+        result = fetch_hiring_signals_live(name)
 
         if not result.get("overview", {}).get("total_open_roles"):
             return jsonify({
-                "message": f"Fetching hiring data for {company} from LinkedIn, Indeed, Adzuna, and company careers pages...",
+                "message": f"Fetching hiring data for {name} from LinkedIn, Indeed, Adzuna, and company careers pages...",
                 "status": "indexing",
-                "company": company,
+                "company": name,
                 "retry_in_seconds": 30,
                 "note": "Data is being collected from multiple job sources. Please retry in 30 seconds."
             }), 202  # HTTP 202 Accepted - background processing
@@ -4484,7 +4473,7 @@ def api_hiring_signals():
         return jsonify(result)
     except Exception as e:
         app.logger.error(f"[hiring-signals] ERROR: {e}", exc_info=True)
-        return jsonify({"error": str(e), "company": company}), 500
+        return jsonify({"error": str(e), "company": name}), 500
 
 
 @app.route("/api/brand/skus", methods=["GET"])

@@ -440,9 +440,9 @@
                         placeholder="Apple, Alibaba, LVMH, Samsung, TSMC, Unilever... search ANY company"
                         autocomplete="off"
                     >
-                    <button class="search-button" id="searchBtn">Search Globally</button>
+                    <button class="search-button" id="searchBtn">Get Full Intelligence</button>
                 </div>
-                <div class="help-text">💡 Works for any public company worldwide — EDGAR, OpenCorporates, Crunchbase data</div>
+                <div class="help-text">💡 One search shows: Financials + Leadership + Hiring Signals + Competitors — EDGAR, LinkedIn, job APIs</div>
             </div>
         </div>
     </div>
@@ -505,6 +505,22 @@
                 <div class="grid-cards" id="competitorsList"></div>
             </div>
 
+            <div class="section" id="leadershipSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">👔</span>
+                    Leadership Intelligence
+                </div>
+                <div id="leadershipContent">Loading leadership data...</div>
+            </div>
+
+            <div class="section" id="hiringSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">💼</span>
+                    Hiring Signals
+                </div>
+                <div id="hiringContent">Loading hiring data...</div>
+            </div>
+
             <a href="/" class="back-link">← Back to Intel</a>
         </div>
     </div>
@@ -534,14 +550,30 @@
             errorMessage.classList.remove('show');
 
             try {
-                // Search globally - no country restriction
-                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`);
-                const data = await response.json();
+                // Fetch all three data types in parallel
+                const [companyRes, leadershipRes, hiringRes] = await Promise.all([
+                    fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`),
+                    fetch(`/api/leadership/intelligence?name=${encodeURIComponent(company)}`),
+                    fetch(`/api/hiring-signals?name=${encodeURIComponent(company)}`)
+                ]);
 
-                if (data.error) {
-                    showError(data.error, data.suggestion);
+                const companyData = await companyRes.json();
+
+                if (companyData.error) {
+                    showError(companyData.error, companyData.suggestion);
                 } else {
-                    displayResults(data);
+                    // Fetch leadership and hiring data (may still be loading)
+                    const leadershipData = await leadershipRes.json();
+                    const hiringData = await hiringRes.json();
+
+                    // Combine all data
+                    const allData = {
+                        ...companyData,
+                        leadership: leadershipData,
+                        hiring: hiringData
+                    };
+
+                    displayResults(allData);
                 }
             } catch (error) {
                 showError('Failed to fetch company data. Please try again.');
@@ -664,6 +696,81 @@
                     `)
                     .join('');
                 document.getElementById('competitorsSection').style.display = 'block';
+            }
+
+            // Leadership Intelligence Section
+            if (data.leadership && !data.leadership.error) {
+                const leadershipContent = document.getElementById('leadershipContent');
+                if (data.leadership.current_leadership && data.leadership.current_leadership.length > 0) {
+                    leadershipContent.innerHTML = `
+                        <div class="list-items">
+                            ${data.leadership.current_leadership.map(exec => `
+                                <div class="list-item">
+                                    <strong>👤 ${exec.name || 'N/A'}</strong><br>
+                                    ${exec.title ? `<span style="color: var(--text-secondary);">Position: ${exec.title}</span><br>` : ''}
+                                    ${exec.joined ? `<span style="color: var(--text-secondary); font-size: 12px;">Since ${exec.joined}</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    document.getElementById('leadershipSection').style.display = 'block';
+                } else if (data.leadership.overview) {
+                    leadershipContent.innerHTML = `
+                        <p style="color: var(--text-secondary);">${data.leadership.overview}</p>
+                    `;
+                    document.getElementById('leadershipSection').style.display = 'block';
+                }
+            }
+
+            // Hiring Signals Section
+            if (data.hiring && !data.hiring.error) {
+                const hiringContent = document.getElementById('hiringContent');
+                if (data.hiring.overview && data.hiring.overview.total_open_roles > 0) {
+                    let hiringHTML = `
+                        <div style="margin-bottom: 24px;">
+                            <div class="grid-cards">
+                                <div class="stat-card">
+                                    <div class="stat-label">Open Positions</div>
+                                    <div class="stat-value">${data.hiring.overview.total_open_roles}</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Growth (3m)</div>
+                                    <div class="stat-value">${data.hiring.overview.hiring_growth_3m || '—'}</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Top Region</div>
+                                    <div class="stat-value">${data.hiring.overview.top_region || '—'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    if (data.hiring.growth_signals && data.hiring.growth_signals.length > 0) {
+                        hiringHTML += `
+                            <div style="margin-top: 20px;">
+                                <h4 style="color: var(--primary-light); margin-bottom: 12px;">Strategic Signals</h4>
+                                <div class="list-items">
+                                    ${data.hiring.growth_signals.map(signal => `
+                                        <div class="list-item">
+                                            <strong>${signal.title}</strong><br>
+                                            <span style="color: var(--text-secondary); font-size: 14px;">${signal.description}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    hiringContent.innerHTML = hiringHTML;
+                    document.getElementById('hiringSection').style.display = 'block';
+                } else if (data.hiring.overview && data.hiring.overview.signal) {
+                    hiringContent.innerHTML = `
+                        <p style="color: var(--text-secondary);">${data.hiring.overview.signal}</p>
+                    `;
+                    if (data.hiring.overview.total_open_roles === 0) {
+                        document.getElementById('hiringSection').style.display = 'block';
+                    }
+                }
             }
         }
 
