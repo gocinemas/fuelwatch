@@ -473,6 +473,30 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
             result.update(ch_data)
             print(f"[intelligence] Got data from Companies House")
 
+        # Try 2: OpenCorporates (UK companies also listed here)
+        if not result or not result.get("name"):
+            print(f"[intelligence] Fetching {company_name} from OpenCorporates...")
+            oc_data = _fetch_opencorporates(company_name)
+            if oc_data:
+                result.update(oc_data)
+                print(f"[intelligence] Got data from OpenCorporates")
+
+        # Try 3: Crunchbase (global coverage)
+        if not result or not result.get("name"):
+            print(f"[intelligence] Fetching {company_name} from Crunchbase...")
+            cb_data = _fetch_crunchbase(company_name)
+            if cb_data:
+                result.update(cb_data)
+                print(f"[intelligence] Got data from Crunchbase")
+
+        # Try 4: Wikipedia (UK companies on Wikipedia)
+        if not result or not result.get("name"):
+            print(f"[intelligence] Fetching {company_name} from Wikipedia...")
+            wiki_data = _fetch_wikipedia_company(company_name)
+            if wiki_data:
+                result.update(wiki_data)
+                print(f"[intelligence] Got data from Wikipedia")
+
     elif country == "US":
         # Try 1: OpenCorporates (US, free)
         print(f"[intelligence] Fetching {company_name} from OpenCorporates...")
