@@ -356,6 +356,54 @@ Return ONLY this JSON structure, no markdown:
     return raw_data
 
 
+def _fetch_wikipedia_company(company_name: str) -> dict:
+    """Fetch company info from Wikipedia (global, free, supports international companies)."""
+    try:
+        import requests
+        from urllib.parse import quote
+
+        # Try Wikipedia API
+        url = f"https://en.wikipedia.org/w/api.php?action=query&titles={quote(company_name)}&prop=extracts&explaintext=True&format=json"
+
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            pages = data.get("query", {}).get("pages", {})
+
+            for page_id, page_data in pages.items():
+                if page_id != "-1":  # Found a page
+                    extract = page_data.get("extract", "")
+
+                    # Parse extract for basic info
+                    result = {
+                        "name": page_data.get("title", company_name),
+                        "description": extract[:200] if extract else "",
+                        "source": "Wikipedia"
+                    }
+
+                    # Try to extract founded year, headquarters, industry from text
+                    if "founded" in extract.lower():
+                        import re
+                        year_match = re.search(r'founded\s+(?:in\s+)?(\d{4})', extract.lower())
+                        if year_match:
+                            result["founded_year"] = int(year_match.group(1))
+
+                    if "headquartered" in extract.lower() or "based" in extract.lower():
+                        import re
+                        # Look for country patterns
+                        for country_name in ["India", "Germany", "Singapore", "Japan", "China", "Canada", "Australia", "United States", "United Kingdom"]:
+                            if country_name.lower() in extract.lower():
+                                result["hq"] = {"country": country_name}
+                                break
+
+                    return result
+
+    except Exception as e:
+        print(f"[wikipedia] Error: {e}")
+
+    return {}
+
+
 def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
     """
     Main orchestrator: try all sources in order based on country, cache result.
@@ -418,12 +466,28 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
                 print(f"[intelligence] Got data from EDGAR")
 
     else:
-        # Default fallback for other countries
-        print(f"[intelligence] Fetching {company_name} from OpenCorporates (international)...")
+        # Default fallback for other countries (India, Germany, Singapore, etc.)
+        print(f"[intelligence] Fetching {company_name} from multiple international sources...")
+
+        # Try 1: OpenCorporates (international, covers many countries)
         oc_data = _fetch_opencorporates(company_name)
         if oc_data:
             result.update(oc_data)
             print(f"[intelligence] Got data from OpenCorporates")
+
+        # Try 2: Crunchbase (global coverage, if API available)
+        if not result or not result.get("founded_year"):
+            cb_data = _fetch_crunchbase(company_name)
+            if cb_data:
+                result.update(cb_data)
+                print(f"[intelligence] Got data from Crunchbase")
+
+        # Try 3: Wikipedia/Wikidata (global, free)
+        if not result or not result.get("founded_year"):
+            wiki_data = _fetch_wikipedia_company(company_name)
+            if wiki_data:
+                result.update(wiki_data)
+                print(f"[intelligence] Got data from Wikipedia")
 
     if not result:
         print(f"[intelligence] No data found for {company_name}")
