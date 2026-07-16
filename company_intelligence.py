@@ -501,21 +501,32 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
         # Default fallback for other countries (India, Germany, Singapore, etc.)
         print(f"[intelligence] Fetching {company_name} from multiple international sources...")
 
-        # Try 1: OpenCorporates (international, covers many countries)
-        oc_data = _fetch_opencorporates(company_name)
-        if oc_data:
-            result.update(oc_data)
-            print(f"[intelligence] Got data from OpenCorporates")
+        # Try 1: MCA India (if Indian company) - OFFICIAL GOVERNMENT SOURCE
+        from mca_india_fetcher import is_indian_company
+        if is_indian_company(company_name):
+            print(f"[intelligence] Detected Indian company, querying MCA India registry...")
+            from mca_india_fetcher import fetch_mca_india_company
+            mca_data = fetch_mca_india_company(company_name)
+            if mca_data and mca_data.get("name"):
+                result.update(mca_data)
+                print(f"[intelligence] Got data from MCA India")
 
-        # Try 2: Crunchbase (global coverage, if API available)
-        if not result or not result.get("founded_year"):
+        # Try 2: OpenCorporates (international, covers many countries)
+        if not result or not result.get("name"):
+            oc_data = _fetch_opencorporates(company_name)
+            if oc_data:
+                result.update(oc_data)
+                print(f"[intelligence] Got data from OpenCorporates")
+
+        # Try 3: Crunchbase (global coverage, if API available)
+        if not result or not result.get("name"):
             cb_data = _fetch_crunchbase(company_name)
             if cb_data:
                 result.update(cb_data)
                 print(f"[intelligence] Got data from Crunchbase")
 
-        # Try 3: Wikipedia/Wikidata (global, free)
-        if not result or not result.get("founded_year"):
+        # Try 4: Wikipedia/Wikidata (global, free)
+        if not result or not result.get("name"):
             wiki_data = _fetch_wikipedia_company(company_name)
             if wiki_data:
                 result.update(wiki_data)
