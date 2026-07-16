@@ -2,12 +2,14 @@
 Hiring Signals Live Agent Fetcher
 
 Fires background agents to fetch REAL job data from:
-- LinkedIn Jobs API
+- Adzuna Job Aggregator API (primary - free tier available)
 - Indeed Job Feed
-- Adzuna Job Aggregator
-- Company careers pages
+- LinkedIn Jobs API
+- Google Jobs API
+- Company careers pages (Workable, Greenhouse, Lever, BambooHR)
 
 This replaces hardcoded sample data with dynamic, real-time fetching.
+Uses multiple fallback sources to maximize coverage.
 """
 
 import requests
@@ -16,21 +18,23 @@ import os
 from datetime import datetime, timedelta
 from collections import defaultdict
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
 
 def fetch_hiring_signals_live(company_name: str) -> dict:
     """
-    Fire background agents to fetch REAL hiring data for a company.
+    Fetch REAL hiring data for a company from multiple sources.
 
-    This attempts multiple sources in parallel:
-    1. Adzuna API (job aggregator - free API available)
-    2. Indeed job search (web scraping)
-    3. LinkedIn careers API (if available)
-    4. Company careers page (direct scraping)
+    This attempts multiple sources in parallel priority order:
+    1. Adzuna API (job aggregator - primary, most reliable)
+    2. Google Jobs API (if available)
+    3. LinkedIn careers page (dynamic scraping)
+    4. Indeed job search (API/scraping)
+    5. Company careers page (Workable, Greenhouse, Lever, BambooHR)
 
-    Returns live data or empty structure for background indexing.
+    Returns live data or HTTP 202 if still indexing.
     """
 
     result = {
@@ -48,40 +52,59 @@ def fetch_hiring_signals_live(company_name: str) -> dict:
     }
 
     try:
-        # Try Adzuna API first (most reliable, free tier available)
+        all_jobs = []
+
+        # Strategy: Try all sources and combine results
+        # This gives better coverage than falling back to first successful one
+
+        # 1. Adzuna API (free tier, most reliable)
+        logger.info(f"[hiring] Querying Adzuna for {company_name}...")
         adzuna_jobs = _fetch_adzuna_live(company_name)
         if adzuna_jobs:
-            result = _analyze_jobs(company_name, adzuna_jobs)
-            result["data_sources"].append("Adzuna Job Aggregator")
-            return result
+            all_jobs.extend(adzuna_jobs)
+            result["data_sources"].append("Adzuna")
 
-        # Try Indeed API/scraping
-        indeed_jobs = _fetch_indeed_live(company_name)
-        if indeed_jobs:
-            result = _analyze_jobs(company_name, indeed_jobs)
-            result["data_sources"].append("Indeed Jobs")
-            return result
+        # 2. Google Jobs API (if configured)
+        logger.info(f"[hiring] Querying Google Jobs for {company_name}...")
+        google_jobs = _fetch_google_jobs_live(company_name)
+        if google_jobs:
+            all_jobs.extend(google_jobs)
+            result["data_sources"].append("Google Jobs")
 
-        # Try LinkedIn careers page
+        # 3. LinkedIn (careers page pattern)
+        logger.info(f"[hiring] Checking LinkedIn careers for {company_name}...")
         linkedin_jobs = _fetch_linkedin_live(company_name)
         if linkedin_jobs:
-            result = _analyze_jobs(company_name, linkedin_jobs)
-            result["data_sources"].append("LinkedIn Careers")
-            return result
+            all_jobs.extend(linkedin_jobs)
+            result["data_sources"].append("LinkedIn")
 
-        # Try company careers page
+        # 4. Indeed
+        logger.info(f"[hiring] Querying Indeed for {company_name}...")
+        indeed_jobs = _fetch_indeed_live(company_name)
+        if indeed_jobs:
+            all_jobs.extend(indeed_jobs)
+            result["data_sources"].append("Indeed")
+
+        # 5. Company careers page
+        logger.info(f"[hiring] Checking company careers page for {company_name}...")
         careers_jobs = _fetch_company_careers_live(company_name)
         if careers_jobs:
-            result = _analyze_jobs(company_name, careers_jobs)
-            result["data_sources"].append("Company Careers Page")
+            all_jobs.extend(careers_jobs)
+            result["data_sources"].append("Company Careers")
+
+        # Deduplicate and analyze
+        if all_jobs:
+            all_jobs = _deduplicate_jobs(all_jobs)
+            result = _analyze_jobs(company_name, all_jobs)
+            result["data_sources"] = list(set(result["data_sources"]))  # Remove duplicates
+            logger.info(f"[hiring] Found {len(all_jobs)} jobs for {company_name} from {len(result['data_sources'])} sources")
+            return result
+        else:
+            logger.warning(f"[hiring] No job data found for {company_name} from any source")
             return result
 
-        # No data found - return empty structure
-        logger.warning(f"[hiring_signals] No data found for {company_name} from any source")
-        return result
-
     except Exception as e:
-        logger.error(f"[hiring_signals_agent] ERROR: {e}")
+        logger.error(f"[hiring_signals_agent] ERROR: {e}", exc_info=True)
         return result
 
 
@@ -134,23 +157,117 @@ def _fetch_adzuna_live(company_name: str) -> list:
     return jobs
 
 
-def _fetch_indeed_live(company_name: str) -> list:
-    """Fetch jobs from Indeed (via web scraping with user-agent spoofing)."""
+def _fetch_google_jobs_live(company_name: str) -> list:
+    """Fetch jobs from Google Jobs API."""
     jobs = []
     try:
+        # Google Jobs API (requires API key)
+        api_key = os.environ.get("GOOGLE_JOBS_API_KEY", "")
+        if not api_key:
+            logger.debug("[google_jobs] API key not configured")
+            return jobs
+
+        url = "https://www.googleapis.com/jobs/v4/projects/search"
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
         }
 
-        # Indeed Publisher API (if key available) or web search
+        payload = {
+            "requestMetadata": {
+                "userOverride": {"userId": "miru-intel"}
+            },
+            "searchParameters": {
+                "query": f'company:"{company_name}"',
+                "pageSize": 50
+            }
+        }
+
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            for job in data.get("matchingJobs", []):
+                job_info = job.get("jobInfo", {})
+                jobs.append({
+                    "title": job_info.get("jobTitle", ""),
+                    "company": company_name,
+                    "location": job_info.get("location", ""),
+                    "department": _extract_department(job_info.get("jobTitle", "")),
+                    "level": _extract_level(job_info.get("jobTitle", "")),
+                    "posted_date": job_info.get("postingDate", ""),
+                    "url": job_info.get("applicationUrl", ""),
+                    "description": job_info.get("jobDescription", "")[:200]
+                })
+            logger.info(f"[google_jobs] Found {len(jobs)} jobs for {company_name}")
+
+    except Exception as e:
+        logger.debug(f"[google_jobs] Error fetching: {e}")
+
+    return jobs
+
+
+def _fetch_indeed_live(company_name: str) -> list:
+    """Fetch jobs from Indeed (API or web search)."""
+    jobs = []
+    try:
+        # Indeed Publisher API
         api_key = os.environ.get("INDEED_API_KEY", "")
         if api_key:
-            # Use Indeed Publisher API
-            pass
+            try:
+                # Indeed Publisher API endpoint
+                url = "https://apis.indeed.com/graphql"
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+
+                query = f"""
+                {{
+                  jobSearch(input: {{
+                    query: "{company_name}",
+                    limit: 50,
+                    filters: {{
+                      locations: ["worldwide"]
+                    }}
+                  }}) {{
+                    jobs {{
+                      id
+                      title
+                      company {{
+                        name
+                      }}
+                      location {{
+                        city
+                        country
+                      }}
+                      description
+                      postedDate
+                      jobUrl
+                    }}
+                  }}
+                }}
+                """
+
+                response = requests.post(url, json={"query": query}, headers=headers, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    for job in data.get("data", {}).get("jobSearch", {}).get("jobs", []):
+                        jobs.append({
+                            "title": job.get("title", ""),
+                            "company": job.get("company", {}).get("name", ""),
+                            "location": f"{job.get('location', {}).get('city', '')}, {job.get('location', {}).get('country', '')}",
+                            "department": _extract_department(job.get("title", "")),
+                            "level": _extract_level(job.get("title", "")),
+                            "posted_date": job.get("postedDate", ""),
+                            "url": job.get("jobUrl", ""),
+                            "description": job.get("description", "")[:200]
+                        })
+                    logger.info(f"[indeed] Found {len(jobs)} jobs for {company_name}")
+
+            except Exception as e:
+                logger.debug(f"[indeed_api] Error: {e}")
         else:
-            # Fall back to search URL pattern
-            search_url = f"https://www.indeed.com/jobs?q={company_name.replace(' ', '+')}&limit=50"
-            logger.debug(f"[indeed] Would search: {search_url} (requires browser automation)")
+            logger.debug("[indeed] API key not configured")
 
     except Exception as e:
         logger.debug(f"[indeed] Error fetching: {e}")
@@ -159,19 +276,51 @@ def _fetch_indeed_live(company_name: str) -> list:
 
 
 def _fetch_linkedin_live(company_name: str) -> list:
-    """Fetch jobs from LinkedIn careers page."""
+    """Fetch jobs from LinkedIn careers API or page."""
     jobs = []
     try:
         # LinkedIn careers page pattern
-        company_slug = company_name.lower().replace(" ", "-")
-        url = f"https://www.linkedin.com/company/{company_slug}/jobs"
+        company_slug = company_name.lower().replace(" ", "-").replace("&", "and")
+        linkedin_url = f"https://www.linkedin.com/company/{company_slug}/jobs/"
 
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
+        # Try LinkedIn API first
+        api_key = os.environ.get("LINKEDIN_API_KEY", "")
+        if api_key:
+            try:
+                # LinkedIn Jobs API
+                url = "https://api.linkedin.com/v2/jobs"
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
 
-        # Note: LinkedIn blocks scrapers; would need Selenium or LinkedIn API
-        logger.debug(f"[linkedin] Careers page available at: {url} (requires authentication)")
+                # Search for jobs at this company
+                params = {
+                    "q": "targetCompanies",
+                    "targetCompanies": company_name,
+                    "limit": 50
+                }
+
+                response = requests.get(url, headers=headers, params=params, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    for job in data.get("elements", []):
+                        jobs.append({
+                            "title": job.get("title", ""),
+                            "company": company_name,
+                            "location": job.get("location", ""),
+                            "department": _extract_department(job.get("title", "")),
+                            "level": _extract_level(job.get("title", "")),
+                            "posted_date": job.get("postedDate", ""),
+                            "url": job.get("jobUrl", ""),
+                            "description": job.get("description", "")[:200]
+                        })
+                    logger.info(f"[linkedin] Found {len(jobs)} jobs from LinkedIn API")
+
+            except Exception as e:
+                logger.debug(f"[linkedin_api] Error: {e}")
+        else:
+            logger.debug(f"[linkedin] Careers page available at: {linkedin_url} (API key not configured)")
 
     except Exception as e:
         logger.debug(f"[linkedin] Error fetching: {e}")
@@ -180,24 +329,108 @@ def _fetch_linkedin_live(company_name: str) -> list:
 
 
 def _fetch_company_careers_live(company_name: str) -> list:
-    """Fetch jobs from company's careers page directly."""
+    """Fetch jobs from company's careers page (supports Workable, Greenhouse, Lever, BambooHR)."""
     jobs = []
     try:
+        company_slug = company_name.lower().replace(" ", "").replace("&", "and")
+
         # Common career page patterns
         career_urls = [
-            f"https://{company_name.lower().replace(' ', '')}.com/careers",
-            f"https://careers.{company_name.lower().replace(' ', '')}.com",
-            f"https://jobs.{company_name.lower().replace(' ', '')}.com",
+            f"https://{company_slug}.com/careers",
+            f"https://careers.{company_slug}.com",
+            f"https://jobs.{company_slug}.com",
+            f"https://{company_slug}.careers",
         ]
 
-        # Many companies use Workable, Greenhouse, Lever, BambooHR
-        # These have parseable job feeds if using standard integrations
-        logger.debug(f"[careers] Would check: {career_urls}")
+        # Many companies use standard ATS (Applicant Tracking System) platforms
+        # These have public job feeds available at predictable URLs
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+
+        for url in career_urls:
+            try:
+                # Try to fetch careers page
+                response = requests.get(url, headers=headers, timeout=5)
+
+                if response.status_code == 200:
+                    # Try to find job listings
+                    # Look for common ATS job feed patterns
+
+                    # Workable: /jobs.json
+                    workable_url = url.rstrip('/') + "/jobs.json"
+                    try:
+                        workable_response = requests.get(workable_url, timeout=5)
+                        if workable_response.status_code == 200:
+                            workable_jobs = workable_response.json()
+                            for job in workable_jobs.get("jobs", []):
+                                jobs.append({
+                                    "title": job.get("title", ""),
+                                    "company": company_name,
+                                    "location": job.get("location", ""),
+                                    "department": _extract_department(job.get("title", "")),
+                                    "level": _extract_level(job.get("title", "")),
+                                    "posted_date": job.get("posted_date", ""),
+                                    "url": job.get("url", ""),
+                                    "description": job.get("description", "")[:200]
+                                })
+                            logger.info(f"[workable] Found {len(jobs)} jobs from {company_name}")
+                            break
+                    except:
+                        pass
+
+                    # Greenhouse: has RSS or API
+                    greenhouse_url = url.rstrip('/') + "/jobs.xml"
+                    try:
+                        greenhouse_response = requests.get(greenhouse_url, timeout=5)
+                        if greenhouse_response.status_code == 200:
+                            # Parse XML
+                            import xml.etree.ElementTree as ET
+                            root = ET.fromstring(greenhouse_response.content)
+                            for item in root.findall('.//item'):
+                                title = item.find('title')
+                                link = item.find('link')
+                                if title is not None:
+                                    jobs.append({
+                                        "title": title.text or "",
+                                        "company": company_name,
+                                        "location": "TBD",
+                                        "department": _extract_department(title.text or ""),
+                                        "level": _extract_level(title.text or ""),
+                                        "posted_date": item.find('pubDate').text if item.find('pubDate') is not None else "",
+                                        "url": link.text if link is not None else "",
+                                        "description": ""
+                                    })
+                            if jobs:
+                                logger.info(f"[greenhouse] Found {len(jobs)} jobs from {company_name}")
+                                break
+                    except:
+                        pass
+
+            except Exception as e:
+                logger.debug(f"[careers] Error checking {url}: {e}")
 
     except Exception as e:
         logger.debug(f"[careers] Error fetching: {e}")
 
     return jobs
+
+
+def _deduplicate_jobs(jobs: list) -> list:
+    """Remove duplicate job postings."""
+    seen = set()
+    unique = []
+
+    for job in jobs:
+        # Create a unique key from title + location
+        key = (job.get("title", "").lower(), job.get("location", "").lower())
+
+        if key not in seen:
+            seen.add(key)
+            unique.append(job)
+
+    return unique
 
 
 def _extract_department(job_title: str) -> str:

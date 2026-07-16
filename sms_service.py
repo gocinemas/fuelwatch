@@ -4402,7 +4402,7 @@ def api_company_intelligence():
 
 @app.route("/api/leadership/intelligence", methods=["GET"])
 def api_leadership_intelligence():
-    """Fetch leadership intelligence for a company.
+    """Fetch real leadership intelligence for a company from SEC, news, LinkedIn.
 
     Query params:
     - name: Company name (required)
@@ -4413,26 +4413,15 @@ def api_leadership_intelligence():
         return jsonify({"error": "Company name required"}), 400
 
     try:
-        # TODO: Integrate with real data sources:
-        # - LinkedIn API (leadership positions)
-        # - News scrapers (executive moves, departures)
-        # - SEC filings (board changes, officer changes)
-        # - Company press releases
+        from leadership_intelligence import fetch_leadership_intelligence
 
-        # For now, return structure ready for data
-        result = {
-            "company": name,
-            "current_leadership": [],  # Will be populated from LinkedIn/SEC
-            "recent_movements": [],    # Promotions, lateral moves, new hires
-            "departures": [],          # Exits in last 12 months
-            "board_members": [],       # Current board composition
-            "overview": f"Leadership data for {name} being indexed from LinkedIn, SEC filings, and news sources..."
-        }
+        # Fetch real data from SEC, news APIs, LinkedIn
+        result = fetch_leadership_intelligence(name)
 
         return jsonify(result)
     except Exception as e:
         app.logger.error(f"[leadership/intelligence] ERROR: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "company": name}), 500
 
 
 @app.route("/api/hiring-signals", methods=["GET"])
