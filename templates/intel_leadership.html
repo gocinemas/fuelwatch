@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leadership Intelligence — Intel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0f766e;
+            --primary-light: #14b8a6;
+            --primary-dark: #0d5e57;
+            --bg-dark: #020617;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --accent: #06b6d4;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 50%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid rgba(15, 118, 110, 0.2);
+            padding: 24px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            font-size: 14px;
+        }
+
+        .nav a:hover {
+            color: var(--primary-light);
+        }
+
+        .search-section {
+            padding: 60px 20px 40px;
+        }
+
+        .search-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        .search-box {
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(15, 118, 110, 0.3);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .search-inputs {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 300px;
+            padding: 14px 18px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        .search-button {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(15, 118, 110, 0.3);
+        }
+
+        .results-section {
+            padding: 40px 20px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .results-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(15, 118, 110, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            backdrop-filter: blur(8px);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 24px;
+            color: var(--primary-light);
+        }
+
+        .executive-card {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 4px solid var(--primary-light);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .exec-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .exec-title {
+            font-size: 14px;
+            color: var(--primary-light);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .exec-detail {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--primary-light);
+            font-weight: 600;
+            margin-top: 8px;
+            margin-right: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(20, 184, 166, 0.2);
+            border-top-color: var(--primary-light);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: var(--primary-light);
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 32px;
+            }
+
+            .search-inputs {
+                flex-direction: column;
+            }
+
+            input[type="text"],
+            .search-button {
+                width: 100%;
+                min-width: unset;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" style="text-decoration: none;">
+                    <div class="logo">🎯 Intel</div>
+                </a>
+                <div class="nav">
+                    <a href="/company">Company Intelligence</a>
+                    <a href="/hiring-signals">Hiring Signals</a>
+                    <a href="/">Back to Intel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="search-section">
+        <div class="search-container">
+            <div class="hero">
+                <h1>Leadership Intelligence</h1>
+                <p class="hero-subtitle">Track executive movements, hires, departures & strategic signals</p>
+            </div>
+
+            <div class="search-box">
+                <div class="search-inputs">
+                    <input
+                        type="text"
+                        id="companyInput"
+                        placeholder="Search company (e.g., Apple, Meta, Stripe)..."
+                        autocomplete="off"
+                    >
+                    <button class="search-button" id="searchBtn">Find Leadership</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Fetching leadership intelligence...</p>
+    </div>
+
+    <div class="error-message" id="errorMessage"></div>
+
+    <div class="empty-state" id="emptyState">
+        <div style="font-size: 48px; margin-bottom: 16px;">👔</div>
+        <h2>Search for a company to see leadership intelligence</h2>
+        <p>Track executive movements, recent hires, board changes, and strategic signals</p>
+    </div>
+
+    <div class="results-section" id="results">
+        <div class="results-container">
+            <div class="section" id="currentLeadership" style="display: none;">
+                <div class="section-title">🏢 Current Leadership</div>
+                <div id="currentLeadershipList"></div>
+            </div>
+
+            <div class="section" id="recentMovements" style="display: none;">
+                <div class="section-title">🚀 Recent Movements (Last 12 Months)</div>
+                <div id="recentMovementsList"></div>
+            </div>
+
+            <div class="section" id="departures" style="display: none;">
+                <div class="section-title">📤 Notable Departures</div>
+                <div id="departuresList"></div>
+            </div>
+
+            <div class="section" id="boardMembers" style="display: none;">
+                <div class="section-title">🎯 Board Members</div>
+                <div id="boardMembersList"></div>
+            </div>
+
+            <a href="/" class="back-link">← Back to Intel</a>
+        </div>
+    </div>
+
+    <script>
+        const companyInput = document.getElementById('companyInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const emptyState = document.getElementById('emptyState');
+        const errorMessage = document.getElementById('errorMessage');
+
+        companyInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchCompany();
+        });
+
+        searchBtn.addEventListener('click', searchCompany);
+
+        async function searchCompany() {
+            const company = companyInput.value.trim();
+            if (!company) return;
+
+            loading.classList.add('show');
+            results.classList.remove('show');
+            emptyState.style.display = 'none';
+            errorMessage.classList.remove('show');
+
+            try {
+                const response = await fetch(`/api/leadership/intelligence?company=${encodeURIComponent(company)}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    errorMessage.textContent = '❌ ' + data.error;
+                    errorMessage.classList.add('show');
+                } else {
+                    displayResults(data);
+                }
+            } catch (error) {
+                errorMessage.textContent = '❌ Failed to fetch leadership data.';
+                errorMessage.classList.add('show');
+                console.error(error);
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        function displayResults(data) {
+            results.classList.add('show');
+            emptyState.style.display = 'none';
+
+            // Current Leadership
+            if (data.current_leadership && data.current_leadership.length > 0) {
+                const list = document.getElementById('currentLeadershipList');
+                list.innerHTML = data.current_leadership
+                    .map(exec => `
+                        <div class="executive-card">
+                            <div class="exec-name">${exec.name}</div>
+                            <div class="exec-title">${exec.title}</div>
+                            ${exec.tenure ? `<div class="exec-detail">📅 Tenure: ${exec.tenure}</div>` : ''}
+                            ${exec.previous_company ? `<div class="exec-detail">From: ${exec.previous_company}</div>` : ''}
+                        </div>
+                    `)
+                    .join('');
+                document.getElementById('currentLeadership').style.display = 'block';
+            }
+
+            // Recent Movements
+            if (data.recent_movements && data.recent_movements.length > 0) {
+                const list = document.getElementById('recentMovementsList');
+                list.innerHTML = data.recent_movements
+                    .map(move => `
+                        <div class="executive-card">
+                            <div class="exec-name">${move.name}</div>
+                            <div class="exec-title">${move.new_title}</div>
+                            <div class="exec-detail">🔄 Moved from: ${move.previous_title}</div>
+                            ${move.date ? `<div class="exec-detail">📅 Date: ${move.date}</div>` : ''}
+                            <span class="badge">${move.type || 'Promotion'}</span>
+                        </div>
+                    `)
+                    .join('');
+                document.getElementById('recentMovements').style.display = 'block';
+            }
+
+            // Departures
+            if (data.departures && data.departures.length > 0) {
+                const list = document.getElementById('departuresList');
+                list.innerHTML = data.departures
+                    .map(dep => `
+                        <div class="executive-card">
+                            <div class="exec-name">${dep.name}</div>
+                            <div class="exec-title">Was: ${dep.last_title}</div>
+                            ${dep.next_role ? `<div class="exec-detail">➡️ Now: ${dep.next_role}</div>` : ''}
+                            ${dep.date ? `<div class="exec-detail">📅 Left: ${dep.date}</div>` : ''}
+                            ${dep.reason ? `<span class="badge">${dep.reason}</span>` : ''}
+                        </div>
+                    `)
+                    .join('');
+                document.getElementById('departures').style.display = 'block';
+            }
+
+            // Board Members
+            if (data.board_members && data.board_members.length > 0) {
+                const list = document.getElementById('boardMembersList');
+                list.innerHTML = data.board_members
+                    .map(board => `
+                        <div class="executive-card">
+                            <div class="exec-name">${board.name}</div>
+                            <div class="exec-title">${board.role}</div>
+                            ${board.other_boards ? `<div class="exec-detail">🏢 Other boards: ${board.other_boards}</div>` : ''}
+                        </div>
+                    `)
+                    .join('');
+                document.getElementById('boardMembers').style.display = 'block';
+            }
+
+            if (!data.current_leadership?.length && !data.recent_movements?.length &&
+                !data.departures?.length && !data.board_members?.length) {
+                errorMessage.textContent = '⚠️ No leadership data found yet. Check back soon!';
+                errorMessage.classList.add('show');
+            }
+        }
+
+        window.addEventListener('load', () => {
+            companyInput.focus();
+        });
+    </script>
+</body>
+</html>

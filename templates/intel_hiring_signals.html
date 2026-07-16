@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiring Signals — Intel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0f766e;
+            --primary-light: #14b8a6;
+            --primary-dark: #0d5e57;
+            --bg-dark: #020617;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --accent: #06b6d4;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 50%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid rgba(15, 118, 110, 0.2);
+            padding: 24px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            font-size: 14px;
+        }
+
+        .nav a:hover {
+            color: var(--primary-light);
+        }
+
+        .search-section {
+            padding: 60px 20px 40px;
+        }
+
+        .search-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        .search-box {
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(15, 118, 110, 0.3);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .search-inputs {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 300px;
+            padding: 14px 18px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        .search-button {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(15, 118, 110, 0.3);
+        }
+
+        .results-section {
+            padding: 40px 20px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .results-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: rgba(30, 27, 75, 0.4);
+            border: 2px solid rgba(15, 118, 110, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            backdrop-filter: blur(8px);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 24px;
+            color: var(--primary-light);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%);
+            border: 2px solid rgba(20, 184, 166, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary-light);
+        }
+
+        .job-card {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 4px solid var(--primary-light);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .job-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .job-detail {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--primary-light);
+            font-weight: 600;
+            margin-top: 8px;
+            margin-right: 8px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(20, 184, 166, 0.2);
+            border-top-color: var(--primary-light);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: var(--primary-light);
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 32px;
+            }
+
+            .search-inputs {
+                flex-direction: column;
+            }
+
+            input[type="text"],
+            .search-button {
+                width: 100%;
+                min-width: unset;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" style="text-decoration: none;">
+                    <div class="logo">🎯 Intel</div>
+                </a>
+                <div class="nav">
+                    <a href="/company">Company Intelligence</a>
+                    <a href="/leadership">Leadership</a>
+                    <a href="/">Back to Intel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="search-section">
+        <div class="search-container">
+            <div class="hero">
+                <h1>Hiring Signals</h1>
+                <p class="hero-subtitle">Spot company growth & strategic pivots through job openings</p>
+            </div>
+
+            <div class="search-box">
+                <div class="search-inputs">
+                    <input
+                        type="text"
+                        id="companyInput"
+                        placeholder="Search company (e.g., Apple, OpenAI, Tesla)..."
+                        autocomplete="off"
+                    >
+                    <button class="search-button" id="searchBtn">Analyze Hiring</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Analyzing hiring signals...</p>
+    </div>
+
+    <div class="error-message" id="errorMessage"></div>
+
+    <div class="empty-state" id="emptyState">
+        <div style="font-size: 48px; margin-bottom: 16px;">💼</div>
+        <h2>Search for a company to see hiring signals</h2>
+        <p>Discover growth plans, strategic pivots, and expansion signals through job openings</p>
+    </div>
+
+    <div class="results-section" id="results">
+        <div class="results-container">
+            <div class="section" id="hiringOverview" style="display: none;">
+                <div class="section-title">📊 Hiring Overview</div>
+                <div class="grid" id="overviewGrid"></div>
+            </div>
+
+            <div class="section" id="topDepartments" style="display: none;">
+                <div class="section-title">🔥 Top Hiring Departments</div>
+                <div id="departmentsList"></div>
+            </div>
+
+            <div class="section" id="growthSignals" style="display: none;">
+                <div class="section-title">🚀 Growth Signals & Pivots</div>
+                <div id="signalsList"></div>
+            </div>
+
+            <div class="section" id="openRoles" style="display: none;">
+                <div class="section-title">💻 Sample Open Roles</div>
+                <div id="rolesList"></div>
+            </div>
+
+            <a href="/" class="back-link">← Back to Intel</a>
+        </div>
+    </div>
+
+    <script>
+        const companyInput = document.getElementById('companyInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const emptyState = document.getElementById('emptyState');
+        const errorMessage = document.getElementById('errorMessage');
+
+        companyInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchCompany();
+        });
+
+        searchBtn.addEventListener('click', searchCompany);
+
+        async function searchCompany() {
+            const company = companyInput.value.trim();
+            if (!company) return;
+
+            loading.classList.add('show');
+            results.classList.remove('show');
+            emptyState.style.display = 'none';
+            errorMessage.classList.remove('show');
+
+            try {
+                const response = await fetch(`/api/hiring-signals?company=${encodeURIComponent(company)}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    errorMessage.textContent = '❌ ' + data.error;
+                    errorMessage.classList.add('show');
+                } else {
+                    displayResults(data);
+                }
+            } catch (error) {
+                errorMessage.textContent = '❌ Failed to fetch hiring data.';
+                errorMessage.classList.add('show');
+                console.error(error);
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        function displayResults(data) {
+            results.classList.add('show');
+            emptyState.style.display = 'none';
+
+            // Hiring Overview
+            if (data.overview) {
+                const grid = document.getElementById('overviewGrid');
+                grid.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-label">Open Positions</div>
+                        <div class="stat-value">${data.overview.total_open_roles || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Hiring Growth (3m)</div>
+                        <div class="stat-value">${data.overview.hiring_growth_3m || '—'}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Top Region</div>
+                        <div class="stat-value">${data.overview.top_region || '—'}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Growth Signal</div>
+                        <div class="stat-value">${data.overview.signal || '—'}</div>
+                    </div>
+                `;
+                document.getElementById('hiringOverview').style.display = 'block';
+            }
+
+            // Top Departments
+            if (data.top_departments && data.top_departments.length > 0) {
+                const list = document.getElementById('departmentsList');
+                list.innerHTML = data.top_departments
+                    .map(dept => `
+                        <div class="stat-card">
+                            <div class="stat-label">${dept.department}</div>
+                            <div class="stat-value">${dept.open_count} open positions</div>
+                            ${dept.trend ? `<span class="badge">${dept.trend}</span>` : ''}
+                        </div>
+                    `)
+                    .join('');
+                document.getElementById('topDepartments').style.display = 'block';
+            }
+
+            // Growth Signals
+            if (data.growth_signals && data.growth_signals.length > 0) {
+                const list = document.getElementById('signalsList');
+                list.innerHTML = data.growth_signals
+                    .map(signal => `
+                        <div class="job-card">
+                            <div class="job-title">🎯 ${signal.title}</div>
+                            <div class="job-detail">${signal.description}</div>
+                            ${signal.confidence ? `<span class="badge">Confidence: ${signal.confidence}</span>` : ''}
+                        </div>
+                    `)
+                    .join('');
+                document.getElementById('growthSignals').style.display = 'block';
+            }
+
+            // Sample Open Roles
+            if (data.sample_roles && data.sample_roles.length > 0) {
+                const list = document.getElementById('rolesList');
+                list.innerHTML = data.sample_roles
+                    .map(role => `
+                        <div class="job-card">
+                            <div class="job-title">${role.title}</div>
+                            <div class="job-detail">📍 ${role.location}</div>
+                            <div class="job-detail">🏢 ${role.department}</div>
+                            ${role.level ? `<span class="badge">${role.level}</span>` : ''}
+                        </div>
+                    `)
+                    .join('');
+                document.getElementById('openRoles').style.display = 'block';
+            }
+
+            if (!data.overview && !data.top_departments?.length && !data.growth_signals?.length) {
+                errorMessage.textContent = '⚠️ No hiring data found yet. Check back soon!';
+                errorMessage.classList.add('show');
+            }
+        }
+
+        window.addEventListener('load', () => {
+            companyInput.focus();
+        });
+    </script>
+</body>
+</html>

@@ -1338,6 +1338,18 @@ def company_intelligence():
     return render_template("intel_company.html")
 
 
+@app.route("/leadership")
+def leadership_intelligence():
+    """Leadership intelligence - Track executive movements"""
+    return render_template("intel_leadership.html")
+
+
+@app.route("/hiring-signals")
+def hiring_signals():
+    """Hiring signals - Spot company growth through job openings"""
+    return render_template("intel_hiring_signals.html")
+
+
 @app.route("/brand/compare")
 def brand_compare():
     """Compare 2-3 brands side by side"""
@@ -4397,6 +4409,80 @@ def api_company_intelligence():
         return jsonify(result)
     except Exception as e:
         app.logger.error(f"[company/intelligence] ERROR: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/leadership/intelligence", methods=["GET"])
+def api_leadership_intelligence():
+    """Fetch leadership intelligence for a company.
+
+    Query params:
+    - company: Company name (required)
+    """
+    company = request.args.get("company", "").strip()
+
+    if not company or len(company) < 2:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        # TODO: Integrate with real data sources:
+        # - LinkedIn API (leadership positions)
+        # - News scrapers (executive moves, departures)
+        # - SEC filings (board changes, officer changes)
+        # - Company press releases
+
+        # For now, return structure ready for data
+        result = {
+            "company": company,
+            "current_leadership": [],  # Will be populated from LinkedIn/SEC
+            "recent_movements": [],    # Promotions, lateral moves, new hires
+            "departures": [],          # Exits in last 12 months
+            "board_members": []        # Current board composition
+        }
+
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"[leadership/intelligence] ERROR: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/hiring-signals", methods=["GET"])
+def api_hiring_signals():
+    """Fetch hiring signal intelligence for a company.
+
+    Query params:
+    - company: Company name (required)
+    """
+    company = request.args.get("company", "").strip()
+
+    if not company or len(company) < 2:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        # TODO: Integrate with real data sources:
+        # - LinkedIn Job API
+        # - Indeed scraping
+        # - Company careers pages
+        # - Job board aggregators
+        # - Analyze hiring trends, growth signals, strategic pivots
+
+        # For now, return structure ready for data
+        result = {
+            "company": company,
+            "overview": {
+                "total_open_roles": 0,
+                "hiring_growth_3m": "—",
+                "top_region": "—",
+                "signal": "Data loading..."
+            },
+            "top_departments": [],     # Departments with most openings
+            "growth_signals": [],      # Strategic implications (e.g., "AI expansion", "Market entry")
+            "sample_roles": []         # Sample of currently open positions
+        }
+
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"[hiring-signals] ERROR: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
