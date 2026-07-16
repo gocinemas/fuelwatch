@@ -361,42 +361,74 @@ def _fetch_wikipedia_company(company_name: str) -> dict:
     try:
         import requests
         from urllib.parse import quote
+        import re
 
-        # Try Wikipedia API
-        url = f"https://en.wikipedia.org/w/api.php?action=query&titles={quote(company_name)}&prop=extracts&explaintext=True&format=json"
+        # Try exact match first, then variations
+        search_names = [
+            company_name,
+            company_name.replace(" Technologies", "").replace(" Ltd.", "").replace(" Inc.", ""),
+            company_name + " (company)",
+            company_name + " Limited"
+        ]
 
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            pages = data.get("query", {}).get("pages", {})
+        for search_name in search_names:
+            try:
+                url = f"https://en.wikipedia.org/w/api.php?action=query&titles={quote(search_name)}&prop=extracts|pageprops&explaintext=True&format=json"
 
-            for page_id, page_data in pages.items():
-                if page_id != "-1":  # Found a page
-                    extract = page_data.get("extract", "")
+                response = requests.get(url, timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    pages = data.get("query", {}).get("pages", {})
 
-                    # Parse extract for basic info
-                    result = {
-                        "name": page_data.get("title", company_name),
-                        "description": extract[:200] if extract else "",
-                        "source": "Wikipedia"
-                    }
+                    for page_id, page_data in pages.items():
+                        if page_id != "-1":  # Found a page
+                            extract = page_data.get("extract", "")
 
-                    # Try to extract founded year, headquarters, industry from text
-                    if "founded" in extract.lower():
-                        import re
-                        year_match = re.search(r'founded\s+(?:in\s+)?(\d{4})', extract.lower())
-                        if year_match:
-                            result["founded_year"] = int(year_match.group(1))
+                            if not extract:  # Empty extract, skip
+                                continue
 
-                    if "headquartered" in extract.lower() or "based" in extract.lower():
-                        import re
-                        # Look for country patterns
-                        for country_name in ["India", "Germany", "Singapore", "Japan", "China", "Canada", "Australia", "United States", "United Kingdom"]:
-                            if country_name.lower() in extract.lower():
-                                result["hq"] = {"country": country_name}
-                                break
+                            # Parse extract for basic info
+                            result = {
+                                "name": page_data.get("title", company_name),
+                                "description": extract[:300] if extract else "",
+                                "source": "Wikipedia",
+                                "ticker": None
+                            }
 
-                    return result
+                            # Extract founded year
+                            year_match = re.search(r'founded\s+(?:in\s+)?(\d{4})', extract.lower())
+                            if year_match:
+                                result["founded_year"] = int(year_match.group(1))
+
+                            # Extract headquarters/location
+                            countries = ["India", "Germany", "Singapore", "Japan", "China", "Canada", "Australia", "United States", "United Kingdom", "France", "Netherlands", "Ireland", "Sweden"]
+                            for country_name in countries:
+                                if country_name.lower() in extract.lower():
+                                    result["hq"] = {"country": country_name}
+                                    break
+
+                            # Extract industry/type
+                            if "technology" in extract.lower():
+                                result["industry"] = "Information Technology"
+                            elif "manufacturing" in extract.lower():
+                                result["industry"] = "Manufacturing"
+                            elif "finance" in extract.lower() or "bank" in extract.lower():
+                                result["industry"] = "Finance"
+                            elif "pharmaceutical" in extract.lower():
+                                result["industry"] = "Pharmaceuticals"
+                            elif "retail" in extract.lower():
+                                result["industry"] = "Retail"
+                            else:
+                                result["industry"] = "Other"
+
+                            # If we have at least name + basic info, return it
+                            if result.get("name") and (result.get("hq") or result.get("founded_year")):
+                                print(f"[wikipedia] Found {result['name']} on Wikipedia")
+                                return result
+
+            except Exception as e:
+                print(f"[wikipedia] Error searching for {search_name}: {e}")
+                continue
 
     except Exception as e:
         print(f"[wikipedia] Error: {e}")
@@ -489,13 +521,16 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
                 result.update(wiki_data)
                 print(f"[intelligence] Got data from Wikipedia")
 
-    if not result:
+    if not result or not result.get("name"):
         print(f"[intelligence] No data found for {company_name}")
         return {}
 
-    # Parse with Groq if needed
-    if not all(result.get(k) for k in ["founded_year", "hq"]):
-        result = _groq_parse_company_data(result, company_name)
+    # Parse with Groq if missing critical fields (but only if we have a name)
+    # Lower bar: accept Wikipedia data even if partial
+    if result.get("name") and not all(result.get(k) for k in ["founded_year", "hq", "industry"]):
+        groq_data = _groq_parse_company_data(result, company_name)
+        if groq_data and groq_data.get("name"):  # Only use Groq if it improves the data
+            result.update(groq_data)
 
     # Add financial data
     ticker = result.get("ticker", "")
