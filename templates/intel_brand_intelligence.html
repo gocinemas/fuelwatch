@@ -159,6 +159,40 @@
             font-weight: 800;
             color: var(--primary-light);
             margin-bottom: 16px;
+            cursor: help;
+            position: relative;
+            display: inline-block;
+        }
+
+        .brand-score:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(249, 115, 22, 0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-weight: normal;
+        }
+
+        .brand-score:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid rgba(249, 115, 22, 0.95);
+            z-index: 1000;
         }
 
         .section {
@@ -206,6 +240,56 @@
             letter-spacing: 0.5px;
             color: var(--text-secondary);
             margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-label .info-icon {
+            cursor: help;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1.5px solid var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: var(--primary-light);
+            position: relative;
+        }
+
+        .stat-label .info-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(249, 115, 22, 0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-weight: normal;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+
+        .stat-label .info-icon:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid rgba(249, 115, 22, 0.95);
+            z-index: 1000;
         }
 
         .stat-value {
@@ -441,7 +525,9 @@
 
             // Brand Header
             document.getElementById('brandName').textContent = data.name || 'N/A';
-            document.getElementById('brandScore').textContent = `${data.overall_score}/100`;
+            const scoreElement = document.getElementById('brandScore');
+            scoreElement.textContent = `${data.overall_score}/100`;
+            scoreElement.setAttribute('data-tooltip', 'Weighted average of all 5 dimensions: AI visibility + Pricing + Social + Growth + Catalog');
 
             // AI Visibility
             if (data.ai_visibility) {
@@ -449,11 +535,17 @@
                 document.getElementById('aiContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
-                            <div class="stat-label">Visibility Score</div>
+                            <div class="stat-label">
+                                Visibility Score
+                                <span class="info-icon" data-tooltip="How often brand is mentioned in ChatGPT, Claude, Perplexity (0-100 scale)">?</span>
+                            </div>
                             <div class="stat-value">${ai.visibility_score}/100</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Overall Sentiment</div>
+                            <div class="stat-label">
+                                Overall Sentiment
+                                <span class="info-icon" data-tooltip="Sentiment from AI model mentions: Positive/Neutral/Negative">?</span>
+                            </div>
                             <div class="stat-value">${ai.sentiment}</div>
                         </div>
                     </div>
@@ -470,15 +562,24 @@
                 document.getElementById('pricingContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
-                            <div class="stat-label">Current Price</div>
+                            <div class="stat-label">
+                                Current Price
+                                <span class="info-icon" data-tooltip="Average selling price across latest product SKUs (web + retail)">?</span>
+                            </div>
                             <div class="stat-value">${pricing.current_price}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Price Position</div>
+                            <div class="stat-label">
+                                Price Position
+                                <span class="info-icon" data-tooltip="Relative to category: Budget/Mass/Mid-Premium/Premium/Luxury">?</span>
+                            </div>
                             <div class="stat-value">${pricing.price_position}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">SKUs Tracked</div>
+                            <div class="stat-label">
+                                SKUs Tracked
+                                <span class="info-icon" data-tooltip="Number of distinct products monitored for pricing & reviews">?</span>
+                            </div>
                             <div class="stat-value">${pricing.skus_tracked}</div>
                         </div>
                     </div>
@@ -492,15 +593,24 @@
                 document.getElementById('socialContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
-                            <div class="stat-label">Mentions (30d)</div>
+                            <div class="stat-label">
+                                Mentions (30d)
+                                <span class="info-icon" data-tooltip="Brand mentions across Reddit, Twitter, TikTok, YouTube (30-day window)">?</span>
+                            </div>
                             <div class="stat-value">${social.mentions_30d}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Sentiment</div>
+                            <div class="stat-label">
+                                Sentiment
+                                <span class="info-icon" data-tooltip="NLP analysis of mentions: Very Positive/Positive/Neutral/Negative">?</span>
+                            </div>
                             <div class="stat-value">${social.overall_sentiment}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Trending</div>
+                            <div class="stat-label">
+                                Trending
+                                <span class="info-icon" data-tooltip="Mentions growing week-over-week (trend acceleration detected)">?</span>
+                            </div>
                             <div class="stat-value">${social.trending ? '🔥 Yes' : 'No'}</div>
                         </div>
                     </div>
@@ -517,15 +627,24 @@
                 document.getElementById('growthContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
-                            <div class="stat-label">Hiring Activity</div>
+                            <div class="stat-label">
+                                Hiring Activity
+                                <span class="info-icon" data-tooltip="Job posting trend: Stable/Growing/Accelerating/Explosive">?</span>
+                            </div>
                             <div class="stat-value">${growth.hiring_activity}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Recent Hires</div>
+                            <div class="stat-label">
+                                Recent Hires
+                                <span class="info-icon" data-tooltip="New LinkedIn job postings in last 30-60 days">?</span>
+                            </div>
                             <div class="stat-value">${growth.recent_hires}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Growth Score</div>
+                            <div class="stat-label">
+                                Growth Score
+                                <span class="info-icon" data-tooltip="Composite score: hiring + funding + social + expansion (0-100)">?</span>
+                            </div>
                             <div class="stat-value">${growth.growth_score}/100</div>
                         </div>
                     </div>
@@ -544,19 +663,31 @@
                 document.getElementById('catalogContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
-                            <div class="stat-label">Total SKUs</div>
+                            <div class="stat-label">
+                                Total SKUs
+                                <span class="info-icon" data-tooltip="Distinct products indexed across D2C site + marketplace listings">?</span>
+                            </div>
                             <div class="stat-value">${catalog.total_skus}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Avg Rating</div>
+                            <div class="stat-label">
+                                Avg Rating
+                                <span class="info-icon" data-tooltip="Weighted average star rating from customer reviews (1-5 stars)">?</span>
+                            </div>
                             <div class="stat-value">${catalog.review_average}/5</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Review Count</div>
+                            <div class="stat-label">
+                                Review Count
+                                <span class="info-icon" data-tooltip="Total verified customer reviews across all SKUs">?</span>
+                            </div>
                             <div class="stat-value">${catalog.review_count}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Catalog Velocity</div>
+                            <div class="stat-label">
+                                Catalog Velocity
+                                <span class="info-icon" data-tooltip="Speed of new product launches (Slow/Medium/Fast/Explosive)">?</span>
+                            </div>
                             <div class="stat-value">${catalog.catalog_velocity}</div>
                         </div>
                     </div>
