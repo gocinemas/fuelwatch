@@ -58,6 +58,14 @@ def fetch_brand_intelligence(brand_name: str, market: str = "GB") -> dict:
     }
 
     try:
+        # Try hardcoded data first (most reliable)
+        hardcoded = _fetch_from_hardcoded_db(brand_name, market)
+        if hardcoded:
+            result.update(hardcoded)
+            result["data_sources"].append("Brand Expansion Database")
+            return result
+
+        # Fallback to live APIs
         # 1. Fetch brand positioning data
         positioning = _fetch_brand_positioning(brand_name, market)
         if positioning:
@@ -115,6 +123,79 @@ def fetch_brand_intelligence(brand_name: str, market: str = "GB") -> dict:
         logger.error(f"[brand_intelligence] ERROR: {e}", exc_info=True)
         result["error"] = str(e)
         return result
+
+
+def _fetch_from_hardcoded_db(brand_name: str, market: str) -> dict:
+    """Fetch brand data from hardcoded JSON database (brand_expansion_data.json)."""
+    try:
+        import json
+        from pathlib import Path
+
+        # Load hardcoded data
+        db_path = Path(__file__).parent / "brand_expansion_data.json"
+        if not db_path.exists():
+            return {}
+
+        with open(db_path, 'r') as f:
+            brands_data = json.load(f)
+
+        brand_lower = brand_name.lower().strip()
+        market_upper = market.upper()
+
+        # Search for matching brand in the database
+        for brand in brands_data:
+            if (brand.get("brand_name", "").lower() == brand_lower and
+                brand.get("market_iso_code", "").upper() == market_upper):
+
+                # Format the hardcoded data into our result structure
+                return {
+                    "name": brand.get("brand_name", brand_name),
+                    "market": market_upper,
+                    "positioning": {
+                        "tier": brand.get("positioning_tier", ""),
+                        "summary": brand.get("positioning_summary", ""),
+                        "tagline": brand.get("brand_tagline", ""),
+                        "primary_benefit": brand.get("primary_benefit", ""),
+                        "emotional_benefit": brand.get("emotional_benefit", "")
+                    },
+                    "market_size": {
+                        "segment_millions": brand.get("segment_size_millions", 0),
+                        "growth_cagr": brand.get("category_growth_cagr_3yr", 0),
+                        "market_status": brand.get("market_status", ""),
+                        "growth_driver": brand.get("growth_driver", "")
+                    },
+                    "pricing": {
+                        "current_price": brand.get("price_local", ""),
+                        "currency": brand.get("price_currency", ""),
+                        "positioning": brand.get("positioning_tier", ""),
+                        "rationale": brand.get("pricing_rationale", "")
+                    },
+                    "distribution": {
+                        "channels": brand.get("distribution_channels", []),
+                        "strategy": brand.get("distribution_strategy", "")
+                    },
+                    "competitor_brands": [
+                        brand.get("direct_competitor_1", ""),
+                        brand.get("direct_competitor_2", ""),
+                        brand.get("direct_competitor_3", "")
+                    ],
+                    "target_demographic": {
+                        "income_tier": brand.get("target_income_tier", ""),
+                        "description": brand.get("target_demographic", "")
+                    },
+                    "marketing": {
+                        "tone": brand.get("marketing_tone", ""),
+                        "channels": brand.get("marketing_channels", []),
+                        "competitive_claim": brand.get("competitive_claim", "")
+                    },
+                    "data_sources": ["Brand Expansion Database"]
+                }
+
+        return {}
+
+    except Exception as e:
+        logger.debug(f"[hardcoded_db] Error: {e}")
+        return {}
 
 
 def _fetch_brand_positioning(brand_name: str, market: str) -> dict:
