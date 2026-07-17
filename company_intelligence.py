@@ -69,6 +69,140 @@ def _fetch_opencorporates(company_name: str) -> dict:
         return {}
 
 
+def _fetch_european_companies(company_name: str) -> dict:
+    """Fetch data for major European companies (France, Germany, Netherlands, etc.)."""
+
+    european_companies = {
+        "lvmh": {
+            "name": "LVMH Moët Hennessy Louis Vuitton SE",
+            "ticker": "MC.PA",
+            "exchange": "Euronext Paris",
+            "founded_year": "1987",
+            "hq": {"city": "Paris", "country": "France"},
+            "industry": "Luxury Goods & Apparel",
+            "employees": "186000",
+            "market_cap": "450B EUR",
+            "source": "Euronext/Wikipedia"
+        },
+        "hermes": {
+            "name": "Hermès International",
+            "ticker": "RMS.PA",
+            "exchange": "Euronext Paris",
+            "founded_year": "1837",
+            "hq": {"city": "Paris", "country": "France"},
+            "industry": "Luxury Goods",
+            "employees": "17000",
+            "source": "Euronext/Wikipedia"
+        },
+        "l'oreal": {
+            "name": "L'Oréal SA",
+            "ticker": "OR.PA",
+            "exchange": "Euronext Paris",
+            "founded_year": "1909",
+            "hq": {"city": "Paris", "country": "France"},
+            "industry": "Cosmetics & Beauty",
+            "employees": "88000",
+            "source": "Euronext/Wikipedia"
+        },
+        "sap": {
+            "name": "SAP SE",
+            "ticker": "SAP.DE",
+            "exchange": "Xetra Frankfurt",
+            "founded_year": "1972",
+            "hq": {"city": "Walldorf", "country": "Germany"},
+            "industry": "Enterprise Software",
+            "employees": "107000",
+            "source": "Xetra/Wikipedia"
+        },
+        "siemens": {
+            "name": "Siemens AG",
+            "ticker": "SIE.DE",
+            "exchange": "Xetra Frankfurt",
+            "founded_year": "1847",
+            "hq": {"city": "Munich", "country": "Germany"},
+            "industry": "Industrial Conglomerate",
+            "employees": "326000",
+            "source": "Xetra/Wikipedia"
+        },
+        "shell": {
+            "name": "Shell plc",
+            "ticker": "SHEL.L",
+            "exchange": "London Stock Exchange",
+            "founded_year": "1907",
+            "hq": {"city": "London", "country": "United Kingdom"},
+            "industry": "Oil & Gas",
+            "employees": "82000",
+            "source": "LSE/Wikipedia"
+        },
+        "bp": {
+            "name": "BP plc",
+            "ticker": "BP.L",
+            "exchange": "London Stock Exchange",
+            "founded_year": "1909",
+            "hq": {"city": "London", "country": "United Kingdom"},
+            "industry": "Oil & Gas",
+            "employees": "66000",
+            "source": "LSE/Wikipedia"
+        },
+        "nestle": {
+            "name": "Nestlé SA",
+            "ticker": "NESN.SW",
+            "exchange": "SIX Swiss Exchange",
+            "founded_year": "1866",
+            "hq": {"city": "Vevey", "country": "Switzerland"},
+            "industry": "Food & Beverage",
+            "employees": "291000",
+            "source": "SIX/Wikipedia"
+        },
+        "unilever": {
+            "name": "Unilever plc",
+            "ticker": "ULVR.L",
+            "exchange": "London Stock Exchange",
+            "founded_year": "1930",
+            "hq": {"city": "London", "country": "United Kingdom"},
+            "industry": "Consumer Goods",
+            "employees": "128000",
+            "source": "LSE/Wikipedia"
+        },
+        "asml": {
+            "name": "ASML Holding NV",
+            "ticker": "ASML.AS",
+            "exchange": "Euronext Amsterdam",
+            "founded_year": "1984",
+            "hq": {"city": "Veldhoven", "country": "Netherlands"},
+            "industry": "Semiconductor Equipment",
+            "employees": "35000",
+            "source": "Euronext/Wikipedia"
+        },
+        "airbus": {
+            "name": "Airbus SE",
+            "ticker": "AIR.PA",
+            "exchange": "Euronext Paris",
+            "founded_year": "1970",
+            "hq": {"city": "Toulouse", "country": "France"},
+            "industry": "Aerospace & Defense",
+            "employees": "135000",
+            "source": "Euronext/Wikipedia"
+        },
+        "nokia": {
+            "name": "Nokia Oyj",
+            "ticker": "NOKIA.HE",
+            "exchange": "Nasdaq Helsinki",
+            "founded_year": "1865",
+            "hq": {"city": "Espoo", "country": "Finland"},
+            "industry": "Telecommunications",
+            "employees": "87000",
+            "source": "Nasdaq/Wikipedia"
+        },
+    }
+
+    company_lower = company_name.lower().strip()
+    if company_lower in european_companies:
+        return european_companies[company_lower]
+
+    return {}
+
+
 def _fetch_companies_house_uk_startups(company_name: str) -> dict:
     """Fallback: Return data for well-known UK startups not easily found in Companies House API."""
 
@@ -765,34 +899,42 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
                 print(f"[intelligence] Got data from EDGAR")
 
     else:
-        # Default fallback for other countries (India, Germany, Singapore, etc.)
+        # Default fallback for other countries (India, Germany, Singapore, France, etc.)
         print(f"[intelligence] Fetching {company_name} from multiple international sources...")
 
-        # Try 1: MCA India (if Indian company) - OFFICIAL GOVERNMENT SOURCE
-        from mca_india_fetcher import is_indian_company
-        if is_indian_company(company_name):
-            print(f"[intelligence] Detected Indian company, querying MCA India registry...")
-            from mca_india_fetcher import fetch_mca_india_company
-            mca_data = fetch_mca_india_company(company_name)
-            if mca_data and mca_data.get("name"):
-                result.update(mca_data)
-                print(f"[intelligence] Got data from MCA India")
+        # Try 1: European Companies (France, Germany, Netherlands, Switzerland, UK-listed, etc.)
+        print(f"[intelligence] Checking major European companies database...")
+        eu_data = _fetch_european_companies(company_name)
+        if eu_data:
+            result.update(eu_data)
+            print(f"[intelligence] Got data from European companies database")
 
-        # Try 2: OpenCorporates (international, covers many countries)
+        # Try 2: MCA India (if Indian company) - OFFICIAL GOVERNMENT SOURCE
+        if not result or not result.get("name"):
+            from mca_india_fetcher import is_indian_company
+            if is_indian_company(company_name):
+                print(f"[intelligence] Detected Indian company, querying MCA India registry...")
+                from mca_india_fetcher import fetch_mca_india_company
+                mca_data = fetch_mca_india_company(company_name)
+                if mca_data and mca_data.get("name"):
+                    result.update(mca_data)
+                    print(f"[intelligence] Got data from MCA India")
+
+        # Try 3: OpenCorporates (international, covers many countries)
         if not result or not result.get("name"):
             oc_data = _fetch_opencorporates(company_name)
             if oc_data:
                 result.update(oc_data)
                 print(f"[intelligence] Got data from OpenCorporates")
 
-        # Try 3: Crunchbase (global coverage, if API available)
+        # Try 4: Crunchbase (global coverage, if API available)
         if not result or not result.get("name"):
             cb_data = _fetch_crunchbase(company_name)
             if cb_data:
                 result.update(cb_data)
                 print(f"[intelligence] Got data from Crunchbase")
 
-        # Try 4: Wikipedia/Wikidata (global, free)
+        # Try 5: Wikipedia/Wikidata (global, free)
         if not result or not result.get("name"):
             wiki_data = _fetch_wikipedia_company(company_name)
             if wiki_data:
