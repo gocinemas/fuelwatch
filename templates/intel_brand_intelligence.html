@@ -554,8 +554,10 @@
             }
 
             // AI Visibility - only show if has real data
+            console.log('🔍 Checking AI Visibility:', data.ai_visibility?.visibility_score);
             if (data.ai_visibility && data.ai_visibility.visibility_score > 0) {
                 const ai = data.ai_visibility;
+                console.log('✅ Rendering AI section with score:', ai.visibility_score);
                 document.getElementById('aiContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
@@ -581,8 +583,10 @@
             }
 
             // Pricing - only show if has real data (SKUs > 0 or actual price)
+            console.log('🔍 Checking Pricing:', data.pricing_intelligence?.skus_tracked, data.pricing_intelligence?.current_price);
             if (data.pricing_intelligence && (data.pricing_intelligence.skus_tracked > 0 || data.pricing_intelligence.current_price !== '—')) {
                 const pricing = data.pricing_intelligence;
+                console.log('✅ Rendering Pricing section with price:', pricing.current_price);
                 document.getElementById('pricingContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
@@ -612,8 +616,10 @@
             }
 
             // Social - only show if has real data (mentions > 0)
+            console.log('🔍 Checking Social:', data.social_signals?.mentions_30d);
             if (data.social_signals && data.social_signals.mentions_30d > 0) {
                 const social = data.social_signals;
+                console.log('✅ Rendering Social section');
                 document.getElementById('socialContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
