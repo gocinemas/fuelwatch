@@ -408,7 +408,8 @@ def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) 
     for url in newsletter_urls[:2]:  # cap at 2 URLs per email
         url_text = _extract_url_text(url)
         if url_text:
-            body = (body + f"\n\n[Newsletter from {re.sub(r'https?://([^/]+)/.*', r'\\1', url)}]\n{url_text}").strip()
+            domain = re.sub(r'https?://([^/]+)/.*', r'\1', url)
+            body = (body + f"\n\n[Newsletter from {domain}]\n{url_text}").strip()
 
     # Append text from attachments (PDFs, PowerPoints, Word docs, etc)
     if msg_id:
