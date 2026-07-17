@@ -14009,8 +14009,8 @@ def api_home_brief():
             if _future_deps:
                 def _format_dep(d):
                     departs = d.get('departs', '')
-                    platform = d.get('platform', '')
-                    platform_str = f' P{platform}' if platform else ''
+                    platform = (d.get('platform') or '').strip()
+                    platform_str = f' P{platform}' if platform and platform.strip() else ''
                     return f"{departs}{platform_str}"
                 times = " · ".join(_format_dep(d) for d in _future_deps[:2] if d.get("departs"))
                 _from_label = loc_station or trains.get("from", "")
@@ -14037,8 +14037,8 @@ def api_home_brief():
                 if _future_deps:
                     def _format_dep_ret(d):
                         departs = d.get('departs', '')
-                        platform = d.get('platform', '')
-                        platform_str = f' P{platform}' if platform else ''
+                        platform = (d.get('platform') or '').strip()
+                        platform_str = f' P{platform}' if platform and platform.strip() else ''
                         return f"{departs}{platform_str}"
                     times = " · ".join(_format_dep_ret(d) for d in _future_deps[:2] if d.get("departs"))
                     _to_label = loc_station or trains_home.get("to", "")
