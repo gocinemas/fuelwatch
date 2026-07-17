@@ -398,6 +398,42 @@ def _fetch_financial_data(ticker: str, company_name: str) -> dict:
                 if operating_margin:
                     result["operating_margin"] = operating_margin
 
+                # Add debt levels (total debt)
+                total_debt = financial_data.get("totalDebt", {})
+                if isinstance(total_debt, dict):
+                    result["total_debt"] = total_debt.get("raw")
+                else:
+                    result["total_debt"] = total_debt
+
+                # Add free cash flow
+                fcf = financial_data.get("freeCashflow", {})
+                if isinstance(fcf, dict):
+                    result["free_cash_flow"] = fcf.get("raw")
+                else:
+                    result["free_cash_flow"] = fcf
+
+                # Add return on equity (ROE)
+                roe = financial_data.get("returnOnEquity")
+                if roe:
+                    result["return_on_equity"] = roe
+
+                # Add current ratio (liquidity indicator)
+                current_ratio = financial_data.get("currentRatio")
+                if current_ratio:
+                    result["current_ratio"] = current_ratio
+
+                # Add beta (volatility indicator)
+                beta = key_stats.get("beta", {})
+                if isinstance(beta, dict):
+                    result["beta"] = beta.get("raw")
+                else:
+                    result["beta"] = beta
+
+                # Add revenue growth YoY
+                revenue_growth = financial_data.get("revenueGrowth")
+                if revenue_growth:
+                    result["revenue_growth_yoy"] = revenue_growth
+
         except Exception as e:
             print(f"[financial_data] Could not fetch additional metrics: {e}")
 
@@ -434,20 +470,74 @@ def _detect_ai_strategy(company_name: str) -> dict:
 
 
 def _detect_competitors(company_name: str, industry: str) -> dict:
-    """Detect top competitors for a company."""
+    """Detect nearest competitors for a company."""
+    # Comprehensive competitor map by company/sector
     competitors_map = {
-        "Nike": ["Adidas", "Puma", "New Balance", "Asics"],
-        "Adidas": ["Nike", "Puma", "New Balance", "Under Armour"],
-        "Coca-Cola": ["Pepsi", "Red Bull", "Monster", "Keurig"],
-        "Apple": ["Samsung", "Google", "Microsoft", "OnePlus"],
-        "Microsoft": ["Google", "Apple", "Amazon", "Oracle"],
+        # Tech: Hardware
+        "Apple": ["Samsung", "Google", "Microsoft", "OnePlus", "Xiaomi"],
+        "Samsung": ["Apple", "LG", "Sony", "Google", "Microsoft"],
+        "Microsoft": ["Google", "Apple", "Amazon", "Oracle", "IBM"],
+        "Google": ["Microsoft", "Apple", "Amazon", "Meta", "Yahoo"],
+        "Amazon": ["Walmart", "Alibaba", "eBay", "Microsoft", "Google"],
+        "Meta": ["Google", "TikTok", "Twitter", "Snapchat", "Pinterest"],
+        "Tesla": ["Toyota", "Volkswagen", "BMW", "Ford", "General Motors"],
+        "NVIDIA": ["AMD", "Intel", "Qualcomm", "Broadcom", "Marvell"],
+        "Intel": ["AMD", "NVIDIA", "Qualcomm", "Broadcom", "Marvell"],
+
+        # Consumer Goods
+        "Nike": ["Adidas", "Puma", "New Balance", "Asics", "Under Armour"],
+        "Adidas": ["Nike", "Puma", "New Balance", "Under Armour", "Asics"],
+        "Coca-Cola": ["Pepsi", "Red Bull", "Monster", "Keurig", "Monster Beverage"],
+        "Pepsi": ["Coca-Cola", "Monster", "Red Bull", "Keurig", "Monster Beverage"],
+
+        # Retail
+        "Walmart": ["Amazon", "Target", "Costco", "Best Buy", "Dollar General"],
+        "Target": ["Walmart", "Amazon", "Costco", "Best Buy", "Kohl's"],
+        "Costco": ["Walmart", "Amazon", "Target", "Sam's Club", "BJ's Wholesale"],
+
+        # Finance
+        "JPMorgan": ["Bank of America", "Citigroup", "Wells Fargo", "Goldman Sachs"],
+        "Bank of America": ["JPMorgan", "Citigroup", "Wells Fargo", "US Bancorp"],
+        "Visa": ["Mastercard", "American Express", "Discover", "PayPal"],
+        "Mastercard": ["Visa", "American Express", "Discover", "PayPal"],
+
+        # Pharma
+        "Pfizer": ["Moderna", "Johnson & Johnson", "Roche", "Novartis"],
+        "Moderna": ["Pfizer", "Johnson & Johnson", "BioNTech", "AstraZeneca"],
+
+        # Energy
+        "Exxon Mobil": ["Chevron", "Shell", "BP", "Saudi Aramco"],
+        "Chevron": ["Exxon Mobil", "Shell", "BP", "Saudi Aramco"],
+
+        # Auto
+        "Toyota": ["Tesla", "Volkswagen", "BMW", "General Motors", "Ford"],
+        "Volkswagen": ["Toyota", "Tesla", "BMW", "Daimler", "General Motors"],
+        "BMW": ["Volkswagen", "Mercedes", "Audi", "Porsche", "BMW Group"],
     }
 
+    # Try direct match first
     comps = competitors_map.get(company_name, [])
+
+    # If no direct match, try to infer from industry
+    if not comps and industry:
+        industry_lower = industry.lower()
+        if "bank" in industry_lower or "financial" in industry_lower:
+            comps = ["JPMorgan", "Bank of America", "Wells Fargo", "Citigroup"]
+        elif "tech" in industry_lower or "software" in industry_lower:
+            comps = ["Microsoft", "Google", "Apple", "Amazon"]
+        elif "retail" in industry_lower:
+            comps = ["Walmart", "Amazon", "Target", "Costco"]
+        elif "pharma" in industry_lower or "health" in industry_lower:
+            comps = ["Pfizer", "Johnson & Johnson", "Roche", "Novartis"]
+        elif "energy" in industry_lower or "oil" in industry_lower:
+            comps = ["Exxon Mobil", "Chevron", "Shell", "BP"]
+        elif "auto" in industry_lower or "motor" in industry_lower:
+            comps = ["Toyota", "Volkswagen", "BMW", "General Motors"]
+
     return {
-        "competitors": comps,
+        "competitors": comps[:4],  # Top 4 competitors
         "competitor_count": len(comps),
-        "competitors_source": "Industry-based"
+        "competitors_source": "Market Analysis"
     }
 
 
