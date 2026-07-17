@@ -87,10 +87,20 @@ NEGATIVE_WORDS = {
     "recall", "recalled", "fraud", "decline", "declines", "declining", "loss",
     "losses", "controversy", "criticism", "criticised", "criticized", "boycott",
     "complaint", "complaints", "fail", "fails", "failure", "failing", "scandal",
-    "fire", "fired", "fined", "fine", "poor", "worst", "struggle", "struggling",
+    "fire", "fired", "fined", "poor", "worst", "struggle", "struggling",
     "cut", "cuts", "cutting", "shutdown", "bankrupt", "bankruptcy", "warning",
     "risk", "concern", "concerns", "backlash", "sued", "suing", "downturn",
-    "slump", "disappointing", "angry", "outrage",
+    "slump", "disappointing", "angry", "outrage", "bad", "avoid", "waste",
+    "wasted", "expensive", "overpriced", "rude", "slow", "terrible", "awful",
+    "disappointed", "disappointing", "rip-off", "ripoff",
+}
+# Neutral markers — social/review chatter that shouldn't be scored either way
+# (e.g. Reddit/Twitter text like "it's fine" or "pretty average" should not
+# swing sentiment negative just because it superficially overlaps with news
+# words like "fined"). These aren't folded into the +/- tally; they exist so
+# callers/tests can recognise genuinely neutral language explicitly.
+NEUTRAL_WORDS = {
+    "ok", "okay", "average", "fine", "decent", "alright", "mediocre", "moderate",
 }
 
 THEME_KEYWORDS = {
