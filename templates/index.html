@@ -28782,12 +28782,6 @@ document.addEventListener('keydown', function(e) {
 
         loading.style.display = 'none';
         content.style.display = 'block';
-      })
-      .catch(err => {
-        loading.style.display = 'none';
-        errorDiv.style.display = 'block';
-        errorMsg.textContent = '⚠️ ' + err.message;
-      });
 
         const insights = d.insights || {};
         const summary = d.data_summary || {};
