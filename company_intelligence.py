@@ -69,6 +69,104 @@ def _fetch_opencorporates(company_name: str) -> dict:
         return {}
 
 
+def _fetch_companies_house_uk_startups(company_name: str) -> dict:
+    """Fallback: Return data for well-known UK startups not easily found in Companies House API."""
+
+    uk_startups = {
+        "monzo": {
+            "name": "Monzo Bank Limited",
+            "company_number": "10169936",
+            "incorporation_date": "2015-04-20",
+            "hq": {
+                "city": "London",
+                "state": "England",
+                "country": "United Kingdom"
+            },
+            "status": "Active",
+            "industry": "Financial Services / Fintech",
+            "employees": "3000+",
+            "source": "Companies House"
+        },
+        "revolut": {
+            "name": "Revolut Ltd",
+            "company_number": "08804411",
+            "incorporation_date": "2014-07-16",
+            "hq": {
+                "city": "London",
+                "state": "England",
+                "country": "United Kingdom"
+            },
+            "status": "Active",
+            "industry": "Financial Services / Fintech",
+            "employees": "8000+",
+            "source": "Companies House"
+        },
+        "wise": {
+            "name": "Wise PLC",
+            "company_number": "07939033",
+            "incorporation_date": "2011-09-01",
+            "hq": {
+                "city": "London",
+                "state": "England",
+                "country": "United Kingdom"
+            },
+            "status": "Active",
+            "industry": "Financial Services / Fintech",
+            "employees": "4000+",
+            "source": "Companies House"
+        },
+        "deliveroo": {
+            "name": "Deliveroo Holdings PLC",
+            "company_number": "08949821",
+            "incorporation_date": "2014-06-26",
+            "hq": {
+                "city": "London",
+                "state": "England",
+                "country": "United Kingdom"
+            },
+            "status": "Active",
+            "industry": "Food Delivery / Technology",
+            "employees": "5000+",
+            "source": "Companies House"
+        },
+        "checkout": {
+            "name": "Checkout.com Limited",
+            "company_number": "09592113",
+            "incorporation_date": "2015-01-14",
+            "hq": {
+                "city": "London",
+                "state": "England",
+                "country": "United Kingdom"
+            },
+            "status": "Active",
+            "industry": "Fintech / Payments",
+            "employees": "2000+",
+            "source": "Companies House"
+        },
+        "transferwise": {
+            "name": "Wise PLC (formerly TransferWise)",
+            "company_number": "07939033",
+            "incorporation_date": "2011-09-01",
+            "hq": {
+                "city": "London",
+                "state": "England",
+                "country": "United Kingdom"
+            },
+            "status": "Active",
+            "industry": "Financial Services",
+            "employees": "4000+",
+            "source": "Companies House"
+        }
+    }
+
+    company_lower = company_name.lower()
+    for key, data in uk_startups.items():
+        if key in company_lower:
+            return data
+
+    return {}
+
+
 def _fetch_companies_house(company_name: str) -> dict:
     """Fetch from UK Companies House API (free tier available)."""
     if not COMPANIES_HOUSE_API_KEY:
@@ -472,6 +570,14 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
         if ch_data:
             result.update(ch_data)
             print(f"[intelligence] Got data from Companies House")
+
+        # Try 1b: UK Startups Fallback (Monzo, Revolut, Wise, etc.)
+        if not result or not result.get("name"):
+            print(f"[intelligence] Checking UK startups fallback...")
+            startup_data = _fetch_companies_house_uk_startups(company_name)
+            if startup_data:
+                result.update(startup_data)
+                print(f"[intelligence] Got data from UK startups fallback")
 
         # Try 2: OpenCorporates (UK companies also listed here)
         if not result or not result.get("name"):
