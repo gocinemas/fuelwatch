@@ -11199,6 +11199,18 @@ def classify_restaurant(merchant: str) -> str:
         return "other"
 
 
+def _clean_merchant_name(merchant: str) -> str:
+    """Simplify merchant names for display (Tesco Petrol Filling Station → Tesco)."""
+    m = (merchant or "").strip()
+    if not m:
+        return "Unknown"
+    # Remove verbose suffixes
+    for suffix in [" Petrol Filling Station", " Fuel Station", " Service Station", " Filling Station", " Petrol"]:
+        if m.lower().endswith(suffix.lower()):
+            return m[:-len(suffix)].strip()
+    return m
+
+
 def _receipt_category(merchant: str) -> str:
     """Map a merchant name to a spend category based on UK merchant patterns."""
     m = (merchant or "").lower().strip()
@@ -14747,8 +14759,9 @@ def api_home_brief():
                 # Map facts to sources
                 if ctx.get("fuel"):
                     fuel = ctx["fuel"]
+                    merchant_clean = _clean_merchant_name(fuel.get('merchant', 'N/A'))
                     facts_with_source.append(FactWithSource(
-                        text=f"Fuel: {fuel.get('merchant', 'N/A')} {fuel.get('price', 'N/A')}p",
+                        text=f"Fuel: {merchant_clean} {fuel.get('price', 'N/A')}p",
                         source_type="fuel",
                         source_data=fuel,
                         is_inferred=False,
