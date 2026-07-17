@@ -28746,22 +28746,12 @@ document.addEventListener('keydown', function(e) {
       return;
     }
 
-    loading.style.display = 'block';
+    // Intelligence Hub temporarily disabled
+    loading.style.display = 'none';
     content.style.display = 'none';
-    errorDiv.style.display = 'none';
-
-    console.log('[intel] Loading for phone:', phone);
-
-    fetch(`/api/insights/full?wa=${encodeURIComponent(phone)}`)
-      .then(r => {
-        console.log('[intel] Response status:', r.status);
-        return r.json();
-      })
-      .then(d => {
-        console.log('[intel] Response data:', d);
-        if (!d || !d.success) {
-          throw new Error(d?.error || 'Failed to generate insights');
-        }
+    errorDiv.style.display = 'block';
+    errorMsg.textContent = '🧠 Intelligence Hub is temporarily unavailable. We\'re optimizing the agentic reasoning layer. Check back soon!';
+    return;
 
         const insights = d.insights || {};
         const summary = d.data_summary || {};
