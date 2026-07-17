@@ -28076,7 +28076,7 @@ document.addEventListener('keydown', function(e) {
     }
   };
 
-  function _receiptsUpdateUI() {
+  window._receiptsUpdateUI = function() {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const curMonth = _receiptsCurrentDate.getMonth();
     const curYear = _receiptsCurrentDate.getFullYear();
@@ -28128,7 +28128,7 @@ document.addEventListener('keydown', function(e) {
         };
       }
     }
-  }
+  };
 
   window._receiptsAnalysisLoadPrev = function() {
     if (_receiptsViewMode === 'month') {
