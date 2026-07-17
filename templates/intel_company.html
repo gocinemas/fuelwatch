@@ -647,10 +647,16 @@
                 const financialsGrid = document.getElementById('financialsGrid');
                 let financialsHTML = '';
 
-                // Define financial fields to display
+                // Define financial fields to display (prioritized)
                 const finFields = [
-                    { key: 'current_price', label: 'Current Price', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
-                    { key: 'market_cap', label: 'Market Cap', format: (v) => formatNumber(v) },
+                    { key: 'current_price', label: 'Stock Price', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
+                    { key: 'price_change_pct', label: 'Price Change (YTD)', format: (v) => (v > 0 ? '📈 ' : '📉 ') + v.toFixed(2) + '%' },
+                    { key: 'revenue_ttm', label: 'Annual Revenue (TTM)', format: (v) => '$' + formatNumber(v) },
+                    { key: 'net_income_ttm', label: 'Net Income (TTM)', format: (v) => '$' + formatNumber(v) },
+                    { key: 'trailing_eps', label: 'Earnings Per Share', format: (v) => '$' + v.toFixed(2) },
+                    { key: 'profit_margin', label: 'Profit Margin', format: (v) => (v * 100).toFixed(2) + '%' },
+                    { key: 'operating_margin', label: 'Operating Margin', format: (v) => (v * 100).toFixed(2) + '%' },
+                    { key: 'market_cap', label: 'Market Cap', format: (v) => '$' + formatNumber(v) },
                     { key: 'pe_ratio', label: 'P/E Ratio', format: (v) => v ? v.toFixed(2) : 'N/A' },
                     { key: '52_week_high', label: '52-Week High', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
                     { key: '52_week_low', label: '52-Week Low', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },

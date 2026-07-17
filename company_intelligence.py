@@ -321,7 +321,7 @@ def _fetch_edgar(company_name: str) -> dict:
 
 
 def _fetch_financial_data(ticker: str, company_name: str) -> dict:
-    """Fetch financial data from Yahoo Finance."""
+    """Fetch financial data from Yahoo Finance and SEC EDGAR."""
     if not ticker:
         return {}
 
@@ -345,6 +345,7 @@ def _fetch_financial_data(ticker: str, company_name: str) -> dict:
             "ticker": ticker,
             "currency": meta.get("currency", "USD"),
             "current_price": meta.get("regularMarketPrice"),
+            "price_change_pct": meta.get("regularMarketChangePercent"),
             "52_week_high": meta.get("fiftyTwoWeekHigh"),
             "52_week_low": meta.get("fiftyTwoWeekLow"),
             "market_cap": meta.get("marketCap"),
@@ -353,6 +354,52 @@ def _fetch_financial_data(ticker: str, company_name: str) -> dict:
             "exchange": meta.get("fullExchangeName"),
             "financial_source": "Yahoo Finance"
         }
+
+        # Fetch additional financial metrics from Yahoo Finance summary API
+        try:
+            summary_r = requests.get(
+                f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{ticker}",
+                params={"modules": "financialData,defaultKeyStatistics"},
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=8
+            )
+
+            if summary_r.status_code == 200:
+                summary_data = summary_r.json().get("quoteSummary", {}).get("result", [{}])[0]
+                financial_data = summary_data.get("financialData", {})
+                key_stats = summary_data.get("defaultKeyStatistics", {})
+
+                # Add revenue/turnover (TTM = Trailing Twelve Months)
+                revenue_ttm = financial_data.get("totalRevenue", {})
+                if isinstance(revenue_ttm, dict):
+                    result["revenue_ttm"] = revenue_ttm.get("raw")
+                else:
+                    result["revenue_ttm"] = revenue_ttm
+
+                # Add net income (earnings)
+                net_income = financial_data.get("netIncome", {})
+                if isinstance(net_income, dict):
+                    result["net_income_ttm"] = net_income.get("raw")
+                else:
+                    result["net_income_ttm"] = net_income
+
+                # Add earnings per share
+                eps = financial_data.get("trailingEps")
+                if eps:
+                    result["trailing_eps"] = eps
+
+                # Add profit margin
+                profit_margin = financial_data.get("profitMargins")
+                if profit_margin:
+                    result["profit_margin"] = profit_margin
+
+                # Add operating margin
+                operating_margin = financial_data.get("operatingMargins")
+                if operating_margin:
+                    result["operating_margin"] = operating_margin
+
+        except Exception as e:
+            print(f"[financial_data] Could not fetch additional metrics: {e}")
 
         # Remove None/empty values
         return {k: v for k, v in result.items() if v is not None}
