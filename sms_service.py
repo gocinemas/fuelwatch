@@ -14007,10 +14007,10 @@ def api_home_brief():
                 except ValueError:
                     _future_deps.append(d)
             if _future_deps:
-                times = " · ".join(d.get("departs", "") for d in _future_deps[:2] if d.get("departs"))
+                times = " · ".join(f"{d.get('departs', '')}{f' P{d.get(\"platform\", \"\")}' if d.get('platform') else ''}" for d in _future_deps[:2] if d.get("departs"))
                 _from_label = loc_station or trains.get("from", "")
                 if times:
-                    facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
+                    facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times} (Live)")
         # Evening return journey trains
         if day_type not in ("weekend",) and not _wfh_today:
             trains_home = ctx.get("trains_home", {})
@@ -14030,10 +14030,10 @@ def api_home_brief():
                     except ValueError:
                         _future_deps.append(d)
                 if _future_deps:
-                    times = " · ".join(d.get("departs", "") for d in _future_deps[:2] if d.get("departs"))
+                    times = " · ".join(f"{d.get('departs', '')}{f' P{d.get(\"platform\", \"\")}' if d.get('platform') else ''}" for d in _future_deps[:2] if d.get("departs"))
                     _to_label = loc_station or trains_home.get("to", "")
                     if times:
-                        facts.append(f"Next trains {trains_home.get('from','')} → {_to_label}: {times}")
+                        facts.append(f"Next trains {trains_home.get('from','')} → {_to_label}: {times} (Live)")
         # Commute traffic (work + school) — 7:00–8:30am only
         _tr = ctx.get("traffic", {}) if (7 <= now.hour <= 8 and not (now.hour == 8 and now.minute > 30)) else {}
         for _tleg in (_tr.get("legs") or []):
