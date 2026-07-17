@@ -35581,9 +35581,53 @@ def admin_migrate_restaurant_types():
     print("\nTo expose publicly, run in another terminal:")
 @app.route("/api/insights/full", methods=["GET"])
 def api_insights_full():
-    """Get comprehensive intelligence across all modules."""
-    # Temporarily disabled due to timeout issues — will be re-enabled after optimization
-    return jsonify({"success": False, "error": "Intelligence Hub is temporarily unavailable. Please check back soon."}), 503
+    """Get comprehensive intelligence across all modules — simplified fast version."""
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+
+    try:
+        # Fast version: return basic insights without heavy agentic reasoning
+        from datetime import datetime, timedelta
+        sb = lib._sb()
+        today = datetime.now().date()
+        week_ago = today - timedelta(days=7)
+
+        # Quick fetches (cached in brief already)
+        spend_rows = sb.table("wa_saves").select("summary,category").eq("from_number", from_number) \
+            .gte("created_at", week_ago.isoformat()).ilike("title", "🧾%").execute().data or []
+
+        spend_total = 0
+        for r in spend_rows:
+            import re
+            m = re.search(r'£([\d,]+\.?\d*)', r.get("summary", ""))
+            if m:
+                spend_total += float(m.group(1).replace(",", ""))
+
+        # Basic insights
+        insights = {
+            "spend_this_week": round(spend_total, 2),
+            "receipt_count": len(spend_rows),
+            "insights": []
+        }
+
+        if spend_total > 100:
+            insights["insights"].append(f"💳 High spend week: £{spend_total:.2f}")
+        if spend_total < 30:
+            insights["insights"].append("✅ Low spend week")
+
+        return jsonify({
+            "success": True,
+            "data": insights,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        print(f"[insights] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/receipts/fix-date", methods=["POST"])

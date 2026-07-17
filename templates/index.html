@@ -28746,12 +28746,36 @@ document.addEventListener('keydown', function(e) {
       return;
     }
 
-    // Intelligence Hub temporarily disabled
-    loading.style.display = 'none';
+    loading.style.display = 'block';
     content.style.display = 'none';
-    errorDiv.style.display = 'block';
-    errorMsg.textContent = '🧠 Intelligence Hub is temporarily unavailable. We\'re optimizing the agentic reasoning layer. Check back soon!';
-    return;
+    errorDiv.style.display = 'none';
+
+    fetch(`/api/insights/full?wa=${encodeURIComponent(phone)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d || !d.success) {
+          throw new Error(d?.error || 'Failed to load insights');
+        }
+        const insights = d.data || {};
+        loading.style.display = 'none';
+        content.style.display = 'block';
+
+        // Display insights
+        const insightList = document.getElementById('intel-insights') || document.createElement('div');
+        insightList.innerHTML = '<h3>📊 This Week</h3>' +
+          `<div>💰 Spent: £${insights.spend_this_week || 0}</div>` +
+          `<div>🧾 Receipts: ${insights.receipt_count || 0}</div>` +
+          (insights.insights || []).map(i => `<div>• ${i}</div>`).join('');
+
+        if (content && !document.getElementById('intel-insights')) {
+          content.innerHTML = insightList.innerHTML;
+        }
+      })
+      .catch(err => {
+        loading.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorMsg.textContent = '⚠️ ' + err.message;
+      });
 
         const insights = d.insights || {};
         const summary = d.data_summary || {};
