@@ -13564,6 +13564,78 @@ def _get_brief_intelligence(from_number, sb):
     return {"insights": {}, "data_summary": {}}
 
 
+def _build_action_brief(now, hour, location, nearby_places, trains_data, weather, prefs):
+    """Build action-focused brief for users OUT or making decisions NOW.
+    Returns brief text or None if not applicable."""
+    if not location or not nearby_places:
+        return None
+
+    loc_name = location.get("name", "")
+    temp = weather.get("temp", "--") if weather else "--"
+
+    is_evening = 17 <= hour < 23
+    is_lunch = 11 <= hour < 15
+
+    brief_lines = []
+
+    # HEADER
+    time_str = now.strftime("%H:%M")
+    weather_icon = "☀️" if hour >= 6 and hour < 21 else "🌙"
+    brief_lines.append(f"🌆 {loc_name} · {time_str} · {temp}°C {weather_icon}\n")
+
+    # DECISION SECTION
+    if is_evening and hour < 22:
+        brief_lines.append("**RIGHT NOW — Dinner window open (last orders 22:00–23:30)**\n")
+
+        # Filter food places nearby
+        food_places = [
+            p for p in nearby_places
+            if p.get("type") in ("restaurant", "cafe", "bar", "pub")
+            and p.get("distance_km", 0) < 0.5
+        ][:3]
+
+        if food_places:
+            brief_lines.append("🍽️ **Top 3 nearby:**")
+            for i, p in enumerate(food_places, 1):
+                name = p.get("name", "")
+                type_ = p.get("type", "").title()
+                rating = p.get("rating", "--")
+                dist = p.get("distance_km", 0)
+                price = "£" * min(p.get("price_level", 2), 4)
+                dist_str = f"{int(dist*1000)}m" if dist < 1 else f"{dist:.1f}km"
+                brief_lines.append(f"{i}. **{name}** — {type_}, {rating}★, {price}, {dist_str}")
+            brief_lines.append("")
+
+        # Trains home
+        if trains_data and trains_data.get("departures"):
+            brief_lines.append("**🚆 NEXT TRAINS HOME**")
+            for t in trains_data.get("departures", [])[:3]:
+                dep = t.get("departs", "")
+                plat = t.get("platform", "")
+                plat_str = f" P{plat}" if plat else ""
+                brief_lines.append(f"• {dep}{plat_str} (14 min)")
+            brief_lines.append("")
+
+        # Timing advice
+        brief_lines.append("**⏰ TIMING:** Eat by 20:00 + catch 20:08 train = home 21:00")
+        brief_lines.append("**→ What's your move?** Dinner now or drinks later?")
+
+    elif is_lunch:
+        brief_lines.append(f"**☕ LUNCH BREAK — {hour}:{now.minute:02d}**\n")
+        food_places = [
+            p for p in nearby_places
+            if p.get("type") in ("restaurant", "cafe", "fast_food")
+            and p.get("distance_km", 0) < 0.3
+        ][:3]
+        if food_places:
+            brief_lines.append("**Quick options:**")
+            for p in food_places:
+                dist = int(p.get("distance_km", 0) * 1000)
+                brief_lines.append(f"• {p.get('name', '')} ({dist}m walk)")
+
+    return "\n".join(brief_lines) if brief_lines else None
+
+
 @app.route("/api/home/brief")
 def api_home_brief():
     """V2 context engine — returns personalised brief text + raw context."""
@@ -15074,6 +15146,21 @@ def api_home_brief():
                     _final_cal.append(normalized)
 
     result["today_events"] = _final_cal
+
+    # TRY ACTION BRIEF if user is OUT with location data
+    if has_location and _req_lat and _req_lng and hour >= 11 and hour < 23:
+        try:
+            # Build location object
+            location = {"name": location_name or "Current Location", "lat": _req_lat, "lon": _req_lng}
+            # Get trains (already in ctx)
+            trains = ctx.get("trains_to", {}) or ctx.get("trains_home", {}) or {}
+            # Try action brief
+            action_brief = _build_action_brief(now, hour, location, ctx.get("nearby_places", []), trains, weather or {}, prefs)
+            if action_brief and len(action_brief) > 50:
+                result["brief"] = action_brief
+                app.logger.info(f"[brief] Using action brief for OUT user at {location_name}")
+        except Exception as e:
+            app.logger.debug(f"[brief] Action brief fallback: {e}")
 
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
