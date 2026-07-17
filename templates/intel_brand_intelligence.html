@@ -583,8 +583,10 @@
             }
 
             // Pricing - only show if has real data (SKUs > 0 or actual price)
-            console.log('🔍 Checking Pricing:', data.pricing_intelligence?.skus_tracked, data.pricing_intelligence?.current_price);
-            if (data.pricing_intelligence && (data.pricing_intelligence.skus_tracked > 0 || data.pricing_intelligence.current_price !== '—')) {
+            console.log('🔍 Checking Pricing:', {skus: data.pricing_intelligence?.skus_tracked, price: data.pricing_intelligence?.current_price});
+            const pricingCondition = data.pricing_intelligence && (data.pricing_intelligence.skus_tracked > 0 || data.pricing_intelligence.current_price !== '—');
+            console.log('   Condition result:', pricingCondition, '(skus>0:', data.pricing_intelligence?.skus_tracked > 0, 'OR price!="—":', data.pricing_intelligence?.current_price !== '—', ')');
+            if (pricingCondition) {
                 const pricing = data.pricing_intelligence;
                 console.log('✅ Rendering Pricing section with price:', pricing.current_price);
                 document.getElementById('pricingContent').innerHTML = `
@@ -688,8 +690,10 @@
             }
 
             // Catalog - only show if has real data (total_skus > 0)
+            console.log('🔍 Checking Catalog:', data.catalog_intelligence?.total_skus);
             if (data.catalog_intelligence && data.catalog_intelligence.total_skus > 0) {
                 const catalog = data.catalog_intelligence;
+                console.log('✅ Rendering Catalog section');
                 document.getElementById('catalogContent').innerHTML = `
                     <div class="grid-cards">
                         <div class="stat-card">
