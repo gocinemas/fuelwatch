@@ -4466,12 +4466,14 @@ def api_brand_expansion():
 
 @app.route("/api/leadership/intelligence", methods=["GET"])
 def api_leadership_intelligence():
-    """Fetch real leadership intelligence for a company from SEC, news, LinkedIn.
+    """Fetch real leadership intelligence for a company from market-specific sources.
 
     Query params:
     - name: Company name (required)
+    - market: Market code (GB, US, IN, etc.) - defaults to auto-detect
     """
     name = request.args.get("name", "").strip()
+    market = request.args.get("market", "").strip()
 
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
@@ -4479,8 +4481,16 @@ def api_leadership_intelligence():
     try:
         from leadership_intelligence import fetch_leadership_intelligence
 
-        # Fetch real data from SEC, news APIs, LinkedIn
-        result = fetch_leadership_intelligence(name)
+        # If market not provided, try to detect from company info
+        if not market:
+            try:
+                company_info = fetch_company_info(name)
+                market = company_info.get("market", "US")
+            except:
+                market = "US"  # Default fallback
+
+        # Fetch leadership data using market-appropriate sources
+        result = fetch_leadership_intelligence(name, market)
 
         return jsonify(result)
     except Exception as e:
