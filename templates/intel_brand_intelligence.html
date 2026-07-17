@@ -525,12 +525,20 @@
 
             // Brand Header
             document.getElementById('brandName').textContent = data.name || 'N/A';
-            const scoreElement = document.getElementById('brandScore');
-            scoreElement.textContent = `${data.overall_score}/100`;
-            scoreElement.setAttribute('data-tooltip', 'Weighted average of all 5 dimensions: AI visibility + Pricing + Social + Growth + Catalog');
 
-            // AI Visibility
-            if (data.ai_visibility) {
+            // Only show score if we have actual data (not all zeros/dashes)
+            const hasData = data.data_sources && data.data_sources.length > 0;
+            if (hasData) {
+                const scoreElement = document.getElementById('brandScore');
+                scoreElement.textContent = `${data.overall_score}/100`;
+                scoreElement.setAttribute('data-tooltip', 'Weighted average of all 5 dimensions: AI visibility + Pricing + Social + Growth + Catalog');
+            } else {
+                document.getElementById('brandScore').textContent = 'Limited Data';
+                document.getElementById('brandScore').style.color = '#64748b';
+            }
+
+            // AI Visibility - only show if has real data
+            if (data.ai_visibility && data.ai_visibility.visibility_score > 0) {
                 const ai = data.ai_visibility;
                 document.getElementById('aiContent').innerHTML = `
                     <div class="grid-cards">
@@ -556,8 +564,8 @@
                 document.getElementById('aiSection').style.display = 'block';
             }
 
-            // Pricing
-            if (data.pricing_intelligence) {
+            // Pricing - only show if has real data (SKUs > 0 or actual price)
+            if (data.pricing_intelligence && (data.pricing_intelligence.skus_tracked > 0 || data.pricing_intelligence.current_price !== '—')) {
                 const pricing = data.pricing_intelligence;
                 document.getElementById('pricingContent').innerHTML = `
                     <div class="grid-cards">
@@ -587,8 +595,8 @@
                 document.getElementById('pricingSection').style.display = 'block';
             }
 
-            // Social
-            if (data.social_signals) {
+            // Social - only show if has real data (mentions > 0)
+            if (data.social_signals && data.social_signals.mentions_30d > 0) {
                 const social = data.social_signals;
                 document.getElementById('socialContent').innerHTML = `
                     <div class="grid-cards">
@@ -621,8 +629,8 @@
                 document.getElementById('socialSection').style.display = 'block';
             }
 
-            // Growth
-            if (data.growth_signals) {
+            // Growth - only show if has real data (growth_score > 0)
+            if (data.growth_signals && data.growth_signals.growth_score > 0) {
                 const growth = data.growth_signals;
                 document.getElementById('growthContent').innerHTML = `
                     <div class="grid-cards">
@@ -657,8 +665,8 @@
                 document.getElementById('growthSection').style.display = 'block';
             }
 
-            // Catalog
-            if (data.catalog_intelligence) {
+            // Catalog - only show if has real data (total_skus > 0)
+            if (data.catalog_intelligence && data.catalog_intelligence.total_skus > 0) {
                 const catalog = data.catalog_intelligence;
                 document.getElementById('catalogContent').innerHTML = `
                     <div class="grid-cards">
@@ -693,6 +701,37 @@
                     </div>
                 `;
                 document.getElementById('catalogSection').style.display = 'block';
+            }
+
+            // If no sections have data, show helpful message
+            const noData = !document.getElementById('aiSection').style.display.includes('block') &&
+                          !document.getElementById('pricingSection').style.display.includes('block') &&
+                          !document.getElementById('socialSection').style.display.includes('block') &&
+                          !document.getElementById('growthSection').style.display.includes('block') &&
+                          !document.getElementById('catalogSection').style.display.includes('block');
+
+            if (noData) {
+                const messageDiv = document.createElement('div');
+                messageDiv.style.cssText = `
+                    background: rgba(30, 27, 75, 0.4);
+                    border: 2px solid rgba(6, 182, 212, 0.2);
+                    border-radius: 12px;
+                    padding: 32px;
+                    margin-top: 32px;
+                    text-align: center;
+                    backdrop-filter: blur(8px);
+                `;
+                messageDiv.innerHTML = `
+                    <div style="font-size: 18px; font-weight: 800; color: #06b6d4; margin-bottom: 12px;">🚀 Brand Intelligence Coming Soon</div>
+                    <p style="color: #cbd5e1; margin-bottom: 16px;">
+                        Real pricing, social, and growth data requires API integrations (e-commerce, Twitter, LinkedIn).
+                    </p>
+                    <p style="color: #64748b; font-size: 14px;">
+                        In the meantime, try <strong><a href="/company" style="color: #06b6d4; text-decoration: none;">Company Intelligence</a></strong>
+                        for real financial data, leadership, and hiring signals.
+                    </p>
+                `;
+                results.appendChild(messageDiv);
             }
         }
     </script>
