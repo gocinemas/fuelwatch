@@ -551,6 +551,7 @@
             errorMessage.classList.remove('show');
 
             try {
+                console.log('🔍 Searching for company:', company);
                 // Fetch all three data types in parallel
                 const [companyRes, leadershipRes, hiringRes] = await Promise.all([
                     fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`),
@@ -558,14 +559,22 @@
                     fetch(`/api/hiring-signals?name=${encodeURIComponent(company)}`)
                 ]);
 
+                console.log('📡 Response statuses:', companyRes.status, leadershipRes.status, hiringRes.status);
                 const companyData = await companyRes.json();
+                console.log('📦 Company data:', companyData);
 
                 if (companyData.error) {
+                    console.error('❌ API Error:', companyData.error);
                     showError(companyData.error, companyData.suggestion);
+                } else if (!companyData.name) {
+                    console.error('❌ No company name in response');
+                    showError('No data found for ' + company);
                 } else {
+                    console.log('✅ Got company data, fetching leadership & hiring...');
                     // Fetch leadership and hiring data (may still be loading)
                     const leadershipData = await leadershipRes.json();
                     const hiringData = await hiringRes.json();
+                    console.log('✅ Got all data, displaying...');
 
                     // Combine all data
                     const allData = {
@@ -577,6 +586,7 @@
                     displayResults(allData);
                 }
             } catch (error) {
+                console.error('❌ Catch error:', error);
                 showError('Failed to fetch company data. Please try again.');
                 console.error(error);
             } finally {

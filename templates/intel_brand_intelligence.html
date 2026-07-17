@@ -502,17 +502,28 @@
             errorMessage.classList.remove('show');
 
             try {
-                const response = await fetch(`/api/brand/intelligence?name=${encodeURIComponent(brand)}&market=${market}`);
+                const url = `/api/brand/intelligence?name=${encodeURIComponent(brand)}&market=${market}`;
+                console.log('🔍 Fetching:', url);
+                const response = await fetch(url);
+                console.log('📡 Response status:', response.status);
                 const data = await response.json();
+                console.log('📦 Data received:', data);
 
                 if (data.error) {
+                    console.error('❌ API Error:', data.error);
                     errorMessage.textContent = '❌ ' + data.error;
                     errorMessage.classList.add('show');
+                } else if (!data.name) {
+                    console.error('❌ No brand name in response');
+                    errorMessage.textContent = '❌ No data received for ' + brand;
+                    errorMessage.classList.add('show');
                 } else {
+                    console.log('✅ Displaying results for', data.name);
                     displayResults(data);
                 }
             } catch (error) {
-                errorMessage.textContent = '❌ Failed to fetch brand data.';
+                console.error('❌ Fetch error:', error);
+                errorMessage.textContent = '❌ Failed to fetch brand data: ' + error.message;
                 errorMessage.classList.add('show');
             } finally {
                 loading.classList.remove('show');
@@ -520,21 +531,26 @@
         }
 
         function displayResults(data) {
+            console.log('🎨 displayResults called with:', data);
             results.classList.add('show');
             emptyState.style.display = 'none';
 
             // Brand Header
             document.getElementById('brandName').textContent = data.name || 'N/A';
+            console.log('✅ Set brand name:', data.name);
 
             // Only show score if we have actual data (not all zeros/dashes)
             const hasData = data.data_sources && data.data_sources.length > 0;
+            console.log('📊 Has data:', hasData, 'Sources:', data.data_sources);
             if (hasData) {
                 const scoreElement = document.getElementById('brandScore');
                 scoreElement.textContent = `${data.overall_score}/100`;
                 scoreElement.setAttribute('data-tooltip', 'Weighted average of all 5 dimensions: AI visibility + Pricing + Social + Growth + Catalog');
+                console.log('✅ Set score:', data.overall_score);
             } else {
                 document.getElementById('brandScore').textContent = 'Limited Data';
                 document.getElementById('brandScore').style.color = '#64748b';
+                console.log('⚠️ No data sources found');
             }
 
             // AI Visibility - only show if has real data
