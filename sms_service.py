@@ -15162,38 +15162,6 @@ def api_home_brief():
         except Exception as e:
             app.logger.debug(f"[brief] Action brief fallback: {e}")
 
-    # ENHANCE brief with trains + timing (always, if trains available)
-    if result.get("brief") and (ctx.get("trains_to") or ctx.get("trains_home")) and 11 <= hour < 23:
-        try:
-            brief_curr = result.get("brief", "")
-            trains_info = ""
-
-            # Add next trains info
-            trains_to = ctx.get("trains_to", {}).get("departures", [])[:2]
-            trains_home = ctx.get("trains_home", {}).get("departures", [])[:2]
-
-            if trains_to:
-                to_station = ctx.get("trains_to", {}).get("to", "Work")
-                times = " · ".join([f"{t.get('departs', '')} P{t.get('platform', '')}" for t in trains_to if t.get("departs")])
-                if times:
-                    trains_info += f"🚆 Next trains to {to_station}: {times}. "
-
-            if trains_home:
-                from_station = ctx.get("trains_home", {}).get("to", "Home")
-                times = " · ".join([f"{t.get('departs', '')} P{t.get('platform', '')}" for t in trains_home if t.get("departs")])
-                if times:
-                    trains_info += f"Return: {times}. "
-
-            # Add timing advice for evening
-            if 17 <= hour < 22 and trains_home:
-                trains_info += f"Decision: Eat by {hour+1}:00 + {trains_home[0].get('departs', '21:00')} train home."
-
-            if trains_info:
-                result["brief"] = trains_info + brief_curr
-                app.logger.info(f"[brief] Enhanced with train info")
-        except Exception as e:
-            app.logger.debug(f"[brief] Train enhancement: {e}")
-
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
     if time_mode != "goodnight" and not has_location and not _has_recent:
