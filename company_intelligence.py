@@ -662,6 +662,18 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
                 result.update(wiki_data)
                 print(f"[intelligence] Got data from Wikipedia")
 
+    # Final fallback: Deep search across all available sources
+    if not result or not result.get("name"):
+        print(f"[intelligence] No data found in standard sources, trying DEEP SEARCH...")
+        from deep_company_search import deep_company_search
+
+        deep_result = deep_company_search(company_name)
+        if deep_result and deep_result.get("aggregated", {}).get("name"):
+            result.update(deep_result["aggregated"])
+            result["data_sources"] = deep_result.get("sources_found", [])
+            print(f"[intelligence] Found via deep search from {len(result.get('data_sources', []))} sources")
+            return result
+
     if not result or not result.get("name"):
         print(f"[intelligence] No data found for {company_name}")
         return {}
