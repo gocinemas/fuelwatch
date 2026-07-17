@@ -13376,6 +13376,17 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
                 insights.append(f"💡 {category} saved lately")
                 priority_score["interests"] = 30
 
+        # === CALENDAR EVENTS (today + tomorrow) ===
+        cal_events = ctx.get("calendar", [])
+        if cal_events:
+            # Show first upcoming event
+            ev = cal_events[0]
+            title = ev.get("title", "").strip()
+            start = ev.get("start", "").strip()
+            if title and title.lower() != "busy":
+                insights.append(f"📅 {title}" + (f" at {start}" if start else ""))
+                priority_score["calendar"] = 60
+
         # === LUNCH OPPORTUNITY REMOVED ===
         # Lunch suggestions are now on-demand only (/api/lunch-ideas)
         # This reduces Places API calls by 99%
