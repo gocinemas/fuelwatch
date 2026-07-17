@@ -694,15 +694,16 @@
                     }
                 });
 
-                if (financialsHTML) {
+                // Only show financials if we have real data (not just ticker/currency)
+                const hasRealFinancials = financials.current_price || financials.revenue_ttm || financials.market_cap;
+                if (financialsHTML && hasRealFinancials) {
                     financialsGrid.innerHTML = financialsHTML;
                     document.getElementById('financialsSection').style.display = 'block';
                 }
             }
 
-            // AI Strategy Section
-            if (data.ai_strategy) {
-                if (data.ai_strategy.ai_focus && data.ai_strategy.ai_focus.length > 0) {
+            // AI Strategy Section - only show if has real AI focus areas
+            if (data.ai_strategy && data.ai_strategy.ai_focus && data.ai_strategy.ai_focus.length > 0) {
                     const aiList = document.getElementById('aiList');
                     let aiHTML = `
                         <div style="margin-bottom: 20px;">
