@@ -391,17 +391,19 @@
 
         async function search() {
             const name = document.getElementById('searchInput').value.trim();
+            const market = document.getElementById('marketSelector')?.value || 'GB';
             if (!name) return;
 
             showLoading();
 
             try {
-                // Always refresh to get latest data with enrichment
-                const response = await fetch(`/api/brand?name=${encodeURIComponent(name)}&refresh=true`);
+                // Fetch Brand Expansion data (market positioning, competitors, TAM)
+                const response = await fetch(`/api/brand/expansion?name=${encodeURIComponent(name)}&market=${market}`);
                 const data = await response.json();
 
                 if (data.error || !data.name) {
                     hideLoading();
+                    console.error('Brand Expansion API error:', data.error);
                     return;
                 }
 
@@ -412,29 +414,33 @@
                 showBrandCard();
             } catch (e) {
                 hideLoading();
+                console.error('Search error:', e);
             }
         }
 
         function displayBrand(data) {
             document.getElementById('brandName').textContent = data.name || '—';
-            document.getElementById('brandDesc').textContent = data.description || '—';
 
-            // Category from category_analysis
-            const cat = data.category_analysis || {};
-            document.getElementById('brandCategory').textContent = cat.category || data.industry || '—';
+            // Extract from Brand Expansion structure
+            const positioning = data.positioning || {};
+            const marketSize = data.market_size || {};
+            const pricing = data.pricing || {};
+            const distribution = data.distribution || {};
 
-            // Market trend
-            const trend = data.market_trend || {};
-            document.getElementById('brandTrend').textContent = trend.trend_name || '—';
+            // Description from positioning summary
+            document.getElementById('brandDesc').textContent = positioning.summary || '—';
 
-            // Strategic theme from strategic_positioning
-            const sp = data.strategic_positioning || {};
-            document.getElementById('brandTheme').textContent = sp.strategic_theme || data.slogan || '—';
+            // Category/Tier from positioning
+            document.getElementById('brandCategory').textContent = positioning.tier || '—';
 
-            // Market cap from financials, company intelligence, or revenue
-            const financials = data.financials || {};
-            const compIntel = data.company_intelligence || {};
-            const marketCapVal = financials.market_cap || compIntel.market_cap || data.revenue || '—';
+            // Market trend from growth drivers
+            document.getElementById('brandTrend').textContent = marketSize.growth_driver || '—';
+
+            // Strategic theme from positioning
+            document.getElementById('brandTheme').textContent = positioning.tagline || positioning.primary_benefit || '—';
+
+            // Market size from market_size data
+            const marketCapVal = marketSize.segment_millions ? marketSize.segment_millions + 'M' : '—';
             document.getElementById('brandMarketCap').textContent = marketCapVal;
 
             // Competitors - handle different response structures
