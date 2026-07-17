@@ -28748,37 +28748,6 @@ document.addEventListener('keydown', function(e) {
         if (!d || !d.success) {
           throw new Error(d?.error || 'Failed to load insights');
         }
-        const data = d.data || {};
-
-        // Populate fuel section
-        if (data.fuel) {
-          const f = data.fuel;
-          document.getElementById('intel-fuel-last').textContent = f.last_fill || '—';
-          document.getElementById('intel-fuel-days').textContent = f.days_since || '—';
-          document.getElementById('intel-fuel-current').textContent = f.current_price || '—';
-          document.getElementById('intel-fuel-best-day').textContent = f.best_day || '—';
-        }
-
-        // Populate spend section
-        if (data.spend) {
-          const s = data.spend;
-          document.getElementById('intel-spend-this').textContent = s.this_week || '—';
-          document.getElementById('intel-spend-last').textContent = s.last_week || '—';
-          document.getElementById('intel-spend-categories').innerHTML = s.categories || '—';
-        }
-
-        // Populate school section
-        if (data.school) {
-          const sc = data.school;
-          document.getElementById('intel-school-busy').textContent = sc.busy_level || '—';
-          document.getElementById('intel-school-busiest').textContent = sc.busiest_day || '—';
-        }
-
-        // Populate actions
-        if (data.actions && data.actions.length) {
-          const actionEl = document.getElementById('intel-actions');
-          actionEl.innerHTML = data.actions.map(a => `<div>• ${a}</div>`).join('');
-        }
 
         loading.style.display = 'none';
         content.style.display = 'block';
