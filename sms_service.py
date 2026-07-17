@@ -14007,7 +14007,12 @@ def api_home_brief():
                 except ValueError:
                     _future_deps.append(d)
             if _future_deps:
-                times = " · ".join(f"{d.get('departs', '')}{f' P{d.get(\"platform\", \"\")}' if d.get('platform') else ''}" for d in _future_deps[:2] if d.get("departs"))
+                def _format_dep(d):
+                    departs = d.get('departs', '')
+                    platform = d.get('platform', '')
+                    platform_str = f' P{platform}' if platform else ''
+                    return f"{departs}{platform_str}"
+                times = " · ".join(_format_dep(d) for d in _future_deps[:2] if d.get("departs"))
                 _from_label = loc_station or trains.get("from", "")
                 if times:
                     facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times} (Live)")
@@ -14030,7 +14035,12 @@ def api_home_brief():
                     except ValueError:
                         _future_deps.append(d)
                 if _future_deps:
-                    times = " · ".join(f"{d.get('departs', '')}{f' P{d.get(\"platform\", \"\")}' if d.get('platform') else ''}" for d in _future_deps[:2] if d.get("departs"))
+                    def _format_dep_ret(d):
+                        departs = d.get('departs', '')
+                        platform = d.get('platform', '')
+                        platform_str = f' P{platform}' if platform else ''
+                        return f"{departs}{platform_str}"
+                    times = " · ".join(_format_dep_ret(d) for d in _future_deps[:2] if d.get("departs"))
                     _to_label = loc_station or trains_home.get("to", "")
                     if times:
                         facts.append(f"Next trains {trains_home.get('from','')} → {_to_label}: {times} (Live)")

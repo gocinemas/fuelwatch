@@ -23,6 +23,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Referenced by _fetch_from_sources() below as an optional set of
+# hand-curated sample datasets keyed by lowercased company name. Left empty
+# by default (no sample data is checked into this repo) — was previously
+# referenced without being defined at all, which raised a silent NameError
+# on every single call and made this fetcher a permanent no-op regardless
+# of ADZUNA_API_KEY configuration.
+SAMPLE_HIRING_DATA = {}
+
+
 class HiringSignalsFetcher:
     def __init__(self):
         self.cache = {}
