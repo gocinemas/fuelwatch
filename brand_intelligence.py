@@ -250,6 +250,144 @@ BRAND_INTELLIGENCE_DATA = {
             "top_products": ["Caffe Latte", "Pike Place Roast", "Caramel Macchiato"],
             "catalog_velocity": "Moderate"
         }
+    },
+    "tesla": {
+        "ai_visibility": {
+            "visibility_score": 91,
+            "chatgpt_mentions": 2890,
+            "claude_mentions": 750,
+            "perplexity_mentions": 1120,
+            "sentiment": "Very Positive",
+            "key_themes": ["autonomous driving", "battery tech", "Elon controversy", "EV market"]
+        },
+        "pricing_intelligence": {
+            "current_price": "£38,500",
+            "price_range": "£35,000 - £89,000",
+            "price_changes_30d": [{"date": "2026-06-12", "change": "-2%"}],
+            "price_position": "Premium",
+            "skus_tracked": 8,
+            "competitor_prices": [{"brand": "BMW i4", "avg_price": "£52,000"}, {"brand": "Mercedes EQE", "avg_price": "£55,000"}]
+        },
+        "social_signals": {
+            "reddit_mentions": 9200,
+            "twitter_sentiment": "Very Positive",
+            "tiktok_presence": True,
+            "instagram_followers": "14.8M",
+            "mentions_30d": 18600,
+            "trending": True,
+            "overall_sentiment": "Very Positive",
+            "top_topics": ["AI capabilities", "pricing competition", "factory news", "deliveries"]
+        },
+        "growth_signals": {
+            "hiring_activity": "High",
+            "recent_hires": 678,
+            "funding_rounds": [],
+            "store_openings": 34,
+            "expansion_markets": ["Europe", "India", "Mexico"],
+            "product_launches": ["Roadster v2", "Semi production scaling"],
+            "growth_score": 85
+        },
+        "catalog_intelligence": {
+            "total_skus": 8,
+            "new_products_30d": 2,
+            "inventory_status": "High demand",
+            "review_average": 4.5,
+            "review_count": 287400,
+            "top_products": ["Model Y", "Model 3", "Model S Plaid"],
+            "catalog_velocity": "Fast"
+        }
+    },
+    "adidas": {
+        "ai_visibility": {
+            "visibility_score": 79,
+            "chatgpt_mentions": 1560,
+            "claude_mentions": 420,
+            "perplexity_mentions": 680,
+            "sentiment": "Positive",
+            "key_themes": ["sustainability", "Kanye partnership legacy", "innovation", "athlete deals"]
+        },
+        "pricing_intelligence": {
+            "current_price": "£89.99",
+            "price_range": "£40 - £180",
+            "price_changes_30d": [{"date": "2026-06-08", "change": "+2.5%"}],
+            "price_position": "Premium",
+            "skus_tracked": 2340,
+            "competitor_prices": [{"brand": "Nike", "avg_price": "£94.99"}, {"brand": "New Balance", "avg_price": "£84.99"}]
+        },
+        "social_signals": {
+            "reddit_mentions": 2800,
+            "twitter_sentiment": "Positive",
+            "tiktok_presence": True,
+            "instagram_followers": "31.2M",
+            "mentions_30d": 7400,
+            "trending": False,
+            "overall_sentiment": "Positive",
+            "top_topics": ["collaborations", "sustainability", "sports sponsorships", "retro releases"]
+        },
+        "growth_signals": {
+            "hiring_activity": "Moderate",
+            "recent_hires": 245,
+            "funding_rounds": [],
+            "store_openings": 8,
+            "expansion_markets": ["Southeast Asia", "Brazil"],
+            "product_launches": ["Ultra Boost 3.0", "Yeezy alternatives"],
+            "growth_score": 64
+        },
+        "catalog_intelligence": {
+            "total_skus": 2340,
+            "new_products_30d": 127,
+            "inventory_status": "Well-stocked",
+            "review_average": 4.4,
+            "review_count": 98200,
+            "top_products": ["Ultraboost", "NMD", "Gazelle"],
+            "catalog_velocity": "Moderate"
+        }
+    },
+    "amazon": {
+        "ai_visibility": {
+            "visibility_score": 88,
+            "chatgpt_mentions": 3420,
+            "claude_mentions": 920,
+            "perplexity_mentions": 1680,
+            "sentiment": "Positive",
+            "key_themes": ["AI investments", "logistics", "AWS dominance", "antitrust concerns"]
+        },
+        "pricing_intelligence": {
+            "current_price": "£169.99",
+            "price_range": "£49.99 - £999",
+            "price_changes_30d": [{"date": "2026-07-01", "change": "+0.5%"}],
+            "price_position": "Mid-Market",
+            "skus_tracked": 500000,
+            "competitor_prices": [{"brand": "Walmart+", "avg_price": "£7.99/mo"}, {"brand": "Target Plus", "avg_price": "Free"}]
+        },
+        "social_signals": {
+            "reddit_mentions": 14200,
+            "twitter_sentiment": "Positive",
+            "tiktok_presence": True,
+            "instagram_followers": "28.6M",
+            "mentions_30d": 26800,
+            "trending": True,
+            "overall_sentiment": "Positive",
+            "top_topics": ["Prime Video content", "AWS", "seller issues", "logistics innovation"]
+        },
+        "growth_signals": {
+            "hiring_activity": "Very High",
+            "recent_hires": 1240,
+            "funding_rounds": [],
+            "store_openings": 89,
+            "expansion_markets": ["India", "Middle East", "Africa"],
+            "product_launches": ["AI shopping assistant", "Healthcare initiatives"],
+            "growth_score": 81
+        },
+        "catalog_intelligence": {
+            "total_skus": 500000,
+            "new_products_30d": 8920,
+            "inventory_status": "Exceptional",
+            "review_average": 4.3,
+            "review_count": 2400000,
+            "top_products": ["Best Sellers", "Amazon Basics", "Trending deals"],
+            "catalog_velocity": "Very Fast"
+        }
     }
 }
 
