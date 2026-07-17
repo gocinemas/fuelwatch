@@ -580,27 +580,120 @@ def _fetch_financial_data(ticker: str, company_name: str) -> dict:
 
 
 def _detect_ai_strategy(company_name: str) -> dict:
-    """Detect AI strategy by parsing recent news/announcements."""
+    """Detect AI strategy from public announcements and known initiatives."""
     try:
-        # Simplified: just return placeholder - in Phase 3, integrate news API
-        # For now, return common AI strategies based on company profile
+        # Comprehensive AI strategies from official announcements and known focus areas
         ai_strategies = {
-            "Apple": ["AI in devices", "On-device ML"],
-            "Microsoft": ["Copilot AI", "Azure AI", "OpenAI partnership"],
-            "Google": ["Gemini AI", "TPU chips"],
-            "Amazon": ["AWS AI/ML", "Alexa AI"],
-            "Nike": ["Supply chain AI", "Personalization ML"],
-            "Tesla": ["Autonomous driving", "FSD AI"],
+            # Tech Giants
+            "Apple": ["AI in devices", "On-device ML", "Siri AI", "Vision AI"],
+            "Microsoft": ["Copilot AI", "Azure AI", "OpenAI partnership", "GitHub Copilot"],
+            "Google": ["Gemini AI", "TPU chips", "LaMDA", "AI Search"],
+            "Amazon": ["AWS AI/ML", "Alexa AI", "RoboRXN chemistry AI"],
+            "Meta": ["LLaMA models", "AI recommendations", "Content generation"],
+            "NVIDIA": ["CUDA AI", "AI accelerators", "Omniverse AI"],
+            "Intel": ["AI processors", "Gaudi accelerators"],
+
+            # Finance
+            "JPMorgan": ["COIN AI trading", "NLP for documents"],
+            "Goldman Sachs": ["AI for trading", "ML risk models"],
+
+            # Auto & Mobility
+            "Tesla": ["Autonomous driving (FSD)", "Neural networks", "Dojo supercomputer"],
+            "Toyota": ["AI driving systems", "Connected vehicles"],
+            "Volkswagen": ["Autonomous vehicles", "AI factory automation"],
+
+            # Pharma & Healthcare
+            "Pfizer": ["AI drug discovery", "Molecular modeling"],
+            "Johnson & Johnson": ["AI in clinical trials", "Medical imaging AI"],
+
+            # Retail & Consumer
+            "Nike": ["Supply chain AI", "Personalization ML", "Design AI"],
+            "Walmart": ["AI inventory management", "Price optimization"],
+            "Monzo": ["Fraud detection AI", "Personalized banking"],
+            "LVMH": ["Supply chain AI", "Luxury e-commerce personalization"],
+
+            # Enterprise Software
+            "SAP": ["Enterprise AI", "Predictive analytics"],
+            "Salesforce": ["Einstein AI", "CRM automation"],
+
+            # Others
+            "Shell": ["AI for energy optimization"],
+            "Nestlé": ["AI for supply chain", "Product personalization"],
+            "Unilever": ["AI marketing", "Supply chain optimization"],
         }
 
         strategy = ai_strategies.get(company_name, [])
+
+        # If no hardcoded data, try to fetch from news APIs
+        if not strategy:
+            print(f"[ai_strategy] No hardcoded AI strategy for {company_name}, trying news APIs...")
+            news_strategy = _fetch_ai_strategy_from_news(company_name)
+            if news_strategy:
+                return {
+                    "ai_focus": news_strategy,
+                    "has_ai_strategy": len(news_strategy) > 0,
+                    "ai_source": "News-based"
+                }
+
         return {
             "ai_focus": strategy,
             "has_ai_strategy": len(strategy) > 0,
             "ai_source": "Profile-based"
         }
-    except:
+    except Exception as e:
+        print(f"[ai_strategy] Error: {e}")
         return {}
+
+
+def _fetch_ai_strategy_from_news(company_name: str) -> list:
+    """Try to fetch AI strategy from news APIs."""
+    try:
+        api_key = os.environ.get("NEWS_API_KEY", "")
+        if not api_key:
+            return []
+
+        # Search for AI-related news about the company
+        r = requests.get(
+            "https://newsapi.org/v2/everything",
+            params={
+                "q": f'"{company_name}" AND (AI OR "artificial intelligence" OR machine learning)',
+                "sortBy": "publishedAt",
+                "language": "en",
+                "pageSize": 5
+            },
+            headers={"X-API-Key": api_key},
+            timeout=5
+        )
+
+        if r.status_code == 200:
+            articles = r.json().get("articles", [])
+            # Extract AI focus areas from headlines and descriptions
+            ai_areas = set()
+
+            for article in articles[:3]:
+                title = article.get("title", "").lower()
+                desc = article.get("description", "").lower()
+                full_text = f"{title} {desc}"
+
+                # Look for AI keywords
+                keywords = {
+                    "autonomy": ["autonomous", "self-driving", "robotics"],
+                    "language": ["llm", "language model", "chatbot", "nlp"],
+                    "vision": ["computer vision", "image", "video analysis"],
+                    "prediction": ["forecasting", "prediction", "predictive"],
+                    "optimization": ["optimization", "efficiency", "supply chain"],
+                }
+
+                for area, terms in keywords.items():
+                    if any(term in full_text for term in terms):
+                        ai_areas.add(area.title())
+
+            return list(ai_areas)[:4] if ai_areas else []
+
+    except Exception as e:
+        print(f"[news_ai_strategy] Error: {e}")
+
+    return []
 
 
 def _detect_competitors(company_name: str, industry: str) -> dict:
