@@ -141,29 +141,23 @@ def fetch_brand_intelligence(brand_name: str, market: str = "GB") -> dict:
 def _fetch_ai_visibility(brand_name: str) -> dict:
     """Track what AI assistants say about this brand."""
     try:
-        # Placeholder: Would integrate with AI search APIs
-        # ChatGPT, Claude, Perplexity APIs to fetch brand mentions
+        # TODO: Implement real AI visibility from:
+        # - ChatGPT API (actual brand mentions in responses)
+        # - Claude API (actual responses about the brand)
+        # - Perplexity API (actual AI search results)
+        # - Google AI (Bard/Gemini)
+        # - Sentiment analysis (NLP of mentions)
 
+        logger.info(f"[ai_visibility] Real AI visibility data not yet available for {brand_name}")
         return {
-            "chatgpt_mentions": [
-                f"{brand_name} is a leading brand in its category",
-                f"{brand_name} offers competitive pricing",
-                f"{brand_name} has strong brand recognition"
-            ],
-            "claude_mentions": [
-                f"{brand_name} focuses on quality and innovation",
-                f"{brand_name} serves a premium market segment"
-            ],
-            "perplexity_mentions": [
-                f"{brand_name} reports strong market performance",
-                f"{brand_name} invests heavily in R&D"
-            ],
-            "google_ai_mentions": [
-                f"{brand_name} is recommended for value"
-            ],
-            "sentiment": "Positive",
-            "visibility_score": 78,
-            "key_themes": ["Quality", "Innovation", "Value", "Premium"]
+            "chatgpt_mentions": [],
+            "claude_mentions": [],
+            "perplexity_mentions": [],
+            "google_ai_mentions": [],
+            "sentiment": "—",
+            "visibility_score": 0,
+            "key_themes": [],
+            "data_status": "AI visibility data unavailable - requires OpenAI/Anthropic/Perplexity API access"
         }
 
     except Exception as e:
@@ -172,21 +166,24 @@ def _fetch_ai_visibility(brand_name: str) -> dict:
 
 
 def _fetch_pricing_intelligence(brand_name: str, market: str) -> dict:
-    """Track competitor pricing and product changes."""
+    """Track competitor pricing and product changes from real sources."""
     try:
+        # TODO: Implement real pricing data from:
+        # - Amazon/e-commerce APIs (product listings, prices)
+        # - Brand's own D2C website (web scraping)
+        # - Retail price tracking services
+        # - Competition intelligence APIs
+
+        # For now: return empty to avoid fake data
+        logger.info(f"[pricing] Real pricing data not yet available for {brand_name}")
         return {
-            "current_price": "£89.99",
-            "price_range": "£79.99 - £129.99",
-            "price_changes_30d": [
-                {"date": "2024-01-15", "old_price": "£99.99", "new_price": "£89.99", "change": "-10%"},
-                {"date": "2024-01-08", "old_price": "£104.99", "new_price": "£99.99", "change": "-4.8%"}
-            ],
-            "competitor_prices": [
-                {"competitor": "Competitor A", "price": "£79.99", "difference": "-11%"},
-                {"competitor": "Competitor B", "price": "£109.99", "difference": "+22%"}
-            ],
-            "price_position": "Mid-Premium",
-            "skus_tracked": 24
+            "current_price": "—",
+            "price_range": "—",
+            "price_changes_30d": [],
+            "competitor_prices": [],
+            "price_position": "—",
+            "skus_tracked": 0,
+            "data_status": "Pricing data unavailable - requires e-commerce API integration"
         }
 
     except Exception as e:
@@ -197,18 +194,24 @@ def _fetch_pricing_intelligence(brand_name: str, market: str) -> dict:
 def _fetch_social_intelligence(brand_name: str) -> dict:
     """Track social media mentions and sentiment."""
     try:
+        # TODO: Implement real social listening from:
+        # - Reddit API (actual subreddit mentions)
+        # - Twitter/X API (real tweets, sentiment analysis)
+        # - TikTok API (video mentions, engagement)
+        # - Instagram API (follower counts, hashtags)
+        # - Sentiment analysis (NLP)
+
+        logger.info(f"[social] Real social data not yet available for {brand_name}")
         return {
-            "reddit_mentions": [
-                {"subreddit": "r/productreviews", "score": 142, "sentiment": "positive"},
-                {"subreddit": "r/shopping", "score": 89, "sentiment": "positive"}
-            ],
-            "twitter_sentiment": "Positive (82%)",
-            "tiktok_presence": True,
-            "instagram_followers": "2.3M",
-            "mentions_30d": 1247,
-            "trending": True,
-            "overall_sentiment": "Very Positive",
-            "top_topics": ["Quality", "Innovation", "Customer Service", "Sustainability"]
+            "reddit_mentions": [],
+            "twitter_sentiment": "—",
+            "tiktok_presence": False,
+            "instagram_followers": "—",
+            "mentions_30d": 0,
+            "trending": False,
+            "overall_sentiment": "—",
+            "top_topics": [],
+            "data_status": "Social data unavailable - requires Twitter/Reddit/TikTok API keys"
         }
 
     except Exception as e:
@@ -219,21 +222,23 @@ def _fetch_social_intelligence(brand_name: str) -> dict:
 def _fetch_growth_signals(brand_name: str) -> dict:
     """Track hiring, funding, expansion."""
     try:
+        # TODO: Implement real growth signals from:
+        # - LinkedIn (company hiring, job postings)
+        # - Crunchbase/AngelList (funding rounds, news)
+        # - Press releases (announcements, store openings)
+        # - News APIs (company announcements)
+        # - Company websites (expansion news)
+
+        logger.info(f"[growth] Real growth data not yet available for {brand_name}")
         return {
-            "hiring_activity": "Accelerating",
-            "recent_hires": 45,
-            "funding_rounds": [
-                {"date": "2024-01-20", "amount": "$50M", "round": "Series B"}
-            ],
-            "store_openings": [
-                {"location": "London", "date": "2024-02-01"},
-                {"location": "Berlin", "date": "2024-02-15"}
-            ],
-            "expansion_markets": ["Germany", "France", "Spain"],
-            "product_launches": [
-                {"name": "New Product X", "date": "2024-01-10", "category": "Innovation"}
-            ],
-            "growth_score": 82
+            "hiring_activity": "—",
+            "recent_hires": 0,
+            "funding_rounds": [],
+            "store_openings": [],
+            "expansion_markets": [],
+            "product_launches": [],
+            "growth_score": 0,
+            "data_status": "Growth data unavailable - requires LinkedIn/Crunchbase API integration"
         }
 
     except Exception as e:
@@ -244,20 +249,22 @@ def _fetch_growth_signals(brand_name: str) -> dict:
 def _fetch_catalog_intelligence(brand_name: str, market: str) -> dict:
     """Track SKUs, inventory, reviews."""
     try:
+        # TODO: Implement real catalog data from:
+        # - Brand's D2C website (product catalog scraping)
+        # - Amazon/e-commerce APIs (product listings, reviews)
+        # - Retailer APIs (inventory levels)
+        # - Review aggregation (ratings from multiple platforms)
+
+        logger.info(f"[catalog] Real catalog data not yet available for {brand_name}")
         return {
-            "total_skus": 142,
-            "new_products_30d": [
-                {"name": "Product A", "date": "2024-01-15", "category": "New Line"},
-                {"name": "Product B", "date": "2024-01-08", "category": "Variant"}
-            ],
-            "inventory_status": "In Stock (Most Items)",
-            "review_average": 4.6,
-            "review_count": 3247,
-            "top_products": [
-                {"name": "Bestseller 1", "sales": "High", "rating": 4.8},
-                {"name": "Bestseller 2", "sales": "High", "rating": 4.7}
-            ],
-            "catalog_velocity": "Fast (3-5 new products/week)"
+            "total_skus": 0,
+            "new_products_30d": [],
+            "inventory_status": "—",
+            "review_average": 0,
+            "review_count": 0,
+            "top_products": [],
+            "catalog_velocity": "—",
+            "data_status": "Catalog data unavailable - requires e-commerce & web scraping APIs"
         }
 
     except Exception as e:
