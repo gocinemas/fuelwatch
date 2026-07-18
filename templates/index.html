@@ -18963,9 +18963,10 @@ let _savesAll = [];
 
     // School link section
     var schoolLink = document.getElementById("week-school-link");
-    if (schoolLink) {
+    var schoolCount = document.getElementById("week-school-count");
+    if (schoolLink && schoolCount) {
       if (data.has_schools) {
-        document.getElementById("week-school-count").textContent = "View this week's school events";
+        schoolCount.textContent = "View this week's school events";
         schoolLink.style.display = "block";
       } else {
         schoolLink.style.display = "none";
@@ -18981,10 +18982,11 @@ let _savesAll = [];
         ? thisWeek.activities.length + " acts"
         : "—";
 
-      document.getElementById("week-this-period").textContent = thisWeek.period || "";
-      document.getElementById("week-this-spend").textContent = spend;
-      document.getElementById("week-this-saves").textContent = saves;
-      document.getElementById("week-this-activities").textContent = activities;
+      var els = {period: document.getElementById("week-this-period"), spend: document.getElementById("week-this-spend"), saves: document.getElementById("week-this-saves"), activities: document.getElementById("week-this-activities")};
+      if (els.period) els.period.textContent = thisWeek.period || "";
+      if (els.spend) els.spend.textContent = spend;
+      if (els.saves) els.saves.textContent = saves;
+      if (els.activities) els.activities.textContent = activities;
     }
 
     // Last week section
@@ -18995,9 +18997,10 @@ let _savesAll = [];
         ? lastWeek.top_places[0].name.split(' ').slice(0, 2).join(' ')
         : "—";
 
-      document.getElementById("week-last-period").textContent = lastWeek.period || "";
-      document.getElementById("week-last-spend").textContent = spend;
-      document.getElementById("week-last-topplace").textContent = topPlace;
+      var els = {period: document.getElementById("week-last-period"), spend: document.getElementById("week-last-spend"), topplace: document.getElementById("week-last-topplace")};
+      if (els.period) els.period.textContent = lastWeek.period || "";
+      if (els.spend) els.spend.textContent = spend;
+      if (els.topplace) els.topplace.textContent = topPlace;
     }
 
     // Trend indicator
