@@ -2523,18 +2523,22 @@ def api_ai_summarize():
             timeout=15,
         )
         if r.status_code != 200:
+            app.logger.error(f"[ai/summarize] Groq error {r.status_code}: {r.text[:300]}")
             return jsonify({"error": f"Groq error: {r.status_code}"}), 500
         result = r.json()
         if not result.get("choices") or not result["choices"][0].get("message"):
+            app.logger.error(f"[ai/summarize] Invalid Groq response: {str(result)[:300]}")
             return jsonify({"error": "Invalid Groq response"}), 500
         summary = result["choices"][0]["message"].get("content", "").strip()
         if not summary:
+            app.logger.warning(f"[ai/summarize] Empty summary from Groq")
             return jsonify({"error": "Empty response from Groq"}), 500
         return jsonify({"summary": summary})
     except requests.exceptions.Timeout:
+        app.logger.warning(f"[ai/summarize] Request timeout")
         return jsonify({"error": "Request timeout - try again"}), 500
     except Exception as e:
-        app.logger.error(f"[ai/summarize] {e}")
+        app.logger.error(f"[ai/summarize] {str(e)[:500]}", exc_info=True)
         return jsonify({"error": "Failed to summarize"}), 500
 
 
