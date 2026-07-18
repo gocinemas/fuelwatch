@@ -20149,20 +20149,36 @@ def _try_isbn_from_image(raw_bytes: bytes):
         return None
 
 
-def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
-    """Download a WhatsApp photo, analyse with Groq vision, save to wa_saves."""
+def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book: bool = False) -> str:
+    """Download a WhatsApp photo, analyse with Groq vision, save to wa_saves or clippings."""
     import base64, threading
 
     # Save bare record immediately — even before download — so it's never lost
     save_id = None
+    table_name = "wa_saves"
+    title_prefix = "📚 Book Scan" if is_book else "📷 Photo"
+
     try:
-        row = lib._sb().table("wa_saves").insert({
-            "from_number": from_number,
-            "url":         media_url,
-            "title":       "📷 Photo",
-            "summary":     "",
-            "status":      "pending",
-        }).execute()
+        if is_book:
+            # For books, store in clippings with book_name field for later tagging
+            row = lib._sb().table("clippings").insert({
+                "from_number": from_number,
+                "url":         media_url,
+                "title":       "📚 Book Page",
+                "content":     "",
+                "book_name":   "",  # User will fill this in later
+                "status":      "pending",
+            }).execute()
+            table_name = "clippings"
+        else:
+            row = lib._sb().table("wa_saves").insert({
+                "from_number": from_number,
+                "url":         media_url,
+                "title":       title_prefix,
+                "summary":     "",
+                "status":      "pending",
+            }).execute()
+
         if row.data:
             save_id = row.data[0].get("id")
     except Exception as _se:
@@ -20265,10 +20281,22 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "llama-3.2-11b-vision-preview",
         ]
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
-        prompt_text = (
-            "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
-            "Identify what this image is. Pick ONE type from: "
-            "event/ticket, store/restaurant, billboard/ad, receipt/bill, recipe card, menu, wine, sign, document, product, photo.\n"
+
+        # Book scan mode — extract essence and quotes
+        if is_book:
+            prompt_text = (
+                "You are analysing a photo of a book page for a reading app.\n"
+                "Extract the ESSENCE of this page:\n"
+                "1. Main idea or theme (1-2 sentences)\n"
+                "2. Key quotes or highlights (3-5 powerful sentences from the text)\n"
+                "3. Concepts or takeaways (3 bullet points)\n\n"
+                "Be concise, capture the soul of what this page is about."
+            )
+        else:
+            prompt_text = (
+                "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
+                "Identify what this image is. Pick ONE type from: "
+                "event/ticket, store/restaurant, billboard/ad, receipt/bill, recipe card, menu, wine, sign, document, product, photo.\n"
             "IMPORTANT type rules:\n"
             "- Use 'recipe card' for any image showing a recipe with ingredients and/or cooking instructions — even if a restaurant name appears on the card.\n"
             "- Use 'receipt/bill' if the image shows a bill, total amount due, or itemised charges — even if menu items are also visible.\n"
@@ -24104,7 +24132,9 @@ def _whatsapp_reply_inner():
         media_url  = request.form.get("MediaUrl0", "")
         media_type = request.form.get("MediaContentType0", "image/jpeg")
         if media_url and "image" in media_type:
-            reply = _wa_process_image(from_number, media_url, media_type)
+            # Check if this is a book scan (message contains "book", "reading", etc)
+            is_book_mode = any(kw in body_lower for kw in ["book", "reading", "read", "page"])
+            reply = _wa_process_image(from_number, media_url, media_type, is_book=is_book_mode)
             resp.message(reply)
             return str(resp)
 
