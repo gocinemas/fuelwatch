@@ -24315,17 +24315,15 @@ def _whatsapp_reply_inner():
                     book_title = auto_book
                 elif last_book and days and days >= 4:
                     # After 4+ days - ask for confirmation
-                    user_token = _wa_user_token(from_number)
+                    _set_wa_pending_intent(from_number, {"type": "awaiting_book_confirmation", "last_book": last_book})
                     resp.message(
                         f"📚 Still reading *{last_book}*? Or switched to a new book?\n\n"
                         f"Reply with the book title (or say *same* if still the same book)."
                     )
-                    # For now, save temporarily and wait for user response
-                    # TODO: implement state machine for awaiting book name
                     return str(resp)
                 else:
                     # First time - ask for book name
-                    user_token = _wa_user_token(from_number)
+                    _set_wa_pending_intent(from_number, {"type": "awaiting_book_title"})
                     resp.message(
                         "📚 What book is this from?\n\n"
                         "Just reply with the book title, e.g. *The Lean Startup*"
@@ -25057,6 +25055,35 @@ def _whatsapp_reply_inner():
                 _ri_merchant = _at_match.group(1).strip()
         resp.message(_wa_receipt_items(from_number, _ri_merchant, _ri_date))
         return str(resp)
+
+    # ── AWAITING BOOK TITLE response ─────────────────────────────────────────────
+    pending = _get_wa_pending_intent(from_number)
+    if pending:
+        if pending.get("type") == "awaiting_book_title":
+            # User is replying to "What book is this from?"
+            book_title = body.strip()
+            if book_title and len(book_title) > 2:  # Sanity check - book title should be real
+                _save_book_scan_state(from_number, book_title)
+                resp.message(f"✅ Got it! Saved to *{book_title}*. Next time, send another photo without me asking!")
+                _set_wa_pending_intent(from_number, None)  # Clear pending state
+                return str(resp)
+        elif pending.get("type") == "awaiting_book_confirmation":
+            # User is confirming if still reading same book
+            last_book = pending.get("last_book", "")
+            if body_lower in ("same", "yes", "still", "yep", "yeah"):
+                # Still reading same book
+                _save_book_scan_state(from_number, last_book)
+                resp.message(f"✅ Got it! Continuing with *{last_book}*.")
+                _set_wa_pending_intent(from_number, None)
+                return str(resp)
+            else:
+                # New book
+                book_title = body.strip()
+                if book_title and len(book_title) > 2:
+                    _save_book_scan_state(from_number, book_title)
+                    resp.message(f"✅ Switched to *{book_title}*!")
+                    _set_wa_pending_intent(from_number, None)
+                    return str(resp)
 
     # ── MENU query — detect "menu for X", "get me X menu", etc. ─────────────────
     menu_match = _detect_menu_query(body_lower)
