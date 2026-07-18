@@ -657,30 +657,35 @@
                 const financialsGrid = document.getElementById('financialsGrid');
                 let financialsHTML = '';
 
-                // Display available financial data
+                // Display available financial data (no duplicates)
                 const finFields = [
-                    { key: 'current_price', label: 'Current Stock Price', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
-                    { key: '52_week_high', label: '52-Week High', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
-                    { key: '52_week_low', label: '52-Week Low', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
-                    { key: 'exchange', label: 'Exchange', format: (v) => v },
-                    { key: 'ticker', label: 'Ticker', format: (v) => v },
+                    // Revenue & Profitability
+                    { key: 'revenue_ttm', label: '💰 Annual Turnover (TTM)', format: (v) => '$' + formatNumber(v) },
+                    { key: 'net_income_ttm', label: '📊 Net Income (TTM)', format: (v) => '$' + formatNumber(v) },
+                    { key: 'revenue_growth_yoy', label: '📈 Revenue Growth (YoY)', format: (v) => (v * 100).toFixed(2) + '%' },
+                    { key: 'profit_margin', label: '💹 Profit Margin', format: (v) => (v * 100).toFixed(2) + '%' },
+                    { key: 'operating_margin', label: '⚙️ Operating Margin', format: (v) => (v * 100).toFixed(2) + '%' },
+                    { key: 'trailing_eps', label: '📍 Earnings Per Share', format: (v) => '$' + v.toFixed(2) },
 
-                    // Cash Flow & Health
-                    { key: 'free_cash_flow', label: 'Free Cash Flow', format: (v) => '$' + formatNumber(v) },
-                    { key: 'current_ratio', label: 'Liquidity Ratio', format: (v) => v.toFixed(2) + 'x' },
-                    { key: 'total_debt', label: 'Total Debt', format: (v) => '$' + formatNumber(v) },
+                    // Stock & Valuation
+                    { key: 'current_price', label: '📈 Current Stock Price', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
+                    { key: 'market_cap', label: '🏢 Market Cap', format: (v) => '$' + formatNumber(v) },
+                    { key: 'pe_ratio', label: '📊 P/E Ratio', format: (v) => v ? v.toFixed(2) + 'x' : 'N/A' },
+                    { key: '52_week_high', label: '📊 52-Week High', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
+                    { key: '52_week_low', label: '📊 52-Week Low', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
+                    { key: 'dividend_yield', label: '💵 Dividend Yield', format: (v) => (v * 100).toFixed(2) + '%' },
 
-                    // Valuation & Risk
-                    { key: 'market_cap', label: 'Market Cap', format: (v) => '$' + formatNumber(v) },
-                    { key: 'pe_ratio', label: 'P/E Ratio', format: (v) => v ? v.toFixed(2) : 'N/A' },
-                    { key: 'beta', label: 'Beta (Volatility)', format: (v) => v.toFixed(2) },
-                    { key: 'dividend_yield', label: 'Dividend Yield', format: (v) => (v * 100).toFixed(2) + '%' },
+                    // Cash Flow & Financial Health
+                    { key: 'free_cash_flow', label: '💧 Free Cash Flow', format: (v) => '$' + formatNumber(v) },
+                    { key: 'total_debt', label: '⚠️ Total Debt', format: (v) => '$' + formatNumber(v) },
+                    { key: 'current_ratio', label: '💪 Liquidity Ratio', format: (v) => v.toFixed(2) + 'x' },
+                    { key: 'return_on_equity', label: '📈 Return on Equity', format: (v) => (v * 100).toFixed(2) + '%' },
+                    { key: 'beta', label: '📉 Beta (Volatility)', format: (v) => v.toFixed(2) },
 
-                    // Price Range & Exchange
-                    { key: '52_week_high', label: '52-Week High', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
-                    { key: '52_week_low', label: '52-Week Low', format: (v) => '$' + v.toLocaleString(undefined, {maximumFractionDigits: 2}) },
-                    { key: 'exchange', label: 'Exchange', format: (v) => v },
-                    { key: 'currency', label: 'Currency', format: (v) => v }
+                    // Reference Info
+                    { key: 'ticker', label: '🔤 Ticker', format: (v) => v },
+                    { key: 'exchange', label: '🌍 Exchange', format: (v) => v },
+                    { key: 'currency', label: '💱 Currency', format: (v) => v }
                 ];
 
                 finFields.forEach(field => {
@@ -696,7 +701,7 @@
                 });
 
                 // Only show financials if we have real data (not just ticker/currency)
-                const hasRealFinancials = financials.current_price || financials.revenue_ttm || financials.market_cap;
+                const hasRealFinancials = financials.revenue_ttm || financials.current_price || financials.market_cap || financials.net_income_ttm || financials.profit_margin;
                 if (financialsHTML && hasRealFinancials) {
                     financialsGrid.innerHTML = financialsHTML;
                     document.getElementById('financialsSection').style.display = 'block';
