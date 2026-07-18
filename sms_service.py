@@ -20271,7 +20271,6 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 print(f"[vision] location lookup error: {_le}")
 
         _vision_models = [
-            "meta-llama/llama-4-scout-17b-16e-instruct",
             "llama-3.2-90b-vision-preview",
             "llama-3.2-11b-vision-preview",
         ]
