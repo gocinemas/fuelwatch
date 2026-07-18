@@ -10675,7 +10675,10 @@ def api_v2_prefs_post():
 def api_v2_recurring_get():
     """Return all recurring activities for the user, sorted by weekday then time."""
     token = request.args.get("token", "").strip()
+    # Try multiple ways to get the phone number
     from_number = _v2_resolve(token)
+    if not from_number:
+        from_number = (request.cookies.get("miru_saves_phone") or "").strip()
     if not from_number:
         return jsonify({"activities": [], "error": "token required"}), 401
     try:
@@ -10683,8 +10686,10 @@ def api_v2_recurring_get():
             .eq("device_id", from_number).eq("type", "recurring_activities").limit(1).execute().data or []
         activities = (rows[0]["data"] if rows else []) or []
         activities.sort(key=lambda a: (a.get("weekday", 7), a.get("time", "")))
+        app.logger.info(f"[recurring] Found {len(activities)} activities for {from_number}")
         return jsonify({"activities": activities})
     except Exception as e:
+        app.logger.error(f"[recurring] Error: {e}")
         return jsonify({"activities": [], "error": str(e)}), 500
 
 
