@@ -20189,19 +20189,14 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
     try:
         r = requests.get(media_url, auth=(twilio_sid, twilio_token), timeout=12)
         if r.status_code != 200:
-            app.logger.warning(f"[vision] image download failed status={r.status_code}")
-            user_token = _wa_user_token(from_number)
-            _wa_send_proactive(from_number,
-                f"⚠️ Couldn't read your photo — clipped anyway.\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}")
-            return "⚠️ Had trouble reading the image — saved it anyway. Try resending for a better result."
+            app.logger.error(f"[vision] image download failed status={r.status_code} url={media_url}")
+            return f"⚠️ Image download failed ({r.status_code}). Saved anyway."
         img_b64 = base64.b64encode(r.content).decode()
         mime = media_type or "image/jpeg"
+        app.logger.info(f"[vision] image downloaded ok, size={len(r.content)} bytes")
     except Exception as e:
-        app.logger.warning(f"[vision] image download exception: {e}")
-        user_token = _wa_user_token(from_number)
-        _wa_send_proactive(from_number,
-            f"⚠️ Couldn't download your photo — clipped anyway.\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}")
-        return "⚠️ Had trouble downloading — saved it anyway."
+        app.logger.error(f"[vision] image download exception: {e} url={media_url}", exc_info=True)
+        return f"⚠️ Couldn't download image: {str(e)[:50]}. Saved anyway."
 
     def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content,
             _loc=_USER_LAST_LOCATION.get(from_number)):
@@ -20332,6 +20327,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             + _loc_hint
         )
         analysis = ""
+        groq_errors = []
         for model in _vision_models:
             try:
                 body = {
@@ -20340,25 +20336,34 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     "messages": [{
                         "role": "user",
                         "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                            {"type": "text", "text": prompt_text},
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64[:50]}..."}},
+                            {"type": "text", "text": prompt_text[:80] + "..."},
                         ]
                     }],
                 }
+                app.logger.info(f"[vision] calling model {model}, img_size={len(b64)} chars")
                 resp = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
                              "Content-Type": "application/json"},
                     json=body, timeout=20,
                 )
-                print(f"[vision] model={model} status={resp.status_code}")
+                app.logger.info(f"[vision] model={model} status={resp.status_code}")
                 if resp.status_code == 200:
-                    analysis = resp.json()["choices"][0]["message"]["content"].strip()
-                    break
+                    try:
+                        analysis = resp.json()["choices"][0]["message"]["content"].strip()
+                        app.logger.info(f"[vision] success with {model}, analysis_len={len(analysis)}")
+                        break
+                    except Exception as parse_err:
+                        app.logger.error(f"[vision] JSON parse error: {parse_err}, resp={resp.text[:300]}")
+                        groq_errors.append(f"{model}: parse error")
                 else:
-                    print(f"[vision] error body: {resp.text[:300]}")
+                    error_detail = resp.text[:500]
+                    app.logger.error(f"[vision] model={model} failed with status {resp.status_code}: {error_detail}")
+                    groq_errors.append(f"{model}: {resp.status_code}")
             except Exception as exc:
-                print(f"[vision] model={model} exception: {exc}")
+                app.logger.error(f"[vision] model={model} exception: {exc}", exc_info=True)
+                groq_errors.append(f"{model}: {str(exc)[:80]}")
 
         # Derive title and search intent from type
         title = "📷 Photo"
