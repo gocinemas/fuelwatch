@@ -20270,13 +20270,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             except Exception as _le:
                 print(f"[vision] location lookup error: {_le}")
 
-        _vision_models = [
-            "llama-3.2-90b-vision-preview",
-            "llama-3.2-11b-vision-preview",
-        ]
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
 
-        # Book scan mode — extract essence and quotes
+        # Book scan mode — extract essence and quotes using Claude
         if is_book_mode:
             prompt_text = (
                 "You are analysing a photo of a book page for a reading app.\n"
@@ -20286,6 +20282,26 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 "3. Concepts or takeaways (3 bullet points)\n\n"
                 "Be concise, capture the soul of what this page is about."
             )
+            # Use Claude for book scanning instead of Groq
+            analysis = ""
+            try:
+                from anthropic import Anthropic
+                claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                msg = claude_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=500,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                            {"type": "text", "text": prompt_text}
+                        ]
+                    }]
+                )
+                analysis = msg.content[0].text.strip() if msg.content else ""
+                app.logger.info(f"[vision-claude] book scan success, length={len(analysis)}")
+            except Exception as e:
+                app.logger.error(f"[vision-claude] book scan failed: {e}", exc_info=True)
         else:
             prompt_text = (
                 "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
@@ -20324,58 +20340,27 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             "If there is a QR code visible in the image, decode it and add: QRCODE: [the decoded URL]\n"
             "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
-        )
-        analysis = ""
-        groq_errors = []
-        groq_key = os.environ.get('GROQ_API_KEY','')
-        app.logger.info(f"[vision] GROQ_API_KEY present: {bool(groq_key)}, key_len={len(groq_key) if groq_key else 0}")
-
-        # Test basic API connectivity first
-        if not groq_key:
-            app.logger.error("[vision] GROQ_API_KEY is missing!")
-            groq_errors.append("missing API key")
-
-        for model in _vision_models:
+            )
+            # Use Claude for regular image analysis as well
+            analysis = ""
             try:
-                body = {
-                    "model": model,
-                    "max_tokens": 500,
-                    "messages": [{
+                from anthropic import Anthropic
+                claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                msg = claude_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=500,
+                    messages=[{
                         "role": "user",
                         "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64[:50]}..."}},
-                            {"type": "text", "text": prompt_text[:80] + "..."},
+                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                            {"type": "text", "text": prompt_text}
                         ]
-                    }],
-                }
-                app.logger.info(f"[vision] calling model {model}, img_size={len(b64)} chars, is_book={is_book_mode}")
-                resp = requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {groq_key}",
-                             "Content-Type": "application/json"},
-                    json=body, timeout=20,
+                    }]
                 )
-                app.logger.info(f"[vision] model={model} status={resp.status_code}")
-                if resp.status_code == 200:
-                    try:
-                        data = resp.json()
-                        analysis = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-                        if analysis:
-                            app.logger.info(f"[vision] success with {model}, analysis_len={len(analysis)}")
-                            break
-                        else:
-                            app.logger.warning(f"[vision] {model} returned empty content, full resp: {str(data)[:300]}")
-                            groq_errors.append(f"{model}: empty content")
-                    except Exception as parse_err:
-                        app.logger.error(f"[vision] JSON parse error: {parse_err}, resp={resp.text[:300]}")
-                        groq_errors.append(f"{model}: parse error")
-                else:
-                    error_detail = resp.text[:500]
-                    app.logger.error(f"[vision] model={model} failed with status {resp.status_code}: {error_detail}")
-                    groq_errors.append(f"{model}: {resp.status_code}")
-            except Exception as exc:
-                app.logger.error(f"[vision] model={model} exception: {exc}", exc_info=True)
-                groq_errors.append(f"{model}: {str(exc)[:80]}")
+                analysis = msg.content[0].text.strip() if msg.content else ""
+                app.logger.info(f"[vision-claude] regular image analysis success, length={len(analysis)}")
+            except Exception as e:
+                app.logger.error(f"[vision-claude] regular image analysis failed: {e}", exc_info=True)
 
         # ── Book scan: save essence directly to clippings ──────────────────────────
         if is_book_mode and analysis and sid:
