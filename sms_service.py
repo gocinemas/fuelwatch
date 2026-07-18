@@ -24127,6 +24127,7 @@ def _whatsapp_reply_inner():
             pass
 
     # ── Image/photo capture (before body checks — body is empty when photo sent) ─
+    body_lower = body.strip().lower()
     num_media = int(request.form.get("NumMedia", "0") or 0)
     if num_media > 0:
         media_url  = request.form.get("MediaUrl0", "")
@@ -24137,8 +24138,6 @@ def _whatsapp_reply_inner():
             reply = _wa_process_image(from_number, media_url, media_type, is_book=is_book_mode)
             resp.message(reply)
             return str(resp)
-
-    body_lower = body.strip().lower()
     if not body or body_lower in _GREETING_WORDS or body_lower.startswith("join "):
         is_join = body_lower.startswith("join ") or body_lower == "join"
         if is_join or _is_new_user(from_number):
