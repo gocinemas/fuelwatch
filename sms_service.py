@@ -20199,7 +20199,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         return f"⚠️ Couldn't download image: {str(e)[:50]}. Saved anyway."
 
     def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content,
-            _loc=_USER_LAST_LOCATION.get(from_number), is_book_mode=is_book):
+            _loc=_USER_LAST_LOCATION.get(from_number), is_book_mode=is_book, orig_media_url=media_url):
         # ── Persist image to Supabase Storage (so URL never expires) ────────────
         _stored_image_url = ""
         if sid and raw:
@@ -20329,6 +20329,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         groq_errors = []
         groq_key = os.environ.get('GROQ_API_KEY','')
         app.logger.info(f"[vision] GROQ_API_KEY present: {bool(groq_key)}, key_len={len(groq_key) if groq_key else 0}")
+
+        # Test basic API connectivity first
+        if not groq_key:
+            app.logger.error("[vision] GROQ_API_KEY is missing!")
+            groq_errors.append("missing API key")
+
         for model in _vision_models:
             try:
                 body = {
