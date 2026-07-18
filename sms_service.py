@@ -24301,7 +24301,8 @@ def _whatsapp_reply_inner():
 
     # ── PRIORITY: Check if awaiting book title response (must be before all other handlers)
     pending = _get_wa_pending_intent(from_number)
-    if pending and not request.form.get("NumMedia"):  # Text-only message
+    num_media_str = request.form.get("NumMedia", "0")
+    if pending and int(num_media_str or 0) == 0:  # Text-only message
         if pending.get("type") == "awaiting_book_title":
             book_title = body.strip()
             if book_title and len(book_title) > 2:
