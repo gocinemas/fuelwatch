@@ -20327,6 +20327,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         )
         analysis = ""
         groq_errors = []
+        groq_key = os.environ.get('GROQ_API_KEY','')
+        app.logger.info(f"[vision] GROQ_API_KEY present: {bool(groq_key)}, key_len={len(groq_key) if groq_key else 0}")
         for model in _vision_models:
             try:
                 body = {
@@ -20340,19 +20342,24 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         ]
                     }],
                 }
-                app.logger.info(f"[vision] calling model {model}, img_size={len(b64)} chars")
+                app.logger.info(f"[vision] calling model {model}, img_size={len(b64)} chars, is_book={is_book_mode}")
                 resp = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
+                    headers={"Authorization": f"Bearer {groq_key}",
                              "Content-Type": "application/json"},
                     json=body, timeout=20,
                 )
                 app.logger.info(f"[vision] model={model} status={resp.status_code}")
                 if resp.status_code == 200:
                     try:
-                        analysis = resp.json()["choices"][0]["message"]["content"].strip()
-                        app.logger.info(f"[vision] success with {model}, analysis_len={len(analysis)}")
-                        break
+                        data = resp.json()
+                        analysis = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                        if analysis:
+                            app.logger.info(f"[vision] success with {model}, analysis_len={len(analysis)}")
+                            break
+                        else:
+                            app.logger.warning(f"[vision] {model} returned empty content, full resp: {str(data)[:300]}")
+                            groq_errors.append(f"{model}: empty content")
                     except Exception as parse_err:
                         app.logger.error(f"[vision] JSON parse error: {parse_err}, resp={resp.text[:300]}")
                         groq_errors.append(f"{model}: parse error")
@@ -21023,13 +21030,22 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             except Exception:
                 pass
             return
-        # Book scans: always send success message since content is already in clippings
-        if is_book_mode and analysis and sid:
+        # Book scans: send message (success if analysis worked, fallback if it didn't)
+        if is_book_mode and sid:
             user_token = _wa_user_token(fn)
-            _wa_send_proactive(fn,
-                f"📚 *Book page saved!*\n\n"
-                f"📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}\n\n"
-                f"Tip: Add the book title in clippings to organize by book")
+            if analysis:
+                # Groq succeeded - content already saved to clippings
+                _wa_send_proactive(fn,
+                    f"📚 *Book page saved!*\n\n"
+                    f"📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}\n\n"
+                    f"Tip: Add the book title in clippings to organize by book")
+            else:
+                # Groq failed - still saved the image, prompt user to add notes
+                _wa_send_proactive(fn,
+                    f"📚 *Saved the book page!*\n\n"
+                    f"My vision had trouble reading it, but I saved it anyway.\n\n"
+                    f"📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}\n\n"
+                    f"You can add the essence or quotes yourself in the clipping.")
             return
 
         if product_items or bullets or venue_info or brand_intel or menu_text:
