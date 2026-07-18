@@ -20293,7 +20293,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     raise ValueError("ANTHROPIC_API_KEY not configured")
                 claude_client = Anthropic(api_key=api_key)
                 msg = claude_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
+                    model="claude-opus-4-8",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
@@ -20357,7 +20357,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     raise ValueError("ANTHROPIC_API_KEY not configured")
                 claude_client = Anthropic(api_key=api_key)
                 msg = claude_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
+                    model="claude-opus-4-8",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
@@ -35394,7 +35394,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
         client = Anthropic()
 
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-opus-4-8",
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -35538,7 +35538,7 @@ Answer their question about spending concisely in 1-2 sentences. Only use the da
         client = Anthropic()
 
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-opus-4-8",
             max_tokens=200,
             messages=[{"role": "user", "content": groq_prompt}]
         )
