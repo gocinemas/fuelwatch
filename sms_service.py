@@ -24308,8 +24308,22 @@ def _whatsapp_reply_inner():
             book_title = body.strip()
             app.logger.info(f"[book_title_check] awaiting_book_title detected, title={book_title}")
             if book_title and len(book_title) > 2:
+                # Add book to "Currently Reading" in library
+                try:
+                    lib._sb().table("wa_saves").insert({
+                        "from_number": from_number,
+                        "title": f"📚 {book_title}",
+                        "url": f"book:{book_title}",
+                        "status": "reading",
+                        "category": "Books",
+                    }).execute()
+                    app.logger.info(f"[book_title_check] added to library: {book_title}")
+                except Exception as e:
+                    app.logger.warning(f"[book_title_check] failed to add to library: {e}")
+
+                # Also update book scan state for smart tracking
                 _save_book_scan_state(from_number, book_title)
-                resp.message(f"✅ Got it! Saved to *{book_title}*. Next time, send another photo without me asking!")
+                resp.message(f"✅ Added *{book_title}* to your Currently Reading!\n\nNext photos from this book will be linked automatically.")
                 _set_wa_pending_intent(from_number, None)
                 app.logger.info(f"[book_title_check] saved and returned")
                 return str(resp)
@@ -24323,8 +24337,20 @@ def _whatsapp_reply_inner():
             else:
                 book_title = body.strip()
                 if book_title and len(book_title) > 2:
+                    # Add new book to library
+                    try:
+                        lib._sb().table("wa_saves").insert({
+                            "from_number": from_number,
+                            "title": f"📚 {book_title}",
+                            "url": f"book:{book_title}",
+                            "status": "reading",
+                            "category": "Books",
+                        }).execute()
+                    except Exception as e:
+                        app.logger.warning(f"[book_confirmation] failed to add: {e}")
+
                     _save_book_scan_state(from_number, book_title)
-                    resp.message(f"✅ Switched to *{book_title}*!")
+                    resp.message(f"✅ Switched to *{book_title}* — added to Currently Reading!")
                     _set_wa_pending_intent(from_number, None)
                     return str(resp)
 
