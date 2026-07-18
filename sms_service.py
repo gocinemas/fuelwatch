@@ -584,34 +584,40 @@ def _set_wa_pending_intent(from_number: str, intent: dict):
     try:
         sb = lib._sb()
         sb.table("wa_saves").delete().eq("from_number", plain).eq("status", "pending_intent").execute()
-        sb.table("wa_saves").insert({
-            "from_number": plain,
-            "status": "pending_intent",
-            "url": "pending:" + json.dumps(intent),
-            "title": "Pending intent: " + intent.get("type", ""),
-        }).execute()
+        if intent:
+            sb.table("wa_saves").insert({
+                "from_number": plain,
+                "status": "pending_intent",
+                "url": "pending:" + json.dumps(intent),
+                "title": "Pending intent: " + intent.get("type", ""),
+            }).execute()
+            app.logger.info(f"[pending_intent set] user={plain}, type={intent.get('type')}")
+        else:
+            app.logger.info(f"[pending_intent cleared] user={plain}")
     except Exception as e:
-        print(f"[pending_intent set] {e}")
+        app.logger.error(f"[pending_intent set] {e}", exc_info=True)
 
 
 def _get_wa_pending_intent(from_number: str):
     """Return stored pending intent dict, or None."""
     plain = from_number.replace("whatsapp:", "").strip()
-    wa    = f"whatsapp:{plain}"
     try:
         rows = (lib._sb().table("wa_saves")
                 .select("url,created_at")
-                .in_("from_number", [from_number, plain, wa])
+                .eq("from_number", plain)
                 .eq("status", "pending_intent")
                 .order("created_at", desc=True)
                 .limit(1).execute().data)
         if not rows:
+            app.logger.debug(f"[pending_intent get] no rows found for {plain}")
             return None
         url = rows[0].get("url", "")
         if url.startswith("pending:"):
-            return json.loads(url[8:])
-    except Exception:
-        pass
+            intent = json.loads(url[8:])
+            app.logger.info(f"[pending_intent get] found type={intent.get('type')} for {plain}")
+            return intent
+    except Exception as e:
+        app.logger.error(f"[pending_intent get] error for {plain}: {e}")
     return None
 
 
