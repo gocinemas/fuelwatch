@@ -14624,9 +14624,11 @@ def api_home_brief():
             prompt_parts.append(f"It's sunny and warm in {loc_str} — mention this naturally. Do NOT invent outdoor plans or activities.")
     else:
         _tod_label = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
+        _events_note = f"Events today: {len(_events)} scheduled." if _events else "ZERO events scheduled today — do NOT mention or invent any events."
         prompt_parts.append(
             f"{_loc_preamble}"
             f"Write a natural 2-sentence brief for a UK user. It's {dow} {_tod_label}, {hour}:{now.minute:02d}. "
+            f"{_events_note} "
             f"Do NOT invent events, places, or activities. Only reference facts given below. "
             f"Write to the user directly ('you') — not as an assistant ('I can...')."
         )
