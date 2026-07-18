@@ -20199,7 +20199,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         return f"⚠️ Couldn't download image: {str(e)[:50]}. Saved anyway."
 
     def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content,
-            _loc=_USER_LAST_LOCATION.get(from_number)):
+            _loc=_USER_LAST_LOCATION.get(from_number), is_book_mode=is_book):
         # ── Persist image to Supabase Storage (so URL never expires) ────────────
         _stored_image_url = ""
         if sid and raw:
@@ -20277,7 +20277,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
 
         # Book scan mode — extract essence and quotes
-        if is_book:
+        if is_book_mode:
             prompt_text = (
                 "You are analysing a photo of a book page for a reading app.\n"
                 "Extract the ESSENCE of this page:\n"
@@ -20363,6 +20363,18 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             except Exception as exc:
                 app.logger.error(f"[vision] model={model} exception: {exc}", exc_info=True)
                 groq_errors.append(f"{model}: {str(exc)[:80]}")
+
+        # ── Book scan: save essence directly to clippings ──────────────────────────
+        if is_book_mode and analysis and sid:
+            try:
+                lib._sb().table("clippings").update({
+                    "content": analysis.strip(),
+                    "title": "📚 Book Page",
+                    "status": "saved"
+                }).eq("id", sid).execute()
+                app.logger.info(f"[vision] book clipping saved with essence, length={len(analysis)}")
+            except Exception as _be:
+                app.logger.error(f"[vision] failed to update book clipping: {_be}")
 
         # Derive title and search intent from type
         title = "📷 Photo"
@@ -21011,6 +21023,15 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             except Exception:
                 pass
             return
+        # Book scans: always send success message since content is already in clippings
+        if is_book_mode and analysis and sid:
+            user_token = _wa_user_token(fn)
+            _wa_send_proactive(fn,
+                f"📚 *Book page saved!*\n\n"
+                f"📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}\n\n"
+                f"Tip: Add the book title in clippings to organize by book")
+            return
+
         if product_items or bullets or venue_info or brand_intel or menu_text:
             msg = f"{title}\n"
             if img_type == "product" and product_items:
