@@ -1931,7 +1931,6 @@ def admin_populate_brands():
 
 
 @app.route("/")
-@app.route("/company")
 def index():
     _host = request.host.lower()
 
