@@ -21297,6 +21297,56 @@ _SPEND_MERCHANT_MAP = {
     "nero": "Caffè Nero", "starbucks": "Starbucks", "costa": "Costa",
 }
 
+def _detect_menu_query(text: str) -> str:
+    """
+    Detect menu queries like "get me Indian Cart Menu", "menu for", "what can I get from"
+    Returns: restaurant name if detected, None otherwise
+    """
+    import re as _menu_re
+    patterns = [
+        r"(?:get|show|fetch|find).{0,10}(?:menu|options).{0,5}(?:from|at|for)\s+(.+?)(?:\?|$)",
+        r"(?:menu|options).{0,5}(?:for|at|from)\s+(.+?)(?:\?|$)",
+        r"what can i (?:get|order|have).{0,10}(?:from|at)\s+(.+?)(?:\?|$)",
+        r"(.+?)\s+(?:menu|options)(?:\?|$)",
+    ]
+
+    for pattern in patterns:
+        match = _menu_re.search(pattern, text, _menu_re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return None
+
+def _wa_menu_query(from_number: str, restaurant_name: str) -> str:
+    """
+    Fetch menu for a restaurant by searching clippings and saved items.
+    """
+    try:
+        # Search clippings for restaurant matches
+        plain_num = from_number.replace("whatsapp:", "").strip()
+        results = lib._sb().table("wa_saves").select("*").eq("from_number", from_number).ilike("title", f"%{restaurant_name}%").execute().data or []
+
+        if results:
+            # Find restaurant saves (stores)
+            stores = [r for r in results if "🏪" in r.get("title", "") or "restaurant" in r.get("title", "").lower()]
+            if stores:
+                store = stores[0]
+                summary = store.get("summary", "")
+                if "menu" in summary.lower() or "dish" in summary.lower():
+                    return f"🍽️ *{restaurant_name}*\n\n{summary}\n\n📌 View full menu: miru.humanagency.co/?token={_wa_user_token(from_number)}"
+
+        # Fallback: search by name in receipts
+        receipts = lib._sb().table("wa_saves").select("*").eq("from_number", from_number).ilike("title", f"%receipt%").execute().data or []
+        matching_receipts = [r for r in receipts if restaurant_name.lower() in r.get("summary", "").lower()]
+        if matching_receipts:
+            receipt = matching_receipts[0]
+            summary = receipt.get("summary", "")
+            return f"🧾 *{restaurant_name}*\n\n{summary}\n\n💡 Next time, scan their menu for full options!"
+
+        return f"🔍 Couldn't find *{restaurant_name}* in your saved items.\n\nHave you ordered from them before? Scan their menu next time and I'll remember it!"
+    except Exception as e:
+        app.logger.error(f"[menu_query] error: {e}")
+        return f"⚠️ Couldn't fetch menu — try asking 'show me places near me' to find restaurants!"
+
 def _is_spend_query(text: str) -> bool:
     """Detect natural-language spending queries regardless of word order."""
     t = text.lower()
@@ -24993,6 +25043,14 @@ def _whatsapp_reply_inner():
             if _at_match:
                 _ri_merchant = _at_match.group(1).strip()
         resp.message(_wa_receipt_items(from_number, _ri_merchant, _ri_date))
+        return str(resp)
+
+    # ── MENU query — detect "menu for X", "get me X menu", etc. ─────────────────
+    menu_match = _detect_menu_query(body_lower)
+    if menu_match:
+        restaurant_name = menu_match
+        menu_reply = _wa_menu_query(from_number, restaurant_name)
+        resp.message(menu_reply)
         return str(resp)
 
     # ── SPENDING / RECEIPTS query — natural language intent detection ─────────
