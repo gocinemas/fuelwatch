@@ -20219,16 +20219,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
 
     try:
         if is_book:
-            # For books, store in clippings with book_name field
-            row = lib._sb().table("clippings").insert({
+            # For books, store in wa_saves with book tag in title
+            book_tag = f" [{book_title}]" if book_title else " [Untagged]"
+            row = lib._sb().table("wa_saves").insert({
                 "from_number": from_number,
                 "url":         media_url,
-                "title":       "📚 Book Page",
-                "content":     "",
-                "book_name":   book_title or "",  # Auto-filled if detected, otherwise user fills later
+                "title":       f"📚 Book Page{book_tag}",
+                "summary":     "",
                 "status":      "pending",
+                "category":    "Books",
             }).execute()
-            table_name = "clippings"
+            table_name = "wa_saves"
             # Save book scan state for smart tracking
             if book_title:
                 _save_book_scan_state(from_number, book_title)
@@ -20434,17 +20435,16 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             except Exception as e:
                 app.logger.error(f"[vision-claude] image analysis failed: {str(e)[:500]}", exc_info=True)
 
-        # ── Book scan: save essence directly to clippings ──────────────────────────
+        # ── Book scan: save essence to wa_saves ────────────────────────────────────
         if is_book_mode and analysis and sid:
             try:
-                lib._sb().table("clippings").update({
-                    "content": analysis.strip(),
-                    "title": "📚 Book Page",
+                lib._sb().table("wa_saves").update({
+                    "summary": analysis.strip(),
                     "status": "saved"
                 }).eq("id", sid).execute()
-                app.logger.info(f"[vision] book clipping saved with essence, length={len(analysis)}")
+                app.logger.info(f"[vision] book scan saved with essence, length={len(analysis)}")
             except Exception as _be:
-                app.logger.error(f"[vision] failed to update book clipping: {_be}")
+                app.logger.error(f"[vision] failed to update book scan: {_be}")
 
         # Derive title and search intent from type
         title = "📷 Photo"
@@ -21097,20 +21097,18 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         if is_book_mode and sid:
             user_token = _wa_user_token(fn)
             if analysis:
-                # Claude succeeded - content already saved to clippings
-                msg = f"📚 *Book page saved!*"
+                # Claude succeeded - content already saved
                 if book_name:
-                    msg += f"\n📖 Saved to: *{book_name}*"
-                msg += f"\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}"
+                    msg = f"📚 Saved to *{book_name}*\n\n{analysis[:200]}"
+                else:
+                    msg = f"📚 Book page saved!\n\n{analysis[:200]}"
                 _wa_send_proactive(fn, msg)
             else:
-                # Claude failed - still saved the image, prompt user to add notes
-                msg = f"📚 *Saved the book page!*\n\n"
-                msg += f"My vision had trouble reading it, but I saved it anyway."
+                # Claude failed - still saved the image
                 if book_name:
-                    msg += f"\n📖 Saved to: *{book_name}*"
-                msg += f"\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}\n\n"
-                msg += f"You can add the essence or quotes yourself in the clipping."
+                    msg = f"📚 Saved to *{book_name}* (couldn't read the text)"
+                else:
+                    msg = f"📚 Book page saved! (couldn't read the text)"
                 _wa_send_proactive(fn, msg)
             return
 
