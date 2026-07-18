@@ -24298,6 +24298,32 @@ def _whatsapp_reply_inner():
 
     # ── Image/photo capture (before body checks — body is empty when photo sent) ─
     body_lower = body.strip().lower()
+
+    # ── PRIORITY: Check if awaiting book title response (must be before all other handlers)
+    pending = _get_wa_pending_intent(from_number)
+    if pending and not request.form.get("NumMedia"):  # Text-only message
+        if pending.get("type") == "awaiting_book_title":
+            book_title = body.strip()
+            if book_title and len(book_title) > 2:
+                _save_book_scan_state(from_number, book_title)
+                resp.message(f"✅ Got it! Saved to *{book_title}*. Next time, send another photo without me asking!")
+                _set_wa_pending_intent(from_number, None)
+                return str(resp)
+        elif pending.get("type") == "awaiting_book_confirmation":
+            last_book = pending.get("last_book", "")
+            if body_lower in ("same", "yes", "still", "yep", "yeah"):
+                _save_book_scan_state(from_number, last_book)
+                resp.message(f"✅ Continuing with *{last_book}*.")
+                _set_wa_pending_intent(from_number, None)
+                return str(resp)
+            else:
+                book_title = body.strip()
+                if book_title and len(book_title) > 2:
+                    _save_book_scan_state(from_number, book_title)
+                    resp.message(f"✅ Switched to *{book_title}*!")
+                    _set_wa_pending_intent(from_number, None)
+                    return str(resp)
+
     num_media = int(request.form.get("NumMedia", "0") or 0)
     if num_media > 0:
         media_url  = request.form.get("MediaUrl0", "")
@@ -25055,35 +25081,6 @@ def _whatsapp_reply_inner():
                 _ri_merchant = _at_match.group(1).strip()
         resp.message(_wa_receipt_items(from_number, _ri_merchant, _ri_date))
         return str(resp)
-
-    # ── AWAITING BOOK TITLE response ─────────────────────────────────────────────
-    pending = _get_wa_pending_intent(from_number)
-    if pending:
-        if pending.get("type") == "awaiting_book_title":
-            # User is replying to "What book is this from?"
-            book_title = body.strip()
-            if book_title and len(book_title) > 2:  # Sanity check - book title should be real
-                _save_book_scan_state(from_number, book_title)
-                resp.message(f"✅ Got it! Saved to *{book_title}*. Next time, send another photo without me asking!")
-                _set_wa_pending_intent(from_number, None)  # Clear pending state
-                return str(resp)
-        elif pending.get("type") == "awaiting_book_confirmation":
-            # User is confirming if still reading same book
-            last_book = pending.get("last_book", "")
-            if body_lower in ("same", "yes", "still", "yep", "yeah"):
-                # Still reading same book
-                _save_book_scan_state(from_number, last_book)
-                resp.message(f"✅ Got it! Continuing with *{last_book}*.")
-                _set_wa_pending_intent(from_number, None)
-                return str(resp)
-            else:
-                # New book
-                book_title = body.strip()
-                if book_title and len(book_title) > 2:
-                    _save_book_scan_state(from_number, book_title)
-                    resp.message(f"✅ Switched to *{book_title}*!")
-                    _set_wa_pending_intent(from_number, None)
-                    return str(resp)
 
     # ── MENU query — detect "menu for X", "get me X menu", etc. ─────────────────
     menu_match = _detect_menu_query(body_lower)
