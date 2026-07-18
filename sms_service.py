@@ -21316,34 +21316,49 @@ def _detect_menu_query(text: str) -> str:
 
 def _wa_menu_query(from_number: str, restaurant_name: str) -> str:
     """
-    Fetch menu for a restaurant by searching clippings and saved items.
+    Fetch menu for a restaurant by searching order history and saved places.
+    Returns actual dishes ordered or menu details if available.
     """
     try:
-        # Search clippings for restaurant matches
-        plain_num = from_number.replace("whatsapp:", "").strip()
-        results = lib._sb().table("wa_saves").select("*").eq("from_number", from_number).ilike("title", f"%{restaurant_name}%").execute().data or []
+        # Search receipts for this restaurant by name in summary
+        all_saves = lib._sb().table("wa_saves").select("*").eq("from_number", from_number).execute().data or []
 
-        if results:
-            # Find restaurant saves (stores)
-            stores = [r for r in results if "🏪" in r.get("title", "") or "restaurant" in r.get("title", "").lower()]
-            if stores:
-                store = stores[0]
-                summary = store.get("summary", "")
-                if "menu" in summary.lower() or "dish" in summary.lower():
-                    return f"🍽️ *{restaurant_name}*\n\n{summary}\n\n📌 View full menu: miru.humanagency.co/?token={_wa_user_token(from_number)}"
+        # Look for receipts matching restaurant name
+        matching = []
+        for save in all_saves:
+            title = (save.get("title", "") or "").lower()
+            summary = (save.get("summary", "") or "").lower()
+            rest_lower = restaurant_name.lower()
 
-        # Fallback: search by name in receipts
-        receipts = lib._sb().table("wa_saves").select("*").eq("from_number", from_number).ilike("title", f"%receipt%").execute().data or []
-        matching_receipts = [r for r in receipts if restaurant_name.lower() in r.get("summary", "").lower()]
-        if matching_receipts:
-            receipt = matching_receipts[0]
+            # Match if restaurant name appears in title or summary
+            if rest_lower in title or rest_lower in summary:
+                matching.append(save)
+
+        if matching:
+            # Get most recent receipt
+            receipt = matching[0]
             summary = receipt.get("summary", "")
-            return f"🧾 *{restaurant_name}*\n\n{summary}\n\n💡 Next time, scan their menu for full options!"
+            title = receipt.get("title", "")
 
-        return f"🔍 Couldn't find *{restaurant_name}* in your saved items.\n\nHave you ordered from them before? Scan their menu next time and I'll remember it!"
+            # Extract restaurant name from receipt if available
+            if "🧾" in title:
+                rest_name = title.replace("🧾", "").split("\n")[0].strip()
+            else:
+                rest_name = restaurant_name
+
+            # Return actual dishes ordered
+            if summary:
+                msg = f"🍽️ *{rest_name}*\n\n"
+                msg += f"Recent order:\n{summary}"
+                return msg
+            else:
+                return f"🧾 Found your order from *{rest_name}* but details are minimal. View in clippings for full receipt."
+
+        # If no order found, return helpful message
+        return f"📌 No saved orders from *{restaurant_name}*. Send me a photo of their menu next time and I'll remember it!"
     except Exception as e:
         app.logger.error(f"[menu_query] error: {e}")
-        return f"⚠️ Couldn't fetch menu — try asking 'show me places near me' to find restaurants!"
+        return f"⚠️ Couldn't search your order history — try 'show me my places' instead!"
 
 def _is_spend_query(text: str) -> bool:
     """Detect natural-language spending queries regardless of word order."""
