@@ -20153,7 +20153,62 @@ def _try_isbn_from_image(raw_bytes: bytes):
         return None
 
 
-def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book: bool = False) -> str:
+def _get_smart_book_context(from_number: str) -> tuple:
+    """
+    Smart book tracking: check if user recently scanned a book.
+    Returns: (auto_use_book_name, last_book_name, days_since_last_scan)
+    - auto_use_book_name: book to use if scanning within 3 days
+    - last_book_name: book scanned last time (for context in prompts)
+    - days_since_last_scan: how many days since last scan
+    """
+    try:
+        device_id = from_number.replace("whatsapp:", "").strip()
+        result = lib._sb().table("ma_details").select("data").eq("device_id", device_id).eq("type", "book_scan_state").order("id", desc=True).limit(1).execute()
+
+        if not result.data:
+            return (None, None, None)  # First time
+
+        state = result.data[0].get("data", {})
+        last_book = state.get("book_name", "")
+        last_scan_str = state.get("last_scan_date", "")
+
+        if not last_book or not last_scan_str:
+            return (None, None, None)
+
+        # Parse date and check days elapsed
+        try:
+            last_scan = datetime.fromisoformat(last_scan_str)
+            days_elapsed = (datetime.utcnow() - last_scan).days
+
+            if days_elapsed < 3:
+                # Within 3 days - assume same book
+                return (last_book, last_book, days_elapsed)
+            else:
+                # 3+ days - ask again but show last book for context
+                return (None, last_book, days_elapsed)
+        except:
+            return (None, last_book, None)
+    except Exception as e:
+        app.logger.warning(f"[book_context] error: {e}")
+        return (None, None, None)
+
+def _save_book_scan_state(from_number: str, book_name: str):
+    """Save the current book scan state (book name + timestamp)."""
+    try:
+        device_id = from_number.replace("whatsapp:", "").strip()
+        lib._sb().table("ma_details").upsert({
+            "device_id": device_id,
+            "type": "book_scan_state",
+            "data": {
+                "book_name": book_name,
+                "last_scan_date": datetime.utcnow().isoformat()
+            }
+        }).eq("device_id", device_id).eq("type", "book_scan_state").execute()
+        app.logger.info(f"[book_state] saved: {book_name}")
+    except Exception as e:
+        app.logger.error(f"[book_state] save failed: {e}")
+
+def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book: bool = False, book_title: str = None) -> str:
     """Download a WhatsApp photo, analyse with Groq vision, save to wa_saves or clippings."""
     import base64, threading
 
@@ -20164,16 +20219,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
 
     try:
         if is_book:
-            # For books, store in clippings with book_name field for later tagging
+            # For books, store in clippings with book_name field
             row = lib._sb().table("clippings").insert({
                 "from_number": from_number,
                 "url":         media_url,
                 "title":       "📚 Book Page",
                 "content":     "",
-                "book_name":   "",  # User will fill this in later
+                "book_name":   book_title or "",  # Auto-filled if detected, otherwise user fills later
                 "status":      "pending",
             }).execute()
             table_name = "clippings"
+            # Save book scan state for smart tracking
+            if book_title:
+                _save_book_scan_state(from_number, book_title)
         else:
             row = lib._sb().table("wa_saves").insert({
                 "from_number": from_number,
@@ -20203,7 +20261,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         return f"⚠️ Couldn't download image: {str(e)[:50]}. Saved anyway."
 
     def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content,
-            _loc=_USER_LAST_LOCATION.get(from_number), is_book_mode=is_book, orig_media_url=media_url):
+            _loc=_USER_LAST_LOCATION.get(from_number), is_book_mode=is_book, orig_media_url=media_url, book_name=book_title):
         # ── Persist image to Supabase Storage (so URL never expires) ────────────
         _stored_image_url = ""
         if sid and raw:
@@ -21039,18 +21097,21 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         if is_book_mode and sid:
             user_token = _wa_user_token(fn)
             if analysis:
-                # Groq succeeded - content already saved to clippings
-                _wa_send_proactive(fn,
-                    f"📚 *Book page saved!*\n\n"
-                    f"📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}\n\n"
-                    f"Tip: Add the book title in clippings to organize by book")
+                # Claude succeeded - content already saved to clippings
+                msg = f"📚 *Book page saved!*"
+                if book_name:
+                    msg += f"\n📖 Saved to: *{book_name}*"
+                msg += f"\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}"
+                _wa_send_proactive(fn, msg)
             else:
-                # Groq failed - still saved the image, prompt user to add notes
-                _wa_send_proactive(fn,
-                    f"📚 *Saved the book page!*\n\n"
-                    f"My vision had trouble reading it, but I saved it anyway.\n\n"
-                    f"📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}\n\n"
-                    f"You can add the essence or quotes yourself in the clipping.")
+                # Claude failed - still saved the image, prompt user to add notes
+                msg = f"📚 *Saved the book page!*\n\n"
+                msg += f"My vision had trouble reading it, but I saved it anyway."
+                if book_name:
+                    msg += f"\n📖 Saved to: *{book_name}*"
+                msg += f"\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}\n\n"
+                msg += f"You can add the essence or quotes yourself in the clipping."
+                _wa_send_proactive(fn, msg)
             return
 
         if product_items or bullets or venue_info or brand_intel or menu_text:
@@ -24181,7 +24242,34 @@ def _whatsapp_reply_inner():
         if media_url and "image" in media_type:
             # Check if this is a book scan (message contains "book", "reading", etc)
             is_book_mode = any(kw in body_lower for kw in ["book", "reading", "read", "page"])
-            reply = _wa_process_image(from_number, media_url, media_type, is_book=is_book_mode)
+
+            # Smart book tracking: check last scan state
+            book_title = None
+            if is_book_mode:
+                auto_book, last_book, days = _get_smart_book_context(from_number)
+                if auto_book:
+                    # Within 3 days - use same book silently
+                    book_title = auto_book
+                elif last_book and days and days >= 4:
+                    # After 4+ days - ask for confirmation
+                    user_token = _wa_user_token(from_number)
+                    resp.message(
+                        f"📚 Still reading *{last_book}*? Or switched to a new book?\n\n"
+                        f"Reply with the book title (or say *same* if still the same book)."
+                    )
+                    # For now, save temporarily and wait for user response
+                    # TODO: implement state machine for awaiting book name
+                    return str(resp)
+                else:
+                    # First time - ask for book name
+                    user_token = _wa_user_token(from_number)
+                    resp.message(
+                        "📚 What book is this from?\n\n"
+                        "Just reply with the book title, e.g. *The Lean Startup*"
+                    )
+                    return str(resp)
+
+            reply = _wa_process_image(from_number, media_url, media_type, is_book=is_book_mode, book_title=book_title)
             resp.message(reply)
             return str(resp)
     if not body or body_lower in _GREETING_WORDS or body_lower.startswith("join "):
