@@ -24302,13 +24302,16 @@ def _whatsapp_reply_inner():
     # ── PRIORITY: Check if awaiting book title response (must be before all other handlers)
     pending = _get_wa_pending_intent(from_number)
     num_media_str = request.form.get("NumMedia", "0")
+    app.logger.info(f"[book_title_check] pending={pending}, num_media={num_media_str}, body={body_lower[:30]}")
     if pending and int(num_media_str or 0) == 0:  # Text-only message
         if pending.get("type") == "awaiting_book_title":
             book_title = body.strip()
+            app.logger.info(f"[book_title_check] awaiting_book_title detected, title={book_title}")
             if book_title and len(book_title) > 2:
                 _save_book_scan_state(from_number, book_title)
                 resp.message(f"✅ Got it! Saved to *{book_title}*. Next time, send another photo without me asking!")
                 _set_wa_pending_intent(from_number, None)
+                app.logger.info(f"[book_title_check] saved and returned")
                 return str(resp)
         elif pending.get("type") == "awaiting_book_confirmation":
             last_book = pending.get("last_book", "")
