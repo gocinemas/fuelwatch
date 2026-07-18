@@ -20286,7 +20286,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             analysis = ""
             try:
                 from anthropic import Anthropic
-                claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+                app.logger.info(f"[vision-claude] book scan starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
+                if not api_key:
+                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
+                    raise ValueError("ANTHROPIC_API_KEY not configured")
+                claude_client = Anthropic(api_key=api_key)
                 msg = claude_client.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=500,
@@ -20301,7 +20306,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 analysis = msg.content[0].text.strip() if msg.content else ""
                 app.logger.info(f"[vision-claude] book scan success, length={len(analysis)}")
             except Exception as e:
-                app.logger.error(f"[vision-claude] book scan failed: {e}", exc_info=True)
+                app.logger.error(f"[vision-claude] book scan failed: {str(e)[:500]}", exc_info=True)
         else:
             prompt_text = (
                 "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
@@ -20345,7 +20350,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             analysis = ""
             try:
                 from anthropic import Anthropic
-                claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+                app.logger.info(f"[vision-claude] image analysis starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
+                if not api_key:
+                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
+                    raise ValueError("ANTHROPIC_API_KEY not configured")
+                claude_client = Anthropic(api_key=api_key)
                 msg = claude_client.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=500,
@@ -20358,9 +20368,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     }]
                 )
                 analysis = msg.content[0].text.strip() if msg.content else ""
-                app.logger.info(f"[vision-claude] regular image analysis success, length={len(analysis)}")
+                app.logger.info(f"[vision-claude] image analysis success, length={len(analysis)}")
             except Exception as e:
-                app.logger.error(f"[vision-claude] regular image analysis failed: {e}", exc_info=True)
+                app.logger.error(f"[vision-claude] image analysis failed: {str(e)[:500]}", exc_info=True)
 
         # ── Book scan: save essence directly to clippings ──────────────────────────
         if is_book_mode and analysis and sid:
