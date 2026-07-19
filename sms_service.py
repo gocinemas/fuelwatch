@@ -21220,7 +21220,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         _wa_send_proactive(fn, msg)
 
     # ── ISBN barcode detection — short-circuit vision pipeline for books ────────
-    _isbn_hit = _try_isbn_from_image(r.content)
+    _isbn_hit = None
+    try:
+        _isbn_hit = _try_isbn_from_image(r.content)
+    except Exception as e:
+        app.logger.warning(f"[isbn barcode] barcode scan failed: {e}")
+
     if _isbn_hit is _ISBN_BARCODE_FAILED:
         user_token = _wa_user_token(from_number)
         _wa_send_proactive(from_number,
@@ -25094,6 +25099,28 @@ def _whatsapp_reply_inner():
             if _at_match:
                 _ri_merchant = _at_match.group(1).strip()
         resp.message(_wa_receipt_items(from_number, _ri_merchant, _ri_date))
+        return str(resp)
+
+    # ── EDIT BOOK: "edit book Old Title to New Title" ────────────────────────────
+    if body_lower.startswith("edit book "):
+        parts = body[10:].split(" to ", 1)  # "edit book X to Y"
+        if len(parts) == 2:
+            old_title = parts[0].strip()
+            new_title = parts[1].strip()
+            if old_title and new_title:
+                try:
+                    # Find and update the book
+                    lib._sb().table("wa_saves").update({
+                        "title": f"📚 {new_title}",
+                        "url": f"book:{new_title}",
+                    }).eq("from_number", from_number).like("title", f"%{old_title}%").limit(1).execute()
+                    resp.message(f"✅ Updated: *{old_title}* → *{new_title}*")
+                    return str(resp)
+                except Exception as e:
+                    app.logger.error(f"[edit_book] error: {e}")
+                    resp.message(f"⚠️ Couldn't update book. Try again or check your library.")
+                    return str(resp)
+        resp.message("📚 Usage: *edit book Old Title to New Title*\n\nExample: *edit book The Human to The Lean Startup*")
         return str(resp)
 
     # ── MENU query — detect "menu for X", "get me X menu", etc. ─────────────────
