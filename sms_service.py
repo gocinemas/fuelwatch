@@ -3587,6 +3587,31 @@ def api_library_search():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/library/book/edit", methods=["POST"])
+def api_library_book_edit():
+    """Edit a book title in the library."""
+    from_number = _get_auth_user()
+    if not from_number:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    data = request.get_json() or {}
+    book_id = data.get("id")
+    new_title = data.get("title", "").strip()
+
+    if not book_id or not new_title:
+        return jsonify({"error": "Missing id or title"}), 400
+
+    try:
+        lib._sb().table("wa_saves").update({
+            "title": f"📚 {new_title}",
+            "url": f"book:{new_title}",
+        }).eq("id", book_id).eq("from_number", from_number).execute()
+        return jsonify({"success": True, "title": new_title})
+    except Exception as e:
+        app.logger.error(f"[book_edit] error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/library/ask", methods=["POST"])
 def api_library_ask():
     err = _check_library_pin()
