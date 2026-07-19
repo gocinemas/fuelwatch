@@ -24305,45 +24305,20 @@ def _whatsapp_reply_inner():
     # ── Image/photo capture (before body checks — body is empty when photo sent) ─
     body_lower = body.strip().lower()
 
-    # ── PRIORITY: Check if awaiting book title response (must be before all other handlers)
-    pending = _get_wa_pending_intent(from_number)
+    # ── PRIORITY: Check if last message was "What book is this from?" (must be first check)
     num_media_str = request.form.get("NumMedia", "0")
-    app.logger.info(f"[book_title_check] pending={pending}, num_media={num_media_str}, body={body_lower[:30]}")
-    if pending and int(num_media_str or 0) == 0:  # Text-only message
-        if pending.get("type") == "awaiting_book_title":
-            book_title = body.strip()
-            app.logger.info(f"[book_title_check] awaiting_book_title detected, title={book_title}")
-            if book_title and len(book_title) > 2:
-                # Add book to "Currently Reading" in library
-                try:
-                    lib._sb().table("wa_saves").insert({
-                        "from_number": from_number,
-                        "title": f"📚 {book_title}",
-                        "url": f"book:{book_title}",
-                        "status": "reading",
-                        "category": "Books",
-                    }).execute()
-                    app.logger.info(f"[book_title_check] added to library: {book_title}")
-                except Exception as e:
-                    app.logger.warning(f"[book_title_check] failed to add to library: {e}")
-
-                # Also update book scan state for smart tracking
-                _save_book_scan_state(from_number, book_title)
-                resp.message(f"✅ Added *{book_title}* to your Currently Reading!\n\nNext photos from this book will be linked automatically.")
-                _set_wa_pending_intent(from_number, None)
-                app.logger.info(f"[book_title_check] saved and returned")
-                return str(resp)
-        elif pending.get("type") == "awaiting_book_confirmation":
-            last_book = pending.get("last_book", "")
-            if body_lower in ("same", "yes", "still", "yep", "yeah"):
-                _save_book_scan_state(from_number, last_book)
-                resp.message(f"✅ Continuing with *{last_book}*.")
-                _set_wa_pending_intent(from_number, None)
-                return str(resp)
-            else:
+    if int(num_media_str or 0) == 0 and body and len(body.strip()) > 2:  # Text-only, non-empty
+        # Check if we just asked for a book title
+        try:
+            plain_num = from_number.replace("whatsapp:", "").strip()
+            # Look for recent "What book" message we sent via Twilio
+            app.logger.info(f"[book_title_check] checking for recent book question for {plain_num}")
+            pending = _get_wa_pending_intent(from_number)
+            if pending and pending.get("type") == "awaiting_book_title":
                 book_title = body.strip()
+                app.logger.info(f"[book_title_check] found pending awaiting_book_title, treating '{book_title}' as book name")
                 if book_title and len(book_title) > 2:
-                    # Add new book to library
+                    # Add book to "Currently Reading" in library
                     try:
                         lib._sb().table("wa_saves").insert({
                             "from_number": from_number,
@@ -24353,12 +24328,15 @@ def _whatsapp_reply_inner():
                             "category": "Books",
                         }).execute()
                     except Exception as e:
-                        app.logger.warning(f"[book_confirmation] failed to add: {e}")
+                        app.logger.warning(f"[book_title_check] library insert failed: {e}")
 
+                    # Update book scan state
                     _save_book_scan_state(from_number, book_title)
-                    resp.message(f"✅ Switched to *{book_title}* — added to Currently Reading!")
                     _set_wa_pending_intent(from_number, None)
+                    resp.message(f"✅ Added *{book_title}* to your Currently Reading!")
                     return str(resp)
+        except Exception as e:
+            app.logger.error(f"[book_title_check] error: {e}")
 
     num_media = int(request.form.get("NumMedia", "0") or 0)
     if num_media > 0:
