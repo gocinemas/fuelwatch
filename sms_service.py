@@ -20701,22 +20701,26 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     "*Mains*\n• Fish & Chips — £14.50\n\n"
                     "Only include what is clearly visible. Skip sections or details with no readable content."
                 )
-                _menu_resp = requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
-                             "Content-Type": "application/json"},
-                    json={
-                        "model": _vision_models[0],
-                        "max_tokens": 800,
-                        "messages": [{"role": "user", "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                            {"type": "text", "text": _menu_prompt},
-                        ]}],
-                    },
-                    timeout=20,
-                )
-                if _menu_resp.status_code == 200:
-                    _raw_menu = _menu_resp.json()["choices"][0]["message"]["content"].strip()
+                try:
+                    from anthropic import Anthropic
+                    _menu_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                    _menu_msg = _menu_client.messages.create(
+                        model="claude-opus-4-8",
+                        max_tokens=800,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                                {"type": "text", "text": _menu_prompt}
+                            ]
+                        }]
+                    )
+                    _raw_menu = _menu_msg.content[0].text.strip() if _menu_msg.content else ""
+                except Exception as _menu_err:
+                    print(f"[vision] menu extraction error: {_menu_err}")
+                    _raw_menu = ""
+
+                if _raw_menu:
                     # Parse out restaurant detail lines; remainder is the menu
                     _menu_meta = {}
                     _menu_lines = []
@@ -20785,22 +20789,26 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     "GRAPE: [grape variety or blend]\n"
                     "Only output lines where the information is clearly visible on the label."
                 )
-                _wine_resp = requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
-                             "Content-Type": "application/json"},
-                    json={
-                        "model": _vision_models[0],
-                        "max_tokens": 200,
-                        "messages": [{"role": "user", "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                            {"type": "text", "text": _wine_prompt},
-                        ]}],
-                    },
-                    timeout=15,
-                )
-                if _wine_resp.status_code == 200:
-                    _raw_wine = _wine_resp.json()["choices"][0]["message"]["content"].strip()
+                try:
+                    from anthropic import Anthropic
+                    _wine_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                    _wine_msg = _wine_client.messages.create(
+                        model="claude-opus-4-8",
+                        max_tokens=200,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                                {"type": "text", "text": _wine_prompt}
+                            ]
+                        }]
+                    )
+                    _raw_wine = _wine_msg.content[0].text.strip() if _wine_msg.content else ""
+                except Exception as _wine_err:
+                    print(f"[vision] wine extraction error: {_wine_err}")
+                    _raw_wine = ""
+
+                if _raw_wine:
                     for _wl in _raw_wine.split("\n"):
                         _wu = _wl.strip().upper()
                         if _wu.startswith("WINE_NAME:"):
@@ -20879,22 +20887,26 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     "4. Skip items you cannot read clearly.\n"
                     "5. Use sentence case for item names (not ALL CAPS)."
                 )
-                _rcpt_resp = requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
-                             "Content-Type": "application/json"},
-                    json={
-                        "model": _vision_models[0],
-                        "max_tokens": 600,
-                        "messages": [{"role": "user", "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                            {"type": "text", "text": _rcpt_prompt},
-                        ]}],
-                    },
-                    timeout=20,
-                )
-                if _rcpt_resp.status_code == 200:
-                    _raw_rcpt = _rcpt_resp.json()["choices"][0]["message"]["content"].strip()
+                try:
+                    from anthropic import Anthropic
+                    _rcpt_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                    _rcpt_msg = _rcpt_client.messages.create(
+                        model="claude-opus-4-8",
+                        max_tokens=600,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                                {"type": "text", "text": _rcpt_prompt}
+                            ]
+                        }]
+                    )
+                    _raw_rcpt = _rcpt_msg.content[0].text.strip() if _rcpt_msg.content else ""
+                except Exception as _rcpt_err:
+                    print(f"[vision] receipt extraction error: {_rcpt_err}")
+                    _raw_rcpt = ""
+
+                if _raw_rcpt:
                     _rcpt_items = []
                     for _rl in _raw_rcpt.split("\n"):
                         _ru = _rl.strip().upper()
