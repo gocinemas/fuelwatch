@@ -34966,33 +34966,46 @@ def admin_fix_receipt_titles():
             # Always try to extract proper merchant from summary, don't trust existing title
             # (existing titles might be locations, not merchant names)
 
-            # Extract merchant from summary - look for store name, not location
+            # Extract merchant from summary - handle multiple receipt formats
             merchant = None
-
-            # Strategy 1: Look for "purchased at [STORE]" pattern and extract just the store name
             import re
+
+            # Common UK location patterns to remove
+            location_words = ["London", "Manchester", "Sunningdale", "Camberley", "Slough", "Surrey", "Kent", "Essex",
+                            "Birmingham", "Leeds", "Glasgow", "Liverpool", "Bristol", "Edinburgh", "UK", "England"]
+
+            # Strategy 1: Look for "purchased at [STORE]" (groceries format)
             m = re.search(r"purchased at\s+([^,\n]+?)(?:\s+on\s+|\s+at\s+|$)", summary)
             if m:
                 merchant_full = m.group(1).strip()
-                # "Waitrose & Partners Sunningdale on..." → "Waitrose & Partners"
-                # Remove numbers, dates, times
                 merchant_full = re.sub(r'\s+\d{1,2}/\d{1,2}/\d{4}.*$', '', merchant_full).strip()
                 merchant_full = re.sub(r'\s+\d{1,2}:\d{2}.*$', '', merchant_full).strip()
-
-                # Remove location (last word or last 2 words that are location names)
                 parts = merchant_full.split()
-                # Common UK location patterns to remove
-                location_words = ["London", "Manchester", "Sunningdale", "Camberley", "Slough", "Surrey", "Kent", "Essex", "Birmingham", "Leeds", "Glasgow"]
                 while parts and any(parts[-1].endswith(loc) or parts[-1] == loc for loc in location_words):
                     parts.pop()
-                merchant = " ".join(parts).strip() if parts else merchant_full.strip()
+                merchant = " ".join(parts).strip() if parts else None
 
-                # Ensure we have a reasonable merchant name
-                if merchant and len(merchant) > 3:
-                    pass  # Use it
-                else:
-                    merchant = merchant_full.split()[0:3] if merchant_full.split() else ""
-                    merchant = " ".join(merchant) if isinstance(merchant, list) else merchant
+            # Strategy 2: Look for "[STORE] [Location]" pattern (restaurants/takeaway)
+            # e.g., "KFC Camberley, London Road" or "Wagamama London"
+            if not merchant:
+                m = re.search(r'^([A-Z][A-Za-z0-9\s&\'\-\.]+?)(?:\s+(?:' + '|'.join(location_words) + r')|,|\s+Dine|\s+Order)', summary)
+                if m:
+                    candidate = m.group(1).strip()
+                    if len(candidate) > 2 and not any(x in candidate.lower() for x in ["total", "items", "order"]):
+                        merchant = candidate
+
+            # Strategy 3: Extract from summary lines (fallback)
+            if not merchant:
+                for line in summary.split("\n"):
+                    line = line.strip()
+                    if line and not any(x in line.lower() for x in ["total", "items", "order", "meta:", "📍", "📞", "date", "vat"]):
+                        # Take first word or first 2-3 words of substantial lines
+                        words = line.split()
+                        if words and len(words[0]) > 2 and words[0][0].isupper():
+                            candidate = " ".join(words[:3])
+                            if len(candidate) > 3:
+                                merchant = candidate
+                                break
 
             # Strategy 2: Look for phone number line which often has store name
             if not merchant:
