@@ -34971,21 +34971,28 @@ def admin_fix_receipt_titles():
 
             # Strategy 1: Look for "purchased at [STORE]" pattern and extract just the store name
             import re
-            m = re.search(r"purchased at\s+([^,\n]+)", summary)
+            m = re.search(r"purchased at\s+([^,\n]+?)(?:\s+on\s+|\s+at\s+|$)", summary)
             if m:
                 merchant_full = m.group(1).strip()
-                # "Waitrose & Partners Sunningdale" → "Waitrose & Partners"
+                # "Waitrose & Partners Sunningdale on..." → "Waitrose & Partners"
+                # Remove numbers, dates, times
+                merchant_full = re.sub(r'\s+\d{1,2}/\d{1,2}/\d{4}.*$', '', merchant_full).strip()
+                merchant_full = re.sub(r'\s+\d{1,2}:\d{2}.*$', '', merchant_full).strip()
+
                 # Remove location (last word or last 2 words that are location names)
                 parts = merchant_full.split()
                 # Common UK location patterns to remove
-                location_words = ["London", "Manchester", "Sunningdale", "Camberley", "Slough", "Surrey", "Kent", "Essex"]
+                location_words = ["London", "Manchester", "Sunningdale", "Camberley", "Slough", "Surrey", "Kent", "Essex", "Birmingham", "Leeds", "Glasgow"]
                 while parts and any(parts[-1].endswith(loc) or parts[-1] == loc for loc in location_words):
                     parts.pop()
                 merchant = " ".join(parts).strip() if parts else merchant_full.strip()
-                # Fallback: if we removed too much, use first 2-3 words
-                if not merchant or len(merchant) < 4:
-                    words = merchant_full.split()
-                    merchant = " ".join(words[:3]).strip() if len(words) >= 3 else merchant_full.strip()
+
+                # Ensure we have a reasonable merchant name
+                if merchant and len(merchant) > 3:
+                    pass  # Use it
+                else:
+                    merchant = merchant_full.split()[0:3] if merchant_full.split() else ""
+                    merchant = " ".join(merchant) if isinstance(merchant, list) else merchant
 
             # Strategy 2: Look for phone number line which often has store name
             if not merchant:
