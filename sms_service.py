@@ -9183,22 +9183,37 @@ def api_home_last_receipt():
 
                     # If title is just "Receipt", try to extract merchant from summary
                     if not merchant or merchant == "Receipt":
-                        # Look for store/restaurant name in summary
-                        # Format is usually: "META:📅... · 📍 [Location]\n• [Store Name]"
-                        lines = summary.split("\n")
-                        for line in lines:
-                            line = line.strip()
-                            if line.startswith("📍"):
-                                # Extract location
-                                merchant = line.replace("📍", "").strip().split(",")[0]
-                                break
-                            elif line.startswith("•") and len(line) > 10:
-                                # Try first bullet point as store name
-                                merchant = line.lstrip("• ").strip()
-                                break
+                        # Try multiple extraction strategies
+                        # Strategy 1: Look for location with emoji
+                        if "📍" in summary:
+                            loc_line = summary.split("📍")[1].split("\n")[0].strip()
+                            # "Waitrose & Partners, Addlestone" → "Waitrose & Partners"
+                            merchant = loc_line.split(",")[0].strip() if loc_line else ""
+
+                        # Strategy 2: Look for first meaningful bullet point
+                        if not merchant or merchant == "Receipt":
+                            lines = summary.split("\n")
+                            for line in lines:
+                                line = line.strip()
+                                if line.startswith("•") and len(line) > 5:
+                                    merchant = line.lstrip("•").strip()
+                                    # Take first word or first part before dash
+                                    merchant = merchant.split(" -")[0].strip()
+                                    if merchant and len(merchant) > 2:
+                                        break
+
+                        # Strategy 3: Extract from first line with actual text
+                        if not merchant or merchant == "Receipt":
+                            lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
+                            if lines:
+                                first_text = lines[0]
+                                # Remove emojis and take first part
+                                merchant = first_text.replace("📍", "").replace("•", "").strip()
+                                if "," in merchant:
+                                    merchant = merchant.split(",")[0].strip()
 
                     # Only include if we found a merchant name
-                    if merchant and merchant not in ["Receipt", "Photo"] and not merchant.startswith("Online:"):
+                    if merchant and merchant not in ["Receipt", "Photo", ""] and not merchant.startswith("Online:") and len(merchant) > 2:
                         rows.append({
                             "id": wa_row.get("id"),
                             "merchant": merchant,
