@@ -34966,73 +34966,71 @@ def admin_fix_receipt_titles():
             # Always try to extract proper merchant from summary, don't trust existing title
             # (existing titles might be locations, not merchant names)
 
-            # Extract merchant from summary - handle multiple receipt formats
+            # Extract merchant from summary - intelligent multi-strategy approach
             merchant = None
             import re
 
-            # Common UK location patterns to remove
             location_words = ["London", "Manchester", "Sunningdale", "Camberley", "Slough", "Surrey", "Kent", "Essex",
-                            "Birmingham", "Leeds", "Glasgow", "Liverpool", "Bristol", "Edinburgh", "UK", "England"]
+                            "Birmingham", "Leeds", "Glasgow", "Liverpool", "Bristol", "Edinburgh", "UK", "England",
+                            "Street", "Road", "Lane", "Avenue", "Court", "Close", "Drive", "Hill", "Park"]
 
-            # Strategy 1: Look for "purchased at [STORE]" (groceries format)
+            # Strategy 1: Look for "purchased at [STORE]" pattern (Waitrose, Tesco, etc.)
             m = re.search(r"purchased at\s+([^,\n]+?)(?:\s+on\s+|\s+at\s+|$)", summary)
             if m:
                 merchant_full = m.group(1).strip()
+                # Remove dates/times
                 merchant_full = re.sub(r'\s+\d{1,2}/\d{1,2}/\d{4}.*$', '', merchant_full).strip()
                 merchant_full = re.sub(r'\s+\d{1,2}:\d{2}.*$', '', merchant_full).strip()
+                # Remove trailing location words
                 parts = merchant_full.split()
                 while parts and any(parts[-1].endswith(loc) or parts[-1] == loc for loc in location_words):
                     parts.pop()
-                merchant = " ".join(parts).strip() if parts else None
+                if parts and len(" ".join(parts)) > 3:
+                    merchant = " ".join(parts).strip()
 
-            # Strategy 2: Look for "[STORE] [Location]" pattern (restaurants/takeaway)
-            # e.g., "KFC Camberley, London Road" or "Wagamama London"
+            # Strategy 2: Look for "STORE City/Location" pattern (KFC Camberley, Wagamama London)
             if not merchant:
-                m = re.search(r'([A-Z][A-Za-z0-9\s&\'\-\.]+?)(?:\s+(?:' + '|'.join(location_words) + r')|,|\s+Dine|\s+Order)', summary)
+                m = re.search(r'([A-Z][A-Za-z0-9\s&\'\-]+?)(?:\s+(?:' + '|'.join(location_words) + r')|,\s*[A-Z][a-z]+\s*(?:Dine|Order|Road|Lane|Street))', summary)
                 if m:
                     candidate = m.group(1).strip()
-                    if len(candidate) > 2 and not any(x in candidate.lower() for x in ["total", "items", "order"]):
+                    # Filter out common non-merchant words
+                    if (len(candidate) > 2 and candidate not in ["Total", "Items", "Order", "Receipt", "Take", "away"]
+                        and not candidate[0].isdigit()):
                         merchant = candidate
 
-            # Strategy 3: Extract from summary lines (fallback)
+            # Strategy 3: Look for capitalized name followed by comma and location (Palak restaurant format)
             if not merchant:
-                for line in summary.split("\n"):
-                    line = line.strip()
-                    if line and not any(x in line.lower() for x in ["total", "items", "order", "meta:", "📍", "📞", "date", "vat"]):
-                        # Take first word or first 2-3 words of substantial lines
-                        words = line.split()
-                        if words and len(words[0]) > 2 and words[0][0].isupper():
-                            candidate = " ".join(words[:3])
-                            if len(candidate) > 3:
-                                merchant = candidate
-                                break
+                m = re.search(r"([A-Z][a-zA-Z\s\&\'\-]+?),\s*(?:[A-Z][a-z]+\s+)?(?:order|notes|dine|roadhouse)", summary, re.IGNORECASE)
+                if m:
+                    candidate = m.group(1).strip()
+                    if len(candidate) > 2 and not any(x in candidate.lower() for x in ["total", "items", "online"]):
+                        merchant = candidate
 
-            # Strategy 2: Look for phone number line which often has store name
+            # Strategy 4: Look for phone number and extract store name from nearby context
             if not merchant:
-                for line in summary.split("\n"):
-                    if line.strip().startswith("📞"):
-                        # "📞 01344 872770 Total balance..." - extract store from previous context
-                        # Or look in surrounding lines for store name
-                        idx = summary.find(line)
-                        context = summary[max(0, idx-200):idx]
-                        m = re.search(r"([A-Z][^\n]{8,}) (?:on|in|at|paid)", context)
-                        if m:
-                            merchant = m.group(1).strip().split(",")[0].strip()
+                m = re.search(r'📞\s*(\+?[\d\s\-()]+)\s+(.+?)(?:\n|$)', summary)
+                if m:
+                    # Extract the text after phone number (usually contains store info)
+                    context = m.group(2)[:100]  # First 100 chars after phone
+                    # Look for capitalized words
+                    words = context.split()
+                    for word in words:
+                        if word[0].isupper() and len(word) > 2 and word not in location_words:
+                            merchant = word
                             break
 
-            # Strategy 3: Look for first capitalized phrase that's not a location/time
+            # Strategy 5: Find first substantial capitalized phrase (backup)
             if not merchant:
-                lines = summary.split("\n")
-                for line in lines:
+                for line in summary.split("\n"):
                     line = line.strip()
-                    # Skip metadata lines and locations
-                    if (line.startswith(("META:", "📍", "📞", "•", "-")) or
-                        any(x in line.lower() for x in ["total", "balance", "date:", "time:"])):
+                    # Skip metadata/location lines
+                    if (not line or line.startswith(("META:", "📍", "📞", "•", "Total", "Items")) or
+                        any(x in line.lower() for x in ["total", "balance", "vat", "date:", "time:", "road", "street"])):
                         continue
-                    # Look for capitalized store-like names
-                    if len(line) > 5 and line[0].isupper():
-                        candidate = line.split(",")[0].strip()
-                        if len(candidate) > 5 and not candidate.isdigit():
+                    # Look for capitalized names (usually stores/restaurants)
+                    if line[0].isupper():
+                        candidate = line.split(",")[0].split("(")[0].strip()
+                        if len(candidate) > 2 and not candidate.isdigit():
                             merchant = candidate
                             break
 
