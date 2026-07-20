@@ -34908,6 +34908,36 @@ try:
 except Exception as e:
     app.logger.warning(f"[app] Failed to register onboarding blueprint: {e}")
 
+# ── Admin: Debug receipt titles ────────────────────────────────────────────
+
+@app.route("/api/admin/show-receipt-titles")
+def admin_show_receipt_titles():
+    """Show actual receipt titles from database."""
+    token = request.args.get("token", "").strip()
+    if token != os.environ.get("ADMIN_TOKEN", "admin-2026"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        # Get last 10 receipts
+        receipts = lib._sb().table("wa_saves").select("id,title,category,created_at") \
+            .filter("title", "ilike", "%🧾%") \
+            .order("created_at", desc=True).limit(10).execute().data or []
+
+        return jsonify({
+            "count": len(receipts),
+            "receipts": [
+                {
+                    "id": r.get("id"),
+                    "title": r.get("title"),
+                    "category": r.get("category"),
+                    "created_at": r.get("created_at")
+                }
+                for r in receipts
+            ]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── Admin: Fix receipt titles ──────────────────────────────────────────────
 
 @app.route("/api/admin/fix-receipt-titles")
