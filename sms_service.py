@@ -9173,14 +9173,32 @@ def api_home_last_receipt():
 
         rows = []
         if rows_wa:
-            # Convert wa_saves format to receipts format for compatibility
-            # Get first valid receipt (with 🧾 emoji AND non-empty merchant name)
+            # Get first valid receipt (with 🧾 emoji in title)
             for wa_row in rows_wa:
                 title = wa_row.get("title", "")
+                summary = wa_row.get("summary", "")
+
                 if "🧾" in title:
                     merchant = title.replace("🧾", "").strip()
-                    # Only include if merchant name is not empty and not just "Receipt"
-                    if merchant and merchant != "Receipt" and not merchant.startswith("Online:"):
+
+                    # If title is just "Receipt", try to extract merchant from summary
+                    if not merchant or merchant == "Receipt":
+                        # Look for store/restaurant name in summary
+                        # Format is usually: "META:📅... · 📍 [Location]\n• [Store Name]"
+                        lines = summary.split("\n")
+                        for line in lines:
+                            line = line.strip()
+                            if line.startswith("📍"):
+                                # Extract location
+                                merchant = line.replace("📍", "").strip().split(",")[0]
+                                break
+                            elif line.startswith("•") and len(line) > 10:
+                                # Try first bullet point as store name
+                                merchant = line.lstrip("• ").strip()
+                                break
+
+                    # Only include if we found a merchant name
+                    if merchant and merchant not in ["Receipt", "Photo"] and not merchant.startswith("Online:"):
                         rows.append({
                             "id": wa_row.get("id"),
                             "merchant": merchant,
