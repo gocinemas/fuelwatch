@@ -20917,14 +20917,16 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         if img_type == "receipt":
             try:
                 _rcpt_prompt = (
-                    "CRITICAL: Extract EVERY field from this UK shopping receipt or fuel pump receipt.\n\n"
-                    "FUEL PUMP RECEIPTS: If you see 'filling station', 'fuel station', 'petrol station', 'pump', 'litres', 'L', 'ppl', or 'per litre' keywords:\n"
-                    "  • Extract FULL LOCATION: 'Tesco Petrol', 'Shell', 'BP', 'Sainsburys Fuel', 'Asda Petrol', 'Moto', etc\n"
-                    "  • CRITICAL: Include 'Petrol', 'Fuel' or brand name (e.g., 'Tesco Petrol' NOT 'Tesco')\n"
-                    "  • Pump IDs are typically 5-6 digit numbers — IGNORE these, only extract brand\n"
-                    "  • Look for store/brand name at top or bottom of receipt\n\n"
+                    "CRITICAL: Extract EVERY field from this UK receipt. Priority: get MERCHANT name correct.\n\n"
+                    "MERCHANT EXTRACTION (MOST IMPORTANT):\n"
+                    "  • Look for STORE/RESTAURANT NAME at top of receipt (often in large text)\n"
+                    "  • Examples: 'Waitrose & Partners', 'Tesco', 'Sainsburys', 'KFC', 'Wagamama', 'Palak', 'Pizza Hut', 'McDonald's'\n"
+                    "  • For restaurants/takeaways: name appears BEFORE address/location (e.g., 'KFC Camberley' → extract 'KFC')\n"
+                    "  • For shops: brand name (Waitrose, Tesco, M&S, John Lewis, etc.)\n"
+                    "  • EXCLUDE: locations, postcodes, addresses, phone numbers, pump IDs, transaction IDs\n"
+                    "  • FUEL PUMPS: 'Shell', 'BP', 'Tesco Petrol', 'Sainsburys Fuel', 'Asda Petrol', 'Moto' (include 'Petrol'/'Fuel' if visible)\n\n"
                     "OUTPUT FORMAT (ONE FIELD PER LINE):\n"
-                    "MERCHANT: [store name or fuel station (e.g. 'Tesco Petrol', 'Shell', 'BP', 'Sainsburys Fuel', 'Asda Petrol') — NEVER pump/transaction numbers]\n"
+                    "MERCHANT: [STORE/RESTAURANT NAME ONLY - no address, no location, no postcode. e.g., 'Waitrose & Partners' or 'KFC' or 'Wagamama']\n"
                     "DATE: [look for: date/time line, printed near top/middle/bottom. Convert ANY format to YYYY-MM-DD. If unsure, leave blank]\n"
                     "TOTAL: [BOTTOM-most total line showing customer paid. Look for: 'Total', 'Payable', 'Amount Due', 'Paid', 'Cash', '£', etc. Numbers only, 1-4 digits + decimal, e.g. 34.72 or 102.50]\n"
                     "ITEM: [name] | [qty if shown] | [price]\n"
