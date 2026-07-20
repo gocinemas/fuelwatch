@@ -34918,20 +34918,25 @@ def admin_fix_receipt_titles():
         return jsonify({"error": "Unauthorized"}), 401
 
     try:
-        # Get all receipts with vague titles
-        all_receipts = lib._sb().table("wa_saves").select("id,title,summary,from_number") \
-            .filter("title", "ilike", "%Receipt%") \
-            .order("created_at", desc=True).limit(50).execute().data or []
+        # Get ALL receipt clippings (by emoji or category, not title filter)
+        all_receipts = lib._sb().table("wa_saves").select("id,title,summary,from_number,category,created_at") \
+            .order("created_at", desc=True).limit(100).execute().data or []
+
+        # Filter to only receipts (emoji or category)
+        receipt_items = [r for r in all_receipts if ("🧾" in r.get("title", "") or
+                                                       "Receipt" in r.get("title", "") or
+                                                       (r.get("category") and "receipt" in r.get("category", "").lower()))]
 
         updated = 0
-        for receipt in all_receipts:
+        for receipt in receipt_items:
             title = receipt.get("title", "")
             summary = receipt.get("summary", "")
             receipt_id = receipt.get("id")
 
-            # Skip if title already has merchant name (not just "Receipt")
-            if title not in ["🧾 Receipt", "Receipt"]:
-                continue
+            # Skip if title already has a good merchant name (not generic Receipt/🧾 Receipt)
+            title_clean = title.replace("🧾", "").strip()
+            if title_clean and title_clean not in ["Receipt", ""]:
+                continue  # Already has a merchant name
 
             # Extract merchant from summary
             merchant = None
