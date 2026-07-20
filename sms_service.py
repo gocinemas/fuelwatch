@@ -34968,32 +34968,50 @@ def admin_fix_receipt_titles():
             if title_clean and title_clean not in ["Receipt", ""]:
                 continue  # Already has a merchant name
 
-            # Extract merchant from summary
+            # Extract merchant from summary - look for store name, not location
             merchant = None
 
-            # Strategy 1: Look for location emoji
-            if "📍" in summary:
-                loc_line = summary.split("📍")[1].split("\n")[0].strip()
-                merchant = loc_line.split(",")[0].strip() if loc_line else ""
+            # Strategy 1: Look for "purchased at [STORE NAME]" or similar pattern
+            import re
+            patterns = [
+                r"purchased at\s+([^,\n]+)",  # "purchased at Waitrose & Partners"
+                r"Order.*?from\s+([^,\n]+)",  # "Order from [Store]"
+                r"at\s+([A-Z][^,\n]{5,})\s+(?:on|in|at)",  # "at Waitrose & Partners on..."
+            ]
+            for pattern in patterns:
+                m = re.search(pattern, summary)
+                if m:
+                    merchant = m.group(1).strip()
+                    break
 
-            # Strategy 2: Look for first bullet point
+            # Strategy 2: Look for phone number line which often has store name
+            if not merchant:
+                for line in summary.split("\n"):
+                    if line.strip().startswith("📞"):
+                        # "📞 01344 872770 Total balance..." - extract store from previous context
+                        # Or look in surrounding lines for store name
+                        idx = summary.find(line)
+                        context = summary[max(0, idx-200):idx]
+                        m = re.search(r"([A-Z][^\n]{8,}) (?:on|in|at|paid)", context)
+                        if m:
+                            merchant = m.group(1).strip().split(",")[0].strip()
+                            break
+
+            # Strategy 3: Look for first capitalized phrase that's not a location/time
             if not merchant:
                 lines = summary.split("\n")
                 for line in lines:
                     line = line.strip()
-                    if line.startswith("•") and len(line) > 5:
-                        merchant = line.lstrip("•").strip().split(" -")[0].strip()
-                        if merchant and len(merchant) > 2:
+                    # Skip metadata lines and locations
+                    if (line.startswith(("META:", "📍", "📞", "•", "-")) or
+                        any(x in line.lower() for x in ["total", "balance", "date:", "time:"])):
+                        continue
+                    # Look for capitalized store-like names
+                    if len(line) > 5 and line[0].isupper():
+                        candidate = line.split(",")[0].strip()
+                        if len(candidate) > 5 and not candidate.isdigit():
+                            merchant = candidate
                             break
-
-            # Strategy 3: Extract from first text line
-            if not merchant:
-                lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
-                if lines:
-                    first_text = lines[0]
-                    merchant = first_text.replace("📍", "").replace("•", "").strip()
-                    if "," in merchant:
-                        merchant = merchant.split(",")[0].strip()
 
             # Update if merchant found
             if merchant and len(merchant) > 2 and merchant not in ["Receipt", "Photo"]:
