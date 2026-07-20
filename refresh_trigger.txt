@@ -2,3 +2,4 @@
 2026-07-19 — daily Intel campaign refresh (run 4)
 2026-07-20 — daily Intel campaign refresh (run 5)
 2026-07-20T06:08 UTC — daily Intel campaign refresh (run 6)
+2026-07-20 — run 7 (network policy blocked Supabase; run: railway run python3 refresh_campaign_data.py)
