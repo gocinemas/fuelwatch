@@ -4,3 +4,4 @@
 2026-07-20T06:08 UTC — daily Intel campaign refresh (run 6)
 2026-07-20 — run 7 (network policy blocked Supabase; run: railway run python3 refresh_campaign_data.py)
 2026-07-20T12:11 UTC — run 8 (triggered via push; egress proxy blocks direct Supabase access)
+2026-07-20T18:09 UTC — run 9 (triggered via push; egress proxy blocks direct Supabase access)
