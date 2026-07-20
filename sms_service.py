@@ -9173,24 +9173,29 @@ def api_home_last_receipt():
 
         # Fallback to wa_saves if receipts table is empty
         if not rows:
+            # Get recent clippings from same user - filter in code for 🧾 emoji
             rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at").eq("from_number", from_number) \
-                .filter("title", "ilike", "%Receipt%") \
-                .order("created_at", desc=True).limit(20).execute().data or []
+                .order("created_at", desc=True).limit(50).execute().data or []
 
             if rows_wa:
                 # Convert wa_saves format to receipts format for compatibility
+                # Only include items with 🧾 emoji in title (actual receipts)
                 for wa_row in rows_wa:
-                    title = wa_row.get("title", "").replace("🧾", "").strip()
-                    if title:
-                        rows.append({
-                            "id": wa_row.get("id"),
-                            "merchant": title,
-                            "total": 0,
-                            "shop_date": None,
-                            "created_at": wa_row.get("created_at"),
-                            "items": "[]",
-                            "_wa_source": True
-                        })
+                    title = wa_row.get("title", "")
+                    if "🧾" in title:
+                        merchant = title.replace("🧾", "").strip()
+                        if merchant:
+                            rows.append({
+                                "id": wa_row.get("id"),
+                                "merchant": merchant,
+                                "total": 0,
+                                "shop_date": None,
+                                "created_at": wa_row.get("created_at"),
+                                "items": "[]",
+                                "_wa_source": True
+                            })
+                            if len(rows) >= 20:  # Limit to 20 results
+                                break
 
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
