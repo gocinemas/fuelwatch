@@ -34988,7 +34988,7 @@ def admin_fix_receipt_titles():
             # Strategy 2: Look for "[STORE] [Location]" pattern (restaurants/takeaway)
             # e.g., "KFC Camberley, London Road" or "Wagamama London"
             if not merchant:
-                m = re.search(r'^([A-Z][A-Za-z0-9\s&\'\-\.]+?)(?:\s+(?:' + '|'.join(location_words) + r')|,|\s+Dine|\s+Order)', summary)
+                m = re.search(r'([A-Z][A-Za-z0-9\s&\'\-\.]+?)(?:\s+(?:' + '|'.join(location_words) + r')|,|\s+Dine|\s+Order)', summary)
                 if m:
                     candidate = m.group(1).strip()
                     if len(candidate) > 2 and not any(x in candidate.lower() for x in ["total", "items", "order"]):
