@@ -34963,10 +34963,8 @@ def admin_fix_receipt_titles():
             summary = receipt.get("summary", "")
             receipt_id = receipt.get("id")
 
-            # Skip if title already has a good merchant name (not generic Receipt/🧾 Receipt)
-            title_clean = title.replace("🧾", "").strip()
-            if title_clean and title_clean not in ["Receipt", ""]:
-                continue  # Already has a merchant name
+            # Always try to extract proper merchant from summary, don't trust existing title
+            # (existing titles might be locations, not merchant names)
 
             # Extract merchant from summary - look for store name, not location
             merchant = None
