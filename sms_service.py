@@ -35011,6 +35011,9 @@ def admin_fix_receipt_titles():
                             merchant = candidate
                             break
 
+            # Debug: log what was extracted
+            print(f"[admin] Receipt {receipt_id}: title='{title}' merchant='{merchant}'")
+
             # Update if merchant found
             if merchant and len(merchant) > 2 and merchant not in ["Receipt", "Photo"]:
                 new_title = f"🧾 {merchant}"
@@ -35019,6 +35022,8 @@ def admin_fix_receipt_titles():
                 print(f"[admin] Updated: {title} → {new_title}")
                 if updated >= 10:
                     break
+            else:
+                print(f"[admin] SKIPPED: merchant empty or invalid")
 
         return jsonify({
             "success": True,
