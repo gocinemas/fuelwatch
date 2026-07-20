@@ -34904,6 +34904,77 @@ try:
 except Exception as e:
     app.logger.warning(f"[app] Failed to register onboarding blueprint: {e}")
 
+# ── Admin: Fix receipt titles ──────────────────────────────────────────────
+
+@app.route("/api/admin/fix-receipt-titles")
+def admin_fix_receipt_titles():
+    """Update the last 10 receipts with vague titles to use merchant names from summary."""
+    token = request.args.get("token", "").strip()
+    if token != os.environ.get("ADMIN_TOKEN", "admin-2026"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        # Get all receipts with vague titles
+        all_receipts = lib._sb().table("wa_saves").select("id,title,summary,from_number") \
+            .filter("title", "ilike", "%Receipt%") \
+            .order("created_at", desc=True).limit(50).execute().data or []
+
+        updated = 0
+        for receipt in all_receipts:
+            title = receipt.get("title", "")
+            summary = receipt.get("summary", "")
+            receipt_id = receipt.get("id")
+
+            # Skip if title already has merchant name (not just "Receipt")
+            if title not in ["🧾 Receipt", "Receipt"]:
+                continue
+
+            # Extract merchant from summary
+            merchant = None
+
+            # Strategy 1: Look for location emoji
+            if "📍" in summary:
+                loc_line = summary.split("📍")[1].split("\n")[0].strip()
+                merchant = loc_line.split(",")[0].strip() if loc_line else ""
+
+            # Strategy 2: Look for first bullet point
+            if not merchant:
+                lines = summary.split("\n")
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith("•") and len(line) > 5:
+                        merchant = line.lstrip("•").strip().split(" -")[0].strip()
+                        if merchant and len(merchant) > 2:
+                            break
+
+            # Strategy 3: Extract from first text line
+            if not merchant:
+                lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
+                if lines:
+                    first_text = lines[0]
+                    merchant = first_text.replace("📍", "").replace("•", "").strip()
+                    if "," in merchant:
+                        merchant = merchant.split(",")[0].strip()
+
+            # Update if merchant found
+            if merchant and len(merchant) > 2 and merchant not in ["Receipt", "Photo"]:
+                new_title = f"🧾 {merchant}"
+                lib._sb().table("wa_saves").update({"title": new_title}).eq("id", receipt_id).execute()
+                updated += 1
+                print(f"[admin] Updated: {title} → {new_title}")
+                if updated >= 10:
+                    break
+
+        return jsonify({
+            "success": True,
+            "updated": updated,
+            "message": f"Fixed {updated} receipt titles"
+        })
+
+    except Exception as e:
+        print(f"[admin] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
