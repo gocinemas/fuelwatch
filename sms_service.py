@@ -9167,10 +9167,30 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Get most recent REAL receipt by UPLOAD timestamp (created_at)
-        # Skip "Online:" merchants (broken data) — find first real receipt
+        # Try receipts table first
         rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
-            .order("created_at", desc=True).limit(20).execute().data or []  # Get 20 to filter through
+            .order("created_at", desc=True).limit(20).execute().data or []
+
+        # Fallback to wa_saves if receipts table is empty
+        if not rows:
+            rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at").eq("from_number", from_number) \
+                .filter("title", "ilike", "%Receipt%") \
+                .order("created_at", desc=True).limit(20).execute().data or []
+
+            if rows_wa:
+                # Convert wa_saves format to receipts format for compatibility
+                for wa_row in rows_wa:
+                    title = wa_row.get("title", "").replace("🧾", "").strip()
+                    if title:
+                        rows.append({
+                            "id": wa_row.get("id"),
+                            "merchant": title,
+                            "total": 0,
+                            "shop_date": None,
+                            "created_at": wa_row.get("created_at"),
+                            "items": "[]",
+                            "_wa_source": True
+                        })
 
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
