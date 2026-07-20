@@ -10068,13 +10068,17 @@ def api_v2_receipts_timeline():
 
         print(f"[receipts-timeline] Querying for user={from_number}, cutoff={cutoff}", flush=True)
 
-        # Get receipts from wa_saves (manual entries with 🧾 prefix)
+        # Get receipts from wa_saves (manual entries with 🧾 prefix OR receipt-type titles)
         wa_rows = lib._sb().table("wa_saves").select("id,from_number,title,summary,category,created_at") \
             .eq("from_number", from_number) \
             .gte("created_at", cutoff) \
-            .ilike("title", "🧾%") \
             .order("created_at", desc=True) \
             .execute().data or []
+
+        # Filter to only receipt-type items (either have 🧾 emoji OR title contains "Receipt" OR category is receipt)
+        wa_rows = [r for r in wa_rows if ("🧾" in r.get("title", "") or
+                                           "Receipt" in r.get("title", "") or
+                                           (r.get("category") and "receipt" in r.get("category", "").lower()))]
 
         # Get receipts from receipts table (PDF imports)
         phone_clean = from_number.replace("whatsapp:", "").strip()
