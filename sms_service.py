@@ -35029,9 +35029,14 @@ def admin_fix_receipt_titles():
             # Update if merchant found
             if merchant and len(merchant) > 2 and merchant not in ["Receipt", "Photo"]:
                 new_title = f"🧾 {merchant}"
-                lib._sb().table("wa_saves").update({"title": new_title}).eq("id", receipt_id).execute()
+                # Also auto-categorize based on merchant
+                auto_category = _receipt_category(merchant)
+                lib._sb().table("wa_saves").update({
+                    "title": new_title,
+                    "category": auto_category
+                }).eq("id", receipt_id).execute()
                 updated += 1
-                print(f"[admin] Updated: {title} → {new_title}")
+                print(f"[admin] Updated: {title} → {new_title} (category: {auto_category})")
                 if updated >= 10:
                     break
             else:
