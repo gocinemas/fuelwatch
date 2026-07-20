@@ -20975,7 +20975,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     for _rl in _raw_rcpt.split("\n"):
                         _ru = _rl.strip().upper()
                         if _ru.startswith("MERCHANT:"):
-                            receipt_data["merchant"] = _rl.split(":", 1)[1].strip()
+                            merchant_name = _rl.split(":", 1)[1].strip()
+                            if merchant_name:
+                                receipt_data["merchant"] = merchant_name
+                                title = f"🧾 {merchant_name}"  # Update title immediately
                         elif _ru.startswith("DATE:"):
                             _d = _rl.split(":", 1)[1].strip()
                             if _d and _d != "":
@@ -21100,6 +21103,15 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
 
         if sid:
             try:
+                # Fallback: if receipt title is still generic, use venue/location info
+                if img_type == "receipt" and (title == "🧾 Receipt" or not title):
+                    if receipt_data.get("merchant"):
+                        title = f"🧾 {receipt_data['merchant']}"
+                    elif venue_tag:
+                        title = f"🧾 {venue_tag}"
+                    elif where_str:
+                        title = f"🧾 {where_str.split(',')[0]}"
+
                 update_data = {"title": title, "summary": summary_with_meta}
                 if search_url:
                     update_data["url"] = search_url
