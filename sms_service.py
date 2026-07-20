@@ -34969,18 +34969,23 @@ def admin_fix_receipt_titles():
             # Extract merchant from summary - look for store name, not location
             merchant = None
 
-            # Strategy 1: Look for "purchased at [STORE NAME]" or similar pattern
+            # Strategy 1: Look for "purchased at [STORE]" pattern and extract just the store name
             import re
-            patterns = [
-                r"purchased at\s+([^,\n]+)",  # "purchased at Waitrose & Partners"
-                r"Order.*?from\s+([^,\n]+)",  # "Order from [Store]"
-                r"at\s+([A-Z][^,\n]{5,})\s+(?:on|in|at)",  # "at Waitrose & Partners on..."
-            ]
-            for pattern in patterns:
-                m = re.search(pattern, summary)
-                if m:
-                    merchant = m.group(1).strip()
-                    break
+            m = re.search(r"purchased at\s+([^,\n]+)", summary)
+            if m:
+                merchant_full = m.group(1).strip()
+                # "Waitrose & Partners Sunningdale" → "Waitrose & Partners"
+                # Remove location (last word or last 2 words that are location names)
+                parts = merchant_full.split()
+                # Common UK location patterns to remove
+                location_words = ["London", "Manchester", "Sunningdale", "Camberley", "Slough", "Surrey", "Kent", "Essex"]
+                while parts and any(parts[-1].endswith(loc) or parts[-1] == loc for loc in location_words):
+                    parts.pop()
+                merchant = " ".join(parts).strip() if parts else merchant_full.strip()
+                # Fallback: if we removed too much, use first 2-3 words
+                if not merchant or len(merchant) < 4:
+                    words = merchant_full.split()
+                    merchant = " ".join(words[:3]).strip() if len(words) >= 3 else merchant_full.strip()
 
             # Strategy 2: Look for phone number line which often has store name
             if not merchant:
