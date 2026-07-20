@@ -9168,17 +9168,21 @@ def api_home_last_receipt():
 
     try:
         # Query wa_saves FIRST (has actual recent clippings)
-        rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at").eq("from_number", from_number) \
+        rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at,category").eq("from_number", from_number) \
             .order("created_at", desc=True).limit(50).execute().data or []
 
         rows = []
         if rows_wa:
-            # Get first valid receipt (with 🧾 emoji in title)
+            # Get first valid receipt (either has 🧾 emoji in title OR is categorized as receipt)
             for wa_row in rows_wa:
                 title = wa_row.get("title", "")
                 summary = wa_row.get("summary", "")
+                category = wa_row.get("category", "")
 
-                if "🧾" in title:
+                # Match receipts either by emoji in title OR by "Receipt" in title OR by category
+                is_receipt = ("🧾" in title) or ("Receipt" in title) or (category and "receipt" in category.lower())
+
+                if is_receipt:
                     merchant = title.replace("🧾", "").strip()
 
                     # If title is just "Receipt", try to extract merchant from summary
