@@ -9167,35 +9167,35 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Try receipts table first
-        rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
-            .order("created_at", desc=True).limit(20).execute().data or []
+        # Query wa_saves FIRST (has actual recent clippings)
+        rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at").eq("from_number", from_number) \
+            .order("created_at", desc=True).limit(50).execute().data or []
 
-        # Fallback to wa_saves if receipts table is empty
+        rows = []
+        if rows_wa:
+            # Convert wa_saves format to receipts format for compatibility
+            # Get first valid receipt (with 🧾 emoji AND non-empty merchant name)
+            for wa_row in rows_wa:
+                title = wa_row.get("title", "")
+                if "🧾" in title:
+                    merchant = title.replace("🧾", "").strip()
+                    # Only include if merchant name is not empty and not just "Receipt"
+                    if merchant and merchant != "Receipt" and not merchant.startswith("Online:"):
+                        rows.append({
+                            "id": wa_row.get("id"),
+                            "merchant": merchant,
+                            "total": 0,
+                            "shop_date": None,
+                            "created_at": wa_row.get("created_at"),
+                            "items": "[]",
+                            "_wa_source": True
+                        })
+                        break  # Return the most recent valid one immediately
+
+        # Fall back to receipts table if wa_saves has no valid receipts
         if not rows:
-            # Get recent clippings from same user - filter in code for 🧾 emoji
-            rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at").eq("from_number", from_number) \
-                .order("created_at", desc=True).limit(50).execute().data or []
-
-            if rows_wa:
-                # Convert wa_saves format to receipts format for compatibility
-                # Only include items with 🧾 emoji in title (actual receipts)
-                for wa_row in rows_wa:
-                    title = wa_row.get("title", "")
-                    if "🧾" in title:
-                        merchant = title.replace("🧾", "").strip()
-                        if merchant:
-                            rows.append({
-                                "id": wa_row.get("id"),
-                                "merchant": merchant,
-                                "total": 0,
-                                "shop_date": None,
-                                "created_at": wa_row.get("created_at"),
-                                "items": "[]",
-                                "_wa_source": True
-                            })
-                            if len(rows) >= 20:  # Limit to 20 results
-                                break
+            rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
+                .order("created_at", desc=True).limit(20).execute().data or []
 
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
