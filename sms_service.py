@@ -9181,8 +9181,9 @@ def api_home_last_receipt():
                     summary = wa_row.get("summary", "")
                     category = wa_row.get("category", "")
 
-                    # Match receipts either by emoji in title OR by "Receipt" in title OR by category
-                    is_receipt = ("🧾" in title) or ("Receipt" in title) or (category and "receipt" in category.lower())
+                    # Match receipts: by emoji/text OR by category OR by having a total amount
+                    has_total = "£" in summary
+                    is_receipt = ("🧾" in title) or ("Receipt" in title) or (category and "receipt" in category.lower()) or has_total
 
                     if is_receipt:
                         merchant = title.replace("🧾", "").strip()
