@@ -9167,97 +9167,91 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Query wa_saves FIRST (user-curated clippings with most recent edits)
-        rows = []
-        if from_number:
-            rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at,category").eq("from_number", from_number) \
-                .order("created_at", desc=True).limit(50).execute().data or []
-
-            rows = []
-            if rows_wa:
-                # Get first valid receipt (either has 🧾 emoji in title OR is categorized as receipt)
-                for wa_row in rows_wa:
-                    title = wa_row.get("title", "")
-                    summary = wa_row.get("summary", "")
-                    category = wa_row.get("category", "")
-
-                    # Match receipts: by emoji/text OR by category OR by having a total amount
-                    has_total = "£" in summary
-                    is_receipt = ("🧾" in title) or ("Receipt" in title) or (category and "receipt" in category.lower()) or has_total
-
-                    if is_receipt:
-                        merchant = title.replace("🧾", "").strip()
-
-                        # If title is just "Receipt", try to extract merchant from summary
-                        if not merchant or merchant == "Receipt":
-                            # Try multiple extraction strategies
-                            # Strategy 1: Look for location with emoji
-                            if "📍" in summary:
-                                loc_line = summary.split("📍")[1].split("\n")[0].strip()
-                                # "Waitrose & Partners, Addlestone" → "Waitrose & Partners"
-                                merchant = loc_line.split(",")[0].strip() if loc_line else ""
-
-                            # Strategy 2: Look for first meaningful bullet point
-                            if not merchant or merchant == "Receipt":
-                                lines = summary.split("\n")
-                                for line in lines:
-                                    line = line.strip()
-                                    if line.startswith("•") and len(line) > 5:
-                                        merchant = line.lstrip("•").strip()
-                                        # Take first word or first part before dash
-                                        merchant = merchant.split(" -")[0].strip()
-                                        if merchant and len(merchant) > 2:
-                                            break
-
-                            # Strategy 3: Extract from first line with actual text
-                            if not merchant or merchant == "Receipt":
-                                lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
-                                if lines:
-                                    first_text = lines[0]
-                                    # Remove emojis and take first part
-                                    merchant = first_text.replace("📍", "").replace("•", "").strip()
-                                    if "," in merchant:
-                                        merchant = merchant.split(",")[0].strip()
-
-                        # Only include if we found a merchant name
-                        if merchant and merchant not in ["Receipt", "Photo", ""] and not merchant.startswith("Online:") and len(merchant) > 2:
-                            # Extract total from summary (look for £XX.XX pattern)
-                            total = 0
-                            m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
-                            if m_total:
-                                try:
-                                    total = float(m_total.group(1).replace(",", ""))
-                                except:
-                                    total = 0
-
-                            # Extract date from summary (look for DD/MM/YYYY or ISO date patterns)
-                            shop_date = None
-                            m_date = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', summary)
-                            if m_date:
-                                shop_date = m_date.group(1)
-
-                            rows.append({
-                                "id": wa_row.get("id"),
-                                "merchant": merchant,
-                                "total": total,  # Extract from summary
-                                "shop_date": shop_date,  # Extract from summary
-                                "created_at": wa_row.get("created_at"),
-                                "items": "[]",
-                                "_wa_source": True
-                            })
-                            break  # Return the most recent valid one immediately
-
-        # Fall back to receipts table if wa_saves has no valid receipts
-        if not rows:
-            rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
-                .order("created_at", desc=True).limit(20).execute().data or []
-
-        # Find first real receipt (not "Online:")
         r = None
-        for row in rows:
-            merchant = row.get("merchant", "")
-            if merchant and not merchant.startswith("Online:"):
+
+        # PRIMARY: receipts table — structured merchant/total/shop_date columns,
+        # populated on every WhatsApp receipt upload (see vision handler around
+        # line 21080). Fetch a generous window (50, not 20) so a run of failed
+        # vision extractions (empty merchant/total from flaky OCR) sitting at
+        # the top doesn't crowd out the last GOOD receipt further down.
+        rcpt_rows = lib._sb().table("receipts").select(
+            "id,merchant,total,shop_date,created_at,items,category"
+        ).eq("phone", phone).order("created_at", desc=True).limit(50).execute().data or []
+
+        for row in rcpt_rows:
+            merchant = (row.get("merchant") or "").strip()
+            total = row.get("total")
+            # Require merchant AND a positive total. The frontend
+            # (`_briefLoadLastReceipt` / spend-card loader in index.html) gates
+            # rendering on `d.merchant && d.total` — a row missing either would
+            # be returned by the API but silently fail to display, which looks
+            # identical to "broken" from the user's side. Skip to the next
+            # candidate instead of returning an incomplete row.
+            if merchant and not merchant.startswith("Online:") and total and float(total) > 0:
                 r = row
+                break
+
+        # FALLBACK: wa_saves — only used if the receipts table has nothing
+        # usable for this user. Require an explicit receipt marker (emoji,
+        # "Receipt" in title, or receipt category) — deliberately NOT "any
+        # save containing a £ sign", which misclassified unrelated saves
+        # (restaurant recs, articles mentioning prices) as receipts.
+        if not r:
+            rows_wa = lib._sb().table("wa_saves").select(
+                "id,title,summary,created_at,category"
+            ).eq("from_number", from_number).order("created_at", desc=True).limit(50).execute().data or []
+
+            for wa_row in rows_wa:
+                title = wa_row.get("title", "") or ""
+                summary = wa_row.get("summary", "") or ""
+                category = wa_row.get("category", "") or ""
+
+                is_receipt = ("🧾" in title) or ("Receipt" in title) or ("receipt" in category.lower())
+                if not is_receipt:
+                    continue
+
+                merchant = title.replace("🧾", "").strip()
+
+                # If title is just "Receipt", try to extract merchant from summary
+                if not merchant or merchant == "Receipt":
+                    if "📍" in summary:
+                        loc_line = summary.split("📍")[1].split("\n")[0].strip()
+                        merchant = loc_line.split(",")[0].strip() if loc_line else ""
+                    if not merchant or merchant == "Receipt":
+                        for line in summary.split("\n"):
+                            line = line.strip()
+                            if line.startswith("•") and len(line) > 5:
+                                cand = line.lstrip("•").strip().split(" -")[0].strip()
+                                if cand and len(cand) > 2:
+                                    merchant = cand
+                                    break
+                    if not merchant or merchant == "Receipt":
+                        lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
+                        if lines:
+                            first_text = lines[0].replace("📍", "").replace("•", "").strip()
+                            merchant = first_text.split(",")[0].strip() if "," in first_text else first_text
+
+                if not merchant or merchant in ("Receipt", "Photo") or merchant.startswith("Online:") or len(merchant) <= 2:
+                    continue
+
+                m_total = re.search(r'£([\d,]+\.\d{2})', summary)
+                total = float(m_total.group(1).replace(",", "")) if m_total else 0
+                if not total:
+                    continue  # merchant-only rows won't render on the frontend anyway
+
+                shop_date = None
+                m_date = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', summary)
+                if m_date:
+                    shop_date = m_date.group(1)
+
+                r = {
+                    "id": wa_row.get("id"),
+                    "merchant": merchant,
+                    "total": total,
+                    "shop_date": shop_date,
+                    "items": "[]",
+                    "category": wa_row.get("category", "Other"),
+                }
                 break
 
         if not r:
@@ -30816,7 +30810,48 @@ def api_wa_saves_rename():
         q.execute()
         rows = lib._sb().table("wa_saves").select("*").eq("id", save_id).execute().data
         if rows:
-            lib.saves_sync(rows[0])
+            saved = rows[0]
+            lib.saves_sync(saved)
+
+            # If this save is a receipt clipping, propagate the corrected name
+            # into the `receipts` table too. Receipt uploads write to BOTH
+            # wa_saves.title and receipts.merchant independently (see the
+            # vision handler ~line 21080) with no FK between them — renaming
+            # only wa_saves left receipts.merchant stale, so corrections never
+            # reached /api/home/last-receipt or the spend card, which read
+            # from `receipts`.
+            saved_title = saved.get("title", "") or ""
+            saved_category = (saved.get("category") or "").lower()
+            if ("🧾" in saved_title) or ("receipt" in saved_category):
+                try:
+                    fn = saved.get("from_number", "") or ""
+                    phone = fn.replace("whatsapp:", "").strip()
+                    clean_title = title.replace("🧾", "").strip()
+                    created_at = saved.get("created_at")
+                    if phone and clean_title and created_at:
+                        from datetime import datetime as _dt_rename
+                        target = _dt_rename.fromisoformat(created_at.replace("Z", "+00:00"))
+                        candidates = lib._sb().table("receipts").select("id,created_at") \
+                            .eq("phone", phone).order("created_at", desc=True).limit(50).execute().data or []
+                        best_id, best_diff = None, None
+                        for c in candidates:
+                            c_created = c.get("created_at")
+                            if not c_created:
+                                continue
+                            try:
+                                c_dt = _dt_rename.fromisoformat(c_created.replace("Z", "+00:00"))
+                            except Exception:
+                                continue
+                            # Nearest-created_at within a tight window is the best
+                            # available correlation — there's no direct FK linking
+                            # a wa_saves row to its receipts row.
+                            diff = abs((c_dt - target).total_seconds())
+                            if diff <= 600 and (best_diff is None or diff < best_diff):
+                                best_id, best_diff = c.get("id"), diff
+                        if best_id:
+                            lib._sb().table("receipts").update({"merchant": clean_title}).eq("id", best_id).execute()
+                except Exception as _sync_err:
+                    app.logger.warning(f"[wa-saves/rename] receipt sync failed: {_sync_err}")
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
