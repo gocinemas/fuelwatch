@@ -9199,12 +9199,30 @@ def api_home_last_receipt():
             if m_date:
                 shop_date = m_date.group(1)
 
+            # Extract items from summary (bullet points or lines starting with •)
+            items = []
+            for line in summary.split("\n"):
+                line = line.strip()
+                if line.startswith("•") or line.startswith("-"):
+                    item = line.lstrip("•-").strip()
+                    if item and len(item) > 2 and not any(x in item.lower() for x in ["total", "vat", "discount", "date", "time"]):
+                        items.append(item)
+            if not items:
+                # Fallback: look for lines that look like product names
+                for line in summary.split("\n"):
+                    line = line.strip()
+                    if (line and line[0].isupper() and len(line) > 3 and
+                        not any(x in line.lower() for x in ["total", "vat", "discount", "date", "time", "order", "payment"])):
+                        items.append(line)
+                        if len(items) >= 5:
+                            break
+
             r = {
                 "id": wa_row.get("id"),
                 "merchant": merchant,
                 "total": total,
                 "shop_date": shop_date,
-                "items": "[]",
+                "items": items[:3],  # Limit to first 3 items
                 "category": wa_row.get("category", "Other"),
             }
             break
