@@ -35029,18 +35029,21 @@ def admin_fix_receipt_titles():
                             merchant = word
                             break
 
-            # Strategy 5: Find first substantial capitalized phrase (backup)
+            # Strategy 5: Look for first capitalized word/phrase (Indo-Chinese, Palak, KFC, etc.)
             if not merchant:
+                # Find FIRST capitalized line that looks like a store name
+                first_cap = None
                 for line in summary.split("\n"):
                     line = line.strip()
-                    # Skip metadata/location lines
-                    if (not line or line.startswith(("META:", "📍", "📞", "•", "Total", "Items")) or
-                        any(x in line.lower() for x in ["total", "balance", "vat", "date:", "time:", "road", "street"])):
+                    # Skip metadata/location lines and numbers
+                    if (not line or line[0].isdigit() or line.startswith(("META:", "📍", "📞", "•", "Total", "Items", "Order", "Discount")) or
+                        any(x in line.lower() for x in ["total", "balance", "vat", "date:", "time:"])):
                         continue
-                    # Look for capitalized names (usually stores/restaurants)
-                    if line[0].isupper():
-                        candidate = line.split(",")[0].split("(")[0].strip()
-                        if len(candidate) > 2 and not candidate.isdigit():
+                    # If capitalized, this is likely store/restaurant name
+                    if line and line[0].isupper() and len(line) > 2:
+                        # Take first part (before comma or parenthesis)
+                        candidate = line.split(",")[0].split("(")[0].split("•")[0].strip()
+                        if len(candidate) > 2 and not candidate.isdigit() and candidate not in ["Receipt", "Photo"]:
                             merchant = candidate
                             break
 
