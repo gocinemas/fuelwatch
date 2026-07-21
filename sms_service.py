@@ -9177,57 +9177,37 @@ def api_home_last_receipt():
         for wa_row in rows_wa:
             title = wa_row.get("title", "") or ""
             summary = wa_row.get("summary", "") or ""
-            category = wa_row.get("category", "") or ""
 
-            # Recognize receipts by: emoji, text, category, OR having a total amount
-            has_total = "£" in summary
-            is_receipt = ("🧾" in title) or ("Receipt" in title) or ("receipt" in category.lower()) or has_total
-            if not is_receipt:
+            # SIMPLE: If there's a £ total, it's a receipt. Use the title as merchant.
+            m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
+            if not m_total:
+                continue  # No total = not a receipt
+
+            total = float(m_total.group(1).replace(",", ""))
+            if total <= 0:
                 continue
 
             merchant = title.replace("🧾", "").strip()
+            if not merchant or merchant in ("Receipt", "Photo", ""):
+                continue
 
-            # If title is just "Receipt", try to extract merchant from summary
-            if not merchant or merchant == "Receipt":
-                if "📍" in summary:
-                    loc_line = summary.split("📍")[1].split("\n")[0].strip()
-                    merchant = loc_line.split(",")[0].strip() if loc_line else ""
-                if not merchant or merchant == "Receipt":
-                    for line in summary.split("\n"):
-                        line = line.strip()
-                        if line.startswith("•") and len(line) > 5:
-                            cand = line.lstrip("•").strip().split(" -")[0].strip()
-                            if cand and len(cand) > 2:
-                                merchant = cand
-                                break
-                if not merchant or merchant == "Receipt":
-                    lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
-                    if lines:
-                        first_text = lines[0].replace("📍", "").replace("•", "").strip()
-                        merchant = first_text.split(",")[0].strip() if "," in first_text else first_text
+            # Extract date
+            shop_date = None
+            m_date = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', summary)
+            if not m_date:
+                m_date = re.search(r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})', summary, re.IGNORECASE)
+            if m_date:
+                shop_date = m_date.group(1)
 
-                if not merchant or merchant in ("Receipt", "Photo") or merchant.startswith("Online:") or len(merchant) <= 2:
-                    continue
-
-                m_total = re.search(r'£([\d,]+\.\d{2})', summary)
-                total = float(m_total.group(1).replace(",", "")) if m_total else 0
-                if not total:
-                    continue  # merchant-only rows won't render on the frontend anyway
-
-                shop_date = None
-                m_date = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', summary)
-                if m_date:
-                    shop_date = m_date.group(1)
-
-                r = {
-                    "id": wa_row.get("id"),
-                    "merchant": merchant,
-                    "total": total,
-                    "shop_date": shop_date,
-                    "items": "[]",
-                    "category": wa_row.get("category", "Other"),
-                }
-                break
+            r = {
+                "id": wa_row.get("id"),
+                "merchant": merchant,
+                "total": total,
+                "shop_date": shop_date,
+                "items": "[]",
+                "category": wa_row.get("category", "Other"),
+            }
+            break
 
         # FALLBACK: receipts table if wa_saves has nothing
         if not r:
