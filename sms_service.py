@@ -9191,12 +9191,20 @@ def api_home_last_receipt():
             if not merchant or merchant in ("Receipt", "Photo", ""):
                 continue
 
-            # Extract date
+            # Extract date from summary (multiple formats)
             shop_date = None
+            # Try DD/MM/YYYY
             m_date = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', summary)
+            # Try DD Mon YYYY
             if not m_date:
                 m_date = re.search(r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})', summary, re.IGNORECASE)
-            if m_date:
+            # Try DD-MM-YYYY
+            if not m_date:
+                m_date = re.search(r'(\d{1,2}-\d{1,2}-\d{4})', summary)
+            # Fallback: use created_at from wa_saves
+            if not m_date and wa_row.get("created_at"):
+                shop_date = wa_row.get("created_at")[:10]  # YYYY-MM-DD format
+            elif m_date:
                 shop_date = m_date.group(1)
 
             # Extract items from summary (bullet points or lines starting with •)
