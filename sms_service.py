@@ -9175,7 +9175,7 @@ def api_home_last_receipt():
         # vision extractions (empty merchant/total from flaky OCR) sitting at
         # the top doesn't crowd out the last GOOD receipt further down.
         rcpt_rows = lib._sb().table("receipts").select(
-            "id,merchant,total,shop_date,created_at,items,category"
+            "id,merchant,total,shop_date,created_at,items"
         ).eq("phone", phone).order("created_at", desc=True).limit(50).execute().data or []
 
         for row in rcpt_rows:
