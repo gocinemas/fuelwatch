@@ -20963,22 +20963,25 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     "5. Use sentence case for item names (not ALL CAPS)."
                 )
                 try:
-                    from anthropic import Anthropic
-                    _rcpt_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-                    _rcpt_msg = _rcpt_client.messages.create(
-                        model="claude-sonnet-5",
+                    from groq import Groq
+                    _rcpt_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+                    _rcpt_msg = _rcpt_client.chat.completions.create(
+                        model="llava-2-7b",
                         max_tokens=600,
                         messages=[{
                             "role": "user",
                             "content": [
-                                {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:image/{m.split('/')[-1]};base64,{b64}"}
+                                },
                                 {"type": "text", "text": _rcpt_prompt}
                             ]
                         }]
                     )
-                    _raw_rcpt = _rcpt_msg.content[0].text.strip() if _rcpt_msg.content else ""
+                    _raw_rcpt = _rcpt_msg.choices[0].message.content.strip() if _rcpt_msg.choices else ""
                 except Exception as _rcpt_err:
-                    print(f"[vision] receipt extraction error (Claude Sonnet 5): {_rcpt_err}")
+                    print(f"[vision] receipt extraction error (Groq): {_rcpt_err}")
                     _raw_rcpt = ""
 
                 if _raw_rcpt:
