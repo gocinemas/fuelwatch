@@ -9230,11 +9230,17 @@ def api_home_last_receipt():
                                 except:
                                     total = 0
 
+                            # Extract date from summary (look for DD/MM/YYYY or ISO date patterns)
+                            shop_date = None
+                            m_date = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', summary)
+                            if m_date:
+                                shop_date = m_date.group(1)
+
                             rows.append({
                                 "id": wa_row.get("id"),
                                 "merchant": merchant,
                                 "total": total,  # Extract from summary
-                                "shop_date": None,
+                                "shop_date": shop_date,  # Extract from summary
                                 "created_at": wa_row.get("created_at"),
                                 "items": "[]",
                                 "_wa_source": True
