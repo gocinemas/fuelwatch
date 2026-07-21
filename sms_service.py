@@ -20917,21 +20917,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         if img_type == "receipt":
             try:
                 _rcpt_prompt = (
-                    "CRITICAL TASK: Extract the MERCHANT/STORE NAME from this receipt. This is the FIRST priority.\n\n"
-                    "🔴 MERCHANT EXTRACTION RULES (DO NOT SKIP):\n"
-                    "  1. Look at the TOP of the receipt for the largest/most prominent text\n"
-                    "  2. This is ALWAYS the store or restaurant name\n"
-                    "  3. Examples of CORRECT merchant names:\n"
-                    "     • Grocery stores: 'Waitrose & Partners', 'Tesco', 'Sainsburys', 'Asda', 'Morrisons'\n"
-                    "     • Restaurants/Takeaway: 'KFC', 'McDonald's', 'Wagamama', 'Palak', 'Pizza Hut', 'Nando's'\n"
-                    "     • Fuel stations: 'Shell', 'BP', 'Tesco Petrol', 'Moto', 'Esso'\n"
-                    "     • Cafes/Pubs: 'Costa Coffee', 'Wetherspoon', 'Starbucks'\n"
-                    "  4. NEVER extract: dates (Jan, 2026, 19/07), locations (London, Camberley, Road), postcodes, addresses, phone numbers\n"
-                    "  5. If you see 'KFC Camberley' → extract ONLY 'KFC' (not the location)\n"
-                    "  6. ALWAYS output something — even if unclear, extract the best guess of store name\n"
-                    "  7. If receipt is blank/unreadable, still try to find ANY store branding or name\n\n"
+                    "Extract fields from this UK receipt. MERCHANT is the most important.\n\n"
+                    "MERCHANT: Store or restaurant name at top of receipt. \n"
+                    "  - Grocery: Waitrose & Partners, Tesco, Sainsburys, M&S\n"
+                    "  - Food: KFC, McDonald's, Wagamama, Nando's, Pizza Hut, Palak\n"
+                    "  - Fuel: Shell, BP, Tesco Petrol, Moto, Esso  \n"
+                    "  - Coffee: Costa, Starbucks, Pret, Caffe Nero\n"
+                    "  - Exclude: locations, dates, postcodes, phone numbers, addresses\n"
+                    "  - If 'KFC Camberley' appears, extract 'KFC' only (ignore location)\n"
+                    "  - Prioritize extracting actual brand/merchant name over anything else\n\n"
                     "OUTPUT FORMAT (ONE FIELD PER LINE):\n"
-                    "MERCHANT: [Store/Restaurant name ONLY. Examples: 'KFC', 'Waitrose & Partners', 'McDonald's', 'Shell', 'Costa']\n"
+                    "MERCHANT: [name]\n"
                     "DATE: [look for: date/time line, printed near top/middle/bottom. Convert ANY format to YYYY-MM-DD. If unsure, leave blank]\n"
                     "TOTAL: [BOTTOM-most total line showing customer paid. Look for: 'Total', 'Payable', 'Amount Due', 'Paid', 'Cash', '£', etc. Numbers only, 1-4 digits + decimal, e.g. 34.72 or 102.50]\n"
                     "ITEM: [name] | [qty if shown] | [price]\n"
@@ -20963,25 +20959,22 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     "5. Use sentence case for item names (not ALL CAPS)."
                 )
                 try:
-                    from groq import Groq
-                    _rcpt_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
-                    _rcpt_msg = _rcpt_client.chat.completions.create(
-                        model="llava-2-7b",
+                    from anthropic import Anthropic
+                    _rcpt_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                    _rcpt_msg = _rcpt_client.messages.create(
+                        model="claude-sonnet-5",
                         max_tokens=600,
                         messages=[{
                             "role": "user",
                             "content": [
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": f"data:image/{m.split('/')[-1]};base64,{b64}"}
-                                },
+                                {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
                                 {"type": "text", "text": _rcpt_prompt}
                             ]
                         }]
                     )
-                    _raw_rcpt = _rcpt_msg.choices[0].message.content.strip() if _rcpt_msg.choices else ""
+                    _raw_rcpt = _rcpt_msg.content[0].text.strip() if _rcpt_msg.content else ""
                 except Exception as _rcpt_err:
-                    print(f"[vision] receipt extraction error (Groq): {_rcpt_err}")
+                    print(f"[vision] receipt extraction error (Claude Sonnet 5): {_rcpt_err}")
                     _raw_rcpt = ""
 
                 if _raw_rcpt:
