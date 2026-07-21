@@ -21055,26 +21055,27 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         is_valid = False
                         issues.append("no items and no total")
 
+                    # TEMP: Skip validation to see if receipts get saved
                     if not is_valid:
-                        print(f"[receipt] REJECTED: {merchant} - issues: {', '.join(issues)}")
-                    else:
-                        # Store in receipts table
-                        try:
-                            import json as _rjson
-                            from datetime import datetime, timezone
-                            _rcpt_row = {
-                                "phone":       fn.replace("whatsapp:","").strip(),
-                                "merchant":    merchant,
-                                "items":       _rjson.dumps(_rcpt_items),
-                                "raw_summary": summary,
-                                "created_at":  datetime.now(timezone.utc).isoformat(),
-                            }
-                            if total and total > 0:    _rcpt_row["total"]     = total
-                            if receipt_data.get("shop_date"): _rcpt_row["shop_date"] = receipt_data["shop_date"]
-                            lib._sb().table("receipts").insert(_rcpt_row).execute()
-                            print(f"[receipt] saved: merchant={merchant} total={total} items={len(_rcpt_items)} created_at={_rcpt_row['created_at']}")
-                        except Exception as _re:
-                            print(f"[receipt] Supabase save failed: {_re}")
+                        print(f"[receipt] VALIDATION FAILED: {merchant} - issues: {', '.join(issues)}")
+
+                    # Store in receipts table regardless (debug mode)
+                    try:
+                        import json as _rjson
+                        from datetime import datetime, timezone
+                        _rcpt_row = {
+                            "phone":       fn.replace("whatsapp:","").strip(),
+                            "merchant":    merchant,
+                            "items":       _rjson.dumps(_rcpt_items),
+                            "raw_summary": summary,
+                            "created_at":  datetime.now(timezone.utc).isoformat(),
+                        }
+                        if total and total > 0:    _rcpt_row["total"]     = total
+                        if receipt_data.get("shop_date"): _rcpt_row["shop_date"] = receipt_data["shop_date"]
+                        lib._sb().table("receipts").insert(_rcpt_row).execute()
+                        print(f"[receipt] saved: merchant={merchant} total={total} items={len(_rcpt_items)} created_at={_rcpt_row['created_at']}")
+                    except Exception as _re:
+                        print(f"[receipt] Supabase save failed: {_re}")
             except Exception as _rcpte:
                 print(f"[vision] receipt extraction failed: {_rcpte}")
 
