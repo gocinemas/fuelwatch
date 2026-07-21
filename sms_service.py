@@ -9179,7 +9179,9 @@ def api_home_last_receipt():
             summary = wa_row.get("summary", "") or ""
             category = wa_row.get("category", "") or ""
 
-            is_receipt = ("🧾" in title) or ("Receipt" in title) or ("receipt" in category.lower())
+            # Recognize receipts by: emoji, text, category, OR having a total amount
+            has_total = "£" in summary
+            is_receipt = ("🧾" in title) or ("Receipt" in title) or ("receipt" in category.lower()) or has_total
             if not is_receipt:
                 continue
 
