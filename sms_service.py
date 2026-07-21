@@ -9223,10 +9223,19 @@ def api_home_last_receipt():
 
                         # Only include if we found a merchant name
                         if merchant and merchant not in ["Receipt", "Photo", ""] and not merchant.startswith("Online:") and len(merchant) > 2:
+                            # Extract total from summary (look for £XX.XX pattern)
+                            total = 0
+                            m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
+                            if m_total:
+                                try:
+                                    total = float(m_total.group(1).replace(",", ""))
+                                except:
+                                    total = 0
+
                             rows.append({
                                 "id": wa_row.get("id"),
                                 "merchant": merchant,
-                                "total": 0,
+                                "total": total,  # Extract from summary
                                 "shop_date": None,
                                 "created_at": wa_row.get("created_at"),
                                 "items": "[]",
