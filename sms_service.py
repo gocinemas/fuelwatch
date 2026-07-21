@@ -9167,12 +9167,9 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Query receipts table FIRST (has complete data including totals)
-        rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
-            .order("created_at", desc=True).limit(20).execute().data or []
-
-        # Fall back to wa_saves if receipts table is empty (for users who only have clipped receipts)
-        if not rows:
+        # Query wa_saves FIRST (user-curated clippings with most recent edits)
+        rows = []
+        if from_number:
             rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at,category").eq("from_number", from_number) \
                 .order("created_at", desc=True).limit(50).execute().data or []
 
@@ -9243,8 +9240,10 @@ def api_home_last_receipt():
                             })
                             break  # Return the most recent valid one immediately
 
+        # Fall back to receipts table if wa_saves has no valid receipts
         if not rows:
-            return jsonify({"merchant": None, "total": None, "shop_date": None})
+            rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
+                .order("created_at", desc=True).limit(20).execute().data or []
 
         # Find first real receipt (not "Online:")
         r = None
