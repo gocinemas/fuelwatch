@@ -9167,72 +9167,72 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Query wa_saves FIRST (has actual recent clippings)
-        rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at,category").eq("from_number", from_number) \
-            .order("created_at", desc=True).limit(50).execute().data or []
+        # Query receipts table FIRST (has complete data including totals)
+        rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
+            .order("created_at", desc=True).limit(20).execute().data or []
 
-        rows = []
-        if rows_wa:
-            # Get first valid receipt (either has 🧾 emoji in title OR is categorized as receipt)
-            for wa_row in rows_wa:
-                title = wa_row.get("title", "")
-                summary = wa_row.get("summary", "")
-                category = wa_row.get("category", "")
-
-                # Match receipts either by emoji in title OR by "Receipt" in title OR by category
-                is_receipt = ("🧾" in title) or ("Receipt" in title) or (category and "receipt" in category.lower())
-
-                if is_receipt:
-                    merchant = title.replace("🧾", "").strip()
-
-                    # If title is just "Receipt", try to extract merchant from summary
-                    if not merchant or merchant == "Receipt":
-                        # Try multiple extraction strategies
-                        # Strategy 1: Look for location with emoji
-                        if "📍" in summary:
-                            loc_line = summary.split("📍")[1].split("\n")[0].strip()
-                            # "Waitrose & Partners, Addlestone" → "Waitrose & Partners"
-                            merchant = loc_line.split(",")[0].strip() if loc_line else ""
-
-                        # Strategy 2: Look for first meaningful bullet point
-                        if not merchant or merchant == "Receipt":
-                            lines = summary.split("\n")
-                            for line in lines:
-                                line = line.strip()
-                                if line.startswith("•") and len(line) > 5:
-                                    merchant = line.lstrip("•").strip()
-                                    # Take first word or first part before dash
-                                    merchant = merchant.split(" -")[0].strip()
-                                    if merchant and len(merchant) > 2:
-                                        break
-
-                        # Strategy 3: Extract from first line with actual text
-                        if not merchant or merchant == "Receipt":
-                            lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
-                            if lines:
-                                first_text = lines[0]
-                                # Remove emojis and take first part
-                                merchant = first_text.replace("📍", "").replace("•", "").strip()
-                                if "," in merchant:
-                                    merchant = merchant.split(",")[0].strip()
-
-                    # Only include if we found a merchant name
-                    if merchant and merchant not in ["Receipt", "Photo", ""] and not merchant.startswith("Online:") and len(merchant) > 2:
-                        rows.append({
-                            "id": wa_row.get("id"),
-                            "merchant": merchant,
-                            "total": 0,
-                            "shop_date": None,
-                            "created_at": wa_row.get("created_at"),
-                            "items": "[]",
-                            "_wa_source": True
-                        })
-                        break  # Return the most recent valid one immediately
-
-        # Fall back to receipts table if wa_saves has no valid receipts
+        # Fall back to wa_saves if receipts table is empty (for users who only have clipped receipts)
         if not rows:
-            rows = lib._sb().table("receipts").select("id,merchant,total,shop_date,created_at,items").eq("phone", phone) \
-                .order("created_at", desc=True).limit(20).execute().data or []
+            rows_wa = lib._sb().table("wa_saves").select("id,title,summary,created_at,category").eq("from_number", from_number) \
+                .order("created_at", desc=True).limit(50).execute().data or []
+
+            rows = []
+            if rows_wa:
+                # Get first valid receipt (either has 🧾 emoji in title OR is categorized as receipt)
+                for wa_row in rows_wa:
+                    title = wa_row.get("title", "")
+                    summary = wa_row.get("summary", "")
+                    category = wa_row.get("category", "")
+
+                    # Match receipts either by emoji in title OR by "Receipt" in title OR by category
+                    is_receipt = ("🧾" in title) or ("Receipt" in title) or (category and "receipt" in category.lower())
+
+                    if is_receipt:
+                        merchant = title.replace("🧾", "").strip()
+
+                        # If title is just "Receipt", try to extract merchant from summary
+                        if not merchant or merchant == "Receipt":
+                            # Try multiple extraction strategies
+                            # Strategy 1: Look for location with emoji
+                            if "📍" in summary:
+                                loc_line = summary.split("📍")[1].split("\n")[0].strip()
+                                # "Waitrose & Partners, Addlestone" → "Waitrose & Partners"
+                                merchant = loc_line.split(",")[0].strip() if loc_line else ""
+
+                            # Strategy 2: Look for first meaningful bullet point
+                            if not merchant or merchant == "Receipt":
+                                lines = summary.split("\n")
+                                for line in lines:
+                                    line = line.strip()
+                                    if line.startswith("•") and len(line) > 5:
+                                        merchant = line.lstrip("•").strip()
+                                        # Take first word or first part before dash
+                                        merchant = merchant.split(" -")[0].strip()
+                                        if merchant and len(merchant) > 2:
+                                            break
+
+                            # Strategy 3: Extract from first line with actual text
+                            if not merchant or merchant == "Receipt":
+                                lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
+                                if lines:
+                                    first_text = lines[0]
+                                    # Remove emojis and take first part
+                                    merchant = first_text.replace("📍", "").replace("•", "").strip()
+                                    if "," in merchant:
+                                        merchant = merchant.split(",")[0].strip()
+
+                        # Only include if we found a merchant name
+                        if merchant and merchant not in ["Receipt", "Photo", ""] and not merchant.startswith("Online:") and len(merchant) > 2:
+                            rows.append({
+                                "id": wa_row.get("id"),
+                                "merchant": merchant,
+                                "total": 0,
+                                "shop_date": None,
+                                "created_at": wa_row.get("created_at"),
+                                "items": "[]",
+                                "_wa_source": True
+                            })
+                            break  # Return the most recent valid one immediately
 
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
