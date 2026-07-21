@@ -9169,67 +9169,40 @@ def api_home_last_receipt():
     try:
         r = None
 
-        # PRIMARY: receipts table — structured merchant/total/shop_date columns,
-        # populated on every WhatsApp receipt upload (see vision handler around
-        # line 21080). Fetch a generous window (50, not 20) so a run of failed
-        # vision extractions (empty merchant/total from flaky OCR) sitting at
-        # the top doesn't crowd out the last GOOD receipt further down.
-        rcpt_rows = lib._sb().table("receipts").select(
-            "id,merchant,total,shop_date,created_at,items"
-        ).eq("phone", phone).order("created_at", desc=True).limit(50).execute().data or []
+        # PRIMARY: wa_saves — user-curated clippings with manual corrections
+        rows_wa = lib._sb().table("wa_saves").select(
+            "id,title,summary,created_at,category"
+        ).eq("from_number", from_number).order("created_at", desc=True).limit(50).execute().data or []
 
-        for row in rcpt_rows:
-            merchant = (row.get("merchant") or "").strip()
-            total = row.get("total")
-            # Require merchant AND a positive total. The frontend
-            # (`_briefLoadLastReceipt` / spend-card loader in index.html) gates
-            # rendering on `d.merchant && d.total` — a row missing either would
-            # be returned by the API but silently fail to display, which looks
-            # identical to "broken" from the user's side. Skip to the next
-            # candidate instead of returning an incomplete row.
-            if merchant and not merchant.startswith("Online:") and total and float(total) > 0:
-                r = row
-                break
+        for wa_row in rows_wa:
+            title = wa_row.get("title", "") or ""
+            summary = wa_row.get("summary", "") or ""
+            category = wa_row.get("category", "") or ""
 
-        # FALLBACK: wa_saves — only used if the receipts table has nothing
-        # usable for this user. Require an explicit receipt marker (emoji,
-        # "Receipt" in title, or receipt category) — deliberately NOT "any
-        # save containing a £ sign", which misclassified unrelated saves
-        # (restaurant recs, articles mentioning prices) as receipts.
-        if not r:
-            rows_wa = lib._sb().table("wa_saves").select(
-                "id,title,summary,created_at,category"
-            ).eq("from_number", from_number).order("created_at", desc=True).limit(50).execute().data or []
+            is_receipt = ("🧾" in title) or ("Receipt" in title) or ("receipt" in category.lower())
+            if not is_receipt:
+                continue
 
-            for wa_row in rows_wa:
-                title = wa_row.get("title", "") or ""
-                summary = wa_row.get("summary", "") or ""
-                category = wa_row.get("category", "") or ""
+            merchant = title.replace("🧾", "").strip()
 
-                is_receipt = ("🧾" in title) or ("Receipt" in title) or ("receipt" in category.lower())
-                if not is_receipt:
-                    continue
-
-                merchant = title.replace("🧾", "").strip()
-
-                # If title is just "Receipt", try to extract merchant from summary
+            # If title is just "Receipt", try to extract merchant from summary
+            if not merchant or merchant == "Receipt":
+                if "📍" in summary:
+                    loc_line = summary.split("📍")[1].split("\n")[0].strip()
+                    merchant = loc_line.split(",")[0].strip() if loc_line else ""
                 if not merchant or merchant == "Receipt":
-                    if "📍" in summary:
-                        loc_line = summary.split("📍")[1].split("\n")[0].strip()
-                        merchant = loc_line.split(",")[0].strip() if loc_line else ""
-                    if not merchant or merchant == "Receipt":
-                        for line in summary.split("\n"):
-                            line = line.strip()
-                            if line.startswith("•") and len(line) > 5:
-                                cand = line.lstrip("•").strip().split(" -")[0].strip()
-                                if cand and len(cand) > 2:
-                                    merchant = cand
-                                    break
-                    if not merchant or merchant == "Receipt":
-                        lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
-                        if lines:
-                            first_text = lines[0].replace("📍", "").replace("•", "").strip()
-                            merchant = first_text.split(",")[0].strip() if "," in first_text else first_text
+                    for line in summary.split("\n"):
+                        line = line.strip()
+                        if line.startswith("•") and len(line) > 5:
+                            cand = line.lstrip("•").strip().split(" -")[0].strip()
+                            if cand and len(cand) > 2:
+                                merchant = cand
+                                break
+                if not merchant or merchant == "Receipt":
+                    lines = [l.strip() for l in summary.split("\n") if l.strip() and not l.startswith("META:")]
+                    if lines:
+                        first_text = lines[0].replace("📍", "").replace("•", "").strip()
+                        merchant = first_text.split(",")[0].strip() if "," in first_text else first_text
 
                 if not merchant or merchant in ("Receipt", "Photo") or merchant.startswith("Online:") or len(merchant) <= 2:
                     continue
@@ -9253,6 +9226,19 @@ def api_home_last_receipt():
                     "category": wa_row.get("category", "Other"),
                 }
                 break
+
+        # FALLBACK: receipts table if wa_saves has nothing
+        if not r:
+            rcpt_rows = lib._sb().table("receipts").select(
+                "id,merchant,total,shop_date,created_at,items"
+            ).eq("phone", phone).order("created_at", desc=True).limit(50).execute().data or []
+
+            for row in rcpt_rows:
+                merchant = (row.get("merchant") or "").strip()
+                total = row.get("total")
+                if merchant and not merchant.startswith("Online:") and total and float(total) > 0:
+                    r = row
+                    break
 
         if not r:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
