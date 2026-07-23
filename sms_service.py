@@ -35154,6 +35154,87 @@ def admin_fix_receipt_titles():
         print(f"[admin] Error: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/admin/fix-receipt-summaries", methods=["POST"])
+def admin_fix_receipt_summaries():
+    """Fix existing receipts by adding £ totals to wa_saves summaries.
+    This ensures they show up in Spend Last Shopped endpoint."""
+    token = request.args.get("token", "").strip()
+    if token != os.environ.get("ADMIN_TOKEN", "admin-2026"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        sb = lib._sb()
+
+        # Get all wa_saves that have receipt-like titles (🧾)
+        receipt_saves = sb.table("wa_saves").select("id,title,summary,category").ilike("title", "%🧾%").order("created_at", desc=True).limit(500).execute().data or []
+
+        print(f"[admin] Found {len(receipt_saves)} receipt-like entries in wa_saves")
+
+        fixed_count = 0
+        skipped_count = 0
+        results = []
+
+        for save in receipt_saves:
+            save_id = save.get("id")
+            title = save.get("title", "")
+            summary = save.get("summary", "")
+
+            # Skip if summary already has £ symbol
+            if "£" in summary:
+                skipped_count += 1
+                continue
+
+            # Extract merchant from title
+            merchant = title.replace("🧾", "").strip()
+
+            if not merchant:
+                skipped_count += 1
+                continue
+
+            # Look for receipt data by merchant in the receipts table
+            phone = save.get("from_number", "").replace("whatsapp:", "").strip() if save.get("from_number") else ""
+            receipts = sb.table("receipts").select("merchant,total,shop_date").eq("merchant", merchant).order("created_at", desc=True).limit(1).execute().data or []
+
+            if not receipts:
+                skipped_count += 1
+                continue
+
+            receipt = receipts[0]
+            total = receipt.get("total")
+
+            if not total or float(total) <= 0:
+                skipped_count += 1
+                continue
+
+            # Update summary to include total
+            total_float = float(total)
+            total_line = f"💰 Total: £{total_float:.2f}"
+
+            # Prepend total to summary
+            new_summary = f"{total_line}\n\n{summary}" if summary else total_line
+
+            try:
+                sb.table("wa_saves").update({"summary": new_summary}).eq("id", save_id).execute()
+                fixed_count += 1
+                results.append({"id": save_id, "merchant": merchant, "total": total_float, "status": "fixed"})
+                print(f"[admin] Fixed: {merchant} £{total_float:.2f}")
+            except Exception as e:
+                skipped_count += 1
+                results.append({"id": save_id, "merchant": merchant, "status": "error", "error": str(e)})
+                print(f"[admin] Failed to update {save_id}: {e}")
+
+        return jsonify({
+            "success": True,
+            "fixed": fixed_count,
+            "skipped": skipped_count,
+            "total": len(receipt_saves),
+            "results": results[:50]  # Return first 50 results
+        })
+
+    except Exception as e:
+        app.logger.error(f"[admin] fix-receipt-summaries error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
