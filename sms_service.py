@@ -15168,7 +15168,54 @@ def api_home_brief():
         "weekend_snippet": _weekend_snippet,  # Food/Pubs/Parks for Fri evening & Sat
         "car_at_service":  _car_at_service,
         "intelligence":    ctx.get("intelligence", {}),  # Agentic insights (fuel, spend, location, etc.)
+        "spend":           ctx.get("spend", {}),  # Monthly spend breakdown + total
     }
+
+    # Add last receipt (merchant, total, date) to spend card
+    if from_number:
+        try:
+            import re as _lr_re
+            _lr_rows = lib._sb().table("wa_saves").select(
+                "id,title,summary,created_at"
+            ).eq("from_number", from_number).order("created_at", desc=True).limit(50).execute().data or []
+
+            for _lr_row in _lr_rows:
+                _lr_title = _lr_row.get("title", "") or ""
+                _lr_summary = _lr_row.get("summary", "") or ""
+
+                # Check for £ total
+                _lr_match = _lr_re.search(r'£([\d,]+\.?\d{0,2})', _lr_summary)
+                if not _lr_match:
+                    continue
+
+                _lr_total = float(_lr_match.group(1).replace(",", ""))
+                if _lr_total <= 0:
+                    continue
+
+                _lr_merchant = _lr_title.replace("🧾", "").strip()
+                if not _lr_merchant or _lr_merchant in ("Receipt", "Photo", ""):
+                    continue
+
+                # Extract date
+                _lr_date = None
+                _lr_date_match = _lr_re.search(r'(\d{1,2}/\d{1,2}/\d{4})', _lr_summary)
+                if not _lr_date_match:
+                    _lr_date_match = _lr_re.search(r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})', _lr_summary, _lr_re.IGNORECASE)
+                if not _lr_date_match:
+                    _lr_date_match = _lr_re.search(r'(\d{1,2}-\d{1,2}-\d{4})', _lr_summary)
+                if not _lr_date_match and _lr_row.get("created_at"):
+                    _lr_date = _lr_row.get("created_at")[:10]
+                elif _lr_date_match:
+                    _lr_date = _lr_date_match.group(1)
+
+                result["spend"]["last_receipt"] = {
+                    "merchant": _lr_merchant,
+                    "total": _lr_total,
+                    "shop_date": _lr_date
+                }
+                break
+        except Exception as _lre:
+            app.logger.debug(f"[brief] Could not fetch last_receipt: {_lre}")
 
     # Include all events (calendar + personal)
     # Personal events may use old dates but recur based on weekday
