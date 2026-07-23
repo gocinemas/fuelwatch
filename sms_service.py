@@ -20965,27 +20965,55 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     "4. Skip items you cannot read clearly.\n"
                     "5. Use sentence case for item names (not ALL CAPS)."
                 )
-                try:
-                    from groq import Groq
-                    _rcpt_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
-                    _rcpt_msg = _rcpt_client.chat.completions.create(
-                        model="llava-2-7b",
-                        max_tokens=600,
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": f"data:image/{m.split('/')[-1]};base64,{b64}"}
-                                },
-                                {"type": "text", "text": _rcpt_prompt}
-                            ]
-                        }]
-                    )
-                    _raw_rcpt = _rcpt_msg.choices[0].message.content.strip() if _rcpt_msg.choices else ""
-                except Exception as _rcpt_err:
-                    print(f"[vision] receipt extraction error (Groq): {_rcpt_err}")
-                    _raw_rcpt = ""
+                _raw_rcpt = ""
+                groq_key = os.environ.get("GROQ_API_KEY", "")
+
+                # Try Groq first
+                if groq_key:
+                    try:
+                        from groq import Groq
+                        _rcpt_client = Groq(api_key=groq_key)
+                        _rcpt_msg = _rcpt_client.chat.completions.create(
+                            model="llava-2-7b",
+                            max_tokens=600,
+                            messages=[{
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {"url": f"data:image/{m.split('/')[-1]};base64,{b64}"}
+                                    },
+                                    {"type": "text", "text": _rcpt_prompt}
+                                ]
+                            }]
+                        )
+                        _raw_rcpt = _rcpt_msg.choices[0].message.content.strip() if _rcpt_msg.choices else ""
+                        app.logger.info(f"[receipt] Groq extraction successful, {len(_raw_rcpt)} chars")
+                    except Exception as _rcpt_err:
+                        app.logger.warning(f"[receipt] Groq extraction failed: {_rcpt_err}, trying Claude fallback")
+                        _raw_rcpt = ""
+
+                # Fallback: Use Claude if Groq unavailable or fails
+                if not _raw_rcpt:
+                    try:
+                        from anthropic import Anthropic
+                        _claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+                        _claude_msg = _claude_client.messages.create(
+                            model="claude-opus-4-8",
+                            max_tokens=600,
+                            messages=[{
+                                "role": "user",
+                                "content": [
+                                    {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                                    {"type": "text", "text": _rcpt_prompt}
+                                ]
+                            }]
+                        )
+                        _raw_rcpt = _claude_msg.content[0].text.strip() if _claude_msg.content else ""
+                        app.logger.info(f"[receipt] Claude fallback extraction successful, {len(_raw_rcpt)} chars")
+                    except Exception as _claude_err:
+                        app.logger.error(f"[receipt] Claude fallback also failed: {_claude_err}")
+                        _raw_rcpt = ""
 
                 if _raw_rcpt:
                     _rcpt_items = []
@@ -21058,27 +21086,26 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         is_valid = False
                         issues.append("no items and no total")
 
-                    # TEMP: Skip validation to see if receipts get saved
                     if not is_valid:
-                        print(f"[receipt] VALIDATION FAILED: {merchant} - issues: {', '.join(issues)}")
-
-                    # Store in receipts table regardless (debug mode)
-                    try:
-                        import json as _rjson
-                        from datetime import datetime, timezone
-                        _rcpt_row = {
-                            "phone":       fn.replace("whatsapp:","").strip(),
-                            "merchant":    merchant,
-                            "items":       _rjson.dumps(_rcpt_items),
-                            "raw_summary": summary,
-                            "created_at":  datetime.now(timezone.utc).isoformat(),
-                        }
-                        if total and total > 0:    _rcpt_row["total"]     = total
-                        if receipt_data.get("shop_date"): _rcpt_row["shop_date"] = receipt_data["shop_date"]
-                        lib._sb().table("receipts").insert(_rcpt_row).execute()
-                        print(f"[receipt] saved: merchant={merchant} total={total} items={len(_rcpt_items)} created_at={_rcpt_row['created_at']}")
-                    except Exception as _re:
-                        print(f"[receipt] Supabase save failed: {_re}")
+                        app.logger.warning(f"[receipt] VALIDATION FAILED: {merchant} - issues: {', '.join(issues)} - NOT SAVING")
+                    else:
+                        # Store in receipts table only if valid
+                        try:
+                            import json as _rjson
+                            from datetime import datetime, timezone
+                            _rcpt_row = {
+                                "phone":       fn.replace("whatsapp:","").strip(),
+                                "merchant":    merchant,
+                                "items":       _rjson.dumps(_rcpt_items),
+                                "raw_summary": summary,
+                                "created_at":  datetime.now(timezone.utc).isoformat(),
+                            }
+                            if total and total > 0:    _rcpt_row["total"]     = total
+                            if receipt_data.get("shop_date"): _rcpt_row["shop_date"] = receipt_data["shop_date"]
+                            lib._sb().table("receipts").insert(_rcpt_row).execute()
+                            print(f"[receipt] saved: merchant={merchant} total={total} items={len(_rcpt_items)} created_at={_rcpt_row['created_at']}")
+                        except Exception as _re:
+                            print(f"[receipt] Supabase save failed: {_re}")
             except Exception as _rcpte:
                 print(f"[vision] receipt extraction failed: {_rcpte}")
 
@@ -21130,7 +21157,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     elif where_str:
                         title = f"🧾 {where_str.split(',')[0]}"
 
-                update_data = {"title": title, "summary": summary_with_meta}
+                # For receipts: prepend total to summary so /api/home/last-receipt can find it via £ symbol
+                receipt_summary = summary_with_meta
+                if img_type == "receipt" and receipt_data.get("total"):
+                    total = receipt_data["total"]
+                    receipt_summary = f"💰 Total: £{total:.2f}\n" + summary_with_meta
+
+                update_data = {"title": title, "summary": receipt_summary if img_type == "receipt" else summary_with_meta}
                 if search_url:
                     update_data["url"] = search_url
                 if img_type == "receipt" and receipt_data.get("merchant"):
