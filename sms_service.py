@@ -29295,28 +29295,39 @@ def api_home_week_full():
         receipt_rows = [s for s in all_week_saves if s.get("source") == "receipt" or (s.get("title") or "").startswith("🧾")]
         print(f"[week-full] Week {week_start} to {week_end}: {len(receipt_rows)} receipts found")
 
-        # Extract amount from receipt summaries (format: "🧾 Merchant · £amount")
+        # Extract amount from receipt summaries
         import re as _re_week
         for r in receipt_rows:
             summary = r.get("summary", "")
             title = r.get("title", "")
-            merchant = "Unknown"
+            merchant = (title or "").replace("🧾", "").strip() or "Unknown"
             amount = 0
 
-            # Try to extract merchant name and amount from summary or title
-            # Format: "🧾 Merchant Name · £12.34" (in summary)
-            match = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
-            if match:
-                merchant = match.group(1).strip()
+            # Try multiple formats to find the amount
+            # Format 1: "Total due: £12.34"
+            m = _re_week.search(r'Total due:\s*£([\d,]+\.?\d*)', summary)
+            # Format 2: "Amount: £12.34" or "Total: £12.34"
+            if not m:
+                m = _re_week.search(r'(?:Amount|Total):\s*£([\d,]+\.?\d*)', summary)
+            # Format 3: Old format "🧾 Merchant · £12.34"
+            if not m:
+                m = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
+                if m:
+                    merchant = m.group(1).strip()
+                    amount = float(m.group(2))
+
+            if m and not (m.lastindex and m.lastindex == 2):  # If not format 3
                 try:
-                    amount = float(match.group(2))
-                    spend_rows.append({
-                        "total": amount,
-                        "merchant": merchant,
-                        "shop_date": r.get("created_at", "").split("T")[0]
-                    })
-                except ValueError:
+                    amount = float(m.group(1).replace(",", ""))
+                except (ValueError, IndexError):
                     pass
+
+            if amount > 0:
+                spend_rows.append({
+                    "total": amount,
+                    "merchant": merchant,
+                    "shop_date": r.get("created_at", "").split("T")[0]
+                })
 
         this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
 
