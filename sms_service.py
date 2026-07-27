@@ -29272,7 +29272,15 @@ def api_home_week_full():
         }
 
         # Spend this week - ALL receipts (PDF uploads + manual camera scans)
-        # 1. PDF receipts table
+        # 1. PDF receipts table - first check what's there
+        all_receipts = sb.table("receipts").select("total,merchant,shop_date,phone") \
+            .eq("phone", phone) \
+            .execute().data or []
+        print(f"[week-full] Total receipts for phone {phone}: {len(all_receipts)}")
+        if all_receipts:
+            print(f"[week-full] Sample dates: {[r.get('shop_date') for r in all_receipts[:3]]}")
+
+        # Now filter by week
         spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
             .eq("phone", phone) \
             .gte("shop_date", week_start.isoformat()) \
