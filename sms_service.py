@@ -29283,18 +29283,7 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # DEBUG: Check ALL wa_saves for this user (any date)
-        all_saves_ever = sb.table("wa_saves").select("summary,title,created_at,source").eq("from_number", from_number).execute().data or []
-        print(f"[week-full] ALL wa_saves for {from_number}: {len(all_saves_ever)} total")
-
-        # Find receipts in all data
-        all_receipts = [s for s in all_saves_ever if s.get("source") == "receipt" or (s.get("title") or "").startswith("🧾")]
-        print(f"[week-full] ALL receipts (any date): {len(all_receipts)}")
-        if all_receipts:
-            recent = all_receipts[-5:]
-            print(f"[week-full] Recent 5 receipts: {[(s.get('created_at'), (s.get('title') or '')[:20]) for s in recent]}")
-
-        # Now filter to this week
+        # Fetch receipts for the week
         spend_rows = []
         all_week_saves = sb.table("wa_saves").select("summary,title,created_at,source") \
             .eq("from_number", from_number) \
@@ -29302,11 +29291,9 @@ def api_home_week_full():
             .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
             .execute().data or []
 
-        print(f"[week-full] Saves THIS WEEK ({week_start} to {week_end}): {len(all_week_saves)}")
-
         # Filter to receipts only (source="receipt" OR title starts with 🧾)
         receipt_rows = [s for s in all_week_saves if s.get("source") == "receipt" or (s.get("title") or "").startswith("🧾")]
-        print(f"[week-full] Receipts THIS WEEK: {len(receipt_rows)}")
+        print(f"[week-full] Week {week_start} to {week_end}: {len(receipt_rows)} receipts found")
 
         # Extract amount from receipt summaries (format: "🧾 Merchant · £amount")
         import re as _re_week
