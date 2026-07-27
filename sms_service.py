@@ -29073,7 +29073,7 @@ def api_weekly_intelligence():
         app.logger.info(f"[weekly-intel] Phone: {phone_clean}, dates: {week_start} to {week_end}")
 
         # Fetch receipts from last 7 days
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date,category") \
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date") \
             .eq("phone", phone_clean) \
             .gte("shop_date", week_start) \
             .lte("shop_date", week_end) \
@@ -29089,9 +29089,9 @@ def api_weekly_intelligence():
 
         for r in rows:
             try:
-                cat = r.get("category") or "Other"
                 merchant = r.get("merchant") or "Unknown"
                 amt = float(r.get("total", 0) or 0)
+                cat = "Groceries"  # Default category
 
                 by_category[cat] = by_category.get(cat, 0) + amt
                 by_merchant[merchant] = by_merchant.get(merchant, 0) + amt
