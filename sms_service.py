@@ -29277,45 +29277,38 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # Spend this week - use wa_saves (has current data, receipts table has 2022 data)
-        import re as _re_week_intel
-        # Get ALL wa_saves receipts
-        all_wa_receipts = sb.table("wa_saves").select("summary,created_at") \
+        # Spend this week - use wa_saves (same query as home page)
+        import re as _re_week
+        rows = sb.table("wa_saves").select("summary,title,created_at") \
             .eq("from_number", from_number) \
-            .eq("source", "receipt") \
+            .gte("created_at", week_start.isoformat()) \
+            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
+            .ilike("title", "🧾%") \
             .order("created_at", desc=True) \
             .execute().data or []
 
-        # Parse receipts - handle British date format in summaries
+        # Extract merchant + amount
         spend_rows = []
-        for mr in all_wa_receipts:
-            summary = mr.get("summary", "")
-            # Extract: "🧾 Merchant · £amount" and date
-            match = _re_week_intel.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary)
-            if match:
-                merchant = match.group(1).strip()
-                try:
-                    amount = float(match.group(2))
-                    # Try to extract British date format (DD/MM/YYYY) from summary
-                    date_match = _re_week_intel.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', summary)
-                    if date_match:
-                        day, month, year = date_match.groups()
-                        shop_date = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-                    else:
-                        # Fallback to created_at date
-                        shop_date = mr.get("created_at", "").split("T")[0]
+        for r in rows:
+            summary = r.get("summary", "")
+            title = r.get("title", "")
 
-                    # Only include if in week range
-                    if shop_date and week_start.isoformat() <= shop_date <= week_end.isoformat():
-                        spend_rows.append({
-                            "total": amount,
-                            "merchant": merchant,
-                            "shop_date": shop_date
-                        })
+            # Extract amount from title or summary
+            m = _re_week.search(r'£([\d,]+\.?\d*)', title + summary)
+            if m:
+                try:
+                    amount = float(m.group(1).replace(",", ""))
+                    # Extract merchant from title (format: "🧾 Merchant Name")
+                    merchant = title.replace("🧾", "").strip() or "Unknown"
+                    spend_rows.append({
+                        "total": amount,
+                        "merchant": merchant,
+                        "shop_date": r.get("created_at", "").split("T")[0]
+                    })
                 except ValueError:
                     pass
 
-        print(f"[week-full] Parsed receipts for week {week_start} to {week_end}: {len(spend_rows)}")
+        print(f"[week-full] Found {len(spend_rows)} receipts for week {week_start} to {week_end}")
 
         # 2. Manual receipts from wa_saves (camera scans with amount in summary)
         manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
