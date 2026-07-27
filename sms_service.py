@@ -29277,38 +29277,19 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # Spend this week - use wa_saves (same query as home page)
-        import re as _re_week
-        rows = sb.table("wa_saves").select("summary,title,created_at") \
-            .eq("from_number", from_number) \
-            .gte("created_at", week_start.isoformat()) \
-            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
-            .ilike("title", "🧾%") \
-            .order("created_at", desc=True) \
-            .execute().data or []
-
-        # Extract merchant + amount
+        # Spend this week - call /api/v2/spend which is what home page uses
+        spend_data = _v2_fetch_spend(from_number, month=today.month, year=today.year)
         spend_rows = []
-        for r in rows:
-            summary = r.get("summary", "")
-            title = r.get("title", "")
-
-            # Extract amount from title or summary
-            m = _re_week.search(r'£([\d,]+\.?\d*)', title + summary)
-            if m:
-                try:
-                    amount = float(m.group(1).replace(",", ""))
-                    # Extract merchant from title (format: "🧾 Merchant Name")
-                    merchant = title.replace("🧾", "").strip() or "Unknown"
+        if spend_data.get("breakdown"):
+            for cat, cat_data in spend_data["breakdown"].items():
+                for merchant_info in cat_data.get("merchants", []):
+                    merchant = merchant_info.get("name", "Unknown")
+                    amount = merchant_info.get("total", 0)
                     spend_rows.append({
                         "total": amount,
                         "merchant": merchant,
-                        "shop_date": r.get("created_at", "").split("T")[0]
+                        "shop_date": today.isoformat()
                     })
-                except ValueError:
-                    pass
-
-        print(f"[week-full] Found {len(spend_rows)} receipts for week {week_start} to {week_end}")
 
         # 2. Manual receipts from wa_saves (camera scans with amount in summary)
         manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
