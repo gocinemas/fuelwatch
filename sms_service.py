@@ -29277,47 +29277,32 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # Spend this week - call /api/v2/spend which is what home page uses
-        spend_data = _v2_fetch_spend(from_number, month=today.month, year=today.year)
+        # Spend this week - query wa_saves directly for this week's receipts
         spend_rows = []
-        if spend_data.get("breakdown"):
-            for cat, cat_data in spend_data["breakdown"].items():
-                for merchant_info in cat_data.get("merchants", []):
-                    merchant = merchant_info.get("name", "Unknown")
-                    amount = merchant_info.get("total", 0)
-                    spend_rows.append({
-                        "total": amount,
-                        "merchant": merchant,
-                        "shop_date": today.isoformat()
-                    })
-
-        # 2. Manual receipts from wa_saves (camera scans with amount in summary)
-        manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
+        receipt_rows = sb.table("wa_saves").select("summary,title,created_at") \
             .eq("from_number", from_number) \
-            .eq("source", "receipt") \
             .gte("created_at", week_start.isoformat()) \
-            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
+            .lt("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
+            .ilike("title", "🧾%") \
+            .order("created_at", desc=True) \
             .execute().data or []
 
-        # Extract amount from manual receipt summaries (format: "🧾 Merchant · £amount")
+        # Extract amount from receipt title/summary (format: "🧾 Merchant" + "£amount")
         import re as _re_week
-        for mr in manual_receipt_rows:
-            summary = mr.get("summary", "")
-            merchant = "Unknown"
-            amount = 0
+        for r in receipt_rows:
+            title = r.get("title", "")
+            summary = r.get("summary", "")
+            merchant = title.replace("🧾", "").strip() or "Unknown"
 
-            # Try to extract merchant name and amount from summary
-            # Format: "🧾 Merchant Name · £12.34"
-            match = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary)
-            if match:
-                merchant = match.group(1).strip()
+            # Extract amount from title or summary
+            m = _re_week.search(r'£([\d,]+\.?\d*)', title + " " + summary)
+            if m:
                 try:
-                    amount = float(match.group(2))
-                    # Add to spend_rows
+                    amount = float(m.group(1).replace(",", ""))
                     spend_rows.append({
                         "total": amount,
                         "merchant": merchant,
-                        "shop_date": mr.get("created_at", "").split("T")[0]  # Extract date part
+                        "shop_date": r.get("created_at", "").split("T")[0]
                     })
                 except ValueError:
                     pass
