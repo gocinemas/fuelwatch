@@ -29279,15 +29279,20 @@ def api_home_week_full():
 
         # Spend this week - use wa_saves (has current data, receipts table has 2022 data)
         import re as _re_week_intel
-        manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
+        # Get ALL wa_saves receipts first to see what's there
+        all_wa_receipts = sb.table("wa_saves").select("summary,created_at") \
             .eq("from_number", from_number) \
             .eq("source", "receipt") \
-            .gte("created_at", week_start.isoformat()) \
-            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
+            .order("created_at", desc=True) \
             .execute().data or []
 
+        print(f"[week-full] Total wa_saves receipts: {len(all_wa_receipts)}")
+        if all_wa_receipts:
+            print(f"[week-full] Date range: {all_wa_receipts[-1].get('created_at')} to {all_wa_receipts[0].get('created_at')}")
+
+        # Parse ALL receipts (ignore date for now to debug)
         spend_rows = []
-        for mr in manual_receipt_rows:
+        for mr in all_wa_receipts:
             summary = mr.get("summary", "")
             # Extract: "🧾 Merchant · £amount"
             match = _re_week_intel.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary)
@@ -29302,7 +29307,7 @@ def api_home_week_full():
                     })
                 except ValueError:
                     pass
-        print(f"[week-full] Spend rows found: {len(spend_rows)}, week: {week_start} to {week_end}")
+        print(f"[week-full] Parsed receipts: {len(spend_rows)}")
 
         # 2. Manual receipts from wa_saves (camera scans with amount in summary)
         manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
