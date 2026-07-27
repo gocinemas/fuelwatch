@@ -29054,65 +29054,74 @@ def api_school_week_ahead():
 @app.route("/api/home/weekly-intelligence", methods=["GET"])
 def api_weekly_intelligence():
     """AI-powered weekly spending insights."""
+    import datetime as _dt
+    import zoneinfo as _zi
     token = request.args.get("token", "").strip()
     from_number = _v2_resolve(token)
-
-    app.logger.info(f"[weekly-intel] Start: token={token}, from_number={from_number}")
 
     if not from_number:
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     try:
         from datetime import date, timedelta
+        import re
 
         today = date.today()
         week_start = (today - timedelta(days=7)).isoformat()
         week_end = today.isoformat()
         phone_clean = from_number.replace("whatsapp:", "").strip()
 
-        app.logger.info(f"[weekly-intel] Phone: {phone_clean}, dates: {week_start} to {week_end}")
-
-        # Fetch from wa_saves (same as home page spend card) - has current data
-        rows = lib._sb().table("wa_saves").select("summary,created_at") \
-            .eq("from_number", from_number) \
-            .eq("source", "receipt") \
-            .gte("created_at", week_start) \
-            .lte("created_at", week_end) \
-            .order("created_at", desc=True) \
+        # Fetch receipts from last 7 days
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date,category") \
+            .eq("phone", phone_clean) \
+            .gte("shop_date", week_start) \
+            .lte("shop_date", week_end) \
+            .order("shop_date", desc=True) \
             .execute().data or []
 
-        app.logger.info(f"[weekly-intel] Found {len(rows)} receipts from wa_saves")
-
-        # Parse spending from wa_saves format: "🧾 Merchant · £amount"
-        import re as _re_intel
-        total_spend = 0
+        # Parse spending
+        total_spend = sum(float(r.get("total", 0) or 0) for r in rows)
         by_category = {}
         by_merchant = {}
 
         for r in rows:
-            try:
-                summary = r.get("summary", "")
-                # Extract merchant and amount from "🧾 Merchant Name · £12.34"
-                match = _re_intel.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary)
-                if match:
-                    merchant = match.group(1).strip()
-                    amt = float(match.group(2))
-                    cat = "Groceries"  # Default category
+            cat = r.get("category") or "Other"
+            merchant = r.get("merchant") or "Unknown"
+            amt = float(r.get("total", 0) or 0)
 
-                    by_category[cat] = by_category.get(cat, 0) + amt
-                    by_merchant[merchant] = by_merchant.get(merchant, 0) + amt
-                    total_spend += amt
-            except Exception as item_err:
-                app.logger.warning(f"[weekly-intel] Item parse error: {item_err}")
-                continue
+            by_category[cat] = by_category.get(cat, 0) + amt
+            by_merchant[merchant] = by_merchant.get(merchant, 0) + amt
 
         if total_spend == 0:
             return jsonify({"success": False, "insights": "No spending data this week"})
 
+        # Generate AI insights
         top_cats = sorted(by_category.items(), key=lambda x: x[1], reverse=True)
         top_merchants = sorted(by_merchant.items(), key=lambda x: x[1], reverse=True)[:5]
 
-        insights = "Spending summary: " + ", ".join([f"{cat} £{amt:.2f}" for cat, amt in top_cats[:3]])
+        from anthropic import Anthropic
+        client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
+        prompt = f"""Analyze this week's spending and provide 2-3 brief insights.
+
+Total: £{total_spend:.2f}
+Transactions: {len(rows)}
+
+Top Categories:
+{chr(10).join([f"- {cat}: £{amt:.2f}" for cat, amt in top_cats[:5]])}
+
+Top Merchants:
+{chr(10).join([f"- {merch}: £{amt:.2f}" for merch, amt in top_merchants])}
+
+Provide 2-3 actionable insights about spending patterns, biggest drivers, and one savings opportunity. Keep it conversational and specific."""
+
+        message = client.messages.create(
+            model="claude-opus-4-8",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        insights = message.content[0].text
 
         return jsonify({
             "success": True,
@@ -29277,41 +29286,40 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # Spend this week - fetch all wa_saves from this week, then filter receipts
-        spend_rows = []
-        all_week_saves = sb.table("wa_saves").select("summary,title,created_at,source") \
+        # Spend this week - ALL receipts (PDF uploads + manual camera scans)
+        # 1. PDF receipts table
+        spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
+            .eq("phone", phone) \
+            .gte("shop_date", week_start.isoformat()) \
+            .lte("shop_date", week_end.isoformat()).execute().data or []
+
+        # 2. Manual receipts from wa_saves (camera scans with amount in summary)
+        manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
             .eq("from_number", from_number) \
+            .eq("source", "receipt") \
             .gte("created_at", week_start.isoformat()) \
             .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
             .execute().data or []
 
-        print(f"[week-full] Total saves this week: {len(all_week_saves)}")
-        if all_week_saves:
-            print(f"[week-full] Sample saves: {[{'title': s.get('title'), 'source': s.get('source'), 'created_at': s.get('created_at')} for s in all_week_saves[:3]]}")
-
-        # Filter to receipts only (source="receipt" OR title starts with 🧾)
-        receipt_rows = [s for s in all_week_saves if s.get("source") == "receipt" or (s.get("title") or "").startswith("🧾")]
-        print(f"[week-full] Receipts found: {len(receipt_rows)}")
-
-        # Extract amount from receipt summaries (format: "🧾 Merchant · £amount")
+        # Extract amount from manual receipt summaries (format: "🧾 Merchant · £amount")
         import re as _re_week
-        for r in receipt_rows:
-            summary = r.get("summary", "")
-            title = r.get("title", "")
+        for mr in manual_receipt_rows:
+            summary = mr.get("summary", "")
             merchant = "Unknown"
             amount = 0
 
-            # Try to extract merchant name and amount from summary or title
-            # Format: "🧾 Merchant Name · £12.34" (in summary)
-            match = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
+            # Try to extract merchant name and amount from summary
+            # Format: "🧾 Merchant Name · £12.34"
+            match = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary)
             if match:
                 merchant = match.group(1).strip()
                 try:
                     amount = float(match.group(2))
+                    # Add to spend_rows
                     spend_rows.append({
                         "total": amount,
                         "merchant": merchant,
-                        "shop_date": r.get("created_at", "").split("T")[0]
+                        "shop_date": mr.get("created_at", "").split("T")[0]  # Extract date part
                     })
                 except ValueError:
                     pass
@@ -29345,7 +29353,11 @@ def api_home_week_full():
 
         # Cafe/restaurant visits (based on merchant categorization, respecting manual categories)
         food_categories = ["Coffee & Lunch", "Dining", "Takeaway", "Fast Food"]
-        cafe_rows = [r for r in spend_rows if (r.get("category") or _receipt_category(r.get("merchant", ""))).strip() in food_categories]
+        def _get_category_for_row(r):
+            if r.get("category") and r.get("category") != "Other":
+                return r.get("category")
+            return _receipt_category(r.get("merchant", ""))
+        cafe_rows = [r for r in spend_rows if _get_category_for_row(r).strip() in food_categories]
         this_week["cafe_visits"] = len(cafe_rows)
 
         # Top cafes
