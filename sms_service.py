@@ -29306,21 +29306,32 @@ def api_home_week_full():
             # Try multiple formats to find the amount
             # Format 1: "Total due: £12.34"
             m = _re_week.search(r'Total due:\s*£([\d,]+\.?\d*)', summary)
-            # Format 2: "Amount: £12.34" or "Total: £12.34"
-            if not m:
-                m = _re_week.search(r'(?:Amount|Total):\s*£([\d,]+\.?\d*)', summary)
-            # Format 3: Old format "🧾 Merchant · £12.34"
-            if not m:
-                m = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
-                if m:
-                    merchant = m.group(1).strip()
-                    amount = float(m.group(2))
-
-            if m and not (m.lastindex and m.lastindex == 2):  # If not format 3
+            if m:
                 try:
                     amount = float(m.group(1).replace(",", ""))
                 except (ValueError, IndexError):
                     pass
+
+            # Format 2: "Amount: £12.34" or "Total: £12.34"
+            if amount == 0:
+                m = _re_week.search(r'(?:Amount|Total):\s*£([\d,]+\.?\d*)', summary)
+                if m:
+                    try:
+                        amount = float(m.group(1).replace(",", ""))
+                    except (ValueError, IndexError):
+                        pass
+
+            # Format 3: Old format "🧾 Merchant · £12.34"
+            if amount == 0:
+                m = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
+                if m:
+                    merchant = m.group(1).strip()
+                    try:
+                        amount = float(m.group(2))
+                    except (ValueError, IndexError):
+                        pass
+
+            print(f"[week-full] Receipt: {merchant}, amount={amount}, summary={summary[:80]}")
 
             if amount > 0:
                 spend_rows.append({
