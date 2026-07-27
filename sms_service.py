@@ -29304,24 +29304,25 @@ def api_home_week_full():
             amount = 0
 
             # Try multiple formats to find the amount
-            # Format 1: "Total due: £12.34"
-            m = _re_week.search(r'Total due:\s*£([\d,]+\.?\d*)', summary)
-            if m:
-                try:
-                    amount = float(m.group(1).replace(",", ""))
-                except (ValueError, IndexError):
-                    pass
+            patterns = [
+                r'Total due:\s*£([\d,]+\.?\d*)',           # "Total due: £12.34"
+                r'Total amount:\s*£([\d,]+\.?\d*)',        # "Total amount: £30.82"
+                r'Total balance due\s+£([\d,]+\.?\d*)',    # "Total balance due £44.45"
+                r'Total\s*\(.*?\):\s*£([\d,]+\.?\d*)',    # "Total (Net Price): £29.37" or "Total (incl VAT): £100.18"
+                r'Total:\s*£([\d,]+\.?\d*)',               # "Total: £67.73"
+                r'Total\s+£([\d,]+\.?\d*)',                # "Total £15.10"
+            ]
 
-            # Format 2: "Amount: £12.34" or "Total: £12.34"
-            if amount == 0:
-                m = _re_week.search(r'(?:Amount|Total):\s*£([\d,]+\.?\d*)', summary)
+            for pattern in patterns:
+                m = _re_week.search(pattern, summary)
                 if m:
                     try:
                         amount = float(m.group(1).replace(",", ""))
+                        break
                     except (ValueError, IndexError):
                         pass
 
-            # Format 3: Old format "🧾 Merchant · £12.34"
+            # Format: Old "🧾 Merchant · £12.34"
             if amount == 0:
                 m = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
                 if m:
@@ -29330,8 +29331,6 @@ def api_home_week_full():
                         amount = float(m.group(2))
                     except (ValueError, IndexError):
                         pass
-
-            print(f"[week-full] Receipt: {merchant}, amount={amount}, summary={summary[:80]}")
 
             if amount > 0:
                 spend_rows.append({
