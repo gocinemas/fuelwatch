@@ -29054,22 +29054,23 @@ def api_school_week_ahead():
 @app.route("/api/home/weekly-intelligence", methods=["GET"])
 def api_weekly_intelligence():
     """AI-powered weekly spending insights."""
-    import datetime as _dt
-    import zoneinfo as _zi
     token = request.args.get("token", "").strip()
     from_number = _v2_resolve(token)
+
+    app.logger.info(f"[weekly-intel] Start: token={token}, from_number={from_number}")
 
     if not from_number:
         return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     try:
         from datetime import date, timedelta
-        import re
 
         today = date.today()
         week_start = (today - timedelta(days=7)).isoformat()
         week_end = today.isoformat()
         phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        app.logger.info(f"[weekly-intel] Phone: {phone_clean}, dates: {week_start} to {week_end}")
 
         # Fetch receipts from last 7 days
         rows = lib._sb().table("receipts").select("merchant,total,shop_date,category") \
@@ -29079,18 +29080,25 @@ def api_weekly_intelligence():
             .order("shop_date", desc=True) \
             .execute().data or []
 
+        app.logger.info(f"[weekly-intel] Found {len(rows)} receipts")
+
         # Parse spending
-        total_spend = sum(float(r.get("total", 0) or 0) for r in rows)
+        total_spend = 0
         by_category = {}
         by_merchant = {}
 
         for r in rows:
-            cat = r.get("category") or "Other"
-            merchant = r.get("merchant") or "Unknown"
-            amt = float(r.get("total", 0) or 0)
+            try:
+                cat = r.get("category") or "Other"
+                merchant = r.get("merchant") or "Unknown"
+                amt = float(r.get("total", 0) or 0)
 
-            by_category[cat] = by_category.get(cat, 0) + amt
-            by_merchant[merchant] = by_merchant.get(merchant, 0) + amt
+                by_category[cat] = by_category.get(cat, 0) + amt
+                by_merchant[merchant] = by_merchant.get(merchant, 0) + amt
+                total_spend += amt
+            except Exception as item_err:
+                app.logger.warning(f"[weekly-intel] Item parse error: {item_err}")
+                continue
 
         if total_spend == 0:
             return jsonify({"success": False, "insights": "No spending data this week"})
