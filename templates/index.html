@@ -19062,14 +19062,16 @@ let _savesAll = [];
     // Trend indicator
     var trend = data.trend;
     if (trend) {
-      var trendEmoji = trend.direction === "up" ? "📈" : trend.direction === "down" ? "📉" : "➡️";
-      var trendText = trend.direction === "up"
-        ? `Spend is up £${trend.amount.toFixed(2)} (${trend.percent}%) vs last week`
-        : trend.direction === "down"
-        ? `Spend is down £${trend.amount.toFixed(2)} (${trend.percent}%) vs last week`
-        : "Spend stable vs last week";
-
-      document.getElementById("week-trend").textContent = trendEmoji + " " + trendText;
+      var trendEl = document.getElementById("week-trend");
+      if (trendEl) {
+        var trendEmoji = trend.direction === "up" ? "📈" : trend.direction === "down" ? "📉" : "➡️";
+        var trendText = trend.direction === "up"
+          ? `Spend is up £${trend.amount.toFixed(2)} (${trend.percent}%) vs last week`
+          : trend.direction === "down"
+          ? `Spend is down £${trend.amount.toFixed(2)} (${trend.percent}%) vs last week`
+          : "Spend stable vs last week";
+        trendEl.textContent = trendEmoji + " " + trendText;
+      }
     }
 
     card.style.display = "block";
