@@ -29051,6 +29051,93 @@ def api_school_week_ahead():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/home/weekly-intelligence", methods=["GET"])
+def api_weekly_intelligence():
+    """AI-powered weekly spending insights."""
+    import datetime as _dt
+    import zoneinfo as _zi
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+
+    if not from_number:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    try:
+        from datetime import date, timedelta
+        import re
+
+        today = date.today()
+        week_start = (today - timedelta(days=7)).isoformat()
+        week_end = today.isoformat()
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+
+        # Fetch receipts from last 7 days
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date,category") \
+            .eq("phone", phone_clean) \
+            .gte("shop_date", week_start) \
+            .lte("shop_date", week_end) \
+            .order("shop_date", desc=True) \
+            .execute().data or []
+
+        # Parse spending
+        total_spend = sum(float(r.get("total", 0) or 0) for r in rows)
+        by_category = {}
+        by_merchant = {}
+
+        for r in rows:
+            cat = r.get("category") or "Other"
+            merchant = r.get("merchant") or "Unknown"
+            amt = float(r.get("total", 0) or 0)
+
+            by_category[cat] = by_category.get(cat, 0) + amt
+            by_merchant[merchant] = by_merchant.get(merchant, 0) + amt
+
+        if total_spend == 0:
+            return jsonify({"success": False, "insights": "No spending data this week"})
+
+        # Generate AI insights
+        top_cats = sorted(by_category.items(), key=lambda x: x[1], reverse=True)
+        top_merchants = sorted(by_merchant.items(), key=lambda x: x[1], reverse=True)[:5]
+
+        from anthropic import Anthropic
+        client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
+        prompt = f"""Analyze this week's spending and provide 2-3 brief insights.
+
+Total: £{total_spend:.2f}
+Transactions: {len(rows)}
+
+Top Categories:
+{chr(10).join([f"- {cat}: £{amt:.2f}" for cat, amt in top_cats[:5]])}
+
+Top Merchants:
+{chr(10).join([f"- {merch}: £{amt:.2f}" for merch, amt in top_merchants])}
+
+Provide 2-3 actionable insights about spending patterns, biggest drivers, and one savings opportunity. Keep it conversational and specific."""
+
+        message = client.messages.create(
+            model="claude-opus-4-8",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        insights = message.content[0].text
+
+        return jsonify({
+            "success": True,
+            "insights": insights,
+            "total": round(total_spend, 2),
+            "count": len(rows),
+            "by_category": {k: round(v, 2) for k, v in by_category.items()},
+            "by_merchant": {k: round(v, 2) for k, v in by_merchant.items()},
+            "top_merchants": [(m, round(a, 2)) for m, a in top_merchants]
+        })
+
+    except Exception as e:
+        app.logger.error(f"[weekly-intel] Error: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/home/week-summary")
 def api_home_week_summary():
     """Weekly summary: spend, saves, patterns, activities."""

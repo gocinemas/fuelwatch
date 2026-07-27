@@ -28649,9 +28649,14 @@ document.addEventListener('keydown', function(e) {
     loading.style.display = 'block';
     content.style.display = 'none';
 
-    fetch(`/api/home/week-full?wa=${encodeURIComponent(wa)}`)
-      .then(r => r.json())
-      .then(d => {
+    const token = localStorage.getItem('miru_saves_token') || wa;
+
+    // Fetch week data + AI insights in parallel
+    Promise.all([
+      fetch(`/api/home/week-full?wa=${encodeURIComponent(wa)}`).then(r => r.json()),
+      fetch(`/api/home/weekly-intelligence?token=${encodeURIComponent(token)}`).then(r => r.json()).catch(() => ({success: false}))
+    ])
+      .then(([d, aiData]) => {
         if (!d.success) {
           loading.textContent = '⚠️ Could not load your week';
           return;
@@ -28667,6 +28672,11 @@ document.addEventListener('keydown', function(e) {
         const topCafe = d.this_week.top_cafes && d.this_week.top_cafes[0];
 
         const insightsList = [];
+
+        // Add AI insights if available
+        if (aiData && aiData.success && aiData.insights) {
+          insightsList.push('🤖 ' + aiData.insights);
+        }
 
         // Spend comparison
         const spendDiff = d.this_week.spend - d.last_week.spend;
