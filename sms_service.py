@@ -29250,16 +29250,19 @@ def api_home_week_full():
     now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
     today = now.date()
 
-    # This week: Monday of THIS week to Sunday (proper week definition)
-    # If today is Friday (weekday=4), Monday is 4 days ago
-    # If today is Monday (weekday=0), Monday is 0 days ago
+    # "Your Week" = last complete week (most recent full Mon-Sun with data)
+    # If today is Monday, "your week" = last Mon-Sun
+    # If today is Wed, "your week" = last Mon-Sun (not the current incomplete week)
     days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
-    week_start = today - _dt.timedelta(days=days_since_monday)
-    week_end = week_start + _dt.timedelta(days=6)  # Sunday
+    this_monday = today - _dt.timedelta(days=days_since_monday)
 
-    # Last week for comparison (previous Monday-Sunday)
-    last_week_end = week_start - _dt.timedelta(days=1)  # Previous Sunday
-    last_week_start = last_week_end - _dt.timedelta(days=6)  # Previous Monday
+    # Show LAST week (the most recent complete week)
+    week_end = this_monday - _dt.timedelta(days=1)  # Yesterday (Sunday of last week)
+    week_start = week_end - _dt.timedelta(days=6)  # Monday of last week
+
+    # Week before that for comparison
+    last_week_end = week_start - _dt.timedelta(days=1)
+    last_week_start = last_week_end - _dt.timedelta(days=6)
 
     try:
         print(f"[week-full] Starting: wa={wa}, from_number={from_number}")
