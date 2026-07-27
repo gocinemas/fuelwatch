@@ -95,8 +95,9 @@ def fetch_hiring_signals_live(company_name: str) -> dict:
         # Deduplicate and analyze
         if all_jobs:
             all_jobs = _deduplicate_jobs(all_jobs)
+            data_sources = result["data_sources"]
             result = _analyze_jobs(company_name, all_jobs)
-            result["data_sources"] = list(set(result["data_sources"]))  # Remove duplicates
+            result["data_sources"] = list(set(data_sources))  # Remove duplicates
             logger.info(f"[hiring] Found {len(all_jobs)} jobs for {company_name} from {len(result['data_sources'])} sources")
             return result
         else:
