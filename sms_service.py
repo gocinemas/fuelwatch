@@ -29340,11 +29340,7 @@ def api_home_week_full():
 
         # Cafe/restaurant visits (based on merchant categorization, respecting manual categories)
         food_categories = ["Coffee & Lunch", "Dining", "Takeaway", "Fast Food"]
-        def _get_category_for_row(r):
-            if r.get("category") and r.get("category") != "Other":
-                return r.get("category")
-            return _receipt_category(r.get("merchant", ""))
-        cafe_rows = [r for r in spend_rows if _get_category_for_row(r).strip() in food_categories]
+        cafe_rows = [r for r in spend_rows if (r.get("category") or _receipt_category(r.get("merchant", ""))).strip() in food_categories]
         this_week["cafe_visits"] = len(cafe_rows)
 
         # Top cafes
