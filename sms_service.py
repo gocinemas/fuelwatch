@@ -29095,33 +29095,10 @@ def api_weekly_intelligence():
         if total_spend == 0:
             return jsonify({"success": False, "insights": "No spending data this week"})
 
-        # Generate AI insights
         top_cats = sorted(by_category.items(), key=lambda x: x[1], reverse=True)
         top_merchants = sorted(by_merchant.items(), key=lambda x: x[1], reverse=True)[:5]
 
-        from anthropic import Anthropic
-        client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-
-        prompt = f"""Analyze this week's spending and provide 2-3 brief insights.
-
-Total: £{total_spend:.2f}
-Transactions: {len(rows)}
-
-Top Categories:
-{chr(10).join([f"- {cat}: £{amt:.2f}" for cat, amt in top_cats[:5]])}
-
-Top Merchants:
-{chr(10).join([f"- {merch}: £{amt:.2f}" for merch, amt in top_merchants])}
-
-Provide 2-3 actionable insights about spending patterns, biggest drivers, and one savings opportunity. Keep it conversational and specific."""
-
-        message = client.messages.create(
-            model="claude-opus-4-8",
-            max_tokens=300,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        insights = message.content[0].text
+        insights = "Spending summary: " + ", ".join([f"{cat} £{amt:.2f}" for cat, amt in top_cats[:3]])
 
         return jsonify({
             "success": True,
