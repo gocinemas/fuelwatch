@@ -9596,14 +9596,17 @@ def api_intel_news():
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _v2_resolve(token: str) -> str:
-    """Accept either a raw phone number (+44...) or an HMAC token → returns from_number.
+    """Accept either a raw phone number (+44... or 44...) or an HMAC token → returns from_number.
     Normalises to whatsapp: prefix to match Twilio DB format used by wa_saves/school_profiles."""
     if not token:
         return ""
-    if token.startswith("+"):
-        return "whatsapp:" + token   # raw phone → Twilio format
     if token.startswith("whatsapp:"):
         return token
+    # Check if it's a phone number (starts with +, or is all digits)
+    if token.startswith("+") or (token.isdigit() and len(token) >= 10):
+        if not token.startswith("+"):
+            token = "+" + token  # Add + if missing
+        return "whatsapp:" + token
     return _resolve_user_token(token) or ""
 
 # ── INTEL BRAND SEARCH & REQUEST ────────────────────────────────────────────
