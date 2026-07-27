@@ -29277,21 +29277,32 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # Spend this week - ALL receipts (PDF uploads + manual camera scans)
-        # 1. PDF receipts table - first check what's there
-        all_receipts = sb.table("receipts").select("total,merchant,shop_date,phone") \
-            .eq("phone", phone) \
+        # Spend this week - use wa_saves (has current data, receipts table has 2022 data)
+        import re as _re_week_intel
+        manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
+            .eq("from_number", from_number) \
+            .eq("source", "receipt") \
+            .gte("created_at", week_start.isoformat()) \
+            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
             .execute().data or []
-        print(f"[week-full] Total receipts for phone {phone}: {len(all_receipts)}")
-        if all_receipts:
-            print(f"[week-full] Sample dates: {[r.get('shop_date') for r in all_receipts[:3]]}")
 
-        # Now filter by week
-        spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
-            .eq("phone", phone) \
-            .gte("shop_date", week_start.isoformat()) \
-            .lte("shop_date", week_end.isoformat()).execute().data or []
-        print(f"[week-full] PDF receipts found: {len(spend_rows)}, week: {week_start} to {week_end}")
+        spend_rows = []
+        for mr in manual_receipt_rows:
+            summary = mr.get("summary", "")
+            # Extract: "🧾 Merchant · £amount"
+            match = _re_week_intel.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary)
+            if match:
+                merchant = match.group(1).strip()
+                try:
+                    amount = float(match.group(2))
+                    spend_rows.append({
+                        "total": amount,
+                        "merchant": merchant,
+                        "shop_date": mr.get("created_at", "").split("T")[0]
+                    })
+                except ValueError:
+                    pass
+        print(f"[week-full] Spend rows found: {len(spend_rows)}, week: {week_start} to {week_end}")
 
         # 2. Manual receipts from wa_saves (camera scans with amount in summary)
         manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
