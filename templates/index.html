@@ -18135,6 +18135,14 @@ let _savesAll = [];
             }
           }
 
+          // Show receipt items if available
+          if (d.items && d.items.length > 0 && card) {
+            const itemsDiv = document.createElement("div");
+            itemsDiv.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)";
+            itemsDiv.innerHTML = d.items.map(item => `<div style="margin:2px 0">• ${item}</div>`).join("");
+            card.appendChild(itemsDiv);
+          }
+
           if (card) card.style.display = "block";
         }
       })
