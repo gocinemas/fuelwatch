@@ -29292,6 +29292,7 @@ def api_home_week_full():
             .eq("phone", phone) \
             .gte("shop_date", week_start.isoformat()) \
             .lte("shop_date", week_end.isoformat()).execute().data or []
+        print(f"[week-full] PDF receipts found: {len(spend_rows)}, week: {week_start} to {week_end}")
 
         # 2. Manual receipts from wa_saves (camera scans with amount in summary)
         manual_receipt_rows = sb.table("wa_saves").select("summary,created_at") \
