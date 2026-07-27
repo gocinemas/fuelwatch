@@ -9292,14 +9292,23 @@ def api_home_last_receipt():
 
         # Parse items if available
         items_str = r.get("items", "[]") or "[]"
+        app.logger.info(f"[last-receipt] RAW items_str type={type(items_str)}, value={repr(items_str[:200] if isinstance(items_str, str) else items_str)}")
         items = []
         try:
             import json as _json_items
-            items_list = _json_items.loads(items_str)
-            items = [item.get("name", "") for item in (items_list or []) if item.get("name", "")][:3]  # Top 3 items
-            app.logger.info(f"[last-receipt] Parsed items: {items} from {items_str[:100]}")
+            # Handle if items is already a list
+            if isinstance(items_str, list):
+                items_list = items_str
+            else:
+                items_list = _json_items.loads(items_str) if items_str else []
+            app.logger.info(f"[last-receipt] items_list type={type(items_list)}, length={len(items_list) if items_list else 0}")
+            if items_list:
+                for idx, item in enumerate(items_list[:5]):
+                    app.logger.info(f"[last-receipt] item[{idx}] type={type(item)}, value={repr(item)}")
+            items = [item.get("name", "") if isinstance(item, dict) else item for item in (items_list or []) if (item.get("name", "") if isinstance(item, dict) else item)][:3]
+            app.logger.info(f"[last-receipt] Extracted items: {items}")
         except Exception as e:
-            app.logger.warning(f"[last-receipt] Failed to parse items: {e}")
+            app.logger.warning(f"[last-receipt] Failed to parse items: {e}", exc_info=True)
 
         app.logger.info(f"[last-receipt] Returning items: {items}")
         return jsonify({
