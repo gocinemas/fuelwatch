@@ -29285,8 +29285,13 @@ def api_home_week_full():
             .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
             .execute().data or []
 
+        print(f"[week-full] Total saves this week: {len(all_week_saves)}")
+        if all_week_saves:
+            print(f"[week-full] Sample saves: {[{'title': s.get('title'), 'source': s.get('source'), 'created_at': s.get('created_at')} for s in all_week_saves[:3]]}")
+
         # Filter to receipts only (source="receipt" OR title starts with 🧾)
         receipt_rows = [s for s in all_week_saves if s.get("source") == "receipt" or (s.get("title") or "").startswith("🧾")]
+        print(f"[week-full] Receipts found: {len(receipt_rows)}")
 
         # Extract amount from receipt summaries (format: "🧾 Merchant · £amount")
         import re as _re_week
