@@ -29072,30 +29072,36 @@ def api_weekly_intelligence():
 
         app.logger.info(f"[weekly-intel] Phone: {phone_clean}, dates: {week_start} to {week_end}")
 
-        # Fetch receipts from last 7 days
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date") \
-            .eq("phone", phone_clean) \
-            .gte("shop_date", week_start) \
-            .lte("shop_date", week_end) \
-            .order("shop_date", desc=True) \
+        # Fetch from wa_saves (same as home page spend card) - has current data
+        rows = lib._sb().table("wa_saves").select("summary,created_at") \
+            .eq("from_number", from_number) \
+            .eq("source", "receipt") \
+            .gte("created_at", week_start) \
+            .lte("created_at", week_end) \
+            .order("created_at", desc=True) \
             .execute().data or []
 
-        app.logger.info(f"[weekly-intel] Found {len(rows)} receipts")
+        app.logger.info(f"[weekly-intel] Found {len(rows)} receipts from wa_saves")
 
-        # Parse spending
+        # Parse spending from wa_saves format: "🧾 Merchant · £amount"
+        import re as _re_intel
         total_spend = 0
         by_category = {}
         by_merchant = {}
 
         for r in rows:
             try:
-                merchant = r.get("merchant") or "Unknown"
-                amt = float(r.get("total", 0) or 0)
-                cat = "Groceries"  # Default category
+                summary = r.get("summary", "")
+                # Extract merchant and amount from "🧾 Merchant Name · £12.34"
+                match = _re_intel.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary)
+                if match:
+                    merchant = match.group(1).strip()
+                    amt = float(match.group(2))
+                    cat = "Groceries"  # Default category
 
-                by_category[cat] = by_category.get(cat, 0) + amt
-                by_merchant[merchant] = by_merchant.get(merchant, 0) + amt
-                total_spend += amt
+                    by_category[cat] = by_category.get(cat, 0) + amt
+                    by_merchant[merchant] = by_merchant.get(merchant, 0) + amt
+                    total_spend += amt
             except Exception as item_err:
                 app.logger.warning(f"[weekly-intel] Item parse error: {item_err}")
                 continue
