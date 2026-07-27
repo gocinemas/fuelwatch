@@ -19896,11 +19896,15 @@ let _savesAll = [];
                 if (d.merchant && d.merchant.startsWith('Online:')) {
                   el.innerHTML = '';
                 } else {
+                  console.log('[receipt] Full response:', JSON.stringify(d));
+                  console.log('[receipt] Items data:', d.items);
                   var itemsHtml = '';
                   if (d.items && d.items.length) {
+                    console.log('[receipt] Found ' + d.items.length + ' items');
                     var itemsToShow = d.items.slice(0, 2);
                     var extraCount = Math.max(0, d.items.length - 2);
                     var itemsText = itemsToShow.map(i => typeof i === 'string' ? i : (i.name || '')).filter(Boolean).join(', ');
+                    console.log('[receipt] Items text:', itemsText);
                     var expandBtnId = 'receipt-expand-' + Date.now();
                     var itemsDetailId = 'receipt-items-' + Date.now();
 
