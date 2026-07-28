@@ -28033,29 +28033,27 @@ document.addEventListener('keydown', function(e) {
           }
         }
 
-        // Display insights if any
-        if (insightsList.length > 0) {
-          const insightsDiv = document.createElement('div');
-          insightsDiv.style.cssText = 'background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #7dd3fc;border-radius:12px;padding:12px;margin-bottom:16px;font-size:12px;line-height:1.6;color:#0369a1';
-          insightsDiv.innerHTML = insightsList.map(i => `<div>• ${i}</div>`).join('');
-          document.getElementById('sw-content').insertBefore(insightsDiv, document.getElementById('sw-content').firstChild);
+        // Display insights
+        const insightsEl = document.getElementById('sw-insights');
+        if (insightsEl) {
+          insightsEl.innerHTML = insightsList.length > 0
+            ? insightsList.map(i => `<div style="margin-bottom:8px">• ${i}</div>`).join('')
+            : '<div style="color:var(--muted)">No insights available</div>';
         }
 
-        // THIS WEEK - Top row
+        // Key metrics
         document.getElementById('sw-this-spend').textContent = '£' + d.this_week.spend.toFixed(2);
-        document.getElementById('sw-this-spend-cat').textContent = topCat ? topCat : '—';
+        document.getElementById('sw-this-spend-cat').textContent = topCat ? topCat : 'No spending';
 
         document.getElementById('sw-this-saves').textContent = d.this_week.saves.total;
         const savesTypes = [d.this_week.saves.books && d.this_week.saves.books + ' 📚',
                            d.this_week.saves.shows && d.this_week.saves.shows + ' 📺',
                            d.this_week.saves.articles && d.this_week.saves.articles + ' 📰'].filter(Boolean).join(', ');
-        document.getElementById('sw-this-saves-types').textContent = savesTypes || '—';
+        document.getElementById('sw-this-saves-types').textContent = savesTypes || 'No saves';
 
-        document.getElementById('sw-this-school').textContent = d.this_week.school_events;
-
-        // THIS WEEK - Bottom row
+        // Activity metrics
         document.getElementById('sw-this-cafes').textContent = d.this_week.cafe_visits;
-        document.getElementById('sw-this-cafes-top').textContent = topCafe ? topCafe.name : '—';
+        document.getElementById('sw-this-cafes-top').textContent = topCafe ? topCafe.name : 'No data';
 
         // Spend breakdown showing merchants per category (clickable)
         const breakdownEl = document.getElementById('sw-spend-breakdown');
@@ -28090,16 +28088,6 @@ document.addEventListener('keydown', function(e) {
           : '<div style="color:var(--muted);text-align:center">No saves this week</div>';
         savesEl.innerHTML = savesHTML;
 
-        // LAST WEEK
-        document.getElementById('sw-last-spend').textContent = '£' + d.last_week.spend.toFixed(2);
-        document.getElementById('sw-last-saves').textContent = d.last_week.saves;
-
-        const topPlacesEl = document.getElementById('sw-last-topplaces');
-        const topPlacesHtml = d.last_week.top_cafes
-          .map(p => `<div style="display:flex;justify-content:space-between;font-size:12px"><span>${p.name}</span><strong>${p.visits}x</strong></div>`)
-          .join('');
-        topPlacesEl.innerHTML = topPlacesHtml || '<div style="color:var(--muted);font-size:12px;text-align:center">No data</div>';
-
         // TRENDS
         const trendsEl = document.getElementById('sw-trends');
         const spendTrend = d.trends.spend_direction === 'up' ? '📈' : '📉';
@@ -28118,25 +28106,6 @@ document.addEventListener('keydown', function(e) {
         loading.textContent = '⚠️ Error loading your week';
       });
   }
-
-  // Intelligence Hub — fetch and populate all insights
-
-  // Ensure Intelligence button is visible
-  setTimeout(function() {
-    const sidebar = document.getElementById('desktop-sidebar');
-    const headerBtn = document.getElementById('intelligence-header-btn');
-    if (!sidebar || getComputedStyle(sidebar).display === 'none') {
-      // Sidebar not visible, show header button
-      if (headerBtn) headerBtn.style.display = 'block';
-    }
-    // Also ensure sidebar Intelligence button is visible (force display)
-    const sidebarBtn = document.getElementById('sb-intelligence');
-    if (sidebarBtn) {
-      sidebarBtn.style.display = 'flex !important';
-      sidebarBtn.style.visibility = 'visible !important';
-      sidebarBtn.style.opacity = '1 !important';
-    }
-  }, 100);
 
   // Check onboarding on app load
   setTimeout(_onboardingCheckStatus, 500);
