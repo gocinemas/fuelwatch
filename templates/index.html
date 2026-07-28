@@ -16498,99 +16498,72 @@ _bkBadge();
 
 <!-- YOUR WEEK ANALYTICS SCREEN -->
 <div id="screen-week" class="screen pt-5">
-  <div style="padding:0 16px;max-width:600px;margin:0 auto">
-    <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">📊 YOUR WEEK</div>
-    <div id="sw-period" style="font-size:12px;font-weight:700;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px;display:inline-block;margin-bottom:16px">loading...</div>
+  <div style="padding:0 16px 32px;max-width:700px;margin:0 auto">
+    <!-- Header -->
+    <div style="margin-bottom:24px">
+      <div style="font-size:24px;font-weight:900;color:var(--text);margin-bottom:12px">📊 YOUR WEEK</div>
+      <div id="sw-period" style="font-size:13px;font-weight:600;color:var(--muted)">loading...</div>
+    </div>
 
     <!-- Loading state -->
-    <div id="sw-loading" style="text-align:center;padding:40px 0;color:var(--muted)">⏳ Loading your week...</div>
+    <div id="sw-loading" style="text-align:center;padding:60px 20px;color:var(--muted)">⏳ Loading your week...</div>
 
     <!-- Data content (hidden while loading) -->
     <div id="sw-content" style="display:none">
-      <!-- THIS WEEK -->
-      <div style="margin-bottom:20px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">This Week</div>
-
-        <!-- 3-column grid: Spend, Saves, School -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
-          <!-- Spend -->
-          <div style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #7dd3fc;border-radius:12px;padding:12px;text-align:center">
-            <div style="font-size:11px;font-weight:600;color:#0369a1;margin-bottom:4px">Spend</div>
-            <div id="sw-this-spend" style="font-size:18px;font-weight:800;color:#111">—</div>
-            <div id="sw-this-spend-cat" style="font-size:10px;color:var(--muted);margin-top:2px">—</div>
-          </div>
-
-          <!-- Saves -->
-          <div style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #86efac;border-radius:12px;padding:12px;text-align:center">
-            <div style="font-size:11px;font-weight:600;color:#16a34a;margin-bottom:4px">Saves</div>
-            <div id="sw-this-saves" style="font-size:18px;font-weight:800;color:#111">—</div>
-            <div id="sw-this-saves-types" style="font-size:10px;color:var(--muted);margin-top:2px">—</div>
-          </div>
-
-          <!-- School -->
-          <div style="background:linear-gradient(135deg,#fef3c7 0%,#fed7aa 100%);border:1px solid #fde047;border-radius:12px;padding:12px;text-align:center">
-            <div style="font-size:11px;font-weight:600;color:#b45309;margin-bottom:4px">School</div>
-            <div id="sw-this-school" style="font-size:18px;font-weight:800;color:#111">—</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">events</div>
-          </div>
+      <!-- KEY METRICS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px">
+        <!-- Spend -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Total Spend</div>
+          <div id="sw-this-spend" style="font-size:28px;font-weight:800;color:#0369a1;margin-bottom:4px">—</div>
+          <div id="sw-this-spend-cat" style="font-size:13px;color:var(--muted)">—</div>
         </div>
 
-        <!-- Row 2: Cafes, Trains, Calendar -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
-          <!-- Cafes -->
-          <div style="background:linear-gradient(135deg,#fff5e6 0%,#ffe8cc 100%);border:1px solid #fed7aa;border-radius:12px;padding:12px;text-align:center">
-            <div style="font-size:11px;font-weight:600;color:#d97706;margin-bottom:4px">☕ Cafes</div>
-            <div id="sw-this-cafes" style="font-size:18px;font-weight:800;color:#111">—</div>
-            <div id="sw-this-cafes-top" style="font-size:10px;color:var(--muted);margin-top:2px">—</div>
-          </div>
-
-          <!-- Trains (placeholder for future) -->
-          <div style="background:linear-gradient(135deg,#f3e8ff 0%,#ede9fe 100%);border:1px solid #ddd6fe;border-radius:12px;padding:12px;text-align:center;opacity:0.5">
-            <div style="font-size:11px;font-weight:600;color:#6d28d9;margin-bottom:4px">🚆 Trains</div>
-            <div style="font-size:18px;font-weight:800;color:#111">—</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">journeys</div>
-          </div>
-
-          <!-- Calendar (placeholder for future) -->
-          <div style="background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%);border:1px solid #fecaca;border-radius:12px;padding:12px;text-align:center;opacity:0.5">
-            <div style="font-size:11px;font-weight:600;color:#dc2626;margin-bottom:4px">📅 Calendar</div>
-            <div style="font-size:18px;font-weight:800;color:#111">—</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">events</div>
-          </div>
-        </div>
-
-        <!-- Spend breakdown by category -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase">💳 Spend Breakdown</div>
-          <div id="sw-spend-breakdown" style="display:flex;flex-direction:column;gap:6px">
-            <div style="color:var(--muted);font-size:12px;text-align:center">Loading...</div>
-          </div>
-        </div>
-
-        <!-- School events this week -->
-        <div style="background:linear-gradient(135deg,#fef3c7 0%,#fed7aa 100%);border:1px solid #fde047;border-radius:10px;padding:12px">
-          <div style="font-size:11px;font-weight:700;color:#b45309;margin-bottom:8px">🏫 School Events</div>
-          <div id="sw-school-events" style="display:flex;flex-direction:column;gap:6px;font-size:12px">
-            <div style="color:var(--muted);text-align:center">Loading...</div>
-          </div>
-        </div>
-
-        <!-- Recent saves -->
-        <div style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #86efac;border-radius:10px;padding:12px;margin-top:12px">
-          <div style="font-size:11px;font-weight:700;color:#16a34a;margin-bottom:8px">📌 What You Saved</div>
-          <div id="sw-saves-list" style="display:flex;flex-direction:column;gap:6px;font-size:12px">
-            <div style="color:var(--muted);text-align:center">Loading...</div>
-          </div>
+        <!-- Saves -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Saved Items</div>
+          <div id="sw-this-saves" style="font-size:28px;font-weight:800;color:#16a34a;margin-bottom:4px">—</div>
+          <div id="sw-this-saves-types" style="font-size:13px;color:var(--muted)">—</div>
         </div>
       </div>
 
+      <!-- INSIGHTS -->
+      <div id="sw-insights" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:32px;font-size:14px;line-height:1.7;color:var(--text)"></div>
+
+      <!-- SPEND BREAKDOWN -->
+      <div style="margin-bottom:32px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px">💳 Spending by Category</div>
+        <div id="sw-spend-breakdown" style="display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"></div>
+      </div>
+
+      <!-- ACTIVITY -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px">
+        <!-- School Events -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase">🏫 School</div>
+          <div id="sw-school-events" style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+            <div style="color:var(--muted);text-align:center;padding:20px 0">—</div>
+          </div>
+        </div>
+
+        <!-- Cafes -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase">☕ Cafes</div>
+          <div style="font-size:18px;font-weight:800;color:#d97706" id="sw-this-cafes">—</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px" id="sw-this-cafes-top">—</div>
+        </div>
+      </div>
+
+      <!-- RECENT SAVES -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">📌 Recently Saved</div>
+        <div id="sw-saves-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
 
       <!-- TRENDS -->
-      <div style="margin-top:24px;padding:16px;background:linear-gradient(135deg,#f0f9ff 0%,#f8fbff 100%);border:1px solid #7dd3fc;border-radius:12px">
-        <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:8px;text-transform:uppercase">📈 Trends</div>
-        <div id="sw-trends" style="font-size:13px;color:var(--text);line-height:1.6">
-          <div style="color:var(--muted)">Loading...</div>
-        </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase">📈 vs Last Week</div>
+        <div id="sw-trends" style="font-size:13px;color:var(--text);line-height:1.8"></div>
       </div>
     </div>
   </div>
