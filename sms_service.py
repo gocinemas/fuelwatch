@@ -29244,9 +29244,12 @@ def api_home_week_full():
     if not wa:
         wa = (request.cookies.get("miru_saves_phone") or "").strip()
     if not wa:
-        return jsonify({"error": "wa required"}), 400
+        return jsonify({"success": False, "error": "wa required"}), 400
 
     from_number = _v2_resolve(wa)
+    if not from_number:
+        return jsonify({"success": False, "error": "Invalid phone number"}), 400
+
     now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
     today = now.date()
 
@@ -29479,9 +29482,14 @@ def api_home_week_full():
 
     except Exception as e:
         import traceback
-        print(f"[week-full] error: {e}")
+        error_msg = str(e)
+        print(f"[week-full] error: {error_msg}")
         print(traceback.format_exc())
-        return jsonify({"success": False, "error": str(e), "type": type(e).__name__}), 500
+        return jsonify({
+            "success": False,
+            "error": error_msg,
+            "type": type(e).__name__
+        }), 200  # Return 200 so frontend can handle gracefully
 
 
 @app.route("/api/school/diag")
