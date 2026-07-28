@@ -29269,7 +29269,13 @@ def api_home_week_full():
 
     try:
         print(f"[week-full] Starting: wa={wa}, from_number={from_number}")
-        sb = lib._sb()
+        try:
+            sb = lib._sb()
+            print(f"[week-full] Supabase connected")
+        except Exception as sb_err:
+            print(f"[week-full] Supabase connection failed: {sb_err}")
+            raise
+
         phone = from_number.replace("whatsapp:", "")
         print(f"[week-full] Phone resolved: {phone}")
 
@@ -29288,11 +29294,16 @@ def api_home_week_full():
 
         # Fetch receipts for the week
         spend_rows = []
-        all_week_saves = sb.table("wa_saves").select("summary,title,created_at,source") \
-            .eq("from_number", from_number) \
-            .gte("created_at", week_start.isoformat()) \
-            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
-            .execute().data or []
+        try:
+            all_week_saves = sb.table("wa_saves").select("summary,title,created_at,source") \
+                .eq("from_number", from_number) \
+                .gte("created_at", week_start.isoformat()) \
+                .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
+                .execute().data or []
+            print(f"[week-full] Fetched {len(all_week_saves)} saves from {week_start} to {week_end}")
+        except Exception as q_err:
+            print(f"[week-full] wa_saves query failed: {q_err}")
+            raise
 
         # Filter to receipts only (source="receipt" OR title starts with 🧾)
         receipt_rows = [s for s in all_week_saves if s.get("source") == "receipt" or (s.get("title") or "").startswith("🧾")]
@@ -29346,23 +29357,28 @@ def api_home_week_full():
 
         # Categorize spend by merchant (also track merchants for detail)
         merchants_by_cat = {}  # Track merchant details per category
-        for r in spend_rows:
-            merchant = r.get("merchant", "Unknown")
-            # Use manually-set category if available, otherwise fall back to merchant-based categorization
-            if r.get("category") and r.get("category") != "Other":
-                cat = r.get("category")
-            else:
-                cat = _receipt_category(merchant)
-            amount = float(r.get("total", 0) or 0)
-            if cat not in this_week["spend_by_category"]:
-                this_week["spend_by_category"][cat] = {"total": 0, "count": 0, "merchants": []}
-                merchants_by_cat[cat] = {}
-            this_week["spend_by_category"][cat]["total"] += amount
-            this_week["spend_by_category"][cat]["count"] += 1
-            # Track merchants per category
-            if merchant not in merchants_by_cat[cat]:
-                merchants_by_cat[cat][merchant] = 0
-            merchants_by_cat[cat][merchant] += amount
+        try:
+            for r in spend_rows:
+                merchant = r.get("merchant", "Unknown")
+                # Use manually-set category if available, otherwise fall back to merchant-based categorization
+                if r.get("category") and r.get("category") != "Other":
+                    cat = r.get("category")
+                else:
+                    cat = _receipt_category(merchant)
+                amount = float(r.get("total", 0) or 0)
+                if cat not in this_week["spend_by_category"]:
+                    this_week["spend_by_category"][cat] = {"total": 0, "count": 0, "merchants": []}
+                    merchants_by_cat[cat] = {}
+                this_week["spend_by_category"][cat]["total"] += amount
+                this_week["spend_by_category"][cat]["count"] += 1
+                # Track merchants per category
+                if merchant not in merchants_by_cat[cat]:
+                    merchants_by_cat[cat][merchant] = 0
+                merchants_by_cat[cat][merchant] += amount
+            print(f"[week-full] Categorized {len(spend_rows)} receipts into {len(merchants_by_cat)} categories")
+        except Exception as cat_err:
+            print(f"[week-full] Categorization failed: {cat_err}")
+            raise
 
         # Add merchant details to categories
         for cat in this_week["spend_by_category"]:
