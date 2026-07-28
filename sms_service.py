@@ -29076,13 +29076,16 @@ def api_weekly_intelligence():
         app.logger.info(f"[weekly-intel] Phone: {phone_clean}, dates: {week_start} to {week_end}")
 
         # Fetch from wa_saves (same as home page spend card) - has current data
-        rows = lib._sb().table("wa_saves").select("summary,created_at") \
+        # Filter to receipts only by title marker (🧾)
+        all_saves = lib._sb().table("wa_saves").select("summary,title,created_at") \
             .eq("from_number", from_number) \
-            .eq("source", "receipt") \
             .gte("created_at", week_start) \
             .lte("created_at", week_end) \
             .order("created_at", desc=True) \
             .execute().data or []
+
+        # Filter to receipts only (title starts with 🧾)
+        rows = [r for r in all_saves if (r.get("title") or "").startswith("🧾")]
 
         app.logger.info(f"[weekly-intel] Found {len(rows)} receipts from wa_saves")
 
