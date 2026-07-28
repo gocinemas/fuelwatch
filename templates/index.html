@@ -28599,10 +28599,13 @@ document.addEventListener('keydown', function(e) {
       fetch(`/api/home/weekly-intelligence?token=${encodeURIComponent(token)}`).then(r => r.json()).catch(() => ({success: false}))
     ])
       .then(([d, aiData]) => {
+        console.log('Week data received:', d);
         if (!d.success) {
           loading.textContent = '⚠️ Could not load your week';
+          console.error('Week data error:', d.error);
           return;
         }
+        console.log('Week data success, processing...');
 
         // Populate period
         document.getElementById('sw-period').textContent = d.this_week.period;
