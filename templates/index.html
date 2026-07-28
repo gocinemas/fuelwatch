@@ -774,7 +774,6 @@
   {% if not intel_mode %}
   <nav id="desktop-sidebar" aria-label="Main navigation">
     <button class="sb-btn on" id="sb-home"   title="Home"      onclick="showHome()">🏠</button>
-    <button class="sb-btn"    id="sb-intelligence" title="Intelligence Hub" onclick="showScreen('intelligence');_intelligenceLoad()">🧠</button>
     <button class="sb-btn"    id="sb-week" title="Your Week"   onclick="showScreen('week')">📊</button>
     <button class="sb-btn"    id="sb-receipts" title="Receipts" onclick="showScreen('receipts');_receiptsAnalysisLoad()">💰</button>
     <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
@@ -788,16 +787,6 @@
   </nav>
   {% endif %}
 
-  <!-- Intelligence Access: Multiple ways to see it -->
-  <!-- 1. Mobile Intelligence Button (bottom right) -->
-  <button id="mobile-intelligence-btn" title="Intelligence Hub" onclick="showScreen('intelligence');_intelligenceLoad()">🧠</button>
-
-  <!-- 2. Fallback: Intelligence link in header if sidebar not visible -->
-  <div id="intelligence-header-btn" style="display: none; position: fixed; top: 16px; right: 120px; z-index: 50;">
-    <button onclick="showScreen('intelligence');_intelligenceLoad()" style="background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);">
-      🧠 Intelligence
-    </button>
-  </div>
 
   <div id="app-main" class="max-w-xl mx-auto px-4 main-content">
 
@@ -17235,19 +17224,6 @@ _bkBadge();
 </div>
 
 <!-- ── INTELLIGENCE HUB ── -->
-<div id="screen-intelligence" class="screen pt-5">
-  <div style="padding:0 16px;max-width:700px;margin:0 auto">
-    <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">🧠 INTELLIGENCE HUB</div>
-    <div style="font-size:12px;font-weight:700;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px;display:inline-block;margin-bottom:16px" id="intel-timestamp">loading...</div>
-
-    <!-- Loading state -->
-    <div id="intel-loading" style="text-align:center;padding:60px 0;color:var(--muted)">
-      <div style="font-size:32px;margin-bottom:8px">⏳</div>
-      <div>Analyzing your data...</div>
-    </div>
-
-    <!-- Main content (hidden while loading) -->
-    <div id="intel-content" style="display:none">
       <!-- FUEL DETAILS SECTION -->
       <div style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #7dd3fc;border-radius:12px;padding:14px;margin-bottom:16px">
         <div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:10px;text-transform:uppercase">⛽ Fuel Intelligence</div>
@@ -17352,14 +17328,6 @@ _bkBadge();
         </div>
       </div>
 
-      <!-- ERROR STATE (if any) -->
-      <div id="intel-error" style="display:none;background:#fee2e2;border:1px solid #fecaca;border-radius:12px;padding:14px;margin-bottom:16px;color:#991b1b">
-        <div style="font-weight:700;margin-bottom:4px">⚠️ Could not generate insights</div>
-        <div id="intel-error-msg" style="font-size:12px">—</div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div id="screen-saves" class="screen pt-5">
   <!-- Onboarding: shown when no token exists (first visit, no WhatsApp link yet) -->

@@ -1,376 +1,220 @@
 """
-Miru Intelligence Engine - Agentic Reasoning Across All Modules
+Miru Intelligence Engine - Solid, Thorough User Insights
 
-Synthesizes data from receipts, fuel, school, calendar, saves, and commute
-to provide personalized insights, forecasts, and recommendations.
-
-Uses intelligence_optimizer for smart Groq/Anthropic routing:
-- Groq for reasoning (60x cheaper, fast)
-- Anthropic for fallback/high-quality needs
-- Caching for repeated requests (90% savings)
+Generates comprehensive spending analysis, patterns, and actionable insights
+using consistent global constants and UK-centric logic.
 """
 
-# ⚠️  Patch gevent FIRST before any async HTTP imports (Groq, Anthropic, Supabase use httpx)
-from gevent import monkey as _gmonkey
-_gmonkey.patch_all(thread=True, socket=True, ssl=True)
-
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-import os
+from datetime import datetime, timedelta, date
+from typing import Dict, Any, List, Optional
+from collections import Counter, defaultdict
+import logging
 
-# Groq LLM for agentic reasoning (primary)
-from groq import Groq
+from constants import (
+    TIMEZONE, CURRENCY_SYMBOL, DATE_FORMAT_DISPLAY,
+    SPEND_CATEGORIES, now_london, today_london,
+    DAILY_SPEND_WARNING, WEEKLY_SPEND_WARNING, CAFE_VISIT_FREQUENCY,
+    MAX_RECENT_ITEMS, MAX_TOP_ITEMS, DECIMAL_PLACES_CURRENCY
+)
 
-# Anthropic as fallback
-from anthropic import Anthropic
+logger = logging.getLogger(__name__)
 
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-anthropic_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+def _receipt_category(merchant: str) -> str:
+    """Categorize merchant into spend category. Uses global SPEND_CATEGORIES."""
+    m = (merchant or "").lower().strip()
+    if not m:
+        return "Other"
+
+    # Parking
+    if any(k in m for k in ["parking", "ncp", "q-park", "apcoa", "justpark", "ringgo"]):
+        return "Parking"
+
+    # Fuel
+    if any(k in m for k in ["fuel", "petrol", "shell", "bp", "esso", "tesco petrol", "asda fuel"]):
+        return "Fuel"
+
+    # Groceries
+    if any(k in m for k in ["tesco", "sainsbury", "asda", "morrisons", "waitrose", "aldi", "lidl", "co-op"]):
+        return "Groceries"
+
+    # Coffee & Lunch
+    if any(k in m for k in ["pret", "starbucks", "costa", "greggs", "leon", "itsu", "costa"]):
+        return "Coffee & Lunch"
+
+    # Dining
+    if any(k in m for k in ["nando", "wagamama", "pizza express", "zizzi", "restaurant", "pub "]):
+        return "Dining"
+
+    # Takeaway
+    if any(k in m for k in ["takeaway", "curry", "indian", "chinese", "thai", "pizza"]):
+        return "Takeaway"
+
+    # Transport
+    if any(k in m for k in ["national express", "stagecoach", "uber", "taxi", "train", "railway"]):
+        return "Transport"
+
+    # Shopping
+    if any(k in m for k in ["amazon", "ebay", "john lewis", "next", "next plc"]):
+        return "Shopping"
+
+    # Entertainment
+    if any(k in m for k in ["cinema", "cinema", "netflix", "spotify", "ticket", "concert"]):
+        return "Entertainment"
+
+    # Health
+    if any(k in m for k in ["boots", "pharmacy", "doctor", "gp", "dentist", "gym"]):
+        return "Health"
+
+    return "Other"
 
 
 class MiruIntelligence:
-    """Main intelligence engine for Miru."""
+    """Main intelligence engine for comprehensive spending insights."""
 
-    def __init__(self):
-        self.model = "llama-3.1-8b-instant"  # Fast, reasoning-capable (mixtral-8x7b-32768 decommissioned)
-
-    def _format_data_summary(self, data: Dict) -> str:
-        """Format user data for agentic reasoning prompt."""
-        return f"""
-User Data Summary:
-─────────────────
-RECEIPTS (This Week):
-  Total spend: £{data.get('spend_total', 0):.2f}
-  Categories: {json.dumps(data.get('spend_by_category', {}), indent=2)}
-  Top merchants: {', '.join(data.get('top_merchants', []))}
-
-FUEL DATA:
-  Last fill: £{data.get('last_fuel_amount', 0):.2f} @ {data.get('last_fuel_price', 'N/A')}p/L on {data.get('last_fuel_date', 'N/A')}
-  Current fuel price: {data.get('current_fuel_price', 'N/A')}p/L
-  Price trend: {data.get('fuel_price_trend', 'N/A')}
-  Days since last fill: {data.get('days_since_fuel', 'N/A')}
-
-SCHOOL EVENTS:
-  Events this week: {data.get('school_events_count', 0)}
-  Busiest day: {data.get('busiest_school_day', 'N/A')}
-
-SPENDING PATTERN:
-  Last week: £{data.get('last_week_spend', 0):.2f}
-  Average weekly: £{data.get('avg_weekly_spend', 0):.2f}
-  Trend: {data.get('spend_trend', 'N/A')}
-
-CAFE/LOCATION:
-  Cafe visits this week: {data.get('cafe_visits', 0)}
-  Top location: {data.get('top_location', 'N/A')}
-
-SAVES:
-  This week: {data.get('saves_count', 0)}
-  Last week: {data.get('last_week_saves', 0)}
-"""
-
-    def generate_insights(self, data: Dict, use_anthropic_fallback: bool = False) -> Dict[str, Any]:
-        """
-        Agentic reasoning across all modules to generate insights.
-        Routes smartly between Groq (primary) and Anthropic (fallback).
-        Returns: structured insights with forecasts, recommendations, anomalies.
-        """
-
-        data_summary = self._format_data_summary(data)
-
-        # PRE-CHECK: If user filled up very recently (last 24h), don't suggest filling up
-        days_since_fuel = data.get('days_since_fuel', 999)
-        just_filled_up = days_since_fuel is not None and days_since_fuel <= 1
-
-        fuel_instruction = ""
-        if just_filled_up:
-            fuel_instruction = """
-CRITICAL: User JUST FILLED UP (within last 24 hours).
-DO NOT suggest filling up now. Instead:
-  - Note the recent fill (amount, price, date)
-  - Compare price to current (up/down)
-  - Suggest NEXT fill in 5-7 days based on typical usage
-  - NOT an urgent action right now
-"""
-        else:
-            fuel_instruction = """
-Based on days since last fill and consumption pattern, suggest when they should fill up next.
-"""
-
-        prompt = f"""{data_summary}
-
-SHARP, SPECIFIC INSIGHTS. Use actual data above. No generic advice.
-
-RESPOND WITH VALID JSON ONLY (no markdown, no text outside JSON).
-
-{{
-  "fuel": {{
-    "price_trend": "up or down or stable",
-    "percent_change": 2.5,
-    "next_fill_days": 5,
-    "recommendation": "SPECIFIC action: e.g. 'Fill at Tesco (saves 3p/L)'"
-  }},
-  "spend": {{
-    "trend": "up or down or stable",
-    "vs_normal": "e.g. '-15% vs normal'",
-    "forecast_next_week": 120,
-    "top_saving": "SPECIFIC: e.g. 'Coffee at home 2x/week = £50/month saved'"
-  }},
-  "location": {{
-    "most_visited": "actual top merchant",
-    "cost_per_visit": 26.5,
-    "alternative": "specific competitor name",
-    "savings": "e.g. 'Switch from X to Y = £120/year'"
-  }},
-  "school": {{
-    "busy_level": "normal or busy or very_busy",
-    "impact": "SPECIFIC effect: e.g. 'Wednesday adds 30min drive'",
-    "next_busy_day": "actual busiest day"
-  }},
-  "lifestyle": {{
-    "change": "OBSERVED from data: e.g. 'Cafe visits up 40%'",
-    "activity_level": "normal or increased or decreased"
-  }},
-  "anomalies": ["REAL issues: e.g. 'No fuel in 8 days (risky)'"],
-  "recommendations": ["High-impact action with £ estimate", "Action 2", "Action 3"],
-  "forecast": {{
-    "next_week_spend": 125,
-    "next_fuel_date": "specific date",
-    "action_items": ["Exact action to take"]
-  }}
-}}
-
-Return ONLY valid JSON. No markdown, no text."""
-
-        try:
-            # Route to Groq (primary) or Anthropic (fallback)
-            if use_anthropic_fallback or not os.environ.get("GROQ_API_KEY"):
-                # Use Anthropic Claude 3.5 Sonnet (higher quality, higher cost)
-                print("[intelligence] Using Anthropic (fallback/high-quality)")
-                message = anthropic_client.messages.create(
-                    model="claude-opus-4-1",  # Fallback: use Opus for high quality when Groq unavailable
-                    max_tokens=2000,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                )
-                response_text = message.content[0].text.strip()
-            else:
-                # Use Groq Mixtral (60x cheaper, fast, good reasoning)
-                print("[intelligence] Using Groq (primary, cost-optimized)")
-                message = groq_client.chat.completions.create(
-                    model=self.model,
-                    max_tokens=2000,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                )
-                response_text = message.choices[0].message.content.strip()
-            print(f"[intelligence] Response: {response_text[:100]}...")
-
-            # Extract JSON from response
-            start = response_text.find('{')
-            end = response_text.rfind('}') + 1
-
-            if start >= 0 and end > start:
-                json_str = response_text[start:end]
-                try:
-                    insights = json.loads(json_str)
-                    print(f"[intelligence] ✅ Parsed successfully")
-                    return insights
-                except json.JSONDecodeError as je:
-                    print(f"[intelligence] JSON error: {je}")
-                    # Try to fix common issues
-                    json_str = json_str.replace(",}", "}").replace(",]", "]")
-                    # Replace null with defaults (0 for numbers, empty string for text)
-                    json_str = json_str.replace(": null,", ': 0,').replace(": null}", ': 0}')
-                    try:
-                        insights = json.loads(json_str)
-                        print(f"[intelligence] ✅ Fixed and parsed")
-                        return insights
-                    except:
-                        print(f"[intelligence] ❌ Still invalid after fixes")
-                        pass
-
-            print(f"[intelligence] Failed to extract JSON")
-            insights = {}
-
-        except Exception as e:
-            print(f"[intelligence] Error generating insights: {type(e).__name__}: {e}")
-            # Don't cascade to Anthropic - just return empty insights with error
-            # (cascading causes additional errors and delays)
-            return {
-                "fuel": {},
-                "spend": {},
-                "location": {},
-                "school": {},
-                "lifestyle": {},
-                "anomalies": [],
-                "recommendations": [],
-                "forecast": {},
-                "error": f"Failed to generate insights: {str(e)[:100]}"
-            }
+    def __init__(self, sb=None):
+        """Initialize with optional Supabase connection."""
+        self.sb = sb
+        self.logger = logging.getLogger(__name__)
 
     def get_full_intelligence(self, from_number: str, sb) -> Dict[str, Any]:
         """
-        Aggregates all user data and generates complete intelligence report.
-        This is the main entry point for the insights API.
+        Main entry point: aggregate all user data and generate insights.
+
+        Args:
+            from_number: WhatsApp format phone (whatsapp:+447911...)
+            sb: Supabase client instance
+
+        Returns:
+            {"success": True, "insights": {...}} or {"success": False, "error": "..."}
         """
-        import datetime as _dt
-
-        phone = from_number.replace("whatsapp:", "").strip()
-        now = _dt.datetime.utcnow()
-        today = now.date()
-        week_ago = today - _dt.timedelta(days=7)
-
-        # This week: Monday-Sunday (same as Your Week endpoint)
-        days_since_monday = today.weekday()
-        week_start = today - _dt.timedelta(days=days_since_monday)
-        week_end = week_start + _dt.timedelta(days=6)
-
-        # Aggregate all data
         try:
-            # This week's receipts (Monday-Sunday only)
-            receipts = sb.table("receipts").select("total,merchant,shop_date,restaurant_type") \
-                .eq("phone", phone) \
-                .gte("shop_date", week_start.isoformat()) \
-                .lte("shop_date", week_end.isoformat()) \
-                .execute().data or []
+            self.sb = sb
+            phone = from_number.replace("whatsapp:", "").strip()
 
-            spend_total = sum(float(r.get("total", 0)) for r in receipts)
+            if not self.sb:
+                return {"success": False, "error": "No database connection"}
 
-            # Category breakdown - categorize based on merchant name only
-            spend_by_category = {}
-            for r in receipts:
-                from sms_service import _receipt_category
-                merchant = r.get("merchant", "Unknown")
-                cat = _receipt_category(merchant)
-                if cat not in spend_by_category:
-                    spend_by_category[cat] = 0
-                spend_by_category[cat] += float(r.get("total", 0))
+            # Calculate week boundaries (Mon-Sun in London time)
+            today = today_london()
+            days_since_monday = today.weekday()
+            week_start = today - timedelta(days=days_since_monday)
+            week_end = week_start + timedelta(days=6)
 
-            # Top merchants
-            merchants = {}
-            for r in receipts:
-                m = r.get("merchant", "Unknown")
-                merchants[m] = merchants.get(m, 0) + float(r.get("total", 0))
-            top_merchants = sorted(merchants.items(), key=lambda x: x[1], reverse=True)[:5]
+            # Fetch this week's spend data
+            this_week_spend = self._analyze_spend(phone, week_start, week_end)
+            last_week_spend = self._analyze_spend(phone, week_start - timedelta(days=7), week_start - timedelta(days=1))
 
-            # Last week comparison (previous Monday-Sunday)
-            last_week_end = week_start - _dt.timedelta(days=1)
-            last_week_start = last_week_end - _dt.timedelta(days=6)
-            last_week_receipts = sb.table("receipts").select("total") \
-                .eq("phone", phone) \
-                .gte("shop_date", last_week_start.isoformat()) \
-                .lte("shop_date", last_week_end.isoformat()) \
-                .execute().data or []
-            last_week_spend = sum(float(r.get("total", 0)) for r in last_week_receipts)
-
-            # Fuel data - look at ALL receipts (not just this week) for last fill
-            all_receipts = sb.table("receipts").select("total,merchant,shop_date") \
-                .eq("phone", phone) \
-                .order("shop_date", desc=True).limit(100).execute().data or []
-
-            # Categorize receipts based on merchant name
-            def _get_effective_category(r):
-                return _receipt_category(r.get("merchant", ""))
-
-            fuel_receipts = [r for r in receipts if _get_effective_category(r) == "Fuel"]
-            last_fuel = fuel_receipts[0] if fuel_receipts else None
-
-            # If no fuel this week, check last month
-            if not last_fuel:
-                all_fuel = [r for r in all_receipts if _get_effective_category(r) == "Fuel"]
-                last_fuel = all_fuel[0] if all_fuel else None
-
-            # Get current fuel price (try fuel_prices table, then default to 150p as reference)
-            current_fuel_price = 150  # Default UK average
-            try:
-                fuel_prices = sb.table("fuel_prices").select("price_ppl").order("created_at", desc=True).limit(1).execute().data or []
-                if fuel_prices:
-                    current_fuel_price = fuel_prices[0].get("price_ppl", 150)
-            except:
-                pass
-
-            # School events
-            school_events = sb.table("school_events").select("event_date") \
-                .eq("from_number", from_number) \
-                .gte("event_date", today.isoformat()) \
-                .execute().data or []
-
-            # Saves
-            saves_this_week = sb.table("wa_saves").select("id") \
-                .eq("from_number", from_number) \
-                .gte("created_at", (today - _dt.timedelta(days=7)).isoformat()) \
-                .execute().data or []
-
-            saves_last_week = sb.table("wa_saves").select("id") \
-                .eq("from_number", from_number) \
-                .gte("created_at", (week_ago - _dt.timedelta(days=7)).isoformat()) \
-                .lte("created_at", week_ago.isoformat()) \
-                .execute().data or []
-
-            # Extract fuel price from merchant name if available (e.g. "Shell 145p")
-            last_fuel_price = None
-            last_fuel_merchant = "N/A"
-            if last_fuel:
-                merchant = last_fuel.get("merchant", "").strip()
-                # Normalize merchant name (testco → Tesco, etc.)
-                if merchant.lower() in ["testco", "test", "tesco"]:
-                    last_fuel_merchant = "Tesco"
-                else:
-                    last_fuel_merchant = merchant or "N/A"
-
-                # Try to extract price from merchant name (e.g. "Tesco Petrol 145p")
-                import re
-                price_match = re.search(r'(\d{2,3})p', merchant)
-                if price_match:
-                    last_fuel_price = int(price_match.group(1))
-                else:
-                    # If no price in merchant name, use current fuel price as estimate
-                    last_fuel_price = current_fuel_price
-
-            # Build data summary for intelligence engine
-            data = {
-                "spend_total": spend_total,
-                "spend_by_category": spend_by_category,
-                "top_merchants": [m[0] for m in top_merchants],
-                "last_week_spend": last_week_spend,
-                "avg_weekly_spend": (spend_total + last_week_spend) / 2,
-                "spend_trend": "up" if spend_total > last_week_spend else "down" if spend_total < last_week_spend else "stable",
-                "last_fuel_amount": float(last_fuel.get("total", 0)) if last_fuel else 0,
-                "last_fuel_merchant": last_fuel_merchant,  # Normalized merchant name
-                "last_fuel_date": last_fuel.get("shop_date", "N/A") if last_fuel else "N/A",
-                "last_fuel_price": last_fuel_price,
-                "current_fuel_price": current_fuel_price,
-                "days_since_fuel": (today - _dt.datetime.fromisoformat(last_fuel.get("shop_date", today.isoformat())).date()).days if last_fuel else 0,
-                "school_events_count": len(school_events),
-                "cafe_visits": len([r for r in receipts if _receipt_category(r.get("merchant", "")) in ["Coffee & Lunch", "Dining", "Takeaway"]]),
-                "top_location": top_merchants[0][0] if top_merchants else "N/A",
-                "saves_count": len(saves_this_week),
-                "last_week_saves": len(saves_last_week),
-                "receipts_count": len(receipts),
-            }
-
-            # Generate insights using agentic reasoning
-            insights = self.generate_insights(data)
+            # Generate insights
+            insights = self._generate_insights(this_week_spend, last_week_spend, phone)
 
             return {
                 "success": True,
-                "timestamp": now.isoformat(),
-                "data_summary": data,
-                "insights": insights
+                "insights": insights,
+                "data": {
+                    "this_week": this_week_spend,
+                    "last_week": last_week_spend,
+                },
+                "timestamp": now_london().isoformat(),
             }
 
         except Exception as e:
-            print(f"[intelligence] Error aggregating data: {e}")
+            self.logger.error(f"Intelligence generation failed: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
+
+    def _analyze_spend(self, phone: str, start_date: date, end_date: date) -> Dict[str, Any]:
+        """Analyze spending for a date range."""
+        try:
+            # Query wa_saves receipts
+            receipts = self.sb.table("wa_saves").select("summary,title,created_at") \
+                .eq("from_number", f"whatsapp:{phone}") \
+                .gte("created_at", start_date.isoformat()) \
+                .lte("created_at", (end_date + timedelta(days=1)).isoformat()) \
+                .execute().data or []
+
+            # Filter to receipts only (title starts with 🧾)
+            receipt_rows = [r for r in receipts if (r.get("title") or "").startswith("🧾")]
+
+            spend_total = 0.0
+            by_category = defaultdict(lambda: {"total": 0.0, "count": 0})
+            by_merchant = defaultdict(lambda: {"total": 0.0, "count": 0})
+
+            # Parse receipt amounts
+            for r in receipt_rows:
+                amount = self._extract_amount(r.get("summary", ""))
+                if amount > 0:
+                    merchant = (r.get("title") or "").replace("🧾", "").strip() or "Unknown"
+                    category = _receipt_category(merchant)
+
+                    spend_total += amount
+                    by_category[category]["total"] += amount
+                    by_category[category]["count"] += 1
+                    by_merchant[merchant]["total"] += amount
+                    by_merchant[merchant]["count"] += 1
+
             return {
-                "success": False,
-                "error": str(e)
+                "period": f"{start_date.strftime('%d %b')} — {end_date.strftime('%d %b')}",
+                "total": round(spend_total, DECIMAL_PLACES_CURRENCY),
+                "transaction_count": len(receipt_rows),
+                "by_category": dict(sorted(by_category.items(), key=lambda x: x[1]["total"], reverse=True)),
+                "by_merchant": dict(sorted(by_merchant.items(), key=lambda x: x[1]["total"], reverse=True)[:MAX_TOP_ITEMS]),
             }
+
+        except Exception as e:
+            self.logger.error(f"Spend analysis failed: {e}")
+            return {"period": "—", "total": 0, "transaction_count": 0, "by_category": {}, "by_merchant": {}}
+
+    def _extract_amount(self, summary: str) -> float:
+        """Extract £ amount from receipt summary."""
+        import re
+        patterns = [
+            r'Total due:\s*£([\d,]+\.?\d*)',
+            r'Total amount:\s*£([\d,]+\.?\d*)',
+            r'Total:\s*£([\d,]+\.?\d*)',
+            r'Total\s+£([\d,]+\.?\d*)',
+        ]
+        for pattern in patterns:
+            m = re.search(pattern, summary)
+            if m:
+                try:
+                    return float(m.group(1).replace(",", ""))
+                except (ValueError, IndexError):
+                    pass
+        return 0.0
+
+    def _generate_insights(self, this_week: Dict, last_week: Dict, phone: str) -> str:
+        """Generate actionable, human-readable insights."""
+        insights = []
+
+        # Spending change
+        spend_diff = this_week["total"] - last_week["total"]
+        if last_week["total"] > 0:
+            pct_change = (spend_diff / last_week["total"]) * 100
+        else:
+            pct_change = 0
+
+        if spend_diff < 0:
+            insights.append(f"✅ Down {CURRENCY_SYMBOL}{abs(spend_diff):.2f} ({abs(int(pct_change))}%) vs last week")
+        elif spend_diff > 0:
+            insights.append(f"⚠️ Up {CURRENCY_SYMBOL}{spend_diff:.2f} (+{int(pct_change)}%) vs last week")
+
+        # High spend warning
+        if this_week["total"] > WEEKLY_SPEND_WARNING:
+            insights.append(f"⚠️ Weekly spend {CURRENCY_SYMBOL}{this_week['total']:.2f} above {CURRENCY_SYMBOL}{WEEKLY_SPEND_WARNING}")
+
+        # Top category
+        if this_week["by_category"]:
+            top_cat = sorted(this_week["by_category"].items(), key=lambda x: x[1]["total"], reverse=True)[0]
+            cat_name, cat_data = top_cat
+            icon = SPEND_CATEGORIES.get(cat_name, {}).get("icon", "💳")
+            pct = (cat_data["total"] / this_week["total"] * 100) if this_week["total"] > 0 else 0
+            insights.append(f"{icon} {cat_name}: {CURRENCY_SYMBOL}{cat_data['total']:.2f} ({int(pct)}% of spend)")
+
+        # Top merchant
+        if this_week["by_merchant"]:
+            top_merchant = list(this_week["by_merchant"].items())[0]
+            merchant_name, merchant_data = top_merchant
+            insights.append(f"🏪 Most spent at: {merchant_name} ({merchant_data['count']} times)")
+
+        return " • ".join(insights) if insights else "No spending data this week"

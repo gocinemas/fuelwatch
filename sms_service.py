@@ -29498,8 +29498,21 @@ def api_home_week_full():
         }
 
         # === ADD INTELLIGENCE INSIGHTS ===
-        # Skip intelligence for now - has scope issues with _receipt_category import
         intelligence = {}
+        try:
+            from intelligence_engine import MiruIntelligence
+            engine = MiruIntelligence()
+            intel_result = engine.get_full_intelligence(from_number, sb)
+            if intel_result and intel_result.get("success"):
+                # Return just the insights string, not the full dict
+                intelligence = {"text": intel_result.get("insights", "")}
+                print(f"[week-full] Intelligence generated: {intelligence.get('text', '')[:80]}...")
+            else:
+                print(f"[week-full] Intelligence skipped: {intel_result.get('error', 'Unknown error')}")
+        except Exception as ie:
+            print(f"[week-full] Intelligence engine error: {ie}")
+            import traceback
+            print(traceback.format_exc())
 
         return jsonify({
             "success": True,
