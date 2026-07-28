@@ -29295,7 +29295,7 @@ def api_home_week_full():
         # Fetch receipts for the week
         spend_rows = []
         try:
-            all_week_saves = sb.table("wa_saves").select("summary,title,created_at,source") \
+            all_week_saves = sb.table("wa_saves").select("summary,title,created_at") \
                 .eq("from_number", from_number) \
                 .gte("created_at", week_start.isoformat()) \
                 .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
@@ -29305,8 +29305,8 @@ def api_home_week_full():
             print(f"[week-full] wa_saves query failed: {q_err}")
             raise
 
-        # Filter to receipts only (source="receipt" OR title starts with 🧾)
-        receipt_rows = [s for s in all_week_saves if s.get("source") == "receipt" or (s.get("title") or "").startswith("🧾")]
+        # Filter to receipts only (title starts with 🧾)
+        receipt_rows = [s for s in all_week_saves if (s.get("title") or "").startswith("🧾")]
         print(f"[week-full] Week {week_start} to {week_end}: {len(receipt_rows)} receipts found")
 
         # Extract amount from receipt summaries
@@ -29399,19 +29399,17 @@ def api_home_week_full():
         this_week["top_cafes"] = [{"name": m[0], "visits": m[1], "spent": round(sum(float(r.get("total", 0) or 0) for r in cafe_rows if r.get("merchant") == m[0]), 2)} for m in cafe_merchants.most_common(5)]
 
         # Saves this week - by type (with titles for recent ones)
-        saves_rows = sb.table("wa_saves").select("id,category,title,summary") \
+        saves_rows = sb.table("wa_saves").select("id,title,summary") \
             .eq("from_number", from_number) \
             .gte("created_at", week_start.isoformat()) \
             .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()).execute().data or []
 
         for s in saves_rows:
-            cat = (s.get("category") or "").lower()
-            if cat in this_week["saves"]:
-                this_week["saves"][cat] += 1
+            # Count all saves (no category available in wa_saves)
             this_week["saves"]["total"] += 1
 
         # Get sample saves to display (first 5)
-        this_week["save_samples"] = [{"title": s.get("title", "Untitled"), "category": s.get("category", ""), "summary": (s.get("summary") or "")[:60]} for s in saves_rows[:5]]
+        this_week["save_samples"] = [{"title": s.get("title", "Untitled"), "category": "saved", "summary": (s.get("summary") or "")[:60]} for s in saves_rows[:5]]
 
         # School events this week
         school_events = sb.table("school_events").select("id,event_title,event_date,description") \
