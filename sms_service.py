@@ -29383,7 +29383,7 @@ def api_home_week_full():
         saves_rows = sb.table("wa_saves").select("id,category,title,summary") \
             .eq("from_number", from_number) \
             .gte("created_at", week_start.isoformat()) \
-            .lte("created_at", week_end.isoformat()).execute().data or []
+            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()).execute().data or []
 
         for s in saves_rows:
             cat = (s.get("category") or "").lower()
@@ -29461,22 +29461,20 @@ def api_home_week_full():
             from intelligence_engine import MiruIntelligence
             engine = MiruIntelligence()
             intel_result = engine.get_full_intelligence(from_number, sb)
-            if intel_result.get("success"):
+            if intel_result and intel_result.get("success"):
                 intelligence = intel_result.get("insights", {})
                 print(f"[week-full] Intelligence loaded: {list(intelligence.keys())}")
         except Exception as ie:
             print(f"[week-full] Intelligence fetch skipped: {ie}")
+            import traceback
+            print(traceback.format_exc())
 
         return jsonify({
             "success": True,
             "this_week": this_week,
             "last_week": last_week,
             "trends": trends,
-            "intelligence": intelligence,  # Add smart insights
-            "forecast": {
-                "next_week_spend": intelligence.get("forecast", {}).get("next_week_spend"),
-                "action_items": intelligence.get("recommendations", []),
-            } if intelligence else {},
+            "intelligence": intelligence or {},
         })
 
     except Exception as e:
