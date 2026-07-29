@@ -8725,14 +8725,19 @@ function _hcAdd() {
 
   async function _setupLoadClubs() {
     var list = document.getElementById("setup-clubs-list");
-    if (!list) return;
+    if (!list) { console.log("[DEBUG:clubs] Element setup-clubs-list not found"); return; }
     var token = _miruPhone();
+    console.log("[DEBUG:clubs] Token:", token ? "yes" : "NO");
     if (!token) { list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">Link your phone to see clubs.</div>'; return; }
     list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:7px"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Loading…</div>';
     try {
+      console.log("[DEBUG:clubs] Fetching from /api/v2/recurring?token=...");
       var r = await fetch("/api/v2/recurring?token=" + encodeURIComponent(token));
+      console.log("[DEBUG:clubs] Response status:", r.status, r.ok);
       var d = await r.json();
+      console.log("[DEBUG:clubs] Response data:", d);
       var acts = d.activities || [];
+      console.log("[DEBUG:clubs] Got", acts.length, "activities");
       if (!acts.length) { list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No clubs yet — tap <strong>+ Add</strong> above.</div>'; return; }
       var _tod2 = new Date().toISOString().slice(0,10);
       list.innerHTML = acts.map(function(a) {
@@ -8762,7 +8767,7 @@ function _hcAdd() {
           + '</div>'
           + '</div>';
       }).join("");
-    } catch(e) { list.innerHTML = '<div style="font-size:12px;color:var(--error-text)">Failed to load</div>'; }
+    } catch(e) { console.error("[DEBUG:clubs] ERROR:", e); list.innerHTML = '<div style="font-size:12px;color:var(--error-text)">Failed to load clubs: ' + e.message + '</div>'; }
   }
 
   // ── School Management ──────────────────────────────────────────────────────
