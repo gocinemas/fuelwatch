@@ -6209,7 +6209,7 @@ const _ts = new Date(d.timestamp);
       }
     });
     localStorage.setItem("miru_ma_tab", tab);
-    if (tab === "accounts") { _maSchoolStatusLoad(); _clubsLoad(); }
+    if (tab === "accounts") { _maSchoolStatusLoad(); _clubsLoad(); _setupLoadClubs(); }
   }
 
   function _maRenderMyPlaces() {
