@@ -11,3 +11,4 @@
 2026-07-24T06:09 UTC — run 13 (daily Intel campaign refresh; triggered via push)
 2026-07-24T18:12 UTC — run 14 (scheduled Intel campaign refresh; 34 FIFA sponsors)
 2026-07-28T18:07 UTC — run 15 (scheduled Intel campaign refresh; 34 FIFA sponsors)
+2026-07-29T12:12 UTC — run 16 (scheduled Intel campaign refresh; 34 FIFA sponsors)
