@@ -21,9 +21,10 @@ from constants import (
 logger = logging.getLogger(__name__)
 
 
-def _receipt_category(merchant: str) -> str:
-    """Categorize merchant into spend category. Uses global SPEND_CATEGORIES."""
+def _receipt_category(merchant: str, summary: str = "") -> str:
+    """Categorize merchant into spend category. Checks merchant name AND receipt items."""
     m = (merchant or "").lower().strip()
+    s = (summary or "").lower().strip()
     if not m:
         return "Other"
 
@@ -35,20 +36,21 @@ def _receipt_category(merchant: str) -> str:
     if any(k in m for k in ["fuel", "petrol", "shell", "bp", "esso", "tesco petrol", "asda fuel"]):
         return "Fuel"
 
-    # Groceries
+    # Groceries (specific supermarket chains)
     if any(k in m for k in ["tesco", "sainsbury", "asda", "morrisons", "waitrose", "aldi", "lidl", "co-op"]):
         return "Groceries"
 
-    # Coffee & Lunch
-    if any(k in m for k in ["pret", "starbucks", "costa", "greggs", "leon", "itsu", "costa"]):
+    # Coffee & Lunch (specific chains)
+    if any(k in m for k in ["pret", "starbucks", "costa", "greggs", "leon", "itsu"]):
         return "Coffee & Lunch"
 
-    # Dining
-    if any(k in m for k in ["nando", "wagamama", "pizza express", "zizzi", "restaurant", "pub "]):
+    # Dining (restaurants, pubs, Italian, French, etc)
+    dining_keywords = ["nando", "wagamama", "pizza express", "zizzi", "restaurant", "pub ", "cafe", "bistro", "trattoria"]
+    if any(k in m for k in dining_keywords):
         return "Dining"
 
     # Takeaway
-    if any(k in m for k in ["takeaway", "curry", "indian", "chinese", "thai", "pizza"]):
+    if any(k in m for k in ["takeaway", "curry", "indian", "chinese", "thai"]):
         return "Takeaway"
 
     # Transport
@@ -60,12 +62,23 @@ def _receipt_category(merchant: str) -> str:
         return "Shopping"
 
     # Entertainment
-    if any(k in m for k in ["cinema", "cinema", "netflix", "spotify", "ticket", "concert"]):
+    if any(k in m for k in ["cinema", "netflix", "spotify", "ticket", "concert"]):
         return "Entertainment"
 
     # Health
     if any(k in m for k in ["boots", "pharmacy", "doctor", "gp", "dentist", "gym"]):
         return "Health"
+
+    # Check receipt items for dining indicators (pasta, wine, appetizers, desserts, main courses)
+    if s:
+        dining_items = ["pasta", "penne", "arrabbiata", "risotto", "pizza", "steak", "salmon", "lamb", "wine", "cocktail", "mocktail", "appetizer", "starter", "main course", "tiramisu", "dessert", "pint", "lager", "ale", "beer"]
+        if any(item in s for item in dining_items):
+            return "Dining"
+
+        # Grocery items
+        grocery_items = ["milk", "bread", "eggs", "butter", "cheese", "vegetables", "fruit", "cereal", "rice", "pasta boxes"]
+        if any(item in s for item in grocery_items):
+            return "Groceries"
 
     return "Other"
 
@@ -145,7 +158,8 @@ class MiruIntelligence:
                 amount = self._extract_amount(r.get("summary", ""))
                 if amount > 0:
                     merchant = (r.get("title") or "").replace("🧾", "").strip() or "Unknown"
-                    category = _receipt_category(merchant)
+                    summary = r.get("summary", "")
+                    category = _receipt_category(merchant, summary)
 
                     spend_total += amount
                     by_category[category]["total"] += amount

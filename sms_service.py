@@ -11354,9 +11354,10 @@ def _clean_merchant_name(merchant: str) -> str:
     return m
 
 
-def _receipt_category(merchant: str) -> str:
-    """Map a merchant name to a spend category based on UK merchant patterns."""
+def _receipt_category(merchant: str, summary: str = "") -> str:
+    """Map merchant name + receipt items to spend category based on UK merchant patterns."""
     m = (merchant or "").lower().strip()
+    s = (summary or "").lower().strip()
     if not m:
         return "Other"
 
@@ -11445,6 +11446,15 @@ def _receipt_category(merchant: str) -> str:
     if any(k in m for k in ["netflix", "spotify", "apple.com", "amazon prime", "disney",
                               "youtube premium", "sky ", "now tv", "bt sport", "google one"]):
         return "Subscriptions"
+
+    # Check receipt items for dining indicators (pasta, wine, cocktails, mains, desserts)
+    if s:
+        dining_items = ["pasta", "penne", "arrabbiata", "risotto", "pizza", "steak", "salmon",
+                       "lamb", "wine", "cocktail", "mocktail", "appetizer", "starter", "main",
+                       "tiramisu", "dessert", "pint", "lager", "ale", "beer", "moretti",
+                       "prosecco", "champagne", "sauvignon", "pinot", "merlot"]
+        if any(item in s for item in dining_items):
+            return "Dining"
 
     return "Other"
 
@@ -11543,9 +11553,10 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
                 continue
             total += amt; count += 1
             # Use stored category if available, otherwise auto-detect
-            cat = (r.get("category") or "").strip() or _receipt_category(merchant)
+            summary = (r.get("summary") or "")
+            cat = (r.get("category") or "").strip() or _receipt_category(merchant, summary)
             # Also check items for better categorization (clothes/accessories)
-            summary = (r.get("summary") or "").lower()
+            summary_lower = summary.lower()
             if "clothes" not in cat.lower() and "accessories" not in cat.lower():
                 clothes_kw = ["shirt", "jeans", "dress", "blouse", "pants", "trouser",
                               "jacket", "coat", "jumper", "sweater", "top", "skirt",
