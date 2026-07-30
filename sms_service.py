@@ -11557,13 +11557,20 @@ def _receipt_category(merchant: str, summary: str = "") -> str:
                               "youtube premium", "sky ", "now tv", "bt sport", "google one"]):
         return "Subscriptions"
 
-    # Check receipt items for dining indicators (pasta, wine, cocktails, mains, desserts)
+    # Check receipt items for grocery/dining indicators
     if s:
-        dining_items = ["pasta", "penne", "arrabbiata", "risotto", "pizza", "steak", "salmon",
-                       "lamb", "wine", "cocktail", "mocktail", "appetizer", "starter", "main",
-                       "tiramisu", "dessert", "pint", "lager", "ale", "beer", "moretti",
-                       "prosecco", "champagne", "sauvignon", "pinot", "merlot"]
-        if any(item in s for item in dining_items):
+        # Grocery items take priority (milk, bread, etc clearly indicate supermarket)
+        grocery_items = ["milk", "bread", "eggs", "butter", "cheese", "cereal", "rice",
+                        "vegetables", "fruit", "pasta boxes", "flour", "sugar", "oil"]
+        if any(item in s for item in grocery_items):
+            return "Groceries"
+
+        # Dining items (but NOT wine alone - wine in supermarket context is groceries)
+        # Only return Dining if we see clear dining items like pasta/steak/appetizer
+        dining_indicators = ["pasta", "penne", "arrabbiata", "risotto", "pizza", "steak", "salmon",
+                            "lamb", "cocktail", "mocktail", "appetizer", "starter", "main",
+                            "tiramisu", "dessert", "pint", "lager", "ale", "beer", "moretti"]
+        if any(item in s for item in dining_indicators):
             return "Dining"
 
     return "Other"
@@ -21399,6 +21406,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 if img_type == "receipt":
                     # ALWAYS categorize receipts, using merchant name OR title OR items
                     merchant = receipt_data.get("merchant", "")
+                    # Fallback: if merchant extraction failed, use title (with emoji removed)
+                    if not merchant and title:
+                        merchant = title.replace("🧾", "").strip()
                     items_text = " ".join([item.get("name", "") for item in receipt_data.get("items", [])])
                     summary_for_cat = receipt_summary or items_text
 
