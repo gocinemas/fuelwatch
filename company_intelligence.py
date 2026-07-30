@@ -194,6 +194,18 @@ def _fetch_european_companies(company_name: str) -> dict:
             "employees": "87000",
             "source": "Nasdaq/Wikipedia"
         },
+        "reckitt": {
+            "name": "Reckitt Benckiser Group plc",
+            "ticker": "RKT.L",
+            "exchange": "London Stock Exchange",
+            "founded_year": "1819",
+            "hq": {"city": "London", "country": "United Kingdom"},
+            "industry": "Consumer Goods - Hygiene & Home Care",
+            "employees": "19000",
+            "market_cap": "£28.1B",
+            "description": "Global consumer goods company. Brands: Dettol, Lysol, Air Wick, Nurofen, Strepsils, Clearasil",
+            "source": "LSE/Wikipedia"
+        },
     }
 
     company_lower = company_name.lower().strip()
@@ -289,6 +301,24 @@ def _fetch_companies_house_uk_startups(company_name: str) -> dict:
             "status": "Active",
             "industry": "Financial Services",
             "employees": "4000+",
+            "source": "Companies House"
+        },
+        "reckitt": {
+            "name": "Reckitt Benckiser Group plc",
+            "company_number": "08566054",
+            "incorporation_date": "1819-01-01",
+            "hq": {
+                "city": "London",
+                "state": "England",
+                "country": "United Kingdom"
+            },
+            "status": "Active",
+            "industry": "Consumer Goods - Hygiene & Home Care",
+            "employees": "19000",
+            "market_cap": "£28.1B",
+            "ticker": "RKT.L",
+            "exchange": "London Stock Exchange",
+            "description": "Global consumer goods company. Brands: Dettol, Lysol, Air Wick, Nurofen, Strepsils, Clearasil",
             "source": "Companies House"
         }
     }
