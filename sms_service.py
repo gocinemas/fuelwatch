@@ -29502,7 +29502,13 @@ def api_home_week_full():
                 .gte("created_at", this_week_start.isoformat()) \
                 .lte("created_at", (this_week_end + _dt.timedelta(days=1)).isoformat()) \
                 .execute().data or []
-            print(f"[week-full] THIS WEEK ({this_week_start.isoformat()} to {(this_week_end + _dt.timedelta(days=1)).isoformat()}): Fetched {len(all_week_saves)} saves, {len(receipt_rows)} receipts")
+            print(f"[week-full] THIS WEEK ({this_week_start.isoformat()} to {(this_week_end + _dt.timedelta(days=1)).isoformat()}): Fetched {len(all_week_saves)} saves")
+
+            # DEBUG: Show what titles we have
+            for _dbg_save in all_week_saves[:10]:
+                _dbg_title = _dbg_save.get("title", "")[:50]
+                _dbg_created = _dbg_save.get("created_at", "")[:10]
+                print(f"[week-full] DEBUG: {_dbg_created} | Title: {_dbg_title}")
 
             # Filter to receipts only (title starts with 🧾)
             receipt_rows = [s for s in all_week_saves if (s.get("title") or "").startswith("🧾")]
