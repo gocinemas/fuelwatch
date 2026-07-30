@@ -29337,7 +29337,7 @@ def api_home_week_summary():
 
         # === THIS WEEK ===
         this_week = {
-            "period": f"{this_week_start.strftime('%b %d')} — {this_week_end.strftime('%b %d')}",
+            "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
             "spend": 0,
             "saves": 0,
             "activities": [],
@@ -29482,7 +29482,7 @@ def api_home_week_full():
 
         # === THIS WEEK ===
         this_week = {
-            "period": f"{this_week_start.strftime('%b %d')} — {this_week_end.strftime('%b %d')}",
+            "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
             "spend": 0,
             "spend_by_category": {},
             "cafe_visits": 0,
@@ -29558,6 +29558,9 @@ def api_home_week_full():
                     "merchant": merchant,
                     "shop_date": r.get("created_at", "").split("T")[0]
                 })
+            else:
+                # Log receipts that failed to parse amount
+                print(f"[week-full] WARNING: Failed to extract amount from {merchant} | Summary preview: {(r.get('summary') or '')[:80]}")
 
         this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
         print(f"[week-full] THIS WEEK TOTAL: £{this_week['spend']:.2f}")
@@ -29679,6 +29682,9 @@ def api_home_week_full():
                     "merchant": merchant,
                     "shop_date": r.get("created_at", "").split("T")[0]
                 })
+            else:
+                # Log receipts that failed to parse amount
+                print(f"[week-full] WARNING LAST WEEK: Failed to extract amount from {merchant} | Summary preview: {(r.get('summary') or '')[:80]}")
 
         last_week["spend"] = sum(float(r.get("total", 0) or 0) for r in last_spend_rows)
         print(f"[week-full] LAST WEEK TOTAL: £{last_week['spend']:.2f}")
