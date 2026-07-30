@@ -2017,11 +2017,10 @@
               <div id="brief-weather-bar" style="display:flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap;grid-row:1/4">
                 <span id="brief-wx-icon" style="font-size:32px"></span>
                 <div>
-                  <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:1px">
+                  <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">
                     <span id="brief-wx-temp" style="font-size:28px;font-weight:900;color:var(--text);letter-spacing:-0.5px"></span>
                   </div>
-                  <span id="brief-wx-desc" style="font-size:11px;color:var(--muted);font-weight:500;margin-bottom:2px;display:block"></span>
-                  <span id="brief-wx-postcode" style="font-size:9px;color:var(--muted);font-weight:500"></span>
+                  <span id="brief-wx-desc" style="font-size:12px;color:var(--muted);font-weight:600"></span>
                 </div>
               </div>
               <!-- 7-day forecast grid (right column) -->
@@ -18061,11 +18060,9 @@ let _savesAll = [];
       var _wxIcon = document.getElementById("brief-wx-icon");
       var _wxTemp = document.getElementById("brief-wx-temp");
       var _wxDesc = document.getElementById("brief-wx-desc");
-      var _wxPostcode = document.getElementById("brief-wx-postcode");
       if (_wxIcon) _wxIcon.textContent = _wxIco;
       if (_wxTemp) _wxTemp.textContent = _wx.temp + "°C";
       if (_wxDesc) _wxDesc.textContent = _wxDescParts.join(" · ");
-      if (_wxPostcode) _wxPostcode.textContent = _wx.postcode ? "📍 " + _wx.postcode : "";
       _wxBar.style.display = "flex";
 
       // Render beautiful weather strip starting from Friday (skip today)
