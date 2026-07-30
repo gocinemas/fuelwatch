@@ -28,15 +28,18 @@ def _receipt_category(merchant: str, summary: str = "") -> str:
     if not m:
         return "Other"
 
+    # IMPORTANT: Check specific fuel before generic grocery stores!
+    # (so "Tesco Petrol" doesn't get caught by "tesco" → Groceries)
+
     # Parking
     if any(k in m for k in ["parking", "ncp", "q-park", "apcoa", "justpark", "ringgo"]):
         return "Parking"
 
-    # Fuel
-    if any(k in m for k in ["fuel", "petrol", "shell", "bp", "esso", "tesco petrol", "asda fuel"]):
+    # Fuel — MUST BE BEFORE generic store checks
+    if any(k in m for k in ["petrol", "fuel", "shell", "bp", "esso", "tesco petrol", "asda fuel", "filling station"]):
         return "Fuel"
 
-    # Groceries (specific supermarket chains)
+    # Groceries (specific supermarket chains) — AFTER fuel to avoid false positives
     if any(k in m for k in ["tesco", "sainsbury", "asda", "morrisons", "waitrose", "aldi", "lidl", "co-op"]):
         return "Groceries"
 
