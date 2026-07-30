@@ -1366,6 +1366,62 @@ def brand_expansion_page():
     return render_template("intel_brand_expansion.html")
 
 
+@app.route("/intelligence/<company_name>")
+def company_intelligence_card(company_name):
+    """Real-time company signals card (for deal-makers)."""
+    from intelligence_signals import get_company_signals
+
+    try:
+        # Map company names to tickers
+        ticker_map = {
+            "reckitt": "RKT.L",
+            "henkel": "HEN3.DE",
+            "unilever": "UL.L",
+            "sc johnson": "SCJW",
+        }
+
+        ticker = ticker_map.get(company_name.lower())
+
+        # Fetch signals
+        signals = get_company_signals(company_name, ticker)
+
+        # Render card
+        return render_template(
+            "intelligence_card.html",
+            company=company_name,
+            signals=signals,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        app.logger.error(f"[intelligence_card] Error: {e}")
+        return render_template("error.html", message=f"Error loading intelligence for {company_name}"), 500
+
+
+@app.route("/api/intelligence/<company_name>")
+def api_company_intelligence_signals(company_name):
+    """API endpoint for company signals (JSON)."""
+    from intelligence_signals import get_company_signals
+
+    try:
+        # Map company names to tickers
+        ticker_map = {
+            "reckitt": "RKT.L",
+            "henkel": "HEN3.DE",
+            "unilever": "UL.L",
+            "sc johnson": "SCJW",
+        }
+
+        ticker = ticker_map.get(company_name.lower())
+        signals = get_company_signals(company_name, ticker)
+
+        return jsonify(signals)
+
+    except Exception as e:
+        app.logger.error(f"[api_signals] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/brand/compare")
 def brand_compare():
     """Compare 2-3 brands side by side"""
