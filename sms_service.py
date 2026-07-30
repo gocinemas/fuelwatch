@@ -29502,23 +29502,24 @@ def api_home_week_full():
 
         # Extract amount from receipt summaries
         import re as _re_week
+
+        # Define regex patterns for amount extraction (reusable)
+        _amount_patterns = [
+            r'Total due:\s*£([\d,]+\.?\d*)',           # "Total due: £12.34"
+            r'Total amount:\s*£([\d,]+\.?\d*)',        # "Total amount: £30.82"
+            r'Total balance due\s+£([\d,]+\.?\d*)',    # "Total balance due £44.45"
+            r'Total\s*\(.*?\):\s*£([\d,]+\.?\d*)',    # "Total (Net Price): £29.37" or "Total (incl VAT): £100.18"
+            r'Total:\s*£([\d,]+\.?\d*)',               # "Total: £67.73"
+            r'Total\s+£([\d,]+\.?\d*)',                # "Total £15.10"
+        ]
+
         for r in receipt_rows:
             summary = r.get("summary", "")
             title = r.get("title", "")
             merchant = (title or "").replace("🧾", "").strip() or "Unknown"
             amount = 0
 
-            # Try multiple formats to find the amount
-            patterns = [
-                r'Total due:\s*£([\d,]+\.?\d*)',           # "Total due: £12.34"
-                r'Total amount:\s*£([\d,]+\.?\d*)',        # "Total amount: £30.82"
-                r'Total balance due\s+£([\d,]+\.?\d*)',    # "Total balance due £44.45"
-                r'Total\s*\(.*?\):\s*£([\d,]+\.?\d*)',    # "Total (Net Price): £29.37" or "Total (incl VAT): £100.18"
-                r'Total:\s*£([\d,]+\.?\d*)',               # "Total: £67.73"
-                r'Total\s+£([\d,]+\.?\d*)',                # "Total £15.10"
-            ]
-
-            for pattern in patterns:
+            for pattern in _amount_patterns:
                 m = _re_week.search(pattern, summary)
                 if m:
                     try:
