@@ -21201,8 +21201,18 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         app.logger.warning(f"[receipt] Groq extraction failed: {_rcpt_err}, trying Claude fallback")
                         _raw_rcpt = ""
 
-                # Fallback: Use Claude if Groq unavailable or fails
-                if not _raw_rcpt:
+                # Fallback: Use Claude if Groq unavailable/fails OR if Groq merchant looks like location
+                _groq_merchant_looks_bad = False
+                if _raw_rcpt:
+                    for _check_line in _raw_rcpt.split("\n"):
+                        if _check_line.strip().upper().startswith("MERCHANT:"):
+                            _test_merchant = _check_line.split(":", 1)[1].strip().lower()
+                            _uk_locations = ["weybridge", "london", "manchester", "birmingham", "leeds", "liverpool", "bristol", "edinburgh", "cardiff", "belfast", "surrey", "essex", "kent", "sussex"]
+                            if any(loc in _test_merchant for loc in _uk_locations) or (len(_test_merchant) <= 3 and _test_merchant.isupper()):
+                                _groq_merchant_looks_bad = True
+                                break
+
+                if not _raw_rcpt or _groq_merchant_looks_bad:
                     try:
                         from anthropic import Anthropic
                         _claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
