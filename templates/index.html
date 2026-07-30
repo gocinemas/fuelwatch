@@ -16571,7 +16571,12 @@ _bkBadge();
     <!-- Header -->
     <div style="margin-bottom:24px">
       <div style="font-size:24px;font-weight:900;color:var(--text);margin-bottom:12px">📊 YOUR WEEK</div>
-      <div id="sw-period" style="font-size:13px;font-weight:600;color:var(--muted)">loading...</div>
+      <div id="sw-period" style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px">loading...</div>
+      <!-- Week tabs -->
+      <div style="display:flex;gap:8px">
+        <button id="sw-tab-last" onclick="_weekSetTab('last')" style="padding:8px 14px;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">Last Week</button>
+        <button id="sw-tab-current" onclick="_weekSetTab('current')" style="padding:8px 14px;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">This Week</button>
+      </div>
     </div>
 
     <!-- Loading state -->
@@ -27921,6 +27926,113 @@ document.addEventListener('keydown', function(e) {
   };
 
   // ========== YOUR WEEK SCREEN ==========
+  var _weekCurrentTab = 'last';  // Track which week tab is active
+  var _weekData = null;  // Cache loaded week data
+
+  function _weekSetTab(tab) {
+    _weekCurrentTab = tab;
+    // Update tab styling
+    const lastBtn = document.getElementById('sw-tab-last');
+    const curBtn = document.getElementById('sw-tab-current');
+    if (tab === 'last') {
+      lastBtn.style.background = 'var(--accent)';
+      lastBtn.style.color = '#fff';
+      lastBtn.style.borderColor = 'var(--accent)';
+      curBtn.style.background = 'var(--surface)';
+      curBtn.style.color = 'var(--text)';
+      curBtn.style.borderColor = 'var(--border)';
+    } else {
+      curBtn.style.background = 'var(--accent)';
+      curBtn.style.color = '#fff';
+      curBtn.style.borderColor = 'var(--accent)';
+      lastBtn.style.background = 'var(--surface)';
+      lastBtn.style.color = 'var(--text)';
+      lastBtn.style.borderColor = 'var(--border)';
+    }
+    // Refresh display with cached data
+    if (_weekData) {
+      _weekRenderData(_weekData);
+    }
+  }
+
+  function _weekRenderData(d) {
+    _weekData = d;  // Cache data
+    const activeWeek = _weekCurrentTab === 'last' ? d.last_week : d.this_week;
+    const otherWeek = _weekCurrentTab === 'last' ? d.this_week : d.last_week;
+
+    // Update period
+    document.getElementById('sw-period').textContent = activeWeek.period;
+
+    // ─── METRICS ───
+    const spend = activeWeek.spend || 0;
+    const saves = activeWeek.saves_count || 0;
+    document.getElementById('sw-this-spend').textContent = '£' + spend.toFixed(2);
+    document.getElementById('sw-this-saves').textContent = saves;
+
+    // Top category
+    const topCat = Object.keys(activeWeek.spend_by_category || {}).sort((a,b) =>
+      (activeWeek.spend_by_category[b] || {total:0}).total - (activeWeek.spend_by_category[a] || {total:0}).total)[0];
+    document.getElementById('sw-this-spend-cat').textContent = topCat ? topCat + ' · ' + (activeWeek.spend_by_category[topCat].total || 0).toFixed(2) : '—';
+
+    // Saves types
+    document.getElementById('sw-this-saves-types').textContent = activeWeek.saves_types || '—';
+
+    // ─── INSIGHTS ───
+    const insightsList = [];
+    if (_weekCurrentTab === 'last') {
+      const spendDiff = d.last_week.spend - d.this_week.spend;
+      const spendPct = d.this_week.spend > 0 ? Math.round((Math.abs(spendDiff) / d.this_week.spend) * 100) : 0;
+      insightsList.push(`Last week you spent £${d.last_week.spend.toFixed(2)} (compared to £${d.this_week.spend.toFixed(2)} this week)`);
+    } else {
+      const spendDiff = d.this_week.spend - d.last_week.spend;
+      const spendPct = d.last_week.spend > 0 ? Math.round((spendDiff / d.last_week.spend) * 100) : 0;
+      if (spendDiff < 0) {
+        insightsList.push(`✅ Down £${Math.abs(spendDiff).toFixed(2)} (${Math.abs(spendPct)}%) vs last week`);
+      } else if (spendDiff > 0) {
+        insightsList.push(`⚠️ Up £${spendDiff.toFixed(2)} (+${spendPct}%) vs last week`);
+      }
+    }
+    document.getElementById('sw-insights').textContent = insightsList.join(' · ') || 'Loading insights...';
+
+    // ─── SPEND BREAKDOWN ───
+    const breakdownHtml = [];
+    Object.entries(activeWeek.spend_by_category || {}).forEach(([cat, data]) => {
+      const pct = activeWeek.spend > 0 ? Math.round((data.total / activeWeek.spend) * 100) : 0;
+      breakdownHtml.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><div style="font-size:12px">${cat}</div><div style="text-align:right"><div style="font-size:12px;font-weight:700">£${data.total.toFixed(2)}</div><div style="font-size:11px;color:var(--muted)">${pct}% · ${data.count} items</div></div></div>`);
+    });
+    document.getElementById('sw-spend-breakdown').innerHTML = breakdownHtml.join('') || '<div style="text-align:center;color:var(--muted);padding:20px">No spending data</div>';
+
+    // ─── CAFES ───
+    const cafes = activeWeek.top_cafes || [];
+    if (cafes.length > 0) {
+      document.getElementById('sw-this-cafes').textContent = cafes.length + ' visits';
+      document.getElementById('sw-this-cafes-top').textContent = cafes[0] || '—';
+    } else {
+      document.getElementById('sw-this-cafes').textContent = '—';
+      document.getElementById('sw-this-cafes-top').textContent = 'No cafe visits';
+    }
+
+    // ─── SCHOOL EVENTS ───
+    const schoolHtml = [];
+    (activeWeek.school_events || []).forEach(e => {
+      schoolHtml.push(`<div style="font-size:12px;color:var(--text)">${e}</div>`);
+    });
+    document.getElementById('sw-school-events').innerHTML = schoolHtml.length ? schoolHtml.join('') : '<div style="color:var(--muted);text-align:center;padding:20px 0">No events</div>';
+
+    // ─── RECENT SAVES ───
+    const savesHtml = [];
+    (activeWeek.recent_saves || []).slice(0,3).forEach(s => {
+      savesHtml.push(`<div style="font-size:12px;padding:8px 10px;background:var(--bg);border-radius:10px;color:var(--text)">${s}</div>`);
+    });
+    document.getElementById('sw-saves-list').innerHTML = savesHtml.length ? savesHtml.join('') : '<div style="text-align:center;color:var(--muted);padding:20px">No saves</div>';
+
+    // ─── TRENDS ───
+    const trendsHtml = [];
+    const spendTrend = (d.this_week.spend - d.last_week.spend) / (d.last_week.spend || 1);
+    trendsHtml.push(`${spendTrend > 0.05 ? '📈 Spend up' : spendTrend < -0.05 ? '📉 Spend down' : '➡️ Spend stable'}`);
+    document.getElementById('sw-trends').textContent = trendsHtml.join(' · ') || '—';
+  }
+
   function _weekLoad() {
     const loading = document.getElementById('sw-loading');
     const content = document.getElementById('sw-content');
