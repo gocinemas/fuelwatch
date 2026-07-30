@@ -210,18 +210,29 @@ class MiruIntelligence:
         """Calculate days since last fuel purchase. Returns -1 if no fuel purchase found."""
         try:
             today = today_london()
-            # Query receipts to find last fuel purchase
-            receipts = self.sb.table("wa_saves").select("title,created_at,summary") \
+            # Query receipts to find last fuel purchase (check category FIRST for efficiency)
+            receipts = self.sb.table("wa_saves").select("title,created_at,summary,category") \
                 .eq("from_number", f"whatsapp:{phone}") \
                 .order("created_at", desc=True) \
                 .limit(100) \
                 .execute().data or []
 
             for r in receipts:
+                category = (r.get("category") or "").lower()
                 title = (r.get("title") or "").lower()
                 summary = (r.get("summary") or "").lower()
-                # Check if receipt is from fuel station
-                if any(fuel_name in title + summary for fuel_name in ["shell", "bp", "esso", "tesco petrol", "asda fuel", "fuel", "petrol"]):
+
+                # Check category first (most reliable)
+                if category == "fuel":
+                    try:
+                        receipt_date = date.fromisoformat(r.get("created_at", "")[:10])
+                        days_since = (today - receipt_date).days
+                        return days_since
+                    except (ValueError, TypeError):
+                        continue
+
+                # Fallback: check keywords in title+summary
+                if any(fuel_name in title + summary for fuel_name in ["petrol", "fuel", "shell", "bp", "esso", "tesco petrol", "asda fuel", "filling station"]):
                     try:
                         receipt_date = date.fromisoformat(r.get("created_at", "")[:10])
                         days_since = (today - receipt_date).days
