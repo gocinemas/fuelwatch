@@ -18057,19 +18057,19 @@ let _savesAll = [];
       if (_wxDesc) _wxDesc.textContent = _wxDescParts.join(" · ");
       _wxBar.style.display = "flex";
 
-      // Render 7-day forecast cards
+      // Render 7-day forecast cards (compact)
       var _wxForecast = document.getElementById("brief-wx-forecast");
       if (_wxForecast && _wx.forecast_7day && _wx.forecast_7day.length > 0) {
-        var _dayNames = ["Today", "Tomorrow", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        var _dayNames = ["Tod", "Tom", "Wed", "Thu", "Fri", "Sat", "Sun"];
         var _forecastHtml = "";
         for (var i = 0; i < _wx.forecast_7day.length; i++) {
           var _day = _wx.forecast_7day[i];
           if (_day.high !== null && _day.low !== null) {
-            _forecastHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;white-space:nowrap;flex-shrink:0">'
-              + '<div style="font-size:11px;font-weight:600;color:var(--muted)">' + _dayNames[i] + '</div>'
-              + '<div style="font-size:18px">' + _day.icon + '</div>'
-              + '<div style="font-size:11px;font-weight:600;color:var(--text)">' + _day.high + '°</div>'
-              + '<div style="font-size:10px;color:var(--muted)">' + _day.low + '°</div>'
+            _forecastHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:3px 5px;background:var(--surface);border:1px solid var(--border);border-radius:8px;white-space:nowrap;flex-shrink:0">'
+              + '<div style="font-size:9px;font-weight:600;color:var(--muted)">' + _dayNames[i] + '</div>'
+              + '<div style="font-size:14px">' + _day.icon + '</div>'
+              + '<div style="font-size:10px;font-weight:700;color:var(--text)">' + _day.high + '°</div>'
+              + '<div style="font-size:8px;color:var(--muted)">' + _day.low + '°</div>'
               + '</div>';
           }
         }
