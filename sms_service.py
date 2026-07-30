@@ -29774,6 +29774,8 @@ def api_home_week_full():
         # Skipping intelligence for now - debug separately
 
         print(f"[week-full] Success: returning week data")
+        print(f"[week-full] RESPONSE: this_week.period={this_week.get('period')}, spend=£{this_week.get('spend', 0):.2f}")
+        print(f"[week-full] RESPONSE: last_week.period={last_week.get('period')}, spend=£{last_week.get('spend', 0):.2f}")
         return jsonify({
             "success": True,
             "this_week": this_week,
