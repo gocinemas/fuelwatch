@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ company }} — Sentiment Intelligence</title>
+    <style>
+        :root {
+            --bg-ground: #FAFAFA;
+            --bg-surface: #FFFFFF;
+            --text-primary: #1A1A1A;
+            --text-secondary: #6B7280;
+            --border: #E5E7EB;
+            --accent: #1B7B7E;
+            --positive: #22C55E;
+            --negative: #EF4444;
+            --neutral: #F59E0B;
+
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-ground: #0F0F0F;
+                --bg-surface: #1A1A1A;
+                --text-primary: #F5F5F5;
+                --text-secondary: #A0A0A0;
+                --border: #2A2A2A;
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --bg-ground: #0F0F0F;
+            --bg-surface: #1A1A1A;
+            --text-primary: #F5F5F5;
+            --text-secondary: #A0A0A0;
+            --border: #2A2A2A;
+        }
+
+        :root[data-theme="light"] {
+            --bg-ground: #FAFAFA;
+            --bg-surface: #FFFFFF;
+            --text-primary: #1A1A1A;
+            --text-secondary: #6B7280;
+            --border: #E5E7EB;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg-ground);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: var(--spacing-lg);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--bg-surface);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* HEADER */
+        .header {
+            padding: var(--spacing-xl);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .company-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .company-name {
+            font-family: Georgia, 'Cambria', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .sentiment-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100px;
+            height: 100px;
+            border-radius: 12px;
+            background: var(--accent);
+            color: white;
+            font-weight: 700;
+        }
+
+        .sentiment-score {
+            font-size: 2.5rem;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .sentiment-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            opacity: 0.9;
+            margin-top: var(--spacing-xs);
+        }
+
+        .sentiment-badge.positive {
+            background: var(--positive);
+        }
+
+        .sentiment-badge.negative {
+            background: var(--negative);
+        }
+
+        .sentiment-badge.neutral {
+            background: var(--neutral);
+        }
+
+        .company-meta {
+            display: flex;
+            gap: var(--spacing-lg);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* SIGNALS GRID */
+        .signals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--spacing-md);
+            padding: var(--spacing-xl);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .signal {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .signal-source {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .signal-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .signal-trend {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .trend-arrow {
+            display: inline-block;
+            font-size: 1rem;
+            animation: slideIn 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .trend-up {
+            color: var(--positive);
+        }
+
+        .trend-down {
+            color: var(--negative);
+        }
+
+        .trend-flat {
+            color: var(--neutral);
+        }
+
+        /* CONTENT */
+        .content {
+            padding: var(--spacing-xl);
+        }
+
+        .section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-family: Georgia, 'Cambria', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 2px solid var(--accent);
+            letter-spacing: -0.3px;
+        }
+
+        .signal-source-large {
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .signal-item {
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            background: rgba(27, 123, 126, 0.05);
+            border-left: 3px solid var(--accent);
+            border-radius: 4px;
+        }
+
+        .signal-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+            line-height: 1.4;
+        }
+
+        .signal-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .signal-badge-inline {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: var(--spacing-sm);
+            margin-top: var(--spacing-xs);
+        }
+
+        .signal-badge-positive {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--positive);
+        }
+
+        .signal-badge-negative {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--negative);
+        }
+
+        .signal-badge-neutral {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--neutral);
+        }
+
+        .quote {
+            font-style: italic;
+            color: var(--text-secondary);
+            padding-left: var(--spacing-md);
+            border-left: 2px solid var(--accent);
+            margin: var(--spacing-md) 0;
+            font-size: 0.9rem;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin: var(--spacing-md) 0;
+        }
+
+        .status-indicator {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .status-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.6s ease-out;
+            border-radius: 4px;
+        }
+
+        /* FOOTER */
+        .footer {
+            padding: var(--spacing-lg);
+            border-top: 1px solid var(--border);
+            background: rgba(27, 123, 126, 0.02);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .button {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--accent);
+            background: transparent;
+            color: var(--accent);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            transition: all 0.2s;
+        }
+
+        .button:hover {
+            background: rgba(27, 123, 126, 0.1);
+        }
+
+        .button.primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .button.primary:hover {
+            background: #156064;
+        }
+
+        .unavailable {
+            padding: var(--spacing-lg);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .unavailable-icon {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-sm);
+            opacity: 0.5;
+        }
+
+        @media (max-width: 600px) {
+            .company-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .sentiment-badge {
+                width: 80px;
+                height: 80px;
+            }
+
+            .sentiment-score {
+                font-size: 2rem;
+            }
+
+            .company-name {
+                font-size: 1.5rem;
+            }
+
+            .signals-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .footer {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-md);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <!-- HEADER -->
+            <div class="header">
+                <div class="company-header">
+                    <div>
+                        <div class="company-name">{{ company }}</div>
+                        <div class="company-meta">
+                            <span>Real-time sentiment</span>
+                            {% if ticker %}<span>{{ ticker }}</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="sentiment-badge {% if sentiment.overall_score >= 70 %}positive{% elif sentiment.overall_score >= 50 %}neutral{% else %}negative{% endif %}">
+                        <div class="sentiment-score">{{ sentiment.overall_score or 50 }}</div>
+                        <div class="sentiment-label">Sentiment</div>
+                    </div>
+                </div>
+
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                    {{ sentiment.get('trend', 'stable') | capitalize }} • Last updated {{ timestamp[:10] }}
+                </div>
+            </div>
+
+            <!-- SIGNALS GRID -->
+            {% if sentiment %}
+            <div class="signals-grid">
+                <!-- Reddit -->
+                <div class="signal">
+                    <div class="signal-source">Reddit</div>
+                    <div class="signal-value">
+                        {% if sentiment.reddit.get('sentiment_score') is defined %}
+                            {{ sentiment.reddit.sentiment_score }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                    <div class="signal-trend">
+                        {% if sentiment.reddit.get('trend') == 'up' %}
+                            <span class="trend-arrow trend-up">↑</span> Improving
+                        {% elif sentiment.reddit.get('trend') == 'down' %}
+                            <span class="trend-arrow trend-down">↓</span> Declining
+                        {% else %}
+                            <span class="trend-arrow trend-flat">→</span> Stable
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Twitter -->
+                <div class="signal">
+                    <div class="signal-source">Twitter/X</div>
+                    <div class="signal-value">
+                        {% if sentiment.twitter.get('sentiment_score') is defined %}
+                            {{ sentiment.twitter.sentiment_score }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                    <div class="signal-trend">
+                        <span class="trend-arrow trend-flat">→</span> Requires API
+                    </div>
+                </div>
+
+                <!-- Google Trends -->
+                <div class="signal">
+                    <div class="signal-source">Google Trends</div>
+                    <div class="signal-value">—</div>
+                    <div class="signal-trend">
+                        <span class="trend-arrow trend-flat">→</span> Coming soon
+                    </div>
+                </div>
+
+                <!-- Trustpilot -->
+                <div class="signal">
+                    <div class="signal-source">Trustpilot</div>
+                    <div class="signal-value">—</div>
+                    <div class="signal-trend">
+                        <span class="trend-arrow trend-flat">→</span> Coming soon
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- CONTENT -->
+            <div class="content">
+                <!-- Reddit Signals -->
+                {% if sentiment.reddit and sentiment.reddit.get('total_mentions', 0) > 0 %}
+                <div class="section">
+                    <div class="section-title">🔍 What People Are Saying</div>
+
+                    <div class="signal-source-large">Reddit ({{ sentiment.reddit.total_mentions }} discussions)</div>
+
+                    <div class="status-bar">
+                        <div style="flex: 0 0 30%; display: flex; gap: 4px; align-items: center;">
+                            <div style="font-size: 0.75rem; color: var(--positive);">✓</div>
+                            <span style="font-size: 0.85rem;">{{ sentiment.reddit.positive }} positive</span>
+                        </div>
+                        <div style="flex: 0 0 30%; display: flex; gap: 4px; align-items: center;">
+                            <div style="font-size: 0.75rem; color: var(--neutral);">–</div>
+                            <span style="font-size: 0.85rem;">{{ sentiment.reddit.neutral }} neutral</span>
+                        </div>
+                        <div style="flex: 0 0 30%; display: flex; gap: 4px; align-items: center;">
+                            <div style="font-size: 0.75rem; color: var(--negative);">✕</div>
+                            <span style="font-size: 0.85rem;">{{ sentiment.reddit.negative }} negative</span>
+                        </div>
+                    </div>
+
+                    {% if sentiment.reddit.top_posts %}
+                    <div style="margin-top: var(--spacing-lg);">
+                        {% for post in sentiment.reddit.top_posts[:3] %}
+                        <div class="signal-item">
+                            <div class="signal-title">{{ post.title }}</div>
+                            <span class="signal-badge-inline signal-badge-{{ post.sentiment }}">{{ post.sentiment }}</span>
+                            <div style="margin-top: var(--spacing-sm); color: var(--text-secondary); font-size: 0.85rem;">
+                                👍 {{ post.upvotes | int }} upvotes
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="section">
+                    <div class="section-title">🔍 What People Are Saying</div>
+                    <div class="unavailable">
+                        <div class="unavailable-icon">🔄</div>
+                        <p>Fetching Reddit sentiment...</p>
+                        <p style="font-size: 0.85rem; margin-top: var(--spacing-sm);">This data updates hourly from real discussions</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Trend Summary -->
+                <div class="section">
+                    <div class="section-title">📈 The Signal</div>
+                    <p style="line-height: 1.7; color: var(--text-secondary);">
+                        {% if sentiment.get('trend') == 'improving' %}
+                            Positive signals outweigh negative ones. People are discussing this company more positively than a week ago. Good momentum.
+                        {% elif sentiment.get('trend') == 'declining' %}
+                            Negative sentiment is growing. Look for what's driving the criticism — quality, pricing, leadership, or competition?
+                        {% else %}
+                            Mixed sentiment. Neither clearly positive nor negative. Worth investigating further.
+                        {% endif %}
+                    </p>
+                </div>
+
+                <!-- Next Steps -->
+                <div class="section">
+                    <div class="section-title">🎯 Next Moves</div>
+                    <div style="display: grid; gap: var(--spacing-md);">
+                        <div style="padding: var(--spacing-md); background: rgba(27, 123, 126, 0.05); border-radius: 6px;">
+                            <strong style="display: block; margin-bottom: var(--spacing-xs);">Deep Dive</strong>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary);">Search Reddit/Twitter directly for specific keywords to understand the story behind the sentiment.</p>
+                        </div>
+                        <div style="padding: var(--spacing-md); background: rgba(27, 123, 126, 0.05); border-radius: 6px;">
+                            <strong style="display: block; margin-bottom: var(--spacing-xs);">Product Reviews</strong>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary);">Check Trustpilot, Amazon reviews, and customer forums for specific complaints or praise.</p>
+                        </div>
+                        <div style="padding: var(--spacing-md); background: rgba(27, 123, 126, 0.05); border-radius: 6px;">
+                            <strong style="display: block; margin-bottom: var(--spacing-xs);">Team Health</strong>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary);">Check Glassdoor employee reviews and LinkedIn for hiring/departures to understand org stability.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="footer">
+                <div>
+                    <strong>Sentiment Intelligence</strong><br>
+                    <span style="font-size: 0.8rem;">Auto-fetched from Reddit, Twitter, News, Trustpilot</span>
+                </div>
+                <div class="footer-actions">
+                    <button class="button" onclick="copyToClipboard()">📋 Share</button>
+                    <button class="button primary" onclick="window.print()">🖨️ Print</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('URL copied! Share with investors or partners.');
+            });
+        }
+
+        // Apply theme preference
+        function applyTheme() {
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        }
+
+        applyTheme();
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+    </script>
+</body>
+</html>
