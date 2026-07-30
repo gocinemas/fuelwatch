@@ -323,6 +323,16 @@ WEATHER_CODES = {
     95: "Thunderstorm", 96: "Thunderstorm+hail", 99: "Thunderstorm+hail",
 }
 
+WEATHER_ICONS = {
+    0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
+    45: "🌫️", 48: "🌫️", 51: "🌧️", 53: "🌧️",
+    55: "🌧️", 61: "🌧️", 63: "🌧️", 65: "🌧️",
+    71: "❄️", 73: "❄️", 75: "❄️", 77: "❄️",
+    80: "🌧️", 81: "🌧️", 82: "🌧️",
+    85: "❄️", 86: "❄️",
+    95: "⛈️", 96: "⛈️", 99: "⛈️",
+}
+
 _weather_cache: dict = {}
 
 def get_weather(lat: float, lon: float) -> str:
@@ -12621,13 +12631,31 @@ def _v2_fetch_weather(postcode: str) -> dict:
         outdoor_ok = code <= 3 and temp >= 11  # not raining, not freezing
         warm      = temp >= 16
 
-        # Extract today's min/max forecast
+        # Extract today's min/max forecast and build 7-day forecast
         daily = resp_data.get("daily", {})
         temp_max = daily.get("temperature_2m_max", [None])[0]
         temp_min = daily.get("temperature_2m_min", [None])[0]
         forecast_range = ""
         if temp_max is not None and temp_min is not None:
             forecast_range = f" ({round(temp_min)}-{round(temp_max)}°C)"
+
+        # Build 7-day forecast array
+        forecast_7day = []
+        temps_max = daily.get("temperature_2m_max", [])
+        temps_min = daily.get("temperature_2m_min", [])
+        weather_codes = daily.get("weathercode", [])
+        dates = daily.get("time", [])
+
+        for i in range(min(7, len(dates))):
+            if i < len(temps_max) and i < len(temps_min) and i < len(weather_codes):
+                wx_code = weather_codes[i]
+                wx_icon = WEATHER_ICONS.get(wx_code, "❓")
+                forecast_7day.append({
+                    "day": i,
+                    "icon": wx_icon,
+                    "high": round(temps_max[i]) if temps_max[i] is not None else None,
+                    "low": round(temps_min[i]) if temps_min[i] is not None else None,
+                })
 
         return {
             "temp": temp, "desc": desc, "wind": wind,
@@ -12636,6 +12664,7 @@ def _v2_fetch_weather(postcode: str) -> dict:
             "forecast_range": forecast_range,
             "temp_max": round(temp_max) if temp_max else None,
             "temp_min": round(temp_min) if temp_min else None,
+            "forecast_7day": forecast_7day,
         }
     except Exception:
         return {}
