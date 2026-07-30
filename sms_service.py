@@ -29762,6 +29762,50 @@ def api_home_week_full():
         }), 200  # Return 200 so frontend can handle gracefully
 
 
+@app.route("/api/audit/receipts")
+def audit_receipts_endpoint():
+    """Audit receipts for merchant name issues."""
+    token = request.args.get("token", "").strip()
+    if token != os.environ.get("ADMIN_TOKEN", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        sb = lib._sb()
+        receipts = sb.table("wa_saves").select("id,title,summary,category,url,created_at").ilike("title", "🧾%").execute().data or []
+
+        uk_locations = ["weybridge", "london", "manchester", "birmingham", "leeds", "liverpool",
+                        "bristol", "edinburgh", "cardiff", "belfast", "surrey", "essex", "kent", "sussex",
+                        "oxford", "cambridge", "york", "canterbury", "windsor"]
+
+        problematic = []
+        for r in receipts:
+            title = (r.get("title") or "").replace("🧾", "").strip()
+            if any(loc in title.lower() for loc in uk_locations):
+                problematic.append({
+                    "id": r.get("id"),
+                    "title": title,
+                    "category": r.get("category"),
+                    "date": r.get("created_at", "")[:10],
+                    "has_url": bool(r.get("url")),
+                    "summary_preview": (r.get("summary") or "")[:100]
+                })
+
+        categories = {}
+        for p in problematic:
+            cat = p['category'] or 'None'
+            categories[cat] = categories.get(cat, 0) + 1
+
+        return jsonify({
+            "total_receipts": len(receipts),
+            "problematic_count": len(problematic),
+            "problematic_list": problematic[:100],  # First 100
+            "categories": categories,
+            "sample": problematic[:5] if problematic else []
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/diag")
 def school_diag():
     """Admin diagnostic: show profile/token/event state without sending anything."""
