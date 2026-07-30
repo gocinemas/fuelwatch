@@ -29446,7 +29446,9 @@ def api_home_week_full():
     last_week_end = this_monday - _dt.timedelta(days=1)
 
     try:
-        print(f"[week-full] Starting: wa={wa}, from_number={from_number}")
+        print(f"\n{'='*60}")
+        print(f"[week-full] STARTING: wa={wa}, from_number={from_number}")
+        print(f"[week-full] Today: {today} ({today.strftime('%A')})")
 
         sb = None
         try:
@@ -29500,7 +29502,7 @@ def api_home_week_full():
                 .gte("created_at", this_week_start.isoformat()) \
                 .lte("created_at", (this_week_end + _dt.timedelta(days=1)).isoformat()) \
                 .execute().data or []
-            print(f"[week-full] Fetched {len(all_week_saves)} saves from {this_week_start} to {this_week_end}")
+            print(f"[week-full] THIS WEEK ({this_week_start.isoformat()} to {(this_week_end + _dt.timedelta(days=1)).isoformat()}): Fetched {len(all_week_saves)} saves, {len(receipt_rows)} receipts")
 
             # Filter to receipts only (title starts with 🧾)
             receipt_rows = [s for s in all_week_saves if (s.get("title") or "").startswith("🧾")]
@@ -29558,6 +29560,7 @@ def api_home_week_full():
                 })
 
         this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
+        print(f"[week-full] THIS WEEK TOTAL: £{this_week['spend']:.2f}")
 
         # Categorize spend by merchant (also track merchants for detail)
         merchants_by_cat = {}  # Track merchant details per category
@@ -29645,7 +29648,7 @@ def api_home_week_full():
         last_spend_rows = []
 
         # Parse last week receipts
-        print(f"[week-full] Fetched {len(last_week_saves)} last week saves, {len(last_receipt_rows)} receipts")
+        print(f"[week-full] LAST WEEK ({last_week_start.isoformat()} to {(last_week_end + _dt.timedelta(days=1)).isoformat()}): Fetched {len(last_week_saves)} saves, {len(last_receipt_rows)} receipts")
         for r in last_receipt_rows:
             summary = r.get("summary", "")
             title = r.get("title", "")
@@ -29678,6 +29681,7 @@ def api_home_week_full():
                 })
 
         last_week["spend"] = sum(float(r.get("total", 0) or 0) for r in last_spend_rows)
+        print(f"[week-full] LAST WEEK TOTAL: £{last_week['spend']:.2f}")
 
         # Categorize last week spend
         last_merchants_by_cat = {}
