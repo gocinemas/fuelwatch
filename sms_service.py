@@ -29633,13 +29633,14 @@ def api_home_week_full():
         last_spend_rows = []
 
         # Parse last week receipts
+        print(f"[week-full] Fetched {len(last_week_saves)} last week saves, {len(last_receipt_rows)} receipts")
         for r in last_receipt_rows:
             summary = r.get("summary", "")
             title = r.get("title", "")
             merchant = (title or "").replace("🧾", "").strip() or "Unknown"
             amount = 0
 
-            for pattern in patterns:
+            for pattern in _amount_patterns:
                 m = _re_week.search(pattern, summary)
                 if m:
                     try:
