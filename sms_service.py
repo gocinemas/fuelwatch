@@ -21252,14 +21252,25 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
 
         if sid:
             try:
-                # Fallback: if receipt title is still generic, use venue/location info
+                # Fallback: if receipt title is still generic, infer from items or use generic label
                 if img_type == "receipt" and (title == "🧾 Receipt" or not title):
                     if receipt_data.get("merchant"):
                         title = f"🧾 {receipt_data['merchant']}"
+                    elif receipt_data.get("items"):
+                        # Try to infer merchant from items (e.g., pasta → dining)
+                        items_text = " ".join([item.get("name", "").lower() for item in receipt_data.get("items", [])])
+                        if any(word in items_text for word in ["pasta", "pizza", "burger", "fries", "wine", "cocktail"]):
+                            title = "🧾 Restaurant"
+                        elif any(word in items_text for word in ["bread", "milk", "eggs", "butter", "cheese"]):
+                            title = "🧾 Groceries"
+                        elif any(word in items_text for word in ["coffee", "tea", "pastry", "cake"]):
+                            title = "🧾 Cafe"
+                        else:
+                            title = "🧾 Receipt"
                     elif venue_tag:
                         title = f"🧾 {venue_tag}"
-                    elif where_str:
-                        title = f"🧾 {where_str.split(',')[0]}"
+                    else:
+                        title = "🧾 Receipt"  # Don't fall back to location
 
                 # For receipts: prepend total to summary so /api/home/last-receipt can find it via £ symbol
                 receipt_summary = summary_with_meta
