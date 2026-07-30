@@ -41,6 +41,13 @@ def deep_company_search(company_name: str) -> dict:
             results["sources"]["wikipedia"] = wiki_data
             results["search_attempt_count"] += 1
 
+        # 1b. OpenCorporates (international company registry)
+        logger.info(f"[deep_search] Searching OpenCorporates for {company_name}...")
+        oc_data = _search_opencorporates(company_name)
+        if oc_data:
+            results["sources"]["opencorporates"] = oc_data
+            results["search_attempt_count"] += 1
+
         # 2. Crunchbase (startups, funding, employees)
         logger.info(f"[deep_search] Searching Crunchbase for {company_name}...")
         cb_data = _search_crunchbase(company_name)
@@ -101,22 +108,41 @@ def _search_wikipedia(company_name: str) -> dict:
     try:
         from urllib.parse import quote
 
-        url = f"https://en.wikipedia.org/w/api.php?action=query&titles={quote(company_name)}&prop=extracts&explaintext=True&format=json"
+        # Try multiple variations: full name, first word, common suffixes
+        search_terms = [
+            company_name,
+            company_name.split()[0],  # First word only
+            company_name.replace(" Benckiser", ""),  # Remove common suffix
+            company_name.replace(" Group", ""),
+            company_name.replace(" plc", ""),
+            company_name.replace(" Inc", ""),
+            company_name.replace(" Ltd", ""),
+        ]
 
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            pages = data.get("query", {}).get("pages", {})
+        for search_term in search_terms:
+            if not search_term.strip():
+                continue
 
-            for page_id, page_data in pages.items():
-                if page_id != "-1":  # Found page
-                    extract = page_data.get("extract", "")
-                    if extract:
-                        return {
-                            "name": page_data.get("title", company_name),
-                            "description": extract[:500],
-                            "source": "Wikipedia"
-                        }
+            url = f"https://en.wikipedia.org/w/api.php?action=query&titles={quote(search_term)}&prop=extracts&explaintext=True&format=json&exintro=True"
+
+            try:
+                response = requests.get(url, timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    pages = data.get("query", {}).get("pages", {})
+
+                    for page_id, page_data in pages.items():
+                        if page_id != "-1":  # Found page
+                            extract = page_data.get("extract", "").strip()
+                            if extract:  # Only return if extract is not empty
+                                return {
+                                    "name": page_data.get("title", company_name),
+                                    "description": extract[:500],
+                                    "source": "Wikipedia"
+                                }
+            except Exception as e:
+                logger.debug(f"[wikipedia] Error searching '{search_term}': {e}")
+                continue
 
     except Exception as e:
         logger.debug(f"[wikipedia] Error: {e}")
@@ -137,6 +163,53 @@ def _search_crunchbase(company_name: str) -> dict:
 
     except Exception as e:
         logger.debug(f"[crunchbase] Error: {e}")
+
+    return {}
+
+
+def _search_opencorporates(company_name: str) -> dict:
+    """Search OpenCorporates API for company info (free, international)."""
+    try:
+        # Try multiple search terms
+        search_terms = [
+            company_name,
+            company_name.split()[0],
+            company_name.replace(" Benckiser", "").replace(" Group", ""),
+        ]
+
+        for search_term in search_terms:
+            if not search_term.strip():
+                continue
+
+            url = "https://api.opencorporates.com/v0.4/companies/search"
+            params = {
+                "q": search_term,
+                "per_page": 1,
+                "order": "score"
+            }
+
+            response = requests.get(url, params=params, timeout=5, headers={"User-Agent": "Miru/1.0"})
+            if response.status_code == 200:
+                data = response.json()
+                companies = data.get("companies", [])
+                if companies:
+                    comp = companies[0].get("company", {})
+                    name = comp.get("name", "")
+                    if name:
+                        return {
+                            "name": name,
+                            "company_number": comp.get("company_number", ""),
+                            "hq": {
+                                "city": comp.get("registered_address_city", ""),
+                                "country": comp.get("registered_address_country_code", "")
+                            },
+                            "industry": comp.get("company_type", ""),
+                            "description": f"Company from OpenCorporates: {comp.get('company_type', '')}",
+                            "source": "OpenCorporates"
+                        }
+
+    except Exception as e:
+        logger.debug(f"[opencorporates] Error: {e}")
 
     return {}
 
@@ -271,6 +344,13 @@ def _aggregate_company_data(sources: dict) -> dict:
         aggregated["name"] = aggregated["name"] or wiki.get("name")
         aggregated["description"] = aggregated["description"] or wiki.get("description")
         aggregated["founded"] = aggregated["founded"] or wiki.get("founded_year")
+
+    if "opencorporates" in sources:
+        oc = sources["opencorporates"]
+        aggregated["name"] = aggregated["name"] or oc.get("name")
+        aggregated["hq"] = aggregated["hq"] or oc.get("hq")
+        aggregated["industry"] = aggregated["industry"] or oc.get("industry")
+        aggregated["description"] = aggregated["description"] or oc.get("description")
 
     if "crunchbase" in sources:
         cb = sources["crunchbase"]
