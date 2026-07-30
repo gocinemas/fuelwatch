@@ -18073,7 +18073,7 @@ let _savesAll = [];
         var _forecastHtml = '';
 
         // Create horizontal scrolling weather cards (start from tomorrow = Friday)
-        _forecastHtml += '<div style="display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">';
+        _forecastHtml += '<div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">';
 
         for (var i = 1; i < Math.min(8, _wx.forecast_7day.length); i++) {
           var _day = _wx.forecast_7day[i];
@@ -18095,11 +18095,11 @@ let _savesAll = [];
             _borderColor = "rgba(203, 213, 225, 0.5)";
           }
 
-          _forecastHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 6px;background:' + _bgColor + ';border:1.5px solid ' + _borderColor + ';border-radius:7px;white-space:nowrap;flex-shrink:0;min-width:54px">'
-            + '<div style="font-size:9px;font-weight:800;color:var(--text);line-height:1">' + _dayName + '</div>'
-            + '<div style="font-size:15px;line-height:1">' + _day.icon + '</div>'
-            + '<div style="font-size:10px;font-weight:700;color:var(--text);line-height:1">' + _day.high + '°</div>'
-            + '<div style="font-size:8px;color:var(--muted);line-height:1">' + _day.low + '°</div>'
+          _forecastHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 8px;background:' + _bgColor + ';border:1.5px solid ' + _borderColor + ';border-radius:8px;white-space:nowrap;flex-shrink:0;min-width:56px">'
+            + '<div style="font-size:10px;font-weight:800;color:var(--text);line-height:1.1">' + _dayName + '</div>'
+            + '<div style="font-size:18px;line-height:1">' + _day.icon + '</div>'
+            + '<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.1">' + _day.high + '°</div>'
+            + '<div style="font-size:9px;color:var(--muted);line-height:1">' + _day.low + '°</div>'
             + '</div>';
         }
 
