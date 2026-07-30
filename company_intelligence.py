@@ -69,6 +69,142 @@ def _fetch_opencorporates(company_name: str) -> dict:
         return {}
 
 
+def _fetch_wikipedia_robust(company_name: str) -> dict:
+    """Robust Wikipedia fetcher using search + fetch pattern for ANY company."""
+    try:
+        # Step 1: Search Wikipedia for the company
+        search_url = "https://en.wikipedia.org/w/api.php"
+        search_params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": f"{company_name} company",
+            "format": "json",
+            "srlimit": 5
+        }
+
+        response = requests.get(search_url, params=search_params, timeout=8)
+        if response.status_code != 200:
+            return {}
+
+        data = response.json()
+        search_results = data.get("query", {}).get("search", [])
+
+        if not search_results:
+            return {}
+
+        # Step 2: Try each search result to find one with good content
+        for result in search_results:
+            page_title = result.get("title", "")
+            if not page_title:
+                continue
+
+            # Fetch full page content
+            fetch_url = "https://en.wikipedia.org/w/api.php"
+            fetch_params = {
+                "action": "query",
+                "titles": page_title,
+                "prop": "extracts",
+                "explaintext": "True",
+                "format": "json"
+            }
+
+            fetch_response = requests.get(fetch_url, params=fetch_params, timeout=8)
+            if fetch_response.status_code != 200:
+                continue
+
+            fetch_data = fetch_response.json()
+            pages = fetch_data.get("query", {}).get("pages", {})
+
+            for page_id, page in pages.items():
+                if page_id == "-1":
+                    continue
+
+                extract = page.get("extract", "").strip()
+                if not extract or len(extract) < 100:  # Need meaningful content
+                    continue
+
+                return {
+                    "name": page.get("title", company_name),
+                    "description": extract[:400],
+                    "source": "Wikipedia",
+                    "industry": _extract_industry_from_text(extract),
+                    "founded_year": _extract_year_from_text(extract)
+                }
+
+    except Exception as e:
+        app.logger.debug(f"[wikipedia_robust] Error: {e}")
+
+    return {}
+
+
+def _extract_industry_from_text(text: str) -> str:
+    """Extract industry/sector from Wikipedia text."""
+    keywords = {
+        "software": ["software", "technology", "computing", "saas"],
+        "finance": ["bank", "financial", "investment", "fintech"],
+        "retail": ["retail", "e-commerce", "commerce", "shopping"],
+        "manufacturing": ["manufacture", "industrial", "production"],
+        "pharma": ["pharmaceutical", "pharma", "medicine", "health"],
+        "consumer": ["consumer goods", "fmcg", "household"],
+        "energy": ["energy", "oil", "gas", "utility"],
+        "telecom": ["telecommunications", "telecom", "carrier"],
+        "automotive": ["automotive", "automobile", "vehicle"],
+        "aerospace": ["aerospace", "aviation", "aircraft"],
+    }
+
+    text_lower = text.lower()
+    for industry, terms in keywords.items():
+        if any(term in text_lower for term in terms):
+            return industry.capitalize()
+
+    return ""
+
+
+def _extract_year_from_text(text: str) -> str:
+    """Extract founding year from Wikipedia text."""
+    import re
+    match = re.search(r"founded?\s+(?:in\s+)?(\d{4})", text, re.IGNORECASE)
+    return match.group(1) if match else ""
+
+
+def _search_opencorporates_direct(company_name: str) -> dict:
+    """Search OpenCorporates API directly for any international company."""
+    try:
+        # Try US and GB jurisdictions
+        for jurisdiction in ["us", "gb"]:
+            url = "https://api.opencorporates.com/v0.4/companies/search"
+            params = {
+                "q": company_name,
+                "jurisdiction_code": jurisdiction,
+                "per_page": 1,
+                "order": "score"
+            }
+
+            response = requests.get(url, params=params, timeout=8, headers={"User-Agent": "Miru/1.0"})
+            if response.status_code == 200:
+                data = response.json()
+                companies = data.get("companies", [])
+
+                if companies:
+                    comp = companies[0].get("company", {})
+                    if comp.get("name"):
+                        return {
+                            "name": comp.get("name", company_name),
+                            "company_number": comp.get("company_number", ""),
+                            "hq": {
+                                "city": comp.get("registered_address_city", ""),
+                                "country": comp.get("registered_address_country_code", "")
+                            },
+                            "industry": comp.get("company_type", ""),
+                            "source": "OpenCorporates"
+                        }
+
+    except Exception as e:
+        app.logger.debug(f"[opencorporates_direct] Error: {e}")
+
+    return {}
+
+
 def _fetch_european_companies(company_name: str) -> dict:
     """Fetch data for major European companies (France, Germany, Netherlands, etc.)."""
 
@@ -1032,6 +1168,14 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
             result.update(eu_data)
             print(f"[intelligence] Got data from European companies database")
 
+        # Try 1b: OpenCorporates (covers international companies)
+        if not result or not result.get("name"):
+            print(f"[intelligence] Searching OpenCorporates...")
+            oc_result = _search_opencorporates_direct(company_name)
+            if oc_result:
+                result.update(oc_result)
+                print(f"[intelligence] Got data from OpenCorporates")
+
         # Try 2: MCA India (if Indian company) - OFFICIAL GOVERNMENT SOURCE
         if not result or not result.get("name"):
             from mca_india_fetcher import is_indian_company
@@ -1064,7 +1208,17 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
                 result.update(wiki_data)
                 print(f"[intelligence] Got data from Wikipedia")
 
-    # Final fallback: Deep search across all available sources
+    # Final fallback: Try Wikipedia directly (more robust)
+    if not result or not result.get("name"):
+        print(f"[intelligence] Standard sources failed, trying Wikipedia directly...")
+        wiki_result = _fetch_wikipedia_robust(company_name)
+        if wiki_result and wiki_result.get("name"):
+            result.update(wiki_result)
+            result["source"] = "Wikipedia (Direct)"
+            print(f"[intelligence] Found via Wikipedia")
+            return result
+
+    # Last resort: Deep search across all available sources
     if not result or not result.get("name"):
         print(f"[intelligence] No data found in standard sources, trying DEEP SEARCH...")
         from deep_company_search import deep_company_search
@@ -1075,6 +1229,16 @@ def fetch_company_intelligence(company_name: str, country: str = "US") -> dict:
             result["data_sources"] = deep_result.get("sources_found", [])
             print(f"[intelligence] Found via deep search from {len(result.get('data_sources', []))} sources")
             return result
+
+    # Absolute last resort: Return company name at minimum (work for ANY company)
+    if not result or not result.get("name"):
+        print(f"[intelligence] No external data found for {company_name}, returning minimal response...")
+        return {
+            "name": company_name,
+            "description": f"Company: {company_name}",
+            "source": "Direct Search (minimal)",
+            "note": "Limited data available - try searching with country code for better results"
+        }
 
     if not result or not result.get("name"):
         print(f"[intelligence] No data found for {company_name}")
