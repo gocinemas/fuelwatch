@@ -18065,22 +18065,21 @@ let _savesAll = [];
       if (_wxDesc) _wxDesc.textContent = _wxDescParts.join(" · ");
       _wxBar.style.display = "flex";
 
-      // Render beautiful 7-day weather strip with actual day names
+      // Render beautiful weather strip starting from Friday (skip today)
       var _wxForecast = document.getElementById("brief-wx-forecast");
-      if (_wxForecast && _wx.forecast_7day && _wx.forecast_7day.length > 0) {
+      if (_wxForecast && _wx.forecast_7day && _wx.forecast_7day.length > 1) {
         var _now = new Date();
         var _days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         var _forecastHtml = '';
 
-        // Create horizontal scrolling weather cards
-        _forecastHtml += '<div style="display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-right:4px">';
+        // Create horizontal scrolling weather cards (start from tomorrow = Friday)
+        _forecastHtml += '<div style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">';
 
-        for (var i = 0; i < Math.min(7, _wx.forecast_7day.length); i++) {
+        for (var i = 1; i < Math.min(8, _wx.forecast_7day.length); i++) {
           var _day = _wx.forecast_7day[i];
           var _forecastDate = new Date(_now);
           _forecastDate.setDate(_forecastDate.getDate() + i);
           var _dayName = _days[_forecastDate.getDay()];
-          var _isToday = i === 0 ? " (Today)" : "";
 
           // Determine card background based on weather
           var _bgColor = "var(--surface)";
@@ -18096,11 +18095,11 @@ let _savesAll = [];
             _borderColor = "rgba(203, 213, 225, 0.5)";
           }
 
-          _forecastHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 12px;background:' + _bgColor + ';border:1.5px solid ' + _borderColor + ';border-radius:10px;white-space:nowrap;flex-shrink:0;min-width:70px">'
-            + '<div style="font-size:12px;font-weight:800;color:var(--text)">' + _dayName + '</div>'
-            + '<div style="font-size:22px;line-height:1">' + _day.icon + '</div>'
-            + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + _day.high + '°</div>'
-            + '<div style="font-size:11px;color:var(--muted)">' + _day.low + '°</div>'
+          _forecastHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 10px;background:' + _bgColor + ';border:1.5px solid ' + _borderColor + ';border-radius:9px;white-space:nowrap;flex-shrink:0;min-width:65px">'
+            + '<div style="font-size:11px;font-weight:800;color:var(--text)">' + _dayName + '</div>'
+            + '<div style="font-size:18px;line-height:1">' + _day.icon + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:var(--text)">' + _day.high + '°</div>'
+            + '<div style="font-size:10px;color:var(--muted)">' + _day.low + '°</div>'
             + '</div>';
         }
 
