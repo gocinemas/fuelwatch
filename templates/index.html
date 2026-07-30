@@ -19280,6 +19280,7 @@ let _savesAll = [];
                   // Categorize merchant based on name and items
                   var categoryLabel = 'Last shopped at';
                   var categoryIcon = '🛒';
+                  var itemsLabel = 'Bought:';
                   var mLower = (merchant || '').toLowerCase();
                   var itemsText = (d.items || []).map(i => typeof i === 'string' ? i.toLowerCase() : (i.name || '').toLowerCase()).join(' ');
 
@@ -19289,16 +19290,23 @@ let _savesAll = [];
                       itemsText.includes('tiramisu') || itemsText.includes('moretti') || itemsText.includes('pizza')) {
                     categoryLabel = 'Last dined at';
                     categoryIcon = '🍽️';
+                    itemsLabel = 'Items Ordered:';
                   } else if (mLower.includes('takeaway') || mLower.includes('curry') || mLower.includes('indian') || mLower.includes('chinese')) {
                     categoryLabel = 'Last ordered at';
                     categoryIcon = '🥡';
+                    itemsLabel = 'Items Ordered:';
                   } else if (mLower.includes('pret') || mLower.includes('starbucks') || mLower.includes('costa') || mLower.includes('greggs')) {
                     categoryLabel = 'Last visited';
                     categoryIcon = '☕';
+                    itemsLabel = 'Purchased:';
                   } else if (mLower.includes('tesco') || mLower.includes('sainsbury') || mLower.includes('asda') || mLower.includes('waitrose')) {
                     categoryLabel = 'Last shopped at';
                     categoryIcon = '🛒';
+                    itemsLabel = 'Bought:';
                   }
+
+                  // Replace "Bought:" with the appropriate label
+                  itemsHtml = itemsHtml.replace('Bought: ', itemsLabel + ' ');
 
                   el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
                     + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">' + categoryIcon + ' ' + categoryLabel + ' <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + merchant + '</strong></div>'

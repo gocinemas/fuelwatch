@@ -29299,19 +29299,18 @@ def api_home_week_full():
     now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
     today = now.date()
 
-    # "Your Week" = last complete week (most recent full Mon-Sun with data)
-    # If today is Monday, "your week" = last Mon-Sun
-    # If today is Wed, "your week" = last Mon-Sun (not the current incomplete week)
+    # Week boundaries
     days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
     this_monday = today - _dt.timedelta(days=days_since_monday)
+    this_sunday = this_monday + _dt.timedelta(days=6)  # Sunday of this week
 
-    # Show LAST week (the most recent complete week)
-    week_end = this_monday - _dt.timedelta(days=1)  # Yesterday (Sunday of last week)
-    week_start = week_end - _dt.timedelta(days=6)  # Monday of last week
+    # THIS WEEK: Monday of this week → Sunday of this week
+    this_week_start = this_monday
+    this_week_end = this_sunday
 
-    # Week before that for comparison
-    last_week_end = week_start - _dt.timedelta(days=1)
-    last_week_start = last_week_end - _dt.timedelta(days=6)
+    # LAST WEEK: Monday of last week → Sunday of last week
+    last_week_start = this_monday - _dt.timedelta(days=7)
+    last_week_end = this_monday - _dt.timedelta(days=1)
 
     try:
         print(f"[week-full] Starting: wa={wa}, from_number={from_number}")
@@ -29328,7 +29327,7 @@ def api_home_week_full():
             return jsonify({
                 "success": True,
                 "this_week": {
-                    "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
+                    "period": f"{this_week_start.strftime('%b %d')} — {this_week_end.strftime('%b %d')}",
                     "spend": 0,
                     "spend_by_category": {},
                     "cafe_visits": 0,
@@ -29365,14 +29364,14 @@ def api_home_week_full():
         try:
             all_week_saves = sb.table("wa_saves").select("summary,title,created_at") \
                 .eq("from_number", from_number) \
-                .gte("created_at", week_start.isoformat()) \
-                .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()) \
+                .gte("created_at", this_week_start.isoformat()) \
+                .lte("created_at", (this_week_end + _dt.timedelta(days=1)).isoformat()) \
                 .execute().data or []
-            print(f"[week-full] Fetched {len(all_week_saves)} saves from {week_start} to {week_end}")
+            print(f"[week-full] Fetched {len(all_week_saves)} saves from {this_week_start} to {this_week_end}")
 
             # Filter to receipts only (title starts with 🧾)
             receipt_rows = [s for s in all_week_saves if (s.get("title") or "").startswith("🧾")]
-            print(f"[week-full] Week {week_start} to {week_end}: {len(receipt_rows)} receipts found")
+            print(f"[week-full] Week {this_week_start} to {this_week_end}: {len(receipt_rows)} receipts found")
         except Exception as q_err:
             print(f"[week-full] wa_saves query failed: {q_err}")
             import traceback
@@ -29472,8 +29471,8 @@ def api_home_week_full():
         # Saves this week - by type (with titles for recent ones)
         saves_rows = sb.table("wa_saves").select("id,title,summary") \
             .eq("from_number", from_number) \
-            .gte("created_at", week_start.isoformat()) \
-            .lte("created_at", (week_end + _dt.timedelta(days=1)).isoformat()).execute().data or []
+            .gte("created_at", this_week_start.isoformat()) \
+            .lte("created_at", (this_week_end + _dt.timedelta(days=1)).isoformat()).execute().data or []
 
         for s in saves_rows:
             # Count all saves (no category available in wa_saves)
@@ -29485,8 +29484,8 @@ def api_home_week_full():
         # School events this week
         school_events = sb.table("school_events").select("id,event_title,event_date,description") \
             .eq("from_number", from_number) \
-            .gte("event_date", week_start.isoformat()) \
-            .lte("event_date", week_end.isoformat()).execute().data or []
+            .gte("event_date", this_week_start.isoformat()) \
+            .lte("event_date", this_week_end.isoformat()).execute().data or []
         this_week["school_events"] = len(school_events)
         this_week["school_event_list"] = [{"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0]} for e in school_events[:3]]
 
