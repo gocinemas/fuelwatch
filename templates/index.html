@@ -28033,9 +28033,11 @@ document.addEventListener('keydown', function(e) {
       lastBtn.style.color = 'var(--text)';
       lastBtn.style.borderColor = 'var(--border)';
     }
-    // Refresh display with cached data
+    // Re-render with updated tab (from cached data or fetch fresh)
     if (_weekData) {
       _weekRenderData(_weekData);
+    } else {
+      _weekLoad();
     }
   }
 
