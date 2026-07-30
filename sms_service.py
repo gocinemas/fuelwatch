@@ -13690,35 +13690,29 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
         # === AGENTIC INTELLIGENCE INSIGHTS ===
         intel = ctx.get("intelligence", {})
 
-        # Fuel intelligence — refill forecast (ONLY if not just filled up)
+        # Fuel intelligence — intelligent suggestions based on last fill date
         fuel = intel.get("fuel", {})
 
-        # Check if user filled up recently (look at spend context for last fuel date)
-        just_filled = False
-        last_fuel_receipt = None
-
-        # Use intelligence data if available
+        # Use intelligence data: how many days since last fill?
         data_summary = intel.get("data_summary", {}) if intel else {}
         days_since_fuel = data_summary.get("days_since_fuel") if isinstance(data_summary, dict) else None
 
-        # Fallback: check if days_since_fuel from intelligence shows recent fill
-        if isinstance(days_since_fuel, (int, float)) and days_since_fuel <= 1:
-            just_filled = True
+        # Intelligent fuel logic
+        should_suggest_fuel = True
+        if isinstance(days_since_fuel, (int, float)):
+            if days_since_fuel <= 2:
+                # Just filled (last 1-2 days) — don't suggest at all
+                should_suggest_fuel = False
+            elif days_since_fuel <= 7:
+                # Filled within last week — only suggest if price is exceptional
+                should_suggest_fuel = False  # Don't push, user's tank is likely >50%
+            # If >7 days: okay to suggest refill forecast
 
-        # Fuel suggestion logic: only suggest if NOT just filled
-        if not just_filled and fuel.get("next_fill_days") and fuel["next_fill_days"] <= 3:
-            insights.append(f"⛽ Fill up in {fuel['next_fill_days']} days — prices {fuel.get('price_trend', 'stable').upper()}")
-            priority_score["fuel_refill"] = 85
-        elif just_filled and fuel.get("price_trend"):
-            # Just filled up — note the price change instead of suggesting to fill
-            price_change = fuel.get("percent_change", 0)
-            if price_change > 0.5:
-                insights.append(f"⛽ Filled yesterday — prices UP {price_change}% now")
-                priority_score["fuel_note"] = 15
-            elif price_change < -0.5:
-                insights.append(f"⛽ Filled yesterday — good timing, prices DOWN {abs(price_change)}%")
-                priority_score["fuel_note"] = 10
-            # No high priority — they just filled, not actionable
+        # Only suggest fuel if it's actually useful (not just filled, price is reasonable)
+        if should_suggest_fuel and fuel.get("price"):
+            current_price = fuel.get("price", 0) / 100 if fuel.get("price", 0) > 100 else fuel.get("price", 0)
+            insights.append(f"⛽ Fuel: {current_price:.1f}p/L at {fuel.get('location', 'nearby')}")
+            priority_score["fuel"] = 40
 
         # Spend forecast from intelligence
         spend_intel = intel.get("spend", {})
