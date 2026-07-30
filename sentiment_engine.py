@@ -143,17 +143,16 @@ class SentimentEngine:
     def _fetch_google_trends(self) -> dict:
         """Fetch search interest trends."""
         try:
-            results = {
-                "search_interest": "unavailable",
-                "trend": "unknown",
-                "related_queries": [],
-                "source": "Google Trends",
-                "note": "Use pytrends library or manual dashboard"
-            }
+            from free_sentiment_sources import GoogleTrendsScraper
 
-            # pytrends would need to be installed
-            # For MVP: return structure
-            return results
+            trends = GoogleTrendsScraper.get_trends(self.company_name, self.keywords)
+            search_signals = GoogleTrendsScraper.analyze_search_signals(self.company_name, self.keywords)
+
+            return {
+                "trends": trends,
+                "search_signals": search_signals,
+                "source": "Google Trends"
+            }
 
         except Exception as e:
             logger.debug(f"[trends] Error: {e}")
@@ -162,22 +161,28 @@ class SentimentEngine:
     def _fetch_trustpilot_reviews(self) -> dict:
         """Scrape Trustpilot for company reviews and ratings."""
         try:
-            # Check if company has Trustpilot page
-            results = {
-                "overall_rating": None,
-                "review_count": 0,
-                "rating_distribution": {},
-                "recent_reviews": [],
+            from free_sentiment_sources import TrustpilotScraper
+
+            company_rating = TrustpilotScraper.scrape_company(self.company_name)
+
+            # Get product ratings if available
+            product_ratings = {}
+            for keyword in self.keywords[:3]:  # Limit to 3 products
+                product_ratings[keyword] = TrustpilotScraper.scrape_product(keyword, self.company_name)
+
+            # Calculate sentiment from ratings
+            sentiment_score = 50  # Default
+            if company_rating.get("status") == "success":
+                rating = company_rating.get("rating", 3)
+                sentiment_score = int((rating / 5) * 100)
+
+            return {
+                "company_rating": company_rating,
+                "product_ratings": product_ratings,
+                "sentiment_score": sentiment_score,
                 "trend": "stable",
-                "sentiment_score": 50,
-                "source": "Trustpilot",
-                "status": "requires_scraper"
+                "source": "Trustpilot"
             }
-
-            # Would need Trustpilot scraper
-            results["note"] = "Would scrape Trustpilot if company profile exists"
-
-            return results
 
         except Exception as e:
             logger.debug(f"[trustpilot] Error: {e}")
