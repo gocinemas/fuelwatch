@@ -29271,7 +29271,7 @@ def api_home_week_summary():
 
         # === THIS WEEK ===
         this_week = {
-            "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
+            "period": f"{this_week_start.strftime('%b %d')} — {this_week_end.strftime('%b %d')}",
             "spend": 0,
             "saves": 0,
             "activities": [],
@@ -29414,7 +29414,7 @@ def api_home_week_full():
 
         # === THIS WEEK ===
         this_week = {
-            "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
+            "period": f"{this_week_start.strftime('%b %d')} — {this_week_end.strftime('%b %d')}",
             "spend": 0,
             "spend_by_category": {},
             "cafe_visits": 0,

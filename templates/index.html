@@ -17762,15 +17762,8 @@ let _savesAll = [];
               locLabel.style.background = "#fce7f3"; locLabel.style.color = "#9d174d";
               locLabel.style.display = "inline-block";
             } else {
-              var locArea = d.location && d.location.area;
-              if (locArea) {
-                var venueName = d.location.venue && d.location.venue.name ? " · " + d.location.venue.name : "";
-                locLabel.textContent = "📍 " + locArea + venueName;
-                locLabel.style.background = "var(--info-border)"; locLabel.style.color = "#1d4ed8";
-                locLabel.style.display = "inline-block";
-              } else {
-                locLabel.style.display = "none";
-              }
+              // Location label hidden from frontend but data still fetched for backend intelligence
+              locLabel.style.display = "none";
               // Offer to save location if GPS was provided but context unrecognised
               var saveNudge = document.getElementById("brief-save-location-nudge");
               if (saveNudge && gpsLat !== null && (lctx === "out" || lctx === "unknown")) {
