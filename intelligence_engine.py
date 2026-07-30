@@ -122,12 +122,18 @@ class MiruIntelligence:
             # Generate insights
             insights = self._generate_insights(this_week_spend, last_week_spend, phone)
 
+            # Calculate contextual data for intelligent brief
+            days_since_fuel = self._calculate_days_since_fuel(phone)
+
             return {
                 "success": True,
                 "insights": insights,
                 "data": {
                     "this_week": this_week_spend,
                     "last_week": last_week_spend,
+                },
+                "data_summary": {
+                    "days_since_fuel": days_since_fuel,
                 },
                 "timestamp": now_london().isoformat(),
             }
@@ -196,6 +202,33 @@ class MiruIntelligence:
                 except (ValueError, IndexError):
                     pass
         return 0.0
+
+    def _calculate_days_since_fuel(self, phone: str) -> int:
+        """Calculate days since last fuel purchase. Returns -1 if no fuel purchase found."""
+        try:
+            today = today_london()
+            # Query receipts to find last fuel purchase
+            receipts = self.sb.table("wa_saves").select("title,created_at,summary") \
+                .eq("from_number", f"whatsapp:{phone}") \
+                .order("created_at", desc=True) \
+                .limit(100) \
+                .execute().data or []
+
+            for r in receipts:
+                title = (r.get("title") or "").lower()
+                summary = (r.get("summary") or "").lower()
+                # Check if receipt is from fuel station
+                if any(fuel_name in title + summary for fuel_name in ["shell", "bp", "esso", "tesco petrol", "asda fuel", "fuel", "petrol"]):
+                    try:
+                        receipt_date = date.fromisoformat(r.get("created_at", "")[:10])
+                        days_since = (today - receipt_date).days
+                        return days_since
+                    except (ValueError, TypeError):
+                        continue
+            return -1  # No fuel purchase found
+        except Exception as e:
+            self.logger.error(f"Fuel calculation failed: {e}")
+            return -1
 
     def _generate_insights(self, this_week: Dict, last_week: Dict, phone: str) -> str:
         """Generate actionable, human-readable insights."""
