@@ -29518,13 +29518,17 @@ def api_home_week_full():
         import re as _re_week
 
         # Define regex patterns for amount extraction (reusable)
+        # MUST match: "Total to Pay:", "TOTAL:", "Total due:", "Total:", etc.
         _amount_patterns = [
-            r'Total due:\s*£([\d,]+\.?\d*)',           # "Total due: £12.34"
-            r'Total amount:\s*£([\d,]+\.?\d*)',        # "Total amount: £30.82"
-            r'Total balance due\s+£([\d,]+\.?\d*)',    # "Total balance due £44.45"
-            r'Total\s*\(.*?\):\s*£([\d,]+\.?\d*)',    # "Total (Net Price): £29.37" or "Total (incl VAT): £100.18"
-            r'Total:\s*£([\d,]+\.?\d*)',               # "Total: £67.73"
-            r'Total\s+£([\d,]+\.?\d*)',                # "Total £15.10"
+            r'(?:Total|TOTAL)\s+to\s+(?:Pay|pay):\s*£([\d,]+\.?\d*)',  # "Total to Pay: £104.58"
+            r'(?:Total|TOTAL)\s+due:\s*£([\d,]+\.?\d*)',               # "Total due: £12.34"
+            r'(?:Total|TOTAL)\s+amount:\s*£([\d,]+\.?\d*)',            # "Total amount: £30.82"
+            r'(?:Total|TOTAL)\s+balance\s+due\s+£([\d,]+\.?\d*)',      # "Total balance due £44.45"
+            r'(?:Total|TOTAL)\s*\(.*?\):\s*£([\d,]+\.?\d*)',          # "Total (Net Price): £29.37"
+            r'(?:Total|TOTAL):\s*£([\d,]+\.?\d*)',                     # "Total: £67.73" or "TOTAL: £28.00"
+            r'(?:Total|TOTAL)\s+£([\d,]+\.?\d*)',                      # "Total £15.10"
+            r'Payable:\s*£([\d,]+\.?\d*)',                             # "Payable: £..."
+            r'Amount due:\s*£([\d,]+\.?\d*)',                          # "Amount due: £..."
         ]
 
         for r in receipt_rows:
