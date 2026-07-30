@@ -1422,6 +1422,60 @@ def api_company_intelligence_signals(company_name):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/intelligence/sentiment/<company_name>")
+def company_sentiment_card(company_name):
+    """Real-time sentiment card (what people are actually saying)."""
+    from sentiment_engine import get_company_sentiment
+
+    try:
+        # Map company names to keywords
+        keyword_map = {
+            "reckitt": ["reckitt", "dettol", "lysol", "air wick", "nurofen"],
+            "henkel": ["henkel", "persil", "schwarzkopf"],
+            "unilever": ["unilever", "dove", "axe", "lux", "knorr"],
+        }
+
+        keywords = keyword_map.get(company_name.lower(), [company_name])
+
+        # Fetch real sentiment
+        sentiment = get_company_sentiment(company_name, keywords)
+
+        # Render card
+        return render_template(
+            "intelligence_sentiment.html",
+            company=company_name,
+            ticker=None,
+            sentiment=sentiment,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        app.logger.error(f"[sentiment_card] Error: {e}")
+        return render_template("error.html", message=f"Error loading sentiment for {company_name}"), 500
+
+
+@app.route("/api/sentiment/<company_name>")
+def api_company_sentiment(company_name):
+    """API endpoint for sentiment signals (JSON)."""
+    from sentiment_engine import get_company_sentiment
+
+    try:
+        keyword_map = {
+            "reckitt": ["reckitt", "dettol", "lysol", "air wick", "nurofen"],
+            "henkel": ["henkel", "persil", "schwarzkopf"],
+            "unilever": ["unilever", "dove", "axe", "lux", "knorr"],
+        }
+
+        keywords = keyword_map.get(company_name.lower(), [company_name])
+        sentiment = get_company_sentiment(company_name, keywords)
+
+        return jsonify(sentiment)
+
+    except Exception as e:
+        app.logger.error(f"[api_sentiment] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/brand/compare")
 def brand_compare():
     """Compare 2-3 brands side by side"""
@@ -29560,19 +29614,79 @@ def api_home_week_full():
         last_week = {
             "period": f"{last_week_start.strftime('%b %d')} — {last_week_end.strftime('%b %d')}",
             "spend": 0,
+            "spend_by_category": {},
             "cafe_visits": 0,
             "top_cafes": [],
             "saves": 0,
             "school_events": 0,
         }
 
-        # Last week spend (no category column, use merchant to categorize)
-        last_spend_rows = sb.table("receipts").select("total,merchant,shop_date") \
-            .eq("phone", phone) \
-            .gte("shop_date", last_week_start.isoformat()) \
-            .lte("shop_date", last_week_end.isoformat()).execute().data or []
+        # Last week receipts — fetch from wa_saves (same as this week)
+        last_week_saves = sb.table("wa_saves").select("summary,title,created_at") \
+            .eq("from_number", from_number) \
+            .gte("created_at", last_week_start.isoformat()) \
+            .lte("created_at", (last_week_end + _dt.timedelta(days=1)).isoformat()) \
+            .execute().data or []
+
+        last_receipt_rows = [s for s in last_week_saves if (s.get("title") or "").startswith("🧾")]
+        last_spend_rows = []
+
+        # Parse last week receipts
+        for r in last_receipt_rows:
+            summary = r.get("summary", "")
+            title = r.get("title", "")
+            merchant = (title or "").replace("🧾", "").strip() or "Unknown"
+            amount = 0
+
+            for pattern in patterns:
+                m = _re_week.search(pattern, summary)
+                if m:
+                    try:
+                        amount = float(m.group(1).replace(",", ""))
+                        break
+                    except (ValueError, IndexError):
+                        pass
+
+            if amount == 0:
+                m = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
+                if m:
+                    merchant = m.group(1).strip()
+                    try:
+                        amount = float(m.group(2))
+                    except (ValueError, IndexError):
+                        pass
+
+            if amount > 0:
+                last_spend_rows.append({
+                    "total": amount,
+                    "merchant": merchant,
+                    "shop_date": r.get("created_at", "").split("T")[0]
+                })
 
         last_week["spend"] = sum(float(r.get("total", 0) or 0) for r in last_spend_rows)
+
+        # Categorize last week spend
+        last_merchants_by_cat = {}
+        try:
+            for r in last_spend_rows:
+                merchant = r.get("merchant", "Unknown")
+                cat = _receipt_category(merchant)
+                amount = float(r.get("total", 0) or 0)
+                if cat not in last_week["spend_by_category"]:
+                    last_week["spend_by_category"][cat] = {"total": 0, "count": 0, "merchants": []}
+                    last_merchants_by_cat[cat] = {}
+                last_week["spend_by_category"][cat]["total"] += amount
+                last_week["spend_by_category"][cat]["count"] += 1
+                if merchant not in last_merchants_by_cat[cat]:
+                    last_merchants_by_cat[cat][merchant] = 0
+                last_merchants_by_cat[cat][merchant] += amount
+        except Exception:
+            pass
+
+        # Add merchant details to last week categories
+        for cat in last_week["spend_by_category"]:
+            merchants = sorted(last_merchants_by_cat.get(cat, {}).items(), key=lambda x: x[1], reverse=True)
+            last_week["spend_by_category"][cat]["merchants"] = [{"name": m[0], "amount": round(m[1], 2)} for m in merchants]
 
         # Last week cafe visits
         last_cafe_rows = [r for r in last_spend_rows if _receipt_category(r.get("merchant", "")).strip() in food_categories]
@@ -29586,7 +29700,7 @@ def api_home_week_full():
         last_saves = sb.table("wa_saves").select("id") \
             .eq("from_number", from_number) \
             .gte("created_at", last_week_start.isoformat()) \
-            .lte("created_at", last_week_end.isoformat()).execute().data or []
+            .lte("created_at", (last_week_end + _dt.timedelta(days=1)).isoformat()).execute().data or []
         last_week["saves"] = len(last_saves)
 
         # Last week school events
