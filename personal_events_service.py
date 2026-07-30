@@ -176,7 +176,28 @@ def get_personal_events(days_ahead: int = 30) -> List[Dict]:
             .order("event_date") \
             .execute().data or []
 
-        return rows
+        # Validate events: filter out any with dates that don't make sense
+        # (e.g., stored with incorrect date from months ago that still fall within 30 days)
+        valid_events = []
+        for row in rows:
+            event_date_str = row.get("event_date", "")
+            try:
+                event_date = date.fromisoformat(event_date_str)
+                # Check if event was created more than 90 days ago but still hasn't passed
+                # This filters out stale events with wrong future dates
+                created_str = row.get("created_at", "")
+                if created_str:
+                    created_date = date.fromisoformat(created_str[:10])
+                    days_old = (date.today() - created_date).days
+                    # If event is >60 days old (created) and still marked as future, likely a bad entry
+                    if days_old > 60 and (event_date - date.today()).days > 0:
+                        continue
+                valid_events.append(row)
+            except (ValueError, TypeError):
+                # Skip events with invalid dates
+                continue
+
+        return valid_events
     except Exception as e:
         print(f"[personal-events] Fetch error: {e}")
         return []
