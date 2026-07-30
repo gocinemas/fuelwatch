@@ -19276,8 +19276,31 @@ let _savesAll = [];
                       itemsHtml += '</div>';
                     }
                   }
+                  // Categorize merchant based on name and items
+                  var categoryLabel = 'Last shopped at';
+                  var categoryIcon = '🛒';
+                  var mLower = (merchant || '').toLowerCase();
+                  var itemsText = (d.items || []).map(i => typeof i === 'string' ? i.toLowerCase() : (i.name || '').toLowerCase()).join(' ');
+
+                  // Check for dining indicators
+                  if (mLower.includes('nando') || mLower.includes('wagamama') || mLower.includes('restaurant') || mLower.includes('pub') ||
+                      itemsText.includes('pasta') || itemsText.includes('penne') || itemsText.includes('wine') || itemsText.includes('cocktail') ||
+                      itemsText.includes('tiramisu') || itemsText.includes('moretti') || itemsText.includes('pizza')) {
+                    categoryLabel = 'Last dined at';
+                    categoryIcon = '🍽️';
+                  } else if (mLower.includes('takeaway') || mLower.includes('curry') || mLower.includes('indian') || mLower.includes('chinese')) {
+                    categoryLabel = 'Last ordered at';
+                    categoryIcon = '🥡';
+                  } else if (mLower.includes('pret') || mLower.includes('starbucks') || mLower.includes('costa') || mLower.includes('greggs')) {
+                    categoryLabel = 'Last visited';
+                    categoryIcon = '☕';
+                  } else if (mLower.includes('tesco') || mLower.includes('sainsbury') || mLower.includes('asda') || mLower.includes('waitrose')) {
+                    categoryLabel = 'Last shopped at';
+                    categoryIcon = '🛒';
+                  }
+
                   el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-                    + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Last shopped at <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + merchant + '</strong></div>'
+                    + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">' + categoryIcon + ' ' + categoryLabel + ' <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + merchant + '</strong></div>'
                     + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div>'
                     + itemsHtml
                     + '</div>'
