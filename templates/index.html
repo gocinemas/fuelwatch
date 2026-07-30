@@ -17470,7 +17470,8 @@ let _savesAll = [];
     var sec = document.getElementById("brief-location-section");
     if (!sec) return;
     if (!navigator.geolocation) return;
-    sec.style.display = "block";
+    // Location data used in backend for intelligence — hidden from frontend
+    // sec.style.display = "block";
     navigator.geolocation.getCurrentPosition(
       function(pos) {
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
