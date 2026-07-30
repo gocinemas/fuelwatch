@@ -14027,6 +14027,9 @@ def api_home_brief():
 
     # Weather
     weather = ctx.get("weather", {})
+    # Add postcode so frontend knows which location this weather is for
+    if weather and not weather.get("postcode"):
+        weather["postcode"] = fuel_pc
 
     # Saves — split by type for time-aware ordering
     # Receipts (past purchases) are excluded from the narrative — they're history, not suggestions
