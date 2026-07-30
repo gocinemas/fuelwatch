@@ -21385,17 +21385,25 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 update_data = {"title": title, "summary": receipt_summary if img_type == "receipt" else summary_with_meta}
                 if search_url:
                     update_data["url"] = search_url
-                if img_type == "receipt" and receipt_data.get("merchant"):
-                    auto_category = _receipt_category(receipt_data["merchant"])
+
+                if img_type == "receipt":
+                    # ALWAYS categorize receipts, using merchant name OR title OR items
+                    merchant = receipt_data.get("merchant", "")
+                    items_text = " ".join([item.get("name", "") for item in receipt_data.get("items", [])])
+                    summary_for_cat = receipt_summary or items_text
+
+                    auto_category = _receipt_category(merchant, summary_for_cat)
                     try:
                         existing = lib._sb().table("wa_saves").select("category").eq("id", sid).execute().data
                         if existing and existing[0].get("category"):
                             # Preserve user's manual reclassification (don't override)
-                            pass
+                            app.logger.info(f"[receipt] Preserving existing category for {merchant or title}")
                         else:
                             update_data["category"] = auto_category
-                    except Exception:
+                            app.logger.info(f"[receipt] Classified {merchant or title} as {auto_category}")
+                    except Exception as cat_ex:
                         update_data["category"] = auto_category
+                        app.logger.warning(f"[receipt] Category check failed: {cat_ex}, setting to {auto_category}")
                 elif img_type == "store":
                     # Derive category from venue name so the brief can filter it correctly
                     update_data["category"] = _receipt_category(venue_tag or title.replace("🏪","").strip()) or "place"
