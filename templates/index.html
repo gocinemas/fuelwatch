@@ -2010,17 +2010,17 @@
           <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Your Brief</div>
           <div id="brief-dateline" style="font-size:14px;color:var(--text);margin-top:3px;font-weight:600"></div>
           <!-- Weather section: current + forecast grid -->
-          <div id="brief-weather-wrapper" style="display:none;margin-top:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+          <div id="brief-weather-wrapper" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
             <!-- Grid: current weather + day names in row 1, rest of forecast below -->
-            <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start">
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start">
               <!-- Current weather (left column, spans all rows) -->
-              <div id="brief-weather-bar" style="display:flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap;grid-row:1/4">
-                <span id="brief-wx-icon" style="font-size:32px"></span>
-                <div>
-                  <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">
-                    <span id="brief-wx-temp" style="font-size:28px;font-weight:900;color:var(--text);letter-spacing:-0.5px"></span>
+              <div id="brief-weather-bar" style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;grid-row:1/4">
+                <span id="brief-wx-icon" style="font-size:28px"></span>
+                <div style="line-height:1.2">
+                  <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:0px">
+                    <span id="brief-wx-temp" style="font-size:24px;font-weight:900;color:var(--text);letter-spacing:-0.5px;line-height:1"></span>
                   </div>
-                  <span id="brief-wx-desc" style="font-size:12px;color:var(--muted);font-weight:600"></span>
+                  <span id="brief-wx-desc" style="font-size:11px;color:var(--muted);font-weight:500;line-height:1.2"></span>
                 </div>
               </div>
               <!-- 7-day forecast grid (right column) -->
@@ -18073,7 +18073,7 @@ let _savesAll = [];
         var _forecastHtml = '';
 
         // Create horizontal scrolling weather cards (start from tomorrow = Friday)
-        _forecastHtml += '<div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">';
+        _forecastHtml += '<div style="display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">';
 
         for (var i = 1; i < Math.min(8, _wx.forecast_7day.length); i++) {
           var _day = _wx.forecast_7day[i];
@@ -18095,11 +18095,11 @@ let _savesAll = [];
             _borderColor = "rgba(203, 213, 225, 0.5)";
           }
 
-          _forecastHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 8px;background:' + _bgColor + ';border:1.5px solid ' + _borderColor + ';border-radius:8px;white-space:nowrap;flex-shrink:0;min-width:58px">'
-            + '<div style="font-size:10px;font-weight:800;color:var(--text);line-height:1.1">' + _dayName + '</div>'
-            + '<div style="font-size:16px;line-height:1">' + _day.icon + '</div>'
-            + '<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.1">' + _day.high + '°</div>'
-            + '<div style="font-size:9px;color:var(--muted);line-height:1">' + _day.low + '°</div>'
+          _forecastHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 6px;background:' + _bgColor + ';border:1.5px solid ' + _borderColor + ';border-radius:7px;white-space:nowrap;flex-shrink:0;min-width:54px">'
+            + '<div style="font-size:9px;font-weight:800;color:var(--text);line-height:1">' + _dayName + '</div>'
+            + '<div style="font-size:15px;line-height:1">' + _day.icon + '</div>'
+            + '<div style="font-size:10px;font-weight:700;color:var(--text);line-height:1">' + _day.high + '°</div>'
+            + '<div style="font-size:8px;color:var(--muted);line-height:1">' + _day.low + '°</div>'
             + '</div>';
         }
 
