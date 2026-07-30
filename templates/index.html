@@ -18065,29 +18065,28 @@ let _savesAll = [];
       if (_wxDesc) _wxDesc.textContent = _wxDescParts.join(" · ");
       _wxBar.style.display = "flex";
 
-      // Render 7-day forecast grid (skip today)
+      // Render 7-day forecast grid (full week including today)
       var _wxForecast = document.getElementById("brief-wx-forecast");
-      if (_wxForecast && _wx.forecast_7day && _wx.forecast_7day.length > 1) {
-        var _dayNames = ["Tomorrow", "Wed", "Thu", "Fri", "Sat", "Sun", "Mon"];
-        var _colWidth = "50px";
+      if (_wxForecast && _wx.forecast_7day && _wx.forecast_7day.length > 0) {
+        var _dayNames = ["Today", "Tomorrow", "Wed", "Thu", "Fri", "Sat", "Sun"];
         var _forecastHtml = '';
 
-        // Create grid: 6 columns for the 6 forecast days
-        _forecastHtml += '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;min-width:330px">';
+        // Create grid: 7 columns for full week
+        _forecastHtml += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px;min-width:400px">';
 
         // Row 1: Day names
-        for (var i = 1; i < _wx.forecast_7day.length; i++) {
-          _forecastHtml += '<div style="text-align:center;font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis">' + _dayNames[i-1] + '</div>';
+        for (var i = 0; i < Math.min(7, _wx.forecast_7day.length); i++) {
+          _forecastHtml += '<div style="text-align:center;font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis">' + _dayNames[i] + '</div>';
         }
 
         // Row 2: Icons
-        for (var i = 1; i < _wx.forecast_7day.length; i++) {
+        for (var i = 0; i < Math.min(7, _wx.forecast_7day.length); i++) {
           var _day = _wx.forecast_7day[i];
           _forecastHtml += '<div style="text-align:center;font-size:20px">' + _day.icon + '</div>';
         }
 
         // Row 3: High temps
-        for (var i = 1; i < _wx.forecast_7day.length; i++) {
+        for (var i = 0; i < Math.min(7, _wx.forecast_7day.length); i++) {
           var _day = _wx.forecast_7day[i];
           if (_day.high !== null) {
             _forecastHtml += '<div style="text-align:center;font-size:12px;font-weight:700;color:var(--text)">' + _day.high + '°</div>';
@@ -18095,7 +18094,7 @@ let _savesAll = [];
         }
 
         // Row 4: Low temps
-        for (var i = 1; i < _wx.forecast_7day.length; i++) {
+        for (var i = 0; i < Math.min(7, _wx.forecast_7day.length); i++) {
           var _day = _wx.forecast_7day[i];
           if (_day.low !== null) {
             _forecastHtml += '<div style="text-align:center;font-size:11px;color:var(--muted)">' + _day.low + '°</div>';
