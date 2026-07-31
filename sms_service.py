@@ -29678,13 +29678,26 @@ def api_home_week_full():
         # Get sample saves to display (first 5)
         this_week["save_samples"] = [{"title": s.get("title", "Untitled"), "category": "saved", "summary": (s.get("summary") or "")[:60]} for s in saves_rows[:5]]
 
-        # School events this week
+        # School events this week (school_events + personal_events merged)
         school_events = sb.table("school_events").select("id,event_title,event_date,description") \
             .eq("from_number", from_number) \
             .gte("event_date", this_week_start.isoformat()) \
             .lte("event_date", this_week_end.isoformat()).execute().data or []
-        this_week["school_events"] = len(school_events)
-        this_week["school_event_list"] = [{"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0]} for e in school_events[:3]]
+
+        personal_events_week = sb.table("personal_events").select("id,event_title,event_date,event_time") \
+            .eq("email_from", from_number) \
+            .gte("event_date", this_week_start.isoformat()) \
+            .lte("event_date", this_week_end.isoformat()).execute().data or []
+
+        all_events = []
+        for e in school_events:
+            all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "id": e.get("id"), "type": "school"})
+        for e in personal_events_week:
+            all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "time": e.get("event_time", ""), "id": e.get("id"), "type": "personal"})
+
+        all_events.sort(key=lambda x: x.get("date", ""))
+        this_week["school_events"] = len(all_events)
+        this_week["school_event_list"] = all_events[:5]  # Show up to 5 events
 
         # === LAST WEEK (for comparison) ===
         last_week = {
@@ -29789,13 +29802,26 @@ def api_home_week_full():
         last_week["saves"]["total"] = len(last_saves)
         last_week["save_samples"] = [{"title": s.get("title", "Untitled"), "category": "saved", "summary": (s.get("summary") or "")[:60]} for s in last_saves[:5]]
 
-        # Last week school events
+        # Last week school events (school_events + personal_events merged)
         last_school_events = sb.table("school_events").select("id,event_title,event_date,description") \
             .eq("from_number", from_number) \
             .gte("event_date", last_week_start.isoformat()) \
             .lte("event_date", last_week_end.isoformat()).execute().data or []
-        last_week["school_events"] = len(last_school_events)
-        last_week["school_event_list"] = [{"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0]} for e in last_school_events[:3]]
+
+        last_personal_events = sb.table("personal_events").select("id,event_title,event_date,event_time") \
+            .eq("email_from", from_number) \
+            .gte("event_date", last_week_start.isoformat()) \
+            .lte("event_date", last_week_end.isoformat()).execute().data or []
+
+        last_all_events = []
+        for e in last_school_events:
+            last_all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "id": e.get("id"), "type": "school"})
+        for e in last_personal_events:
+            last_all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "time": e.get("event_time", ""), "id": e.get("id"), "type": "personal"})
+
+        last_all_events.sort(key=lambda x: x.get("date", ""))
+        last_week["school_events"] = len(last_all_events)
+        last_week["school_event_list"] = last_all_events[:5]  # Show up to 5 events
 
         # === TRENDS ===
         spend_diff = this_week["spend"] - last_week["spend"]
@@ -30455,6 +30481,24 @@ def api_personal_events():
         })
     except Exception as e:
         print(f"[personal/events] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/personal/events/delete", methods=["POST"])
+def api_delete_personal_event():
+    """Delete a personal event by ID."""
+    try:
+        data = request.get_json(silent=True) or {}
+        event_id = data.get("event_id", "").strip()
+
+        if not event_id:
+            return jsonify({"error": "event_id required"}), 400
+
+        # Delete the event
+        lib._sb().table("personal_events").delete().eq("id", event_id).execute()
+        return jsonify({"success": True, "deleted": event_id})
+    except Exception as e:
+        print(f"[personal/delete] Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
