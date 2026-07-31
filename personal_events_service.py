@@ -324,20 +324,40 @@ If this is NOT an event (just random text), set is_event to false."""
             json_str = response_text[start:end]
             parsed = json.loads(json_str)
             if parsed.get("is_event"):
-                # Store in database
+                # Store in database with deduplication
                 try:
                     sb = lib._sb()
+                    event_title = parsed.get("event_title", "Event")
+                    event_date = parsed.get("event_date")
+                    event_time = parsed.get("event_time")
+
+                    # Dedup: Check if this event already exists (same title + date + time from this user)
+                    existing = sb.table("personal_events").select("id") \
+                        .eq("email_from", from_number) \
+                        .eq("event_title", event_title) \
+                        .eq("event_date", event_date) \
+                        .eq("event_time", event_time) \
+                        .execute().data or []
+
+                    if existing:
+                        print(f"[event-parse] Duplicate detected, skipping: {event_title}")
+                        return {"success": True, "event": parsed, "duplicate": True}
+
+                    # Create unique ID based on content hash
+                    import hashlib
+                    content_hash = hashlib.md5(f"{event_title}{event_date}{event_time}{from_number}".encode()).hexdigest()
+
                     sb.table("personal_events").insert({
-                        "gmail_msg_id": f"whatsapp_{from_number}_{int(time.time())}",
+                        "gmail_msg_id": f"whatsapp_{content_hash}",
                         "email_from": from_number,
-                        "event_title": parsed.get("event_title", "Event"),
-                        "event_date": parsed.get("event_date"),
-                        "event_time": parsed.get("event_time"),
+                        "event_title": event_title,
+                        "event_date": event_date,
+                        "event_time": event_time,
                         "location": parsed.get("location"),
                         "description": parsed.get("description", ""),
                         "created_at": datetime.utcnow().isoformat(),
                     }).execute()
-                    print(f"[event-parse] Stored: {parsed.get('event_title')}")
+                    print(f"[event-parse] Stored: {event_title}")
                     return {"success": True, "event": parsed}
                 except Exception as e:
                     print(f"[event-parse] Store error: {e}")

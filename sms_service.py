@@ -24832,12 +24832,18 @@ def _whatsapp_reply_inner():
         print(f"[event] Parse result: {result}")
         if result.get("success"):
             event = result.get("event", {})
-            resp.message(f"📅 *Event saved!*\n\n"
-                        f"*{event.get('event_title', 'Event')}*\n"
-                        f"📅 {event.get('event_date', 'Date TBD')}\n"
-                        f"🕐 {event.get('event_time', 'Time TBD')}\n"
-                        f"{'📍 ' + event.get('location') if event.get('location') else ''}\n\n"
-                        f"Shows up in your brief and 📊 Your Week!")
+            if result.get("duplicate"):
+                resp.message(f"✅ *Already saved!* (Found existing event)\n\n"
+                            f"*{event.get('event_title', 'Event')}*\n"
+                            f"📅 {event.get('event_date', 'Date TBD')}\n"
+                            f"🕐 {event.get('event_time', 'Time TBD')}")
+            else:
+                resp.message(f"📅 *Event saved!*\n\n"
+                            f"*{event.get('event_title', 'Event')}*\n"
+                            f"📅 {event.get('event_date', 'Date TBD')}\n"
+                            f"🕐 {event.get('event_time', 'Time TBD')}\n"
+                            f"{'📍 ' + event.get('location') if event.get('location') else ''}\n\n"
+                            f"Shows up in your brief and 📊 Your Week!")
             return str(resp)
         else:
             resp.message(f"❌ Couldn't parse that event. Try:\n\n"
