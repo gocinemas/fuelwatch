@@ -28208,21 +28208,34 @@ document.addEventListener('keydown', function(e) {
   function _deleteEvent(eventId, eventType) {
     if (!confirm('Delete this event?')) return;
     const endpoint = eventType === 'personal' ? '/api/personal/events/delete' : '/api/school/events/delete';
+    const payload = {event_id: eventId};
+    if (eventType === 'school') {
+      payload.wa = _miruPhone();  // School events need wa param
+    }
+    console.log('[delete] Deleting event:', eventId, 'type:', eventType, 'payload:', payload);
     fetch(endpoint, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({event_id: eventId, wa: _miruPhone()})
+      body: JSON.stringify(payload)
     })
-    .then(r => r.json())
+    .then(r => {
+      console.log('[delete] Response status:', r.status);
+      if (r.status === 204) return null;  // No content response
+      return r.json();
+    })
     .then(d => {
-      if (d.success || d.ok) {
+      console.log('[delete] Response data:', d);
+      if (d === null || d.success || d.ok || d.deleted) {
         alert('✓ Event deleted');
         _weekLoad();  // Reload data
       } else {
         alert('Error: ' + (d.error || 'Unknown error'));
       }
     })
-    .catch(e => alert('Delete failed: ' + e.message));
+    .catch(e => {
+      console.error('[delete] Error:', e);
+      alert('Delete failed: ' + e.message);
+    });
   }
 
   // Check onboarding on app load

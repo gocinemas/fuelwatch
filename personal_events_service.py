@@ -172,11 +172,13 @@ def store_personal_event(email_id: str, email_from: str, event: Dict) -> bool:
 
 
 def get_personal_events(days_ahead: int = 30) -> List[Dict]:
-    """Get upcoming personal events."""
+    """Get upcoming personal events (show for 30 mins after time)."""
     try:
+        from datetime import datetime as dt
         sb = lib._sb()
         today = date.today().isoformat()
         future = (date.today() + timedelta(days=days_ahead)).isoformat()
+        now = dt.now()
 
         rows = sb.table("personal_events").select("*") \
             .gte("event_date", today) \
@@ -185,14 +187,26 @@ def get_personal_events(days_ahead: int = 30) -> List[Dict]:
             .execute().data or []
 
         # Validate events: filter out any with dates that don't make sense
-        # (e.g., stored with incorrect date from months ago that still fall within 30 days)
         valid_events = []
         for row in rows:
             event_date_str = row.get("event_date", "")
             try:
                 event_date = date.fromisoformat(event_date_str)
+
+                # Check if event has passed (more than 30 mins after event time)
+                event_time_str = row.get("event_time", "")
+                if event_time_str:
+                    try:
+                        event_hour, event_min = map(int, event_time_str.split(":"))
+                        event_datetime = dt(event_date.year, event_date.month, event_date.day, event_hour, event_min)
+                        # Show event until 30 mins after scheduled time
+                        event_end_time = event_datetime + timedelta(minutes=30)
+                        if now > event_end_time:
+                            continue  # Skip events that passed 30 mins ago
+                    except (ValueError, AttributeError):
+                        pass  # If time format is bad, still include the event
+
                 # Check if event was created more than 90 days ago but still hasn't passed
-                # This filters out stale events with wrong future dates
                 created_str = row.get("created_at", "")
                 if created_str:
                     created_date = date.fromisoformat(created_str[:10])

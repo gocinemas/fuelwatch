@@ -44,72 +44,11 @@ class SentimentEngine:
             return {"error": str(e)}
 
     def _fetch_reddit_sentiment(self) -> dict:
-        """Scrape Reddit for mentions and sentiment."""
+        """Fetch sentiment from Hacker News and Reddit-like sources."""
         try:
-            # Search Reddit posts mentioning the company
-            results = {
-                "positive": 0,
-                "negative": 0,
-                "neutral": 0,
-                "total_mentions": 0,
-                "top_posts": [],
-                "sentiment_score": 50,  # 0-100
-                "trend": "neutral",
-                "source": "Reddit"
-            }
-
-            keywords = self.keywords
-            for keyword in keywords:
-                try:
-                    # Use Pushshift-style Reddit search (free, no auth)
-                    url = "https://api.pushshift.io/reddit/search/submission"
-                    params = {
-                        "q": keyword,
-                        "size": 10,
-                        "sort": "desc",
-                        "sort_type": "created_utc"
-                    }
-
-                    response = requests.get(url, params=params, timeout=5)
-                    if response.status_code == 200:
-                        data = response.json()
-                        posts = data.get("data", [])
-
-                        for post in posts:
-                            title = post.get("title", "").lower()
-                            selftext = post.get("selftext", "").lower()
-                            combined = title + " " + selftext
-
-                            # Simple sentiment analysis
-                            sentiment = self._simple_sentiment(combined)
-                            if sentiment > 0.5:
-                                results["positive"] += 1
-                            elif sentiment < 0.3:
-                                results["negative"] += 1
-                            else:
-                                results["neutral"] += 1
-
-                            # Store top post
-                            if len(results["top_posts"]) < 3:
-                                results["top_posts"].append({
-                                    "title": post.get("title"),
-                                    "upvotes": post.get("score", 0),
-                                    "sentiment": "positive" if sentiment > 0.5 else "negative" if sentiment < 0.3 else "neutral"
-                                })
-
-                except Exception as e:
-                    logger.debug(f"[reddit] Error searching '{keyword}': {e}")
-                    continue
-
-            results["total_mentions"] = results["positive"] + results["negative"] + results["neutral"]
-
-            if results["total_mentions"] > 0:
-                results["sentiment_score"] = int(
-                    (results["positive"] / results["total_mentions"]) * 100
-                )
-                results["trend"] = "up" if results["positive"] > results["negative"] else "down" if results["negative"] > results["positive"] else "flat"
-
-            return results
+            # Use Hacker News API as primary source (more reliable than Reddit)
+            from free_sentiment_sources import HackerNewsSentiment
+            return HackerNewsSentiment.fetch_sentiment(self.keywords)
 
         except Exception as e:
             logger.debug(f"[reddit] Error: {e}")
@@ -146,13 +85,19 @@ class SentimentEngine:
             from free_sentiment_sources import GoogleTrendsScraper
 
             trends = GoogleTrendsScraper.get_trends(self.company_name, self.keywords)
-            search_signals = GoogleTrendsScraper.analyze_search_signals(self.company_name, self.keywords)
 
-            return {
-                "trends": trends,
-                "search_signals": search_signals,
-                "source": "Google Trends"
-            }
+            # Return trends data directly (already contains status, interest level, etc)
+            if trends.get("status") == "success":
+                return {
+                    "current_interest": trends.get("current_interest"),
+                    "previous_interest": trends.get("previous_interest"),
+                    "trend": trends.get("trend"),
+                    "keywords": trends.get("keywords"),
+                    "time_range": trends.get("time_range"),
+                    "source": trends.get("source")
+                }
+            else:
+                return trends
 
         except Exception as e:
             logger.debug(f"[trends] Error: {e}")
