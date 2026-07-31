@@ -15886,6 +15886,45 @@ def api_home_ask():
         import datetime as _rcpt_dt
         import json as _rcpt_json
 
+        # ITEM SEARCH: "did i buy peanuts" / "did i buy X" — search ALL receipt summaries
+        item_search_patterns = [
+            r"(?:did\s+i|have\s+i|i\s+have|i).{0,10}(?:buy|get|purchase|pick\s+up|grab|have).{0,5}(.+?)(?:\?|$)",
+        ]
+        for pattern in item_search_patterns:
+            m = _re_rcpt.search(pattern, q_lower)
+            if m:
+                item_q = m.group(1).strip()
+                # Skip if it's actually a merchant query (at/from keyword indicates merchant, not item)
+                if not any(w in item_q for w in ["at ", "from ", "in ", " at", " from", " in"]):
+                    try:
+                        plain = from_number.replace("whatsapp:", "").strip()
+                        # Search all receipts (wa_saves) for this item in summaries
+                        all_receipts = lib._sb().table("wa_saves").select("title,summary,created_at") \
+                            .eq("from_number", plain).ilike("title", "%🧾%").order("created_at", desc=True).limit(50).execute().data or []
+
+                        matching_receipts = []
+                        for r in all_receipts:
+                            summary = (r.get("summary", "") or "").lower()
+                            # Search for item keyword in summary
+                            if item_q.lower() in summary:
+                                merchant = (r.get("title", "").replace("🧾", "").strip())
+                                date_str = r.get("created_at", "")[:10]
+                                matching_receipts.append((merchant, date_str, summary[:100]))
+
+                        if matching_receipts:
+                            result_lines = []
+                            for merchant, date_str, summary_snippet in matching_receipts[:3]:
+                                result_lines.append(f"✓ Yes, you bought {item_q} at {merchant} on {date_str}")
+                            answer = "\n".join(result_lines)
+                            app.logger.info(f"[ask] Item found in receipts: {item_q}")
+                            return jsonify({"answer": answer})
+                        else:
+                            answer = f"I didn't find {item_q} in your receipt items."
+                            app.logger.info(f"[ask] Item not found in receipts: {item_q}")
+                            return jsonify({"answer": answer})
+                    except Exception as e:
+                        app.logger.debug(f"[ask] Item search error: {e}")
+
         # Check for time qualifiers (today, this morning, yesterday)
         time_qualifier = None
         if any(w in q_lower for w in ["this morning", "today", "this afternoon", "this evening"]):
