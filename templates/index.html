@@ -28160,7 +28160,7 @@ document.addEventListener('keydown', function(e) {
         _weekCurrentTab = 'current';  // Default to This Week
         _weekRenderData(d);
 
-        // Update AI insights if available
+        // Update AI insights if available (append to existing)
         if (aiData && aiData.success && aiData.insights) {
           const insightsEl = document.getElementById('sw-insights');
           if (insightsEl) {
@@ -28168,48 +28168,8 @@ document.addEventListener('keydown', function(e) {
           }
         }
 
-        // Spend breakdown showing merchants per category (clickable)
-        const breakdownEl = document.getElementById('sw-spend-breakdown');
-        const breakdown = Object.entries(d.this_week.spend_by_category)
-          .sort((a,b) => b[1].total - a[1].total)
-          .slice(0, 5)
-          .map(([cat, data]) => {
-            const merchants = data.merchants || [];
-            const merchantsStr = merchants.map(m => `<span style="cursor:pointer;color:#0369a1;text-decoration:underline" title="Details for ${m.name}">${m.name} £${m.amount.toFixed(2)}</span>`).join(', ');
-            return `<div style="display:flex;flex-direction:column;padding:8px;background:rgba(255,255,255,0.5);border-radius:12px;gap:4px">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="font-weight:600">${cat}</div>
-                <strong style="color:#0369a1">£${data.total.toFixed(2)}</strong>
-              </div>
-              <div style="font-size:10px;color:var(--muted)">${merchantsStr || 'No items'}</div>
-            </div>`;
-          })
-          .join('');
-        breakdownEl.innerHTML = breakdown || '<div style="color:var(--muted);font-size:12px;text-align:center">No spend data</div>';
-
-        // School events this week
-        const schoolEl = document.getElementById('sw-school-events');
-        const schoolHTML = d.this_week.school_event_list && d.this_week.school_event_list.length > 0
-          ? d.this_week.school_event_list.map(e => `<div style="padding:6px;background:rgba(255,255,255,0.5);border-radius:12px"><div style="font-weight:600">${e.event || 'Event'}</div><div style="font-size:10px;color:var(--muted)">${e.date || ''}</div></div>`).join('')
-          : '<div style="color:var(--muted);text-align:center">No events this week</div>';
-        schoolEl.innerHTML = schoolHTML;
-
-        // Recent saves with titles
-        const savesEl = document.getElementById('sw-saves-list');
-        const savesHTML = d.this_week.save_samples && d.this_week.save_samples.length > 0
-          ? d.this_week.save_samples.map(s => `<div style="padding:6px;background:rgba(255,255,255,0.5);border-radius:12px;border-left:3px solid #16a34a"><div style="font-weight:600;font-size:11px">${s.title}</div><div style="font-size:10px;color:var(--muted)">${s.category || 'saved'}</div></div>`).join('')
-          : '<div style="color:var(--muted);text-align:center">No saves this week</div>';
-        savesEl.innerHTML = savesHTML;
-
-        // TRENDS
-        const trendsEl = document.getElementById('sw-trends');
-        const spendTrend = d.trends.spend_direction === 'up' ? '📈' : '📉';
-        const cafeTrend = d.trends.cafe_visits_change > 0 ? '📈' : d.trends.cafe_visits_change < 0 ? '📉' : '➡️';
-        trendsEl.innerHTML = `
-          <div>${spendTrend} Spend ${d.trends.spend_direction}: £${d.trends.spend_change.toFixed(2)} (${d.trends.spend_pct > 0 ? '+' : ''}${d.trends.spend_pct}%)</div>
-          <div>${cafeTrend} Cafe visits ${d.trends.cafe_visits_change > 0 ? '+' : ''}${d.trends.cafe_visits_change}</div>
-          <div>💾 Saves ${d.trends.saves_change > 0 ? '+' : ''}${d.trends.saves_change}</div>
-        `;
+        // _weekRenderData() already rendered everything correctly based on activeWeek
+        // No need to duplicate rendering here
 
         loading.style.display = 'none';
         content.style.display = 'block';
