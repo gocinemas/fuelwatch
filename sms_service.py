@@ -29686,10 +29686,14 @@ def api_home_week_full():
 
         # Query personal_events using plain phone (not whatsapp: format)
         plain_phone = from_number.replace("whatsapp:", "").strip()
-        personal_events_week = sb.table("personal_events").select("id,event_title,event_date,event_time") \
-            .eq("email_from", plain_phone) \
-            .gte("event_date", this_week_start.isoformat()) \
-            .lte("event_date", this_week_end.isoformat()).execute().data or []
+        try:
+            personal_events_week = sb.table("personal_events").select("id,event_title,event_date,event_time") \
+                .eq("email_from", plain_phone) \
+                .gte("event_date", this_week_start.isoformat()) \
+                .lte("event_date", this_week_end.isoformat()).execute().data or []
+        except Exception as pe_err:
+            print(f"[week-full] WARNING: personal_events query failed: {pe_err}")
+            personal_events_week = []
 
         all_events = []
         for e in school_events:
@@ -29810,10 +29814,14 @@ def api_home_week_full():
             .gte("event_date", last_week_start.isoformat()) \
             .lte("event_date", last_week_end.isoformat()).execute().data or []
 
-        last_personal_events = sb.table("personal_events").select("id,event_title,event_date,event_time") \
-            .eq("email_from", plain_phone) \
-            .gte("event_date", last_week_start.isoformat()) \
-            .lte("event_date", last_week_end.isoformat()).execute().data or []
+        try:
+            last_personal_events = sb.table("personal_events").select("id,event_title,event_date,event_time") \
+                .eq("email_from", plain_phone) \
+                .gte("event_date", last_week_start.isoformat()) \
+                .lte("event_date", last_week_end.isoformat()).execute().data or []
+        except Exception as lpe_err:
+            print(f"[week-full] WARNING: last_personal_events query failed: {lpe_err}")
+            last_personal_events = []
 
         last_all_events = []
         for e in last_school_events:
