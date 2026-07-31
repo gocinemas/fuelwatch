@@ -24818,14 +24818,18 @@ def _whatsapp_reply_inner():
         return str(resp)
 
     # 📅 EVENT COMMAND: /event [details] ─────────────────────────────────────
+    print(f"[event-check] body_lower starts with '/event ': {body_lower.startswith('/event ')}, body_lower[:20]={body_lower[:20]}")
     if body_lower.startswith("/event "):
         event_text = body[7:].strip()  # Remove "/event " prefix
+        print(f"[event] Parsed event text: {event_text}")
         if not event_text:
             resp.message("📅 Usage: */event Inaaya dance class today 3pm at Studio XYZ*\n\n"
                         "Include: event name, date (today/tomorrow/day), time (3pm), location")
             return str(resp)
 
+        print(f"[event] Calling parse_natural_event_text with: {event_text}")
         result = personal_events_service.parse_natural_event_text(event_text, from_number)
+        print(f"[event] Parse result: {result}")
         if result.get("success"):
             event = result.get("event", {})
             resp.message(f"📅 *Event saved!*\n\n"
