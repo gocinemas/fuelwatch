@@ -43,6 +43,7 @@ from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
 import analytics
 import library as lib
 import school_service
+import personal_events_service
 from scoring_engine import MarketEntryScorer
 from intel_groq_optimizer import IntelGroqOptimizer
 
@@ -24814,6 +24815,25 @@ def _whatsapp_reply_inner():
             # Explicit "help" / "menu" / "miru" → full capability list
             resp.message(_HELP_MSG)
         return str(resp)
+
+    # 📅 EVENT DETECTION: Natural language event parsing ──────────────────────
+    # Try to detect if text looks like an event (contains time/date keywords, "class", "appointment", etc.)
+    event_keywords = ["today", "tomorrow", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+                      "am", "pm", "o'clock", "event", "class", "appointment", "meeting", "lesson", "session", "show",
+                      "at ", " pm", " am", "3pm", "4pm", "5pm"]
+    has_event_keyword = any(kw in body_lower for kw in event_keywords)
+
+    if has_event_keyword and len(body) > 10 and len(body) < 300:  # Natural length for an event description
+        result = personal_events_service.parse_natural_event_text(body, from_number)
+        if result.get("success"):
+            event = result.get("event", {})
+            resp.message(f"📅 *Event saved!*\n\n"
+                        f"*{event.get('event_title', 'Event')}*\n"
+                        f"📅 {event.get('event_date', 'Date TBD')}\n"
+                        f"🕐 {event.get('event_time', 'Time TBD')}\n"
+                        f"{'📍 ' + event.get('location') if event.get('location') else ''}\n\n"
+                        f"Will show up in your brief and 📊 Your Week!")
+            return str(resp)
 
     # 🥚 Easter egg: bored → suggest something nearby ────────────────────────
     if body_lower in ("bored", "i'm bored", "im bored", "so bored", "what should i do", "entertain me"):

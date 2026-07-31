@@ -6,6 +6,7 @@ from typing import Dict, List, Any, Optional
 import json
 import re
 import os
+import time
 import base64
 import requests
 from groq import Groq
@@ -282,3 +283,67 @@ def scan_and_parse_emails(access_token: str = None, days_back: int = 7) -> List[
     except Exception as e:
         print(f"[personal-events] Scan error: {e}")
         return []
+
+
+def parse_natural_event_text(user_text: str, from_number: str) -> dict:
+    """Parse natural language event from user input (e.g., 'Inaaya dance class today 3pm at Studio XYZ')."""
+    try:
+        ref = date.today()
+        ref_str = ref.isoformat()
+        weekday = ref.strftime("%A")
+
+        prompt = f"""Extract event details from this natural language text. Today is {ref_str} ({weekday}).
+
+User text: "{user_text}"
+
+Return ONLY valid JSON (no markdown):
+{{
+  "event_title": "Event name",
+  "event_date": "ISO date (YYYY-MM-DD) or null if unclear",
+  "event_time": "HH:MM in 24h format or null if unclear",
+  "location": "Full address or venue or null",
+  "description": "Summary of the event",
+  "is_event": true or false
+}}
+
+Handle relative dates: "today" = {ref_str}, "tomorrow" = {(ref + timedelta(days=1)).isoformat()}.
+Extract times: "3pm" = 15:00, "3:30pm" = 15:30, etc.
+If this is NOT an event (just random text), set is_event to false."""
+
+        message = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        response_text = message.choices[0].message.content.strip()
+
+        # Extract JSON
+        start = response_text.find('{')
+        end = response_text.rfind('}') + 1
+        if start >= 0 and end > start:
+            json_str = response_text[start:end]
+            parsed = json.loads(json_str)
+            if parsed.get("is_event"):
+                # Store in database
+                try:
+                    sb = lib._sb()
+                    sb.table("personal_events").insert({
+                        "gmail_msg_id": f"whatsapp_{from_number}_{int(time.time())}",
+                        "email_from": from_number,
+                        "event_title": parsed.get("event_title", "Event"),
+                        "event_date": parsed.get("event_date"),
+                        "event_time": parsed.get("event_time"),
+                        "location": parsed.get("location"),
+                        "description": parsed.get("description", ""),
+                        "created_at": datetime.utcnow().isoformat(),
+                    }).execute()
+                    print(f"[event-parse] Stored: {parsed.get('event_title')}")
+                    return {"success": True, "event": parsed}
+                except Exception as e:
+                    print(f"[event-parse] Store error: {e}")
+                    return {"success": False, "error": f"Failed to save event: {str(e)}"}
+
+        return {"success": False, "error": "Could not parse as event"}
+    except Exception as e:
+        print(f"[event-parse] Parse error: {e}")
+        return {"success": False, "error": str(e)}
