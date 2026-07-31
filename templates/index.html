@@ -28053,7 +28053,7 @@ document.addEventListener('keydown', function(e) {
 
     // ─── METRICS ───
     const spend = activeWeek.spend || 0;
-    const saves = activeWeek.saves_count || 0;
+    const saves = activeWeek.saves?.total || 0;
     document.getElementById('sw-this-spend').textContent = '£' + spend.toFixed(2);
     document.getElementById('sw-this-saves').textContent = saves;
 
@@ -28063,7 +28063,12 @@ document.addEventListener('keydown', function(e) {
     document.getElementById('sw-this-spend-cat').textContent = topCat ? topCat + ' · ' + (activeWeek.spend_by_category[topCat].total || 0).toFixed(2) : '—';
 
     // Saves types
-    document.getElementById('sw-this-saves-types').textContent = activeWeek.saves_types || '—';
+    const savesTypes = activeWeek.saves ? [
+      activeWeek.saves.books && activeWeek.saves.books + ' 📚',
+      activeWeek.saves.shows && activeWeek.saves.shows + ' 📺',
+      activeWeek.saves.articles && activeWeek.saves.articles + ' 📰'
+    ].filter(Boolean).join(', ') : '';
+    document.getElementById('sw-this-saves-types').textContent = savesTypes || '—';
 
     // ─── INSIGHTS ───
     const insightsList = [];
@@ -28092,11 +28097,12 @@ document.addEventListener('keydown', function(e) {
 
     // ─── CAFES ───
     const cafes = activeWeek.top_cafes || [];
-    if (cafes.length > 0) {
-      document.getElementById('sw-this-cafes').textContent = cafes.length + ' visits';
-      document.getElementById('sw-this-cafes-top').textContent = cafes[0] || '—';
+    const totalCafeVisits = activeWeek.cafe_visits || 0;
+    if (cafes.length > 0 && totalCafeVisits > 0) {
+      document.getElementById('sw-this-cafes').textContent = totalCafeVisits + ' visits';
+      document.getElementById('sw-this-cafes-top').textContent = cafes[0].name ? `${cafes[0].name} (${cafes[0].visits || 1} visits)` : '—';
     } else {
-      document.getElementById('sw-this-cafes').textContent = '—';
+      document.getElementById('sw-this-cafes').textContent = totalCafeVisits > 0 ? totalCafeVisits + ' visits' : '—';
       document.getElementById('sw-this-cafes-top').textContent = 'No cafe visits';
     }
 
