@@ -28123,12 +28123,15 @@ document.addEventListener('keydown', function(e) {
     }
 
     // ─── SCHOOL EVENTS ─── (school_events + personal_events)
+    console.log('[DEBUG] activeWeek.school_event_list:', activeWeek.school_event_list);
     const schoolHtml = [];
     (activeWeek.school_event_list || []).forEach(e => {
-      const eventDisplay = `${e.event}${e.time ? ' · ' + e.time : ''}`;
-      const deleteBtn = e.id ? `<button onclick="_deleteEvent('${e.id}', '${e.type}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0;margin-left:4px;vertical-align:middle">✕</button>` : '';
+      console.log('[DEBUG] Processing event:', e);
+      const eventDisplay = `${e.event || e}${e.time ? ' · ' + e.time : ''}`;
+      const deleteBtn = e.id ? `<button onclick="_deleteEvent('${e.id}', '${e.type || 'school'}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0;margin-left:4px;vertical-align:middle">✕</button>` : '';
       schoolHtml.push(`<div style="font-size:12px;color:var(--text);display:flex;justify-content:space-between;align-items:center;padding:4px 0">${eventDisplay}${deleteBtn}</div>`);
     });
+    console.log('[DEBUG] schoolHtml length:', schoolHtml.length);
     document.getElementById('sw-school-events').innerHTML = schoolHtml.length ? schoolHtml.join('') : '<div style="color:var(--muted);text-align:center;padding:20px 0">No events</div>';
 
     // ─── RECENT SAVES ───
