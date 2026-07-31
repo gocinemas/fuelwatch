@@ -28150,74 +28150,17 @@ document.addEventListener('keydown', function(e) {
         }
         console.log('Week data success, processing...');
 
-        // Populate period
-        document.getElementById('sw-period').textContent = d.this_week.period;
+        // Use _weekRenderData to properly handle tab switching + respect current tab selection
+        _weekCurrentTab = 'current';  // Default to This Week
+        _weekRenderData(d);
 
-        // ─── SHARP INSIGHTS ───
-        // Define topCat and topCafe first (used in insights)
-        const topCat = Object.keys(d.this_week.spend_by_category).sort((a,b) =>
-          d.this_week.spend_by_category[b].total - d.this_week.spend_by_category[a].total)[0];
-        const topCafe = d.this_week.top_cafes && d.this_week.top_cafes[0];
-
-        const insightsList = [];
-
-        // Add AI insights if available
+        // Update AI insights if available
         if (aiData && aiData.success && aiData.insights) {
-          insightsList.push('🤖 ' + aiData.insights);
-        }
-
-        // Spend comparison
-        const spendDiff = d.this_week.spend - d.last_week.spend;
-        const spendPct = d.last_week.spend > 0 ? Math.round((spendDiff / d.last_week.spend) * 100) : 0;
-        if (spendDiff < 0) {
-          insightsList.push(`✅ Down £${Math.abs(spendDiff).toFixed(2)} (${Math.abs(spendPct)}%) vs last week`);
-        } else if (spendDiff > 0) {
-          insightsList.push(`⚠️ Up £${spendDiff.toFixed(2)} (${spendPct}%) vs last week`);
-        }
-
-        // Top category
-        if (topCat) {
-          const topCatAmount = d.this_week.spend_by_category[topCat].total;
-          const topCatPct = Math.round((topCatAmount / d.this_week.spend) * 100);
-          insightsList.push(`💳 ${topCat}: £${topCatAmount.toFixed(2)} (${topCatPct}% of spend)`);
-        }
-
-        // Cafe pattern
-        if (d.this_week.cafe_visits > 0 && topCafe) {
-          insightsList.push(`☕ ${topCafe.name}: ${d.this_week.cafe_visits}x visits`);
-        }
-
-        // Savings activity
-        if (d.this_week.saves.total > 0) {
-          const savesDiff = d.this_week.saves.total - d.last_week.saves;
-          if (savesDiff > 0) {
-            insightsList.push(`📌 Saved ${d.this_week.saves.total} items (+${savesDiff} vs last week)`);
-          } else if (savesDiff < 0) {
-            insightsList.push(`📌 Saved ${d.this_week.saves.total} items (${savesDiff} vs last week)`);
+          const insightsEl = document.getElementById('sw-insights');
+          if (insightsEl) {
+            insightsEl.innerHTML = `<div style="margin-bottom:8px">🤖 ${aiData.insights}</div>` + insightsEl.innerHTML;
           }
         }
-
-        // Display insights
-        const insightsEl = document.getElementById('sw-insights');
-        if (insightsEl) {
-          insightsEl.innerHTML = insightsList.length > 0
-            ? insightsList.map(i => `<div style="margin-bottom:8px">• ${i}</div>`).join('')
-            : '<div style="color:var(--muted)">No insights available</div>';
-        }
-
-        // Key metrics
-        document.getElementById('sw-this-spend').textContent = '£' + d.this_week.spend.toFixed(2);
-        document.getElementById('sw-this-spend-cat').textContent = topCat ? topCat : 'No spending';
-
-        document.getElementById('sw-this-saves').textContent = d.this_week.saves.total;
-        const savesTypes = [d.this_week.saves.books && d.this_week.saves.books + ' 📚',
-                           d.this_week.saves.shows && d.this_week.saves.shows + ' 📺',
-                           d.this_week.saves.articles && d.this_week.saves.articles + ' 📰'].filter(Boolean).join(', ');
-        document.getElementById('sw-this-saves-types').textContent = savesTypes || 'No saves';
-
-        // Activity metrics
-        document.getElementById('sw-this-cafes').textContent = d.this_week.cafe_visits;
-        document.getElementById('sw-this-cafes-top').textContent = topCafe ? topCafe.name : 'No data';
 
         // Spend breakdown showing merchants per category (clickable)
         const breakdownEl = document.getElementById('sw-spend-breakdown');
