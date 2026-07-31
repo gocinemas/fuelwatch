@@ -13,7 +13,14 @@ from groq import Groq
 
 import library as lib
 
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+_groq_client = None
+
+def _get_groq_client():
+    """Lazy-initialize Groq client only when needed."""
+    global _groq_client
+    if _groq_client is None:
+        _groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    return _groq_client
 
 # Gmail API helper
 def _gmail_get(resource: str, params: dict = None, access_token: str = None):
@@ -112,7 +119,7 @@ Extract dates carefully: "tomorrow" = {(date.fromisoformat(ref_str) + timedelta(
 """
 
     try:
-        message = groq_client.chat.completions.create(
+        message = _get_groq_client().chat.completions.create(
             model="llama-3.1-8b-instant",
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}]
@@ -310,7 +317,7 @@ Handle relative dates: "today" = {ref_str}, "tomorrow" = {(ref + timedelta(days=
 Extract times: "3pm" = 15:00, "3:30pm" = 15:30, etc.
 If this is NOT an event (just random text), set is_event to false."""
 
-        message = groq_client.chat.completions.create(
+        message = _get_groq_client().chat.completions.create(
             model="llama-3.1-8b-instant",
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}]
