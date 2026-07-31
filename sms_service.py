@@ -29658,8 +29658,12 @@ def api_home_week_full():
             "spend_by_category": {},
             "cafe_visits": 0,
             "top_cafes": [],
-            "saves": 0,
+            "saves": {"books": 0, "shows": 0, "articles": 0, "music": 0, "places": 0, "total": 0},
+            "save_samples": [],
             "school_events": 0,
+            "school_event_list": [],
+            "train_journeys": 0,
+            "calendar_events": 0,
         }
 
         # Last week receipts — fetch from wa_saves (same as this week)
@@ -29743,18 +29747,20 @@ def api_home_week_full():
         last_week["top_cafes"] = [{"name": m[0], "visits": m[1]} for m in last_cafe_merchants.most_common(3)]
 
         # Last week saves
-        last_saves = sb.table("wa_saves").select("id") \
+        last_saves = sb.table("wa_saves").select("id,title,summary") \
             .eq("from_number", from_number) \
             .gte("created_at", last_week_start.isoformat()) \
             .lte("created_at", (last_week_end + _dt.timedelta(days=1)).isoformat()).execute().data or []
-        last_week["saves"] = len(last_saves)
+        last_week["saves"]["total"] = len(last_saves)
+        last_week["save_samples"] = [{"title": s.get("title", "Untitled"), "category": "saved", "summary": (s.get("summary") or "")[:60]} for s in last_saves[:5]]
 
         # Last week school events
-        last_school_events = sb.table("school_events").select("id,event_title,event_date") \
+        last_school_events = sb.table("school_events").select("id,event_title,event_date,description") \
             .eq("from_number", from_number) \
             .gte("event_date", last_week_start.isoformat()) \
             .lte("event_date", last_week_end.isoformat()).execute().data or []
         last_week["school_events"] = len(last_school_events)
+        last_week["school_event_list"] = [{"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0]} for e in last_school_events[:3]]
 
         # === TRENDS ===
         spend_diff = this_week["spend"] - last_week["spend"]
@@ -29765,7 +29771,7 @@ def api_home_week_full():
             "spend_change": round(abs(spend_diff), 2),
             "spend_pct": spend_pct,
             "cafe_visits_change": this_week["cafe_visits"] - last_week["cafe_visits"],
-            "saves_change": this_week["saves"]["total"] - last_week["saves"],
+            "saves_change": this_week["saves"]["total"] - last_week["saves"]["total"],
             "school_events_same": this_week["school_events"] == last_week["school_events"],
         }
 
