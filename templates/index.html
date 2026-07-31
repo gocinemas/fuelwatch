@@ -28091,7 +28091,23 @@ document.addEventListener('keydown', function(e) {
     const breakdownHtml = [];
     Object.entries(activeWeek.spend_by_category || {}).forEach(([cat, data]) => {
       const pct = activeWeek.spend > 0 ? Math.round((data.total / activeWeek.spend) * 100) : 0;
-      breakdownHtml.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><div style="font-size:12px">${cat}</div><div style="text-align:right"><div style="font-size:12px;font-weight:700">£${data.total.toFixed(2)}</div><div style="font-size:11px;color:var(--muted)">${pct}% · ${data.count} items</div></div></div>`);
+      const merchants = (data.merchants || []).slice(0, 3);  // Top 3 merchants per category
+      const merchantsHtml = merchants.map(m => `<div style="font-size:11px;color:var(--muted);margin-left:12px;display:flex;justify-content:space-between;gap:8px"><span>${m.name}</span><span>£${m.amount.toFixed(2)}</span></div>`).join('');
+      const moreCount = Math.max(0, (data.merchants || []).length - 3);
+      const moreHtml = moreCount > 0 ? `<div style="font-size:11px;color:var(--muted);margin-left:12px">+${moreCount} more</div>` : '';
+
+      breakdownHtml.push(`
+        <div style="border-radius:12px;padding:8px;background:rgba(255,255,255,0.3);margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="font-weight:600;font-size:12px">${cat}</div>
+            <div style="text-align:right">
+              <div style="font-size:12px;font-weight:700">£${data.total.toFixed(2)}</div>
+              <div style="font-size:10px;color:var(--muted)">${pct}% of spend · ${data.count} items</div>
+            </div>
+          </div>
+          ${merchantsHtml}${moreHtml}
+        </div>
+      `);
     });
     document.getElementById('sw-spend-breakdown').innerHTML = breakdownHtml.join('') || '<div style="text-align:center;color:var(--muted);padding:20px">No spending data</div>';
 
