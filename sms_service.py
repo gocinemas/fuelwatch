@@ -30551,6 +30551,34 @@ def api_delete_personal_event():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/personal/events/update", methods=["POST"])
+def api_update_personal_event():
+    """Update a personal event (title, date, time)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        event_id = data.get("event_id", "").strip()
+        title = data.get("event_title", "").strip()
+        event_date = data.get("event_date", "").strip()
+        event_time = data.get("event_time", "").strip()
+
+        if not event_id or not title or not event_date:
+            return jsonify({"error": "event_id, event_title, and event_date required"}), 400
+
+        # Update the event
+        update_data = {
+            "event_title": title,
+            "event_date": event_date,
+        }
+        if event_time:
+            update_data["event_time"] = event_time
+
+        lib._sb().table("personal_events").update(update_data).eq("id", event_id).execute()
+        return jsonify({"success": True, "updated": event_id})
+    except Exception as e:
+        print(f"[personal/update] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/personal/scan")
 def api_personal_scan():
     """Scan mekala@gmail.com for emails from reddyaemalla@gmail.com and extract events."""

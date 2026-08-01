@@ -28130,8 +28130,11 @@ document.addEventListener('keydown', function(e) {
           schoolHtml.push(`<div style="font-size:12px;color:var(--text)">${e}</div>`);
         } else if (e && e.event) {
           const eventDisplay = `${e.event}${e.time ? ' · ' + e.time : ''}`;
-          const deleteBtn = e.id ? `<button onclick="_deleteEvent('${e.id}', '${e.type || 'school'}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0;margin-left:4px">✕</button>` : '';
-          schoolHtml.push(`<div style="font-size:12px;color:var(--text);display:flex;justify-content:space-between;align-items:center;padding:4px 0">${eventDisplay}${deleteBtn}</div>`);
+          const buttons = e.id ? `<div style="display:flex;gap:6px;flex-shrink:0">
+            <button onclick="_editEvent('${e.id}', '${e.type || 'school'}', '${(e.event || '').replace(/'/g, "\\'")}', '${(e.time || '').replace(/'/g, "\\'")}', '${(e.date || '').replace(/'/g, "\\'")}')" style="background:none;border:none;color:#2563eb;cursor:pointer;font-size:16px;padding:0" title="Edit event">✎</button>
+            <button onclick="_deleteEvent('${e.id}', '${e.type || 'school'}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0" title="Delete event">✕</button>
+          </div>` : '';
+          schoolHtml.push(`<div style="font-size:12px;color:var(--text);display:flex;justify-content:space-between;align-items:center;padding:4px 0">${eventDisplay}${buttons}</div>`);
         }
       });
     }
@@ -28202,6 +28205,78 @@ document.addEventListener('keydown', function(e) {
         console.error('Week load error:', e);
         loading.textContent = '⚠️ Error loading your week';
       });
+  }
+
+  // Edit event modal + function
+  function _editEvent(eventId, eventType, eventTitle, eventTime, eventDate) {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000';
+
+    const form = document.createElement('div');
+    form.style.cssText = 'background:var(--surface);border-radius:16px;padding:20px;max-width:400px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.2)';
+
+    form.innerHTML = `
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">Edit Event</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Event Name</label>
+        <input id="edit-title" type="text" value="${eventTitle.replace(/"/g, '&quot;')}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Date (YYYY-MM-DD)</label>
+        <input id="edit-date" type="text" value="${eventDate}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Time (HH:MM)</label>
+        <input id="edit-time" type="text" value="${eventTime}" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);box-sizing:border-box">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="this.closest('[data-edit-modal]').remove()" style="padding:8px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-weight:600">Cancel</button>
+        <button onclick="_saveEventEdit('${eventId}', '${eventType}')" style="padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600">Save</button>
+      </div>
+    `;
+
+    form.setAttribute('data-edit-modal', '');
+    modal.appendChild(form);
+    modal.onclick = function(e) {
+      if (e.target === modal) modal.remove();
+    };
+    document.body.appendChild(modal);
+  }
+
+  function _saveEventEdit(eventId, eventType) {
+    const title = document.getElementById('edit-title').value.trim();
+    const date = document.getElementById('edit-date').value.trim();
+    const time = document.getElementById('edit-time').value.trim();
+
+    if (!title || !date) {
+      alert('Event name and date are required');
+      return;
+    }
+
+    const endpoint = eventType === 'personal' ? '/api/personal/events/update' : '/api/school/events/update';
+    const payload = {event_id: eventId, event_title: title, event_date: date, event_time: time};
+
+    console.log('[edit] Updating event:', payload);
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(d => {
+      console.log('[edit] Response:', d);
+      if (d.success || d.ok || d.updated) {
+        alert('✓ Event updated');
+        document.querySelector('[data-edit-modal]').closest('div').remove();
+        _weekLoad();
+      } else {
+        alert('Error: ' + (d.error || 'Unknown error'));
+      }
+    })
+    .catch(e => {
+      console.error('[edit] Error:', e);
+      alert('Update failed: ' + e.message);
+    });
   }
 
   // Delete event function
