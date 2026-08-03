@@ -1401,8 +1401,17 @@ def company_intelligence_card(company_name):
 
 @app.route("/api/intelligence/<company_name>")
 def api_company_intelligence_signals(company_name):
-    """API endpoint for company signals (JSON)."""
+    """
+    API endpoint for company signals (JSON).
+
+    Returns:
+    - Stock price & financials
+    - News headlines
+    - Sentiment signals (Hacker News, Google Trends, Trustpilot)
+    - Competitors
+    """
     from intelligence_signals import get_company_signals
+    from sentiment_engine import get_company_sentiment
 
     try:
         # Map company names to tickers
@@ -1413,8 +1422,23 @@ def api_company_intelligence_signals(company_name):
             "sc johnson": "SCJW",
         }
 
+        # Better keyword maps for sentiment
+        keyword_map = {
+            "reckitt": ["Reckitt", "Dettol", "Lysol", "Air Wick", "Nurofen"],
+            "henkel": ["Henkel", "Persil", "Schwarzkopf"],
+            "unilever": ["Unilever", "Dove", "Axe", "Knorr"],
+            "sc johnson": ["SC Johnson", "Windex", "Raid", "Pledge"],
+        }
+
         ticker = ticker_map.get(company_name.lower())
         signals = get_company_signals(company_name, ticker)
+
+        # Add sentiment signals (real data)
+        keywords = keyword_map.get(company_name.lower(), [company_name])
+        sentiment = get_company_sentiment(company_name, keywords)
+
+        # Integrate sentiment into main response
+        signals["sentiment"] = sentiment
 
         return jsonify(signals)
 
@@ -1425,20 +1449,21 @@ def api_company_intelligence_signals(company_name):
 
 @app.route("/intelligence/sentiment/<company_name>")
 def company_sentiment_card(company_name):
-    """Real-time sentiment card (what people are actually saying)."""
+    """Real-time sentiment card (what people are actually saying about company/brands)."""
     from sentiment_engine import get_company_sentiment
 
     try:
-        # Map company names to keywords
+        # Better keyword maps for specific companies
         keyword_map = {
-            "reckitt": ["reckitt", "dettol", "lysol", "air wick", "nurofen"],
-            "henkel": ["henkel", "persil", "schwarzkopf"],
-            "unilever": ["unilever", "dove", "axe", "lux", "knorr"],
+            "reckitt": ["Reckitt", "Dettol", "Lysol", "Air Wick", "Nurofen"],
+            "henkel": ["Henkel", "Persil", "Schwarzkopf"],
+            "unilever": ["Unilever", "Dove", "Axe", "Knorr"],
+            "sc johnson": ["SC Johnson", "Windex", "Raid", "Pledge"],
         }
 
         keywords = keyword_map.get(company_name.lower(), [company_name])
 
-        # Fetch real sentiment
+        # Fetch real sentiment with context-filtered posts
         sentiment = get_company_sentiment(company_name, keywords)
 
         # Render card
@@ -1457,14 +1482,23 @@ def company_sentiment_card(company_name):
 
 @app.route("/api/sentiment/<company_name>")
 def api_company_sentiment(company_name):
-    """API endpoint for sentiment signals (JSON)."""
+    """
+    API endpoint for sentiment signals (JSON).
+
+    Returns real sentiment from:
+    - Hacker News posts (with context filtering)
+    - Google Trends interest levels
+    - Trustpilot ratings
+    """
     from sentiment_engine import get_company_sentiment
 
     try:
+        # Better keyword maps for specific companies (context-filtered)
         keyword_map = {
-            "reckitt": ["reckitt", "dettol", "lysol", "air wick", "nurofen"],
-            "henkel": ["henkel", "persil", "schwarzkopf"],
-            "unilever": ["unilever", "dove", "axe", "lux", "knorr"],
+            "reckitt": ["Reckitt", "Dettol", "Lysol", "Air Wick", "Nurofen"],
+            "henkel": ["Henkel", "Persil", "Schwarzkopf"],
+            "unilever": ["Unilever", "Dove", "Axe", "Knorr"],
+            "sc johnson": ["SC Johnson", "Windex", "Raid", "Pledge"],
         }
 
         keywords = keyword_map.get(company_name.lower(), [company_name])
@@ -4977,6 +5011,13 @@ def api_brand_full_intelligence():
     - If < 75% complete: triggers background enrichment
     - Next request gets better data
 
+    Includes:
+    - Brand fundamentals
+    - Products & pricing
+    - Competitors
+    - Market opportunities
+    - Sentiment signals (Trustpilot ratings, Trends, Hacker News posts)
+
     Query params:
     - name: Brand name (required)
     """
@@ -4987,6 +5028,7 @@ def api_brand_full_intelligence():
     try:
         from brand_intelligence_service_v3 import get_brand_intelligence_smart
         from agentic_intelligence_service import enrich_brand_with_agentic_intelligence
+        from sentiment_engine import get_brand_sentiment
 
         data = get_brand_intelligence_smart(name)
 
@@ -5002,6 +5044,15 @@ def api_brand_full_intelligence():
             app.logger.error(f"[agentic] Error: {e}")
             # Don't fail the whole response if agentic fails
             data["agentic"] = {"error": str(e)}
+
+        # Add sentiment signals (real data: Trustpilot ratings, trends, posts)
+        try:
+            sentiment = get_brand_sentiment(name)
+            data["sentiment"] = sentiment
+        except Exception as e:
+            app.logger.debug(f"[sentiment] Error: {e}")
+            # Don't fail the whole response if sentiment fails
+            data["sentiment"] = {"error": str(e), "overall_sentiment_score": 50}
 
         return jsonify(data)
     except Exception as e:

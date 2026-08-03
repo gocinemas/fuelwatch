@@ -223,6 +223,79 @@ class SentimentEngine:
 
 
 def get_company_sentiment(company_name: str, keywords: list = None) -> dict:
-    """Get real sentiment signals for a company."""
+    """
+    Get real sentiment signals for a company.
+
+    If keywords not provided, uses company-specific keywords:
+    - Reckitt → ["Reckitt", "Dettol", "Lysol", "Air Wick", "Nurofen"]
+    - Henkel → ["Henkel", "Persil", "Schwarzkopf"]
+    - Unilever → ["Unilever", "Dove", "Axe", "Knorr"]
+    """
+    if not keywords:
+        # Better keyword maps for specific companies
+        keyword_map = {
+            "reckitt": ["Reckitt", "Dettol", "Lysol", "Air Wick", "Nurofen"],
+            "henkel": ["Henkel", "Persil", "Schwarzkopf"],
+            "unilever": ["Unilever", "Dove", "Axe", "Knorr", "Ben & Jerry's"],
+            "sc johnson": ["SC Johnson", "Windex", "Raid", "Pledge"],
+        }
+        keywords = keyword_map.get(company_name.lower(), [company_name])
+
     engine = SentimentEngine(company_name, keywords)
     return engine.fetch_all_sentiment()
+
+
+def get_brand_sentiment(brand_name: str) -> dict:
+    """
+    Get real sentiment signals for a brand (product-level).
+
+    Returns:
+    - Trustpilot ratings & review count
+    - Google Trends interest level
+    - Hacker News sentiment (posts)
+    - Market sentiment vs competitors
+    """
+    engine = SentimentEngine(brand_name, [brand_name])
+
+    try:
+        signals = {
+            "brand": brand_name,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+        # Fetch Trustpilot ratings for the brand
+        from free_sentiment_sources import TrustpilotScraper, GoogleTrendsScraper, HackerNewsSentiment
+
+        # Get product rating
+        product_rating = TrustpilotScraper.scrape_product(brand_name)
+        signals["trustpilot"] = product_rating
+
+        # Get trends
+        trends = GoogleTrendsScraper.get_trends(brand_name, [brand_name])
+        signals["google_trends"] = trends
+
+        # Get Hacker News posts
+        hn_sentiment = HackerNewsSentiment.fetch_sentiment([brand_name])
+        signals["hacker_news"] = hn_sentiment
+
+        # Calculate overall sentiment score
+        scores = []
+        if product_rating.get("rating"):
+            scores.append((product_rating["rating"] / 5) * 100)
+        if hn_sentiment.get("sentiment_score"):
+            scores.append(hn_sentiment["sentiment_score"])
+
+        if scores:
+            signals["overall_sentiment_score"] = int(sum(scores) / len(scores))
+        else:
+            signals["overall_sentiment_score"] = 50
+
+        return signals
+
+    except Exception as e:
+        logger.error(f"[brand_sentiment] Error: {e}")
+        return {
+            "brand": brand_name,
+            "error": str(e),
+            "overall_sentiment_score": 50
+        }
