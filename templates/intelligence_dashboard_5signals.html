@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ company }} — 5-Signal Intelligence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0f0f0f;
+                color: #e0e0e0;
+            }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .company-name {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .ticker {
+            font-size: 0.95em;
+            opacity: 0.7;
+        }
+
+        .timestamp {
+            font-size: 0.85em;
+            opacity: 0.6;
+            margin-top: 8px;
+        }
+
+        .signals-grid {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .signal {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            line-height: 1.6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .signal {
+                background: #1a1a1a;
+                border-left-color: #764ba2;
+            }
+        }
+
+        .signal-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.05em;
+        }
+
+        .signal-emoji {
+            font-size: 1.3em;
+            min-width: 30px;
+        }
+
+        .signal-value {
+            font-weight: 600;
+        }
+
+        .trend-up {
+            color: #28a745;
+        }
+
+        .trend-down {
+            color: #dc3545;
+        }
+
+        .trend-flat {
+            color: #ffc107;
+        }
+
+        .brief {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 30px;
+            line-height: 1.7;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .brief {
+                background: #1a1a1a;
+                border-left-color: #764ba2;
+            }
+        }
+
+        .brief-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            opacity: 0.8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .brief-text {
+            font-size: 0.95em;
+            line-height: 1.8;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.9em;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #764ba2;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .btn-secondary {
+                background: #2a2a2a;
+                color: #e0e0e0;
+            }
+        }
+
+        .btn-secondary:hover {
+            opacity: 0.8;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.85em;
+            opacity: 0.6;
+            margin-top: 40px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .error {
+                background: #3d1f1f;
+                color: #f8b7ba;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-name">{{ company }}</div>
+            {% if ticker %}<div class="ticker">{{ ticker }}</div>{% endif %}
+            <div class="timestamp">Updated {{ timestamp }}</div>
+        </div>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <div class="signals-grid">
+            <!-- Stock Signal -->
+            <div class="signal">
+                <div class="signal-line">
+                    <span class="signal-emoji">📈</span>
+                    <span class="signal-value">Stock:
+                        {% if signals.stock %}
+                            {% if signals.stock.direction == 'up' %}
+                                <span class="trend-up">↑ {{ signals.stock.change }}</span>
+                            {% elif signals.stock.direction == 'down' %}
+                                <span class="trend-down">↓ {{ signals.stock.change }}</span>
+                            {% else %}
+                                <span class="trend-flat">→ {{ signals.stock.change }}</span>
+                            {% endif %}
+                            ({{ signals.stock.price }})
+                        {% else %}
+                            No data
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Sentiment Signal -->
+            <div class="signal">
+                <div class="signal-line">
+                    <span class="signal-emoji">💬</span>
+                    <span class="signal-value">Sentiment:
+                        {% if signals.sentiment %}
+                            {{ signals.sentiment.score }}/100
+                        {% else %}
+                            No data
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Trends Signal -->
+            <div class="signal">
+                <div class="signal-line">
+                    <span class="signal-emoji">📊</span>
+                    <span class="signal-value">Trends:
+                        {% if signals.trends %}
+                            {% if signals.trends.direction == 'up' %}
+                                <span class="trend-up">↑</span>
+                            {% elif signals.trends.direction == 'down' %}
+                                <span class="trend-down">↓</span>
+                            {% else %}
+                                <span class="trend-flat">→</span>
+                            {% endif %}
+                            {{ signals.trends.value }} (search interest)
+                        {% else %}
+                            No data
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Hiring Signal -->
+            <div class="signal">
+                <div class="signal-line">
+                    <span class="signal-emoji">👥</span>
+                    <span class="signal-value">Hiring:
+                        {% if signals.hiring %}
+                            {% if signals.hiring.direction == 'up' %}
+                                <span class="trend-up">↑↑</span>
+                            {% elif signals.hiring.direction == 'down' %}
+                                <span class="trend-down">↓↓</span>
+                            {% else %}
+                                <span class="trend-flat">→</span>
+                            {% endif %}
+                            {{ signals.hiring.count }} roles
+                        {% else %}
+                            No data
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- News Signal -->
+            <div class="signal">
+                <div class="signal-line">
+                    <span class="signal-emoji">📰</span>
+                    <span class="signal-value">News: {{ signals.news.count if signals.news else '0' }} articles</span>
+                </div>
+            </div>
+        </div>
+
+        {% if brief %}
+        <div class="brief">
+            <div class="brief-title">Signal Interpretation</div>
+            <div class="brief-text">{{ brief }}</div>
+        </div>
+        {% endif %}
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy Link</button>
+            <button class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+        </div>
+
+        <div class="footer">
+            <p>Real-time intelligence for deal-makers • Humanagency Intel</p>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = event.target;
+                const original = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => btn.textContent = original, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

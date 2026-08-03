@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competitive Intelligence Comparison</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0f0f0f;
+                color: #e0e0e0;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .timestamp {
+            font-size: 0.85em;
+            opacity: 0.6;
+        }
+
+        .comparison-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .comparison-table {
+                background: #1a1a1a;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            td {
+                border-bottom-color: #333;
+            }
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .signal-label {
+            font-weight: 600;
+            width: 120px;
+            opacity: 0.8;
+        }
+
+        .company-col {
+            text-align: center;
+        }
+
+        .signal-value {
+            font-weight: 500;
+        }
+
+        .winner {
+            background: #d4edda;
+            font-weight: 600;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .winner {
+                background: #1b3d1b;
+            }
+        }
+
+        .trend-up {
+            color: #28a745;
+        }
+
+        .trend-down {
+            color: #dc3545;
+        }
+
+        .trend-flat {
+            color: #ffc107;
+        }
+
+        .brief {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 30px;
+            line-height: 1.7;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .brief {
+                background: #1a1a1a;
+                border-left-color: #764ba2;
+            }
+        }
+
+        .brief-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            opacity: 0.8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .brief-text {
+            font-size: 0.95em;
+            line-height: 1.8;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.9em;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #764ba2;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .btn-secondary {
+                background: #2a2a2a;
+                color: #e0e0e0;
+            }
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.85em;
+            opacity: 0.6;
+            margin-top: 40px;
+        }
+
+        .leader-badge {
+            display: inline-block;
+            background: #ffc107;
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                font-size: 0.9em;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">Competitive Intelligence Brief</div>
+            <div class="timestamp">Comparison as of {{ timestamp }}</div>
+        </div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Signal</th>
+                        {% for company in companies %}
+                        <th class="company-col">{{ company }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Stock Signal -->
+                    <tr>
+                        <td class="signal-label">📈 Stock</td>
+                        {% for company, data in comparison.items() %}
+                        <td class="company-col {% if data.stock.is_leader %}winner{% endif %}">
+                            {% if data.stock.direction == 'up' %}
+                                <span class="trend-up">↑</span>
+                            {% elif data.stock.direction == 'down' %}
+                                <span class="trend-down">↓</span>
+                            {% else %}
+                                <span class="trend-flat">→</span>
+                            {% endif %}
+                            {{ data.stock.change }}
+                        </td>
+                        {% endfor %}
+                    </tr>
+
+                    <!-- Sentiment Signal -->
+                    <tr>
+                        <td class="signal-label">💬 Sentiment</td>
+                        {% for company, data in comparison.items() %}
+                        <td class="company-col {% if data.sentiment.is_leader %}winner{% endif %}">
+                            {{ data.sentiment.score }}/100
+                        </td>
+                        {% endfor %}
+                    </tr>
+
+                    <!-- Trends Signal -->
+                    <tr>
+                        <td class="signal-label">📊 Trends</td>
+                        {% for company, data in comparison.items() %}
+                        <td class="company-col {% if data.trends.is_leader %}winner{% endif %}">
+                            {% if data.trends.direction == 'up' %}
+                                <span class="trend-up">↑</span>
+                            {% elif data.trends.direction == 'down' %}
+                                <span class="trend-down">↓</span>
+                            {% else %}
+                                <span class="trend-flat">→</span>
+                            {% endif %}
+                            {{ data.trends.value }}
+                        </td>
+                        {% endfor %}
+                    </tr>
+
+                    <!-- Hiring Signal -->
+                    <tr>
+                        <td class="signal-label">👥 Hiring</td>
+                        {% for company, data in comparison.items() %}
+                        <td class="company-col {% if data.hiring.is_leader %}winner{% endif %}">
+                            {% if data.hiring.direction == 'up' %}
+                                <span class="trend-up">↑↑</span>
+                            {% elif data.hiring.direction == 'down' %}
+                                <span class="trend-down">↓↓</span>
+                            {% else %}
+                                <span class="trend-flat">→</span>
+                            {% endif %}
+                            {{ data.hiring.count }}
+                        </td>
+                        {% endfor %}
+                    </tr>
+
+                    <!-- News Signal -->
+                    <tr>
+                        <td class="signal-label">📰 News</td>
+                        {% for company, data in comparison.items() %}
+                        <td class="company-col">
+                            {{ data.news.count }} articles
+                        </td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {% if brief %}
+        <div class="brief">
+            <div class="brief-title">Competitive Position Analysis</div>
+            <div class="brief-text">{{ brief }}</div>
+        </div>
+        {% endif %}
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copy Link</button>
+            <button class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+        </div>
+
+        <div class="footer">
+            <p>Real-time intelligence for deal-makers • Humanagency Intel</p>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = event.target;
+                const original = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => btn.textContent = original, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

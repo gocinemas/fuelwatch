@@ -1511,6 +1511,166 @@ def api_company_sentiment(company_name):
         return jsonify({"error": str(e)}), 500
 
 
+# ── NEW SIMPLIFIED 5-SIGNAL DASHBOARD ROUTES ─────────────────────────────────
+@app.route("/intelligence/5signals/<company_name>")
+def company_5signals_dashboard(company_name):
+    """Simplified 5-signal dashboard (Stock, Sentiment, Trends, Hiring, News)."""
+    from intelligence_5signals import get_5_signals, BriefGenerator
+
+    try:
+        # Fetch 5 signals
+        signals = get_5_signals(company_name)
+
+        if "error" in signals:
+            return render_template(
+                "intelligence_dashboard_5signals.html",
+                company=company_name,
+                ticker=None,
+                signals={},
+                brief="",
+                timestamp=datetime.now().isoformat(),
+                error=signals.get("error")
+            ), 500
+
+        # Generate brief
+        brief = BriefGenerator.generate_brief(company_name, signals)
+
+        return render_template(
+            "intelligence_dashboard_5signals.html",
+            company=company_name,
+            ticker=signals.get("ticker"),
+            signals=signals,
+            brief=brief,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        app.logger.error(f"[5signals] Error: {e}")
+        return render_template(
+            "intelligence_dashboard_5signals.html",
+            company=company_name,
+            ticker=None,
+            signals={},
+            brief="",
+            timestamp=datetime.now().isoformat(),
+            error=str(e)
+        ), 500
+
+
+@app.route("/api/signals/<company_name>")
+def api_5signals(company_name):
+    """API endpoint for 5 signals (JSON)."""
+    from intelligence_5signals import get_5_signals
+
+    try:
+        signals = get_5_signals(company_name)
+        return jsonify(_ensure_json_serializable(signals))
+    except Exception as e:
+        app.logger.error(f"[api_5signals] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/intelligence/compare/<companies_str>")
+def company_comparison_5signals(companies_str):
+    """Side-by-side comparison of 2-3 companies (5 signals each)."""
+    from intelligence_5signals import get_5_signals, BriefGenerator
+
+    try:
+        # Parse company names (format: "company1-vs-company2-vs-company3")
+        companies = [c.strip() for c in companies_str.replace("-vs-", ",").split(",")][:3]
+
+        if len(companies) < 2:
+            return render_template(
+                "intelligence_dashboard_5signals.html",
+                company=companies[0] if companies else "Unknown",
+                ticker=None,
+                signals={},
+                brief="",
+                timestamp=datetime.now().isoformat(),
+                error="Please compare at least 2 companies (e.g., /intelligence/compare/reckitt-vs-henkel)"
+            ), 400
+
+        # Fetch signals for each company
+        comparison_data = {}
+        for company in companies:
+            comparison_data[company] = get_5_signals(company)
+
+        # Mark leaders in each category
+        # Stock winner: highest positive change
+        stock_leader = max(
+            companies,
+            key=lambda c: float(comparison_data[c].get("stock", {}).get("change", "0%").rstrip("%"))
+            if comparison_data[c].get("stock", {}).get("change") else 0
+        )
+        comparison_data[stock_leader]["stock"]["is_leader"] = True
+
+        # Sentiment winner: highest score
+        sentiment_leader = max(
+            companies,
+            key=lambda c: comparison_data[c].get("sentiment", {}).get("score", 0)
+        )
+        comparison_data[sentiment_leader]["sentiment"]["is_leader"] = True
+
+        # Trends winner: highest value
+        trends_leader = max(
+            companies,
+            key=lambda c: comparison_data[c].get("trends", {}).get("value", 0)
+        )
+        comparison_data[trends_leader]["trends"]["is_leader"] = True
+
+        # Hiring winner: highest count
+        hiring_leader = max(
+            companies,
+            key=lambda c: comparison_data[c].get("hiring", {}).get("count", 0)
+        )
+        comparison_data[hiring_leader]["hiring"]["is_leader"] = True
+
+        # Generate brief
+        brief = BriefGenerator.generate_comparison_brief(companies, comparison_data)
+
+        return render_template(
+            "intelligence_compare_5signals.html",
+            companies=companies,
+            comparison=comparison_data,
+            brief=brief,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        app.logger.error(f"[compare] Error: {e}")
+        return render_template(
+            "intelligence_dashboard_5signals.html",
+            company="Comparison",
+            ticker=None,
+            signals={},
+            brief="",
+            timestamp=datetime.now().isoformat(),
+            error=f"Error loading comparison: {str(e)}"
+        ), 500
+
+
+@app.route("/api/compare/<companies_str>")
+def api_comparison_5signals(companies_str):
+    """API endpoint for company comparison (JSON)."""
+    from intelligence_5signals import get_5_signals
+
+    try:
+        companies = [c.strip() for c in companies_str.replace("-vs-", ",").split(",")][:3]
+
+        comparison = {}
+        for company in companies:
+            comparison[company] = get_5_signals(company)
+
+        return jsonify({
+            "companies": companies,
+            "comparison": _ensure_json_serializable(comparison),
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        app.logger.error(f"[api_compare] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/brand/compare")
 def brand_compare():
     """Compare 2-3 brands side by side"""
@@ -12787,8 +12947,12 @@ def _v2_fetch_fuel(postcode: str) -> dict:
 def _v2_fetch_weather(postcode: str) -> dict:
     """Current weather for postcode + daily forecast — structured for time-aware Groq prompt."""
     try:
+        if not postcode:
+            app.logger.warning("[weather] No postcode provided")
+            return {}
         ll = postcode_to_latlon(postcode)
         if not ll:
+            app.logger.warning(f"[weather] Could not convert postcode '{postcode}' to lat/lon")
             return {}
         lat, lon = ll
         r = requests.get(
@@ -12846,7 +13010,8 @@ def _v2_fetch_weather(postcode: str) -> dict:
             "temp_min": round(temp_min) if temp_min else None,
             "forecast_7day": forecast_7day,
         }
-    except Exception:
+    except Exception as e:
+        app.logger.warning(f"[weather] Fetch failed for postcode '{postcode}': {e}")
         return {}
 
 
@@ -14782,6 +14947,42 @@ def api_home_brief():
         elif bin_day.get("tonight") and hour < 7:
             # Collection is TODAY but before 7am — last-chance nudge
             facts.append(f"🗑️ Bin collection today — put them out before you leave")
+
+    # === ADD WEATHER FACTS ===
+    if weather and weather.get("temp") is not None:
+        wx_summary = weather.get("desc", "")
+        temp = weather.get("temp", 0)
+        facts.append(f"🌤️ Weather: {temp}°C, {wx_summary}")
+        # Add extreme weather alerts
+        if temp >= 28:
+            facts.append(f"⚠️ Very hot ({temp}°C) — stay hydrated")
+        elif temp <= 1:
+            facts.append(f"⚠️ Freezing ({temp}°C) — icy conditions possible")
+
+    # === ADD SCHOOL EVENTS ===
+    school_events_today = [ev for ev in school_upcoming if ev.get("event_date") == now.date().isoformat()]
+    for ev in school_events_today[:2]:
+        child = ev.get("child_name", "")
+        title = ev.get("event_title", "")
+        if title:
+            facts.append(f"🏫 {child}: {title} today" if child else f"🏫 {title} today")
+
+    # === ADD PERSONAL EVENTS (already in calendar but emphasize in facts) ===
+    personal_events_today = [e for e in _cal_events if e.get("date") == _today_s and e.get("personal")]
+    for ev in personal_events_today[:2]:
+        title = ev.get("title", "")
+        start = ev.get("start", "")
+        if title:
+            facts.append(f"📅 {title}" + (f" at {start}" if start else "") + " today")
+
+    # === ADD RECURRING ACTIVITIES (clubs, sports) ===
+    if _recurring_today:
+        for ra in _recurring_today[:2]:
+            child = ra.get("child") or ra.get("person") or ""
+            activity = ra.get("activity", "")
+            time_str = ra.get("time", "")
+            if activity:
+                facts.append(f"🎯 {child + ': ' if child else ''}{activity}" + (f" at {time_str}" if time_str else ""))
 
     # Build time-aware Groq prompt
     prompt_parts = []
