@@ -28141,10 +28141,19 @@ document.addEventListener('keydown', function(e) {
           schoolHtml.push(`<div style="font-size:12px;color:var(--text)">${e}</div>`);
         } else if (e && e.event) {
           const eventDisplay = `${e.event}${e.time ? ' · ' + e.time : ''}`;
-          const buttons = e.id ? `<div style="display:flex;gap:6px;flex-shrink:0">
-            <button onclick="_editEvent('${e.id}', '${e.type || 'school'}', '${(e.event || '').replace(/'/g, "\\'")}', '${(e.time || '').replace(/'/g, "\\'")}', '${(e.date || '').replace(/'/g, "\\'")}')" style="background:none;border:none;color:#2563eb;cursor:pointer;font-size:16px;padding:0" title="Edit event">✎</button>
-            <button onclick="_deleteEvent('${e.id}', '${e.type || 'school'}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0" title="Delete event">✕</button>
-          </div>` : '';
+          let buttons = '';
+          if (e.id) {
+            if (e.type === 'recurring') {
+              // Recurring activities only have delete button
+              buttons = `<button onclick="_deleteEvent('${e.id}', 'recurring')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0" title="Delete activity">✕</button>`;
+            } else {
+              // Personal events have edit and delete buttons
+              buttons = `<div style="display:flex;gap:6px;flex-shrink:0">
+                <button onclick="_editEvent('${e.id}', '${e.type || 'school'}', '${(e.event || '').replace(/'/g, "\\'")}', '${(e.time || '').replace(/'/g, "\\'")}', '${(e.date || '').replace(/'/g, "\\'")}')" style="background:none;border:none;color:#2563eb;cursor:pointer;font-size:16px;padding:0" title="Edit event">✎</button>
+                <button onclick="_deleteEvent('${e.id}', '${e.type || 'school'}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0" title="Delete event">✕</button>
+              </div>`;
+            }
+          }
           schoolHtml.push(`<div style="font-size:12px;color:var(--text);display:flex;justify-content:space-between;align-items:center;padding:4px 0">${eventDisplay}${buttons}</div>`);
         }
       });
@@ -28180,19 +28189,42 @@ document.addEventListener('keydown', function(e) {
 
     const token = localStorage.getItem('miru_saves_token') || wa;
 
-    // Fetch week data + AI insights in parallel
+    // Fetch week data + AI insights + recurring activities in parallel
     Promise.all([
       fetch(`/api/home/week-full?wa=${encodeURIComponent(wa)}`).then(r => r.json()),
-      fetch(`/api/home/weekly-intelligence?token=${encodeURIComponent(token)}`).then(r => r.json()).catch(() => ({success: false}))
+      fetch(`/api/home/weekly-intelligence?token=${encodeURIComponent(token)}`).then(r => r.json()).catch(() => ({success: false})),
+      fetch(`/api/v2/recurring?token=${encodeURIComponent(token)}`).then(r => r.json()).catch(() => ({activities: []}))
     ])
-      .then(([d, aiData]) => {
+      .then(([d, aiData, recurringData]) => {
         console.log('Week data received:', d);
+        console.log('Recurring activities:', recurringData);
         if (!d.success) {
           loading.textContent = '⚠️ Could not load your week';
           console.error('Week data error:', d.error);
           return;
         }
         console.log('Week data success, processing...');
+
+        // Add recurring activities to school_event_list for this week
+        // Get current day of week (0=Mon, 6=Sun)
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, etc.
+        const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to 0=Mon, 6=Sun
+
+        if (recurringData && recurringData.activities) {
+          recurringData.activities.forEach(activity => {
+            const weekday = activity.weekday; // 0=Mon, 6=Sun
+            const dayName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][weekday];
+            const title = `${activity.activity}${activity.child ? ' (' + activity.child + ')' : ''}`;
+            d.this_week.school_event_list.push({
+              event: title,
+              date: dayName,
+              time: activity.time || '',
+              id: `recurring_${activity.weekday}_${activity.activity}`,
+              type: 'recurring'
+            });
+          });
+        }
 
         // Use _weekRenderData to properly handle tab switching + respect current tab selection
         _weekCurrentTab = 'current';  // Default to This Week
@@ -28293,11 +28325,29 @@ document.addEventListener('keydown', function(e) {
   // Delete event function
   function _deleteEvent(eventId, eventType) {
     if (!confirm('Delete this event?')) return;
-    const endpoint = eventType === 'personal' ? '/api/personal/events/delete' : '/api/school/events/delete';
-    const payload = {event_id: eventId};
-    if (eventType === 'school') {
-      payload.wa = _miruPhone();  // School events need wa param
+
+    let endpoint, payload;
+
+    if (eventType === 'recurring') {
+      // Parse recurring event ID: "recurring_weekday_activity"
+      const parts = eventId.split('_');
+      if (parts.length >= 3) {
+        const weekday = parts[1];
+        const activity = parts.slice(2).join('_');
+        endpoint = '/api/v2/recurring/delete';
+        payload = {token: _miruPhone(), weekday: parseInt(weekday), activity: activity};
+      } else {
+        alert('Invalid recurring event ID');
+        return;
+      }
+    } else {
+      endpoint = eventType === 'personal' ? '/api/personal/events/delete' : '/api/school/events/delete';
+      payload = {event_id: eventId};
+      if (eventType === 'school') {
+        payload.wa = _miruPhone();
+      }
     }
+
     console.log('[delete] Deleting event:', eventId, 'type:', eventType, 'payload:', payload);
     fetch(endpoint, {
       method: 'POST',
@@ -28306,14 +28356,14 @@ document.addEventListener('keydown', function(e) {
     })
     .then(r => {
       console.log('[delete] Response status:', r.status);
-      if (r.status === 204) return null;  // No content response
+      if (r.status === 204) return null;
       return r.json();
     })
     .then(d => {
       console.log('[delete] Response data:', d);
       if (d === null || d.success || d.ok || d.deleted) {
         alert('✓ Event deleted');
-        _weekLoad();  // Reload data
+        _weekLoad();
       } else {
         alert('Error: ' + (d.error || 'Unknown error'));
       }
