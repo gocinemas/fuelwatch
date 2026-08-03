@@ -16611,7 +16611,7 @@ _bkBadge();
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px">
         <!-- Spend -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px">
-          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Total Spend</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px" id="sw-spend-title">Total Spend</div>
           <div id="sw-this-spend" style="font-size:28px;font-weight:800;color:#0369a1;margin-bottom:4px">—</div>
           <div id="sw-this-spend-cat" style="font-size:13px;color:var(--muted)">—</div>
         </div>
@@ -28209,6 +28209,14 @@ document.addEventListener('keydown', function(e) {
             insightsEl.innerHTML = `<div style="margin-bottom:8px">🤖 ${aiData.insights}</div>` + insightsEl.innerHTML;
           }
         }
+
+        // Update Spend title with current month
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        const now = new Date();
+        const month = monthNames[now.getMonth()];
+        const spendTitle = document.getElementById('sw-spend-title');
+        if (spendTitle) spendTitle.textContent = `Spend - ${month}`;
 
         // _weekRenderData() already rendered everything correctly based on activeWeek
         // No need to duplicate rendering here
