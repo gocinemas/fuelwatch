@@ -20544,21 +20544,11 @@ let _savesAll = [];
         });
       }
 
-      // Filter: only show today's events that are in the future
+      // Show all upcoming events (today and future), sorted by date
       var evs = allEvs.filter(function(ev) {
-        if (!ev.date || ev.date !== todayStr) return false;
-        if (ev.time) {
-          var timeMatch = String(ev.time).match(/^(\d{1,2}):(\d{2})/);
-          if (timeMatch) {
-            var eMins = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
-            var endTime = ev.end_time;
-            var cutoff = endTime
-              ? (endTime.match(/^(\d{1,2}):(\d{2})/) || [])[1] ? parseInt(endTime.match(/^(\d{1,2}):(\d{2})/)[1], 10) * 60 + parseInt(endTime.match(/^(\d{1,2}):(\d{2})/)[2], 10) : eMins + 120
-              : eMins + 120;
-            if (nowMins > cutoff) return false;
-          }
-        }
-        return true;
+        return ev.date && ev.date >= todayStr;  // Only hide past events
+      }).sort(function(a, b) {
+        return (a.date || "").localeCompare(b.date || "");
       });
 
       if (!evs.length) { container.style.display = "none"; syncBtn.style.display = "none"; return; }
