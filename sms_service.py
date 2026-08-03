@@ -29738,7 +29738,7 @@ def api_home_week_full():
         manual_events_week = []
         try:
             ma_details_rows = sb.table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "v2_brief_events").execute().data or []
+                .eq("device_id", from_number).eq("type", "personal_events").execute().data or []
             if ma_details_rows and ma_details_rows[0].get("data"):
                 all_manual = ma_details_rows[0]["data"].get("events", [])
                 for e in all_manual:
@@ -29890,7 +29890,7 @@ def api_home_week_full():
         last_manual_events_week = []
         try:
             ma_details_rows = sb.table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "v2_brief_events").execute().data or []
+                .eq("device_id", from_number).eq("type", "personal_events").execute().data or []
             if ma_details_rows and ma_details_rows[0].get("data"):
                 all_manual = ma_details_rows[0]["data"].get("events", [])
                 for e in all_manual:
