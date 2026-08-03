@@ -29737,10 +29737,22 @@ def api_home_week_full():
         # Also fetch manual events from ma_details (Add Event button)
         manual_events_week = []
         try:
+            # Try both with and without whatsapp: prefix
             ma_details_rows = sb.table("ma_details").select("data") \
                 .eq("device_id", from_number).eq("type", "personal_events").execute().data or []
+            if not ma_details_rows and not from_number.startswith("whatsapp:"):
+                # Try with whatsapp: prefix
+                ma_details_rows = sb.table("ma_details").select("data") \
+                    .eq("device_id", f"whatsapp:{from_number}").eq("type", "personal_events").execute().data or []
+            elif not ma_details_rows and from_number.startswith("whatsapp:"):
+                # Try without whatsapp: prefix
+                ma_details_rows = sb.table("ma_details").select("data") \
+                    .eq("device_id", from_number.replace("whatsapp:", "")).eq("type", "personal_events").execute().data or []
+
             if ma_details_rows and ma_details_rows[0].get("data"):
-                all_manual = ma_details_rows[0]["data"].get("events", [])
+                all_manual = ma_details_rows[0]["data"]
+                if not isinstance(all_manual, list):
+                    all_manual = [all_manual]
                 for e in all_manual:
                     try:
                         event_date = e.get("date", "")[:10] if e.get("date") else ""
@@ -29889,10 +29901,22 @@ def api_home_week_full():
         # Also fetch manual events from ma_details for last week
         last_manual_events_week = []
         try:
+            # Try both with and without whatsapp: prefix
             ma_details_rows = sb.table("ma_details").select("data") \
                 .eq("device_id", from_number).eq("type", "personal_events").execute().data or []
+            if not ma_details_rows and not from_number.startswith("whatsapp:"):
+                # Try with whatsapp: prefix
+                ma_details_rows = sb.table("ma_details").select("data") \
+                    .eq("device_id", f"whatsapp:{from_number}").eq("type", "personal_events").execute().data or []
+            elif not ma_details_rows and from_number.startswith("whatsapp:"):
+                # Try without whatsapp: prefix
+                ma_details_rows = sb.table("ma_details").select("data") \
+                    .eq("device_id", from_number.replace("whatsapp:", "")).eq("type", "personal_events").execute().data or []
+
             if ma_details_rows and ma_details_rows[0].get("data"):
-                all_manual = ma_details_rows[0]["data"].get("events", [])
+                all_manual = ma_details_rows[0]["data"]
+                if not isinstance(all_manual, list):
+                    all_manual = [all_manual]
                 for e in all_manual:
                     try:
                         event_date = e.get("date", "")[:10] if e.get("date") else ""
