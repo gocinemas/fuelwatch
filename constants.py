@@ -95,3 +95,29 @@ API_RETRY_DELAY_SECONDS = 2
 DECIMAL_PLACES_CURRENCY = 2
 MAX_RECENT_ITEMS = 5
 MAX_TOP_ITEMS = 3
+
+# ── MORNING BRIEF ───────────────────────────────────────────────────────────
+MORNING_BRIEF_DEFAULT_TIME = "07:30"  # HH:MM, 24-hour format
+MORNING_BRIEF_MIN_TIME = "05:00"
+MORNING_BRIEF_MAX_TIME = "22:00"
+MORNING_BRIEF_TIME_STEP_MINUTES = 15
+MORNING_BRIEF_CRON = "*/5 * * * *"  # Run every 5 minutes to check scheduled times
+
+# Brief category toggles
+MORNING_BRIEF_CATEGORIES = [
+    "weather",
+    "trains",
+    "school",
+    "spend",
+    "calendar",
+    "deliveries",
+    "bin_day",
+]
+
+# Default prefs for new users
+MORNING_BRIEF_DEFAULT_PREFS = {
+    "enabled": False,
+    "time": MORNING_BRIEF_DEFAULT_TIME,
+    "timezone": "Europe/London",
+    "opt_out_categories": [],
+}

@@ -10473,6 +10473,81 @@ def api_user_setup_status():
         return jsonify({"completed": False, "error": str(e)})
 
 
+@app.route("/api/morning-brief/prefs", methods=["GET"])
+def api_morning_brief_prefs_get():
+    """Get user's morning brief preferences."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        from constants import MORNING_BRIEF_DEFAULT_PREFS
+        return jsonify({"prefs": MORNING_BRIEF_DEFAULT_PREFS})
+    try:
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa = f"whatsapp:{_fn_plain}"
+        rows = lib._sb().table("ma_details").select("data") \
+            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "morning_brief_prefs").limit(1).execute().data or []
+        from constants import MORNING_BRIEF_DEFAULT_PREFS
+        prefs = rows[0]["data"] if rows else MORNING_BRIEF_DEFAULT_PREFS
+        return jsonify({"prefs": prefs})
+    except Exception as e:
+        from constants import MORNING_BRIEF_DEFAULT_PREFS
+        app.logger.warning(f"[morning-brief] prefs get error: {e}")
+        return jsonify({"prefs": MORNING_BRIEF_DEFAULT_PREFS, "error": str(e)})
+
+
+@app.route("/api/morning-brief/prefs", methods=["POST", "OPTIONS"])
+def api_morning_brief_prefs_set():
+    """Set user's morning brief preferences."""
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    token = request.args.get("token", "").strip() or request.form.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    try:
+        data = request.get_json() or {}
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+
+        # Validate and sanitize input
+        enabled = data.get("enabled", False)
+        time_str = data.get("time", "07:30")
+        timezone = data.get("timezone", "Europe/London")
+        opt_out = data.get("opt_out_categories", [])
+
+        # Validate time format (HH:MM)
+        try:
+            h, m = map(int, time_str.split(":"))
+            if not (0 <= h <= 23 and 0 <= m <= 59):
+                return jsonify({"success": False, "error": "Invalid time"}), 400
+        except (ValueError, AttributeError):
+            return jsonify({"success": False, "error": "Time must be HH:MM format"}), 400
+
+        # Validate opt_out categories
+        from constants import MORNING_BRIEF_CATEGORIES
+        opt_out = [c for c in opt_out if c in MORNING_BRIEF_CATEGORIES]
+
+        prefs = {
+            "enabled": bool(enabled),
+            "time": time_str,
+            "timezone": timezone,
+            "opt_out_categories": opt_out,
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+
+        # Save to database
+        lib._sb().table("ma_details").upsert({
+            "device_id": _fn_plain,
+            "type": "morning_brief_prefs",
+            "data": prefs,
+        }).execute()
+
+        app.logger.info(f"[morning-brief] prefs saved for {_fn_plain}: {prefs}")
+        return jsonify({"success": True, "prefs": prefs})
+    except Exception as e:
+        app.logger.error(f"[morning-brief] prefs set error: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/v2/spend", methods=["GET"])
 def api_v2_spend():
     """Get spend breakdown by category and merchant for a given period."""
