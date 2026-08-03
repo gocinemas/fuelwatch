@@ -92,6 +92,7 @@ class SentimentEngine:
                     "current_interest": trends.get("current_interest"),
                     "previous_interest": trends.get("previous_interest"),
                     "trend": trends.get("trend"),
+                    "trend_emoji": trends.get("trend_emoji", "→"),  # NEW: include emoji
                     "keywords": trends.get("keywords"),
                     "time_range": trends.get("time_range"),
                     "source": trends.get("source")
