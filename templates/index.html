@@ -6289,7 +6289,11 @@ const _ts = new Date(d.timestamp);
       }
     });
     localStorage.setItem("miru_ma_tab", tab);
-    if (tab === "accounts") { _maSchoolStatusLoad(); _clubsLoad(); _setupLoadClubs(); }
+    if (tab === "accounts") {
+      _maSchoolStatusLoad();
+      _clubsLoad();
+      setTimeout(() => _setupLoadClubs(), 100);  // Ensure DOM is ready
+    }
   }
 
   function _maRenderMyPlaces() {
