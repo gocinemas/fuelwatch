@@ -37780,6 +37780,249 @@ def api_insights_notifications():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# ── MORNING BRIEF SCHEDULER ─────────────────────────────────────────────────
+
+def _send_morning_brief_to_user(device_id: str, phone: str) -> dict:
+    """Send morning brief to a single user. Returns {success, message, error}."""
+    try:
+        from constants import now_london
+        # Get user's morning brief prefs
+        sb = lib._sb()
+        pref_rows = sb.table("ma_details").select("data") \
+            .eq("device_id", device_id).eq("type", "morning_brief_prefs").limit(1).execute().data or []
+        if not pref_rows:
+            return {"success": False, "message": "no prefs"}
+
+        prefs = pref_rows[0].get("data", {})
+        if not prefs.get("enabled"):
+            return {"success": False, "message": "disabled"}
+
+        scheduled_time = prefs.get("time", "07:30")  # HH:MM
+        tz = prefs.get("timezone", "Europe/London")
+
+        # Check if it's time to send (compare current time against scheduled time)
+        now = now_london()
+        now_hhmm = now.strftime("%H:%M")
+
+        # Only send if current time >= scheduled time (allow 5-min window)
+        if now_hhmm < scheduled_time:
+            return {"success": False, "message": "not yet scheduled time"}
+
+        # Check if already sent today
+        last_sent = prefs.get("last_sent", "")
+        if last_sent:
+            try:
+                last_sent_date = datetime.fromisoformat(last_sent).date()
+                if last_sent_date == now.date():
+                    return {"success": False, "message": "already sent today"}
+            except (ValueError, TypeError):
+                pass
+
+        # Fetch brief for this user (reuse existing api_home_brief logic)
+        # Create a mock request context
+        brief_data = _get_brief_for_user_internal(device_id, phone)
+        if not brief_data or not brief_data.get("brief"):
+            return {"success": False, "message": "brief generation failed"}
+
+        brief_text = brief_data.get("brief", "")
+
+        # Send via Twilio WhatsApp
+        twilio_account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
+        twilio_auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+        if not twilio_account_sid or not twilio_auth_token:
+            return {"success": False, "message": "Twilio not configured"}
+
+        from twilio.rest import Client
+        tw_client = Client(twilio_account_sid, twilio_auth_token)
+
+        # Format WhatsApp number (e.g., +447595075735 → whatsapp:+447595075735)
+        wa_number = f"whatsapp:{phone}" if phone.startswith("+") else f"whatsapp:+{phone}"
+
+        message = tw_client.messages.create(
+            from_="whatsapp:+447488883378",  # Miru's WhatsApp number
+            body=f"🌅 Your Brief\n\n{brief_text}",
+            to=wa_number
+        )
+
+        # Mark as sent
+        prefs["last_sent"] = datetime.utcnow().isoformat()
+        sb.table("ma_details").upsert({
+            "device_id": device_id,
+            "type": "morning_brief_prefs",
+            "data": prefs,
+        }).execute()
+
+        app.logger.info(f"[morning-brief] Sent to {phone}: msg_id={message.sid}")
+        return {
+            "success": True,
+            "message": f"Sent to {phone}",
+            "msg_id": message.sid
+        }
+    except Exception as e:
+        app.logger.error(f"[morning-brief] Send error: {e}", exc_info=True)
+        return {"success": False, "message": str(e), "error": str(e)}
+
+
+def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
+    """Get a fresh brief for a user without HTTP request context."""
+    try:
+        # Construct token from device_id
+        plain_phone = phone.replace("+", "").replace("whatsapp:", "")
+        token = f"whatsapp:{plain_phone}" if not phone.startswith("whatsapp") else phone
+
+        # Call the existing brief API manually
+        from datetime import datetime as _dt, date
+        import concurrent.futures as _cf
+        from constants import now_london
+
+        now = now_london()
+        postcode = ""
+        from_number = token
+
+        # Load prefs (reuse existing logic from api_home_brief)
+        sb = lib._sb()
+        prefs_rows = sb.table("ma_details").select("data") \
+            .eq("device_id", plain_phone).eq("type", "v2_prefs").limit(1).execute().data or []
+        prefs = prefs_rows[0]["data"] if prefs_rows else {}
+
+        # Build brief using parallel fetching
+        ctx = {}
+        pool = _cf.ThreadPoolExecutor(max_workers=8)
+        try:
+            futures = {}
+            fuel_pc = prefs.get("fuel_postcode") or postcode
+            if fuel_pc:
+                futures["fuel"] = pool.submit(_v2_fetch_fuel, fuel_pc)
+                futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
+            if from_number:
+                futures["school"] = pool.submit(_v2_fetch_school, from_number)
+                futures["spend"] = pool.submit(_v2_fetch_spend, from_number)
+                futures["calendar"] = pool.submit(_v2_fetch_calendar, from_number)
+                futures["recurring"] = pool.submit(_v2_fetch_recurring, from_number, now.weekday())
+
+            _done, _ = _cf.wait(futures.values(), timeout=6)
+            for k, f in futures.items():
+                if f in _done:
+                    try:
+                        ctx[k] = f.result() or {}
+                    except Exception:
+                        pass
+        finally:
+            pool.shutdown(wait=False)
+
+        # Generate brief text
+        hour = now.hour
+        dow = now.strftime("%A")
+        brief_text = f"It's {dow} at {hour:02d}:{now.minute:02d}. You're all set for today."
+
+        # Try to use Groq for a smarter brief
+        try:
+            facts = []
+            weather = ctx.get("weather", {})
+            if weather and weather.get("temp"):
+                facts.append(f"🌤️ {weather['temp']}°C, {weather.get('desc', '')}")
+
+            school = ctx.get("school", {})
+            for ev in school.get("events", [])[:1]:
+                facts.append(f"🏫 {ev.get('child_name')}: {ev.get('event_title')}")
+
+            fuel = ctx.get("fuel", {})
+            if fuel and fuel.get("price"):
+                facts.append(f"⛽ {fuel['price']}p/L")
+
+            if facts:
+                facts_str = " • ".join(facts)
+                prompt = f"Write a 2-sentence morning brief for a UK user. It's {dow} at {hour:02d}:{now.minute:02d}. Context: {facts_str}"
+                r = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}"},
+                    json={
+                        "model": "llama-3.1-8b-instant",
+                        "max_tokens": 80,
+                        "temperature": 0.3,
+                        "messages": [{"role": "user", "content": prompt}]
+                    },
+                    timeout=5
+                )
+                if r.status_code == 200:
+                    brief_text = r.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            app.logger.debug(f"[morning-brief] Groq error: {e}")
+
+        return {"brief": brief_text, "context": ctx}
+    except Exception as e:
+        app.logger.error(f"[morning-brief] Internal brief error: {e}", exc_info=True)
+        return {}
+
+
+@app.route("/api/morning-brief/send", methods=["POST"])
+def api_morning_brief_send():
+    """Manually send a morning brief to the authenticated user (test endpoint)."""
+    token = request.args.get("token", "").strip() or request.form.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+    try:
+        plain_phone = from_number.replace("whatsapp:", "").strip()
+        result = _send_morning_brief_to_user(plain_phone, plain_phone)
+        if result.get("success"):
+            return jsonify(result)
+        else:
+            return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/cron/morning-briefs", methods=["POST"])
+def cron_morning_briefs():
+    """Cron endpoint: send morning briefs to all opted-in users. Runs every 5 minutes."""
+    cron_secret = request.headers.get("X-Cron-Secret", "")
+    expected_secret = os.environ.get("CRON_SECRET", "")
+
+    if not expected_secret or cron_secret != expected_secret:
+        app.logger.warning(f"[cron] Unauthorized morning-briefs request")
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        sb = lib._sb()
+
+        # Find all users with morning briefs enabled
+        all_prefs = sb.table("ma_details").select("device_id,data") \
+            .eq("type", "morning_brief_prefs").execute().data or []
+
+        sent_count = 0
+        failed_count = 0
+        skipped_count = 0
+
+        for pref_row in all_prefs:
+            device_id = pref_row.get("device_id", "")
+            prefs_data = pref_row.get("data", {})
+
+            if not device_id or not prefs_data.get("enabled"):
+                skipped_count += 1
+                continue
+
+            # device_id is stored as plain phone (without whatsapp: prefix)
+            result = _send_morning_brief_to_user(device_id, device_id)
+            if result.get("success"):
+                sent_count += 1
+            else:
+                if result.get("message") != "not yet scheduled time" and result.get("message") != "already sent today":
+                    failed_count += 1
+
+        app.logger.info(f"[cron] Morning briefs: sent={sent_count}, failed={failed_count}, skipped={skipped_count}")
+        return jsonify({
+            "success": True,
+            "sent": sent_count,
+            "failed": failed_count,
+            "skipped": skipped_count,
+        })
+    except Exception as e:
+        app.logger.error(f"[cron] Morning briefs error: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 # ────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
