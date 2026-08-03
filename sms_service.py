@@ -29734,10 +29734,34 @@ def api_home_week_full():
             print(f"[week-full] WARNING: personal_events query failed: {pe_err}")
             personal_events_week = []
 
+        # Also fetch manual events from ma_details (Add Event button)
+        manual_events_week = []
+        try:
+            ma_details_rows = sb.table("ma_details").select("data") \
+                .eq("device_id", from_number).eq("type", "v2_brief_events").execute().data or []
+            if ma_details_rows and ma_details_rows[0].get("data"):
+                all_manual = ma_details_rows[0]["data"].get("events", [])
+                for e in all_manual:
+                    try:
+                        event_date = e.get("date", "")[:10] if e.get("date") else ""
+                        if this_week_start.isoformat()[:10] <= event_date <= this_week_end.isoformat()[:10]:
+                            manual_events_week.append({
+                                "id": f"manual_{hash(str(e))}",
+                                "event_title": e.get("title", "Event"),
+                                "event_date": event_date,
+                                "event_time": e.get("time", "")
+                            })
+                    except (ValueError, TypeError):
+                        continue
+        except Exception as me_err:
+            print(f"[week-full] WARNING: manual events query failed: {me_err}")
+
         all_events = []
         for e in school_events:
             all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "id": e.get("id"), "type": "school"})
         for e in personal_events_week:
+            all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "time": e.get("event_time", ""), "id": e.get("id"), "type": "personal"})
+        for e in manual_events_week:
             all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "time": e.get("event_time", ""), "id": e.get("id"), "type": "personal"})
 
         all_events.sort(key=lambda x: x.get("date", ""))
@@ -29862,10 +29886,34 @@ def api_home_week_full():
             print(f"[week-full] WARNING: last_personal_events query failed: {lpe_err}")
             last_personal_events = []
 
+        # Also fetch manual events from ma_details for last week
+        last_manual_events_week = []
+        try:
+            ma_details_rows = sb.table("ma_details").select("data") \
+                .eq("device_id", from_number).eq("type", "v2_brief_events").execute().data or []
+            if ma_details_rows and ma_details_rows[0].get("data"):
+                all_manual = ma_details_rows[0]["data"].get("events", [])
+                for e in all_manual:
+                    try:
+                        event_date = e.get("date", "")[:10] if e.get("date") else ""
+                        if last_week_start.isoformat()[:10] <= event_date <= last_week_end.isoformat()[:10]:
+                            last_manual_events_week.append({
+                                "id": f"manual_{hash(str(e))}",
+                                "event_title": e.get("title", "Event"),
+                                "event_date": event_date,
+                                "event_time": e.get("time", "")
+                            })
+                    except (ValueError, TypeError):
+                        continue
+        except Exception as me_err:
+            print(f"[week-full] WARNING: last week manual events query failed: {me_err}")
+
         last_all_events = []
         for e in last_school_events:
             last_all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "id": e.get("id"), "type": "school"})
         for e in last_personal_events:
+            last_all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "time": e.get("event_time", ""), "id": e.get("id"), "type": "personal"})
+        for e in last_manual_events_week:
             last_all_events.append({"event": e.get("event_title", "Event"), "date": e.get("event_date", "").split("T")[0], "time": e.get("event_time", ""), "id": e.get("id"), "type": "personal"})
 
         last_all_events.sort(key=lambda x: x.get("date", ""))
