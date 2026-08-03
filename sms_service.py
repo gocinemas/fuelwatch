@@ -1671,6 +1671,98 @@ def api_comparison_5signals(companies_str):
         return jsonify({"error": str(e)}), 500
 
 
+# ── SCHEDULED REPORTS ROUTES ──────────────────────────────────────────────────
+@app.route("/reports/subscribe")
+def reports_subscribe_page():
+    """Subscription form for weekly intelligence reports."""
+    return render_template("reports_subscribe.html")
+
+
+@app.route("/api/reports/subscribe", methods=["POST"])
+def api_reports_subscribe():
+    """Create/update report subscription."""
+    from intelligence_reports import ReportSubscription
+
+    try:
+        data = request.get_json() or {}
+
+        email = data.get("email", "").strip()
+        primary = data.get("primary_company", "").strip()
+        competitors = data.get("competitors", "").split(",") if data.get("competitors") else []
+        frequency = data.get("frequency", "weekly")
+
+        # Validate
+        if not email or not primary:
+            return jsonify({"error": "Email and company required"}), 400
+
+        # Clean competitor list
+        competitors = [c.strip() for c in competitors if c.strip()][:2]
+
+        # Create subscription
+        result = ReportSubscription.create_subscription(
+            email=email,
+            primary_company=primary,
+            competitor_companies=competitors,
+            frequency=frequency
+        )
+
+        if result.get("success"):
+            return jsonify({
+                "success": True,
+                "message": f"Subscribed to weekly reports for {primary}",
+                "subscription": result.get("subscription")
+            })
+        else:
+            return jsonify({"error": result.get("error")}), 500
+
+    except Exception as e:
+        app.logger.error(f"[subscribe] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/reports/preview/<company_name>")
+def api_reports_preview(company_name):
+    """Preview a weekly report (HTML)."""
+    from intelligence_reports import ReportGenerator
+
+    try:
+        html = ReportGenerator.generate_weekly_report(
+            primary_company=company_name,
+            competitor_companies=None
+        )
+
+        return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+    except Exception as e:
+        app.logger.error(f"[preview] Error: {e}")
+        return f"<p>Error generating report: {str(e)}</p>", 500
+
+
+@app.route("/api/reports/unsubscribe", methods=["POST"])
+def api_reports_unsubscribe():
+    """Unsubscribe from reports."""
+    from intelligence_reports import ReportSubscription
+
+    try:
+        data = request.get_json() or {}
+        email = data.get("email", "").strip()
+        company = data.get("company", "").strip()
+
+        if not email or not company:
+            return jsonify({"error": "Email and company required"}), 400
+
+        success = ReportSubscription.delete_subscription(email, company)
+
+        if success:
+            return jsonify({"success": True, "message": "Unsubscribed"})
+        else:
+            return jsonify({"error": "Failed to unsubscribe"}), 500
+
+    except Exception as e:
+        app.logger.error(f"[unsubscribe] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/brand/compare")
 def brand_compare():
     """Compare 2-3 brands side by side"""
@@ -21594,6 +21686,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         # Reject numeric-only merchants (pump IDs, transaction IDs, etc)
                         is_valid = False
                         issues.append(f"merchant is numeric only ({merchant})")
+                    else:
+                        # Reject location-based merchants (Weybridge, London, etc)
+                        _uk_locations = ["weybridge", "london", "manchester", "birmingham", "leeds", "liverpool", "bristol", "edinburgh", "cardiff", "belfast", "surrey", "essex", "kent", "sussex", "oxford", "cambridge", "york", "canterbury", "windsor", "bath", "york", "chester", "durham", "gloucester", "leicester", "newcastle", "nottingham", "sheffield", "bristol", "coventry", "liverpool", "manchester", "leeds", "birmingham"]
+                        merchant_lower = merchant.lower()
+                        if any(loc in merchant_lower for loc in _uk_locations):
+                            is_valid = False
+                            issues.append(f"merchant looks like location ({merchant})")
 
                     if total and (total <= 0 or total > 10000):
                         is_valid = False

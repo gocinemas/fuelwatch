@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscribe to Intelligence Reports</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0f0f0f;
+                color: #e0e0e0;
+            }
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .card {
+                background: #1a1a1a;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 0.95em;
+            opacity: 0.7;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        input[type="email"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            font-family: inherit;
+            background: white;
+            color: #333;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            input[type="email"],
+            input[type="text"],
+            select {
+                background: #2a2a2a;
+                border-color: #333;
+                color: #e0e0e0;
+            }
+        }
+
+        input[type="email"]:focus,
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .help-text {
+            font-size: 0.85em;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #764ba2;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .btn-secondary {
+                background: #2a2a2a;
+                color: #e0e0e0;
+            }
+        }
+
+        .btn-secondary:hover {
+            opacity: 0.8;
+        }
+
+        .success-message {
+            display: none;
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .success-message {
+                background: #1b3d1b;
+                color: #90ee90;
+            }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .error-message {
+                background: #3d1f1f;
+                color: #f8b7ba;
+            }
+        }
+
+        .features {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            font-size: 0.9em;
+            line-height: 1.7;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .features {
+                background: #1a2a4a;
+            }
+        }
+
+        .feature-item {
+            margin-bottom: 8px;
+        }
+
+        .feature-item:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 6px;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.85em;
+            opacity: 0.6;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .footer {
+                border-top-color: #333;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .link {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="title">Weekly Intelligence Brief</div>
+                <div class="subtitle">Get real-time signals every week</div>
+            </div>
+
+            <div class="features">
+                <div class="feature-item">5-signal dashboard for your tracked companies</div>
+                <div class="feature-item">Competitive position analysis</div>
+                <div class="feature-item">Signal interpretation and key watch items</div>
+                <div class="feature-item">Direct to your inbox, every week</div>
+            </div>
+
+            <form id="subscriptionForm" onsubmit="handleSubmit(event)">
+                <div id="errorMessage" class="error-message"></div>
+                <div id="successMessage" class="success-message"></div>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Setting up your subscription...</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Your Email</label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                    <div class="help-text">We'll send your brief every Monday morning</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="primary_company">Primary Company to Track</label>
+                    <select id="primary_company" name="primary_company" required>
+                        <option value="">Select a company...</option>
+                        <option value="Reckitt">Reckitt</option>
+                        <option value="Henkel">Henkel</option>
+                        <option value="Unilever">Unilever</option>
+                        <option value="SC Johnson">SC Johnson</option>
+                    </select>
+                    <div class="help-text">Your main company for the weekly brief</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="competitors">Add Competitors (optional)</label>
+                    <input type="text" id="competitors" name="competitors" placeholder="e.g., Henkel, Unilever">
+                    <div class="help-text">Comma-separated. Max 2 companies. These will appear in comparative analysis.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="frequency">Frequency</label>
+                    <select id="frequency" name="frequency">
+                        <option value="weekly">Weekly (Monday)</option>
+                        <option value="biweekly">Bi-weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn btn-secondary" onclick="previewReport()">📋 Preview Report</button>
+                <button type="submit" class="btn btn-primary">✓ Subscribe</button>
+
+                <div class="footer">
+                    <p>You can unsubscribe anytime. No spam, just intelligence.</p>
+                    <p>Questions? Email us at <a href="mailto:hello@humanagency.co" class="link">hello@humanagency.co</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function handleSubmit(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('email').value.trim();
+            const primary = document.getElementById('primary_company').value.trim();
+            const competitors = document.getElementById('competitors').value.trim();
+            const frequency = document.getElementById('frequency').value;
+
+            // Clear messages
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+
+            // Submit
+            fetch('/api/reports/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    primary_company: primary,
+                    competitors: competitors,
+                    frequency: frequency
+                })
+            })
+            .then(r => {
+                document.getElementById('loading').style.display = 'none';
+                if (r.ok) return r.json();
+                throw new Error('Subscription failed');
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('successMessage').textContent = data.message;
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('subscriptionForm').reset();
+                    setTimeout(() => {
+                        window.location.href = `/intelligence/5signals/${primary}`;
+                    }, 2000);
+                } else {
+                    throw new Error(data.error || 'Failed to subscribe');
+                }
+            })
+            .catch(err => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('errorMessage').textContent = err.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            });
+        }
+
+        function previewReport() {
+            const primary = document.getElementById('primary_company').value;
+
+            if (!primary) {
+                alert('Please select a company first');
+                return;
+            }
+
+            window.open(`/api/reports/preview/${primary}`, '_blank');
+        }
+    </script>
+</body>
+</html>

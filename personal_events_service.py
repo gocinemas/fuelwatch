@@ -188,10 +188,17 @@ def get_personal_events(days_ahead: int = 30) -> List[Dict]:
 
         # Validate events: filter out any with dates that don't make sense
         valid_events = []
+        today_date = date.today()
         for row in rows:
             event_date_str = row.get("event_date", "")
             try:
                 event_date = date.fromisoformat(event_date_str)
+
+                # DEFENSIVE: Double-check that event_date is not in the past
+                # (in case database query filtering fails due to string comparison)
+                if event_date < today_date:
+                    print(f"[personal-events] Filtering out past event: {event_date_str} < {today}")
+                    continue
 
                 # Check if event has passed (more than 30 mins after event time)
                 event_time_str = row.get("event_time", "")
