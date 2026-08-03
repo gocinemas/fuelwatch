@@ -10500,12 +10500,12 @@ def api_morning_brief_prefs_set():
     """Set user's morning brief preferences."""
     if request.method == "OPTIONS":
         return jsonify({}), 200
-    token = request.args.get("token", "").strip() or request.form.get("token", "").strip()
+    data = request.get_json() or {}
+    token = request.args.get("token", "").strip() or request.form.get("token", "").strip() or data.get("token", "").strip()
     from_number = _v2_resolve(token)
     if not from_number:
         return jsonify({"success": False, "error": "Not authenticated"}), 401
     try:
-        data = request.get_json() or {}
         _fn_plain = from_number.replace("whatsapp:", "").strip()
 
         # Validate and sanitize input
