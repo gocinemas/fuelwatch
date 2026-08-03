@@ -19178,9 +19178,12 @@ let _savesAll = [];
         + '<div style="text-align:center;font-size:10px;color:#666;padding-top:4px">' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
         + '</div>';
 
+      var monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+      var currentMonth = monthNames[new Date().getMonth()];
       var spendHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🔒 Spend · ' + (spend.month || "") + '</div>'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🔒 Spend · ' + (spend.month || currentMonth) + '</div>'
         + '<div style="display:flex;gap:6px">'
         + '<button id="' + cardId + '-toggle" onclick="var body=document.getElementById(\'' + cardId + '-body\');var isHidden=body.style.display===\'none\';body.style.display=isHidden?\'block\':\'none\';this.textContent=isHidden?\'▾ Hide\':\'▴ Show\'" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600">▾ Hide</button>'
         + '<input id="' + cardId + '-pdf" type="file" accept=".pdf" style="display:none" onchange="spendUploadPDF(this)" />'
