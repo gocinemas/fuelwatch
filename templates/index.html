@@ -3190,6 +3190,65 @@
         </div>
       </div>
 
+      <!-- ── MORNING BRIEF SCHEDULING ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Daily morning brief</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <!-- Toggle -->
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer">
+            <input type="checkbox" id="setup-morning-enabled" style="cursor:pointer;width:18px;height:18px" onchange="_setupMorningBriefToggle()">
+            <span style="font-size:14px;font-weight:600;color:var(--text)">Enable 7:30 AM brief</span>
+          </label>
+
+          <!-- Time picker (hidden until enabled) -->
+          <div id="setup-morning-time-section" style="display:none;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Send time</div>
+            <input type="time" id="setup-morning-time" value="07:30"
+              style="width:100%;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          </div>
+
+          <!-- Categories (hidden until enabled) -->
+          <div id="setup-morning-categories-section" style="display:none;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Include in brief</div>
+            <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:10px;margin-bottom:4px;cursor:pointer">
+              <input type="checkbox" class="setup-morning-cat" data-cat="weather" style="cursor:pointer;width:16px;height:16px" checked> Weather
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:10px;margin-bottom:4px;cursor:pointer">
+              <input type="checkbox" class="setup-morning-cat" data-cat="trains" style="cursor:pointer;width:16px;height:16px" checked> Trains
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:10px;margin-bottom:4px;cursor:pointer">
+              <input type="checkbox" class="setup-morning-cat" data-cat="school" style="cursor:pointer;width:16px;height:16px" checked> School
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:10px;margin-bottom:4px;cursor:pointer">
+              <input type="checkbox" class="setup-morning-cat" data-cat="calendar" style="cursor:pointer;width:16px;height:16px" checked> Calendar
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:10px;margin-bottom:4px;cursor:pointer">
+              <input type="checkbox" class="setup-morning-cat" data-cat="spend" style="cursor:pointer;width:16px;height:16px"> Spend
+            </label>
+          </div>
+
+          <!-- Last sent info -->
+          <div id="setup-morning-lastsent" style="font-size:12px;color:var(--muted);padding:10px;background:var(--bg);border-radius:12px;display:none">
+            Last sent: <span id="setup-morning-lastsent-time">—</span>
+          </div>
+
+          <!-- Test button (hidden until enabled) -->
+          <button onclick="_setupMorningBriefTest()" id="setup-morning-test"
+            style="display:none;width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+            📧 Send test brief now
+          </button>
+
+          <!-- Save button (hidden until enabled) -->
+          <button onclick="_setupMorningBriefSave()" id="setup-morning-save"
+            style="display:none;width:100%;background:#059669;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer">
+            Save
+          </button>
+
+          <div id="setup-morning-err" style="display:none;font-size:12px;color:var(--error-text);text-align:center;margin-top:8px"></div>
+          <div id="setup-morning-ok" style="display:none;font-size:12px;color:#059669;text-align:center;margin-top:8px">✅ Saved</div>
+        </div>
+      </div>
+
       <!-- ── MORNING BRIEF ── -->
       <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Morning brief</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
@@ -8744,6 +8803,156 @@ function _hcAdd() {
     } catch(e) {
       // Silently fail — allow user to set new prefs
     }
+  };
+
+  // ── MORNING BRIEF FUNCTIONS ──
+  window._setupMorningBriefToggle = async function() {
+    var enabled = document.getElementById("setup-morning-enabled").checked;
+    var timeSection = document.getElementById("setup-morning-time-section");
+    var catsSection = document.getElementById("setup-morning-categories-section");
+    var testBtn = document.getElementById("setup-morning-test");
+    var saveBtn = document.getElementById("setup-morning-save");
+    var lastSent = document.getElementById("setup-morning-lastsent");
+
+    if (enabled) {
+      timeSection.style.display = "block";
+      catsSection.style.display = "block";
+      testBtn.style.display = "block";
+      saveBtn.style.display = "block";
+      // Load current prefs
+      await _setupMorningBriefLoad();
+    } else {
+      timeSection.style.display = "none";
+      catsSection.style.display = "none";
+      testBtn.style.display = "none";
+      saveBtn.style.display = "none";
+      lastSent.style.display = "none";
+    }
+  };
+
+  window._setupMorningBriefLoad = async function() {
+    var token = _miruPhone();
+    if (!token) return;
+    try {
+      var r = await fetch("/api/morning-brief/prefs?token=" + encodeURIComponent(token));
+      var d = await r.json();
+      var prefs = d.prefs || {};
+
+      document.getElementById("setup-morning-enabled").checked = prefs.enabled || false;
+      document.getElementById("setup-morning-time").value = prefs.time || "07:30";
+
+      // Load opt-out categories
+      var optOut = prefs.opt_out_categories || [];
+      document.querySelectorAll(".setup-morning-cat").forEach(chk => {
+        var cat = chk.getAttribute("data-cat");
+        chk.checked = !optOut.includes(cat);
+      });
+
+      // Show last sent time if enabled
+      if (prefs.enabled && prefs.last_sent) {
+        var lastSentEl = document.getElementById("setup-morning-lastsent");
+        var lastSentTime = document.getElementById("setup-morning-lastsent-time");
+        try {
+          var d = new Date(prefs.last_sent);
+          lastSentTime.textContent = d.toLocaleTimeString("en-GB");
+          lastSentEl.style.display = "block";
+        } catch(e) {}
+      }
+    } catch(e) {
+      console.error("[morning-brief] Load error:", e);
+    }
+  };
+
+  window._setupMorningBriefSave = async function() {
+    var token = _miruPhone();
+    if (!token) {
+      alert("Please set your phone number first");
+      return;
+    }
+
+    var enabled = document.getElementById("setup-morning-enabled").checked;
+    var time = document.getElementById("setup-morning-time").value || "07:30";
+    var optOutCats = [];
+
+    document.querySelectorAll(".setup-morning-cat").forEach(chk => {
+      if (!chk.checked) {
+        optOutCats.push(chk.getAttribute("data-cat"));
+      }
+    });
+
+    var errEl = document.getElementById("setup-morning-err");
+    var okEl = document.getElementById("setup-morning-ok");
+    errEl.style.display = "none";
+    okEl.style.display = "none";
+
+    try {
+      var r = await fetch("/api/morning-brief/prefs", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          token: token,
+          enabled: enabled,
+          time: time,
+          timezone: "Europe/London",
+          opt_out_categories: optOutCats
+        })
+      });
+      var d = await r.json();
+      if (d.success) {
+        okEl.style.display = "block";
+        setTimeout(() => { okEl.style.display = "none"; }, 3000);
+      } else {
+        errEl.textContent = d.error || "Failed to save";
+        errEl.style.display = "block";
+      }
+    } catch(e) {
+      errEl.textContent = e.message;
+      errEl.style.display = "block";
+    }
+  };
+
+  window._setupMorningBriefTest = async function() {
+    var token = _miruPhone();
+    if (!token) {
+      alert("Please set your phone number first");
+      return;
+    }
+
+    var btn = document.getElementById("setup-morning-test");
+    var errEl = document.getElementById("setup-morning-err");
+    var okEl = document.getElementById("setup-morning-ok");
+    var origText = btn.textContent;
+
+    btn.textContent = "📧 Sending…";
+    btn.disabled = true;
+    errEl.style.display = "none";
+    okEl.style.display = "none";
+
+    try {
+      var r = await fetch("/api/morning-brief/send?token=" + encodeURIComponent(token), {method: "POST"});
+      var d = await r.json();
+      if (d.success) {
+        okEl.textContent = "✅ Brief sent! Check WhatsApp";
+        okEl.style.display = "block";
+        setTimeout(() => { okEl.style.display = "none"; }, 4000);
+      } else {
+        errEl.textContent = d.message || d.error || "Failed to send";
+        errEl.style.display = "block";
+      }
+    } catch(e) {
+      errEl.textContent = e.message;
+      errEl.style.display = "block";
+    } finally {
+      btn.textContent = origText;
+      btn.disabled = false;
+    }
+  };
+
+  // Load morning brief prefs on setup screen load
+  window._originalSetupLoad = window._setupLoad;
+  window._setupLoad = function() {
+    if (window._originalSetupLoad) _originalSetupLoad();
+    setTimeout(() => { _setupMorningBriefLoad(); }, 200);
   };
 
   async function _setupLoadClubs() {
