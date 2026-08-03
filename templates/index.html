@@ -3220,7 +3220,10 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div style="font-size:13px;color:var(--muted)">Weekly recurring activities — shown in your brief</div>
-          <button onclick="_clubsAddOpen()" style="font-size:12px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.08);border:1.5px solid rgba(124,58,237,.25);border-radius:12px;padding:7px 13px;cursor:pointer;flex-shrink:0">+ Add</button>
+          <div style="display:flex;gap:6px">
+            <button onclick="_setupLoadClubs()" style="font-size:12px;font-weight:600;color:#2563eb;background:transparent;border:none;cursor:pointer;padding:4px 8px">⟳ Refresh</button>
+            <button onclick="_clubsAddOpen()" style="font-size:12px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.08);border:1.5px solid rgba(124,58,237,.25);border-radius:12px;padding:7px 13px;cursor:pointer;flex-shrink:0">+ Add</button>
+          </div>
         </div>
         <div id="setup-clubs-list"></div>
         <!-- Add/edit form inline in Settings -->
