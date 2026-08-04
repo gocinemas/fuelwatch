@@ -9668,25 +9668,28 @@ def api_home_last_receipt():
 
             app.logger.info(f"[last-receipt] FOUND: {merchant} £{total} on {shop_date}")
 
-            # Extract items — skip summary/metadata lines, keep product lines with prices
+            # Extract items — skip META lines, keep product lines + totals
             items = []
             for line in summary.split("\n"):
                 line = line.strip()
                 if not line:
                     continue
 
-                # Skip metadata lines (lines that START with these keywords or CONTAIN metadata markers)
-                skip_keywords = ["total", "vat", "date", "time", "subtotal", "payment", "card", "receipt", "amount", "balance", "meta", "paid by"]
-                if any(kw in line.lower() for kw in skip_keywords):
+                # Skip META: labels and metadata markers
+                if line.upper().startswith("META"):
                     continue
 
                 # Skip lines that are JUST amounts (£3.90, 3.90, etc.)
                 if re.match(r'^\s*£?[\d,]+\.?\d*\s*$', line):
                     continue
 
-                # This is a product line (e.g. "Flat White SML TA (£3.90)")
+                # Skip VAT/subtotal lines (but keep Total)
+                if line.upper().startswith("VAT") or line.upper().startswith("SUBTOTAL"):
+                    continue
+
+                # Keep everything else: products, dates, totals, etc.
                 items.append(line[:60])
-                if len(items) >= 3:
+                if len(items) >= 5:  # Slightly more items now that we're not filtering totals
                     break
 
             r = {
