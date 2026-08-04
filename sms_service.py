@@ -30279,83 +30279,47 @@ def api_home_week_full():
         spend_rows = []
         receipt_rows = []
         try:
-            all_week_saves = sb.table("wa_saves").select("summary,title,created_at") \
-                .eq("from_number", from_number) \
-                .gte("created_at", this_week_start.isoformat()) \
-                .lte("created_at", (this_week_end + _dt.timedelta(days=1)).isoformat()) \
+            # FIXED: Use receipts table with actual shop_date (purchase date), not wa_saves with created_at (upload date)
+            all_week_receipts = sb.table("receipts").select("summary,title,shop_date,merchant,total,category") \
+                .eq("phone", from_number.replace("whatsapp:", "")) \
+                .gte("shop_date", this_week_start.isoformat()) \
+                .lte("shop_date", this_week_end.isoformat()) \
                 .execute().data or []
-            print(f"[week-full] THIS WEEK ({this_week_start.isoformat()} to {(this_week_end + _dt.timedelta(days=1)).isoformat()}): Fetched {len(all_week_saves)} saves")
+            print(f"[week-full] THIS WEEK ({this_week_start.isoformat()} to {this_week_end.isoformat()}): Fetched {len(all_week_receipts)} receipts by ACTUAL PURCHASE DATE")
 
-            # DEBUG: Show what titles we have
-            for _dbg_save in all_week_saves[:10]:
-                _dbg_title = _dbg_save.get("title", "")[:50]
-                _dbg_created = _dbg_save.get("created_at", "")[:10]
-                print(f"[week-full] DEBUG: {_dbg_created} | Title: {_dbg_title}")
+            # DEBUG: Show what receipts we have
+            for _dbg_receipt in all_week_receipts[:10]:
+                _dbg_merchant = _dbg_receipt.get("merchant", "")[:30]
+                _dbg_shop_date = _dbg_receipt.get("shop_date", "")[:10]
+                _dbg_total = _dbg_receipt.get("total", "?")
+                print(f"[week-full] DEBUG: {_dbg_shop_date} | {_dbg_merchant} | £{_dbg_total}")
 
-            # Filter to receipts only (title starts with 🧾)
-            receipt_rows = [s for s in all_week_saves if (s.get("title") or "").startswith("🧾")]
+            receipt_rows = all_week_receipts
             print(f"[week-full] Week {this_week_start} to {this_week_end}: {len(receipt_rows)} receipts found")
         except Exception as q_err:
-            print(f"[week-full] wa_saves query failed: {q_err}")
+            print(f"[week-full] receipts table query failed: {q_err}")
             import traceback
             print(traceback.format_exc())
             # Continue with empty data instead of crashing
             receipt_rows = []
 
-        # Extract amount from receipt summaries
-        import re as _re_week
-
-        # Define regex patterns for amount extraction (reusable)
-        # MUST match: "Total to Pay:", "TOTAL:", "Total due:", "Total:", etc.
-        # Use DOTALL flag to handle line breaks in multiline summaries
-        _amount_patterns = [
-            r'(?:Total|TOTAL)\s+to\s+(?:Pay|pay)[:\s]*£([\d,]+\.?\d*)',  # "Total to Pay: £104.58" or "Total to Pay £104.58"
-            r'(?:Total|TOTAL)\s+due[:\s]*£([\d,]+\.?\d*)',               # "Total due: £12.34" or "Total due\n£12.34"
-            r'(?:Total|TOTAL)\s+amount[:\s]*£([\d,]+\.?\d*)',            # "Total amount: £30.82"
-            r'(?:Total|TOTAL)\s+(?:Amount|AMOUNT)[:\s]*£([\d,]+\.?\d*)',  # "Total Amount: £14.19"
-            r'(?:Total|TOTAL)\s+balance\s+due[:\s]*£([\d,]+\.?\d*)',     # "Total balance due £44.45" or with newline
-            r'(?:Total|TOTAL)\s*\([^)]*\)[:\s]*£([\d,]+\.?\d*)',        # "Total (Net Price): £29.37"
-            r'(?:Total|TOTAL)[:\s]*£([\d,]+\.?\d*)',                     # "Total: £67.73" or "TOTAL: £28.00"
-            r'(?:Total|TOTAL)\s+£([\d,]+\.?\d*)',                        # "Total £15.10"
-            r'Payable[:\s]*£([\d,]+\.?\d*)',                             # "Payable: £..." or "Payable £..."
-            r'Amount\s+due[:\s]*£([\d,]+\.?\d*)',                        # "Amount due: £..."
-            r'[£]\s*([\d,]+\.?\d*)\s*(?:paid|total|due)',               # "£30.48 paid" or "£30.48 total"
-        ]
-
+        # receipts table already has total, merchant, category, shop_date — just use them directly
         for r in receipt_rows:
-            summary = r.get("summary", "")
-            title = r.get("title", "")
-            merchant = (title or "").replace("🧾", "").strip() or "Unknown"
-            amount = 0
+            total = float(r.get("total", 0) or 0)
+            merchant = r.get("merchant", "Unknown").strip() or "Unknown"
+            shop_date = r.get("shop_date", "").strip()
+            category = r.get("category", "").strip()
 
-            for pattern in _amount_patterns:
-                m = _re_week.search(pattern, summary)
-                if m:
-                    try:
-                        amount = float(m.group(1).replace(",", ""))
-                        break
-                    except (ValueError, IndexError):
-                        pass
-
-            # Format: Old "🧾 Merchant · £12.34"
-            if amount == 0:
-                m = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
-                if m:
-                    merchant = m.group(1).strip()
-                    try:
-                        amount = float(m.group(2))
-                    except (ValueError, IndexError):
-                        pass
-
-            if amount > 0:
+            if total > 0:
                 spend_rows.append({
-                    "total": amount,
+                    "total": total,
                     "merchant": merchant,
-                    "shop_date": r.get("created_at", "").split("T")[0]
+                    "shop_date": shop_date,  # Use actual purchase date from receipt
+                    "category": category
                 })
             else:
-                # Log receipts that failed to parse amount
-                print(f"[week-full] WARNING: Failed to extract amount from {merchant} | Summary preview: {(r.get('summary') or '')[:80]}")
+                # Log receipts with missing amount
+                print(f"[week-full] WARNING: Receipt missing total: {merchant} | Date: {shop_date}")
 
         this_week["spend"] = sum(float(r.get("total", 0) or 0) for r in spend_rows)
         print(f"[week-full] THIS WEEK TOTAL: £{this_week['spend']:.2f}")
@@ -30494,51 +30458,34 @@ def api_home_week_full():
             "calendar_events": 0,
         }
 
-        # Last week receipts — fetch from wa_saves (same as this week)
-        last_week_saves = sb.table("wa_saves").select("summary,title,created_at") \
-            .eq("from_number", from_number) \
-            .gte("created_at", last_week_start.isoformat()) \
-            .lte("created_at", (last_week_end + _dt.timedelta(days=1)).isoformat()) \
+        # Last week receipts — fetch from receipts table with actual shop_date (purchase date)
+        last_week_receipts = sb.table("receipts").select("summary,title,shop_date,merchant,total,category") \
+            .eq("phone", from_number.replace("whatsapp:", "")) \
+            .gte("shop_date", last_week_start.isoformat()) \
+            .lte("shop_date", last_week_end.isoformat()) \
             .execute().data or []
 
-        last_receipt_rows = [s for s in last_week_saves if (s.get("title") or "").startswith("🧾")]
+        last_receipt_rows = last_week_receipts
         last_spend_rows = []
 
         # Parse last week receipts
-        print(f"[week-full] LAST WEEK ({last_week_start.isoformat()} to {(last_week_end + _dt.timedelta(days=1)).isoformat()}): Fetched {len(last_week_saves)} saves, {len(last_receipt_rows)} receipts")
+        print(f"[week-full] LAST WEEK ({last_week_start.isoformat()} to {last_week_end.isoformat()}): Fetched {len(last_receipt_rows)} receipts by ACTUAL PURCHASE DATE")
         for r in last_receipt_rows:
-            summary = r.get("summary", "")
-            title = r.get("title", "")
-            merchant = (title or "").replace("🧾", "").strip() or "Unknown"
-            amount = 0
+            total = float(r.get("total", 0) or 0)
+            merchant = r.get("merchant", "Unknown").strip() or "Unknown"
+            shop_date = r.get("shop_date", "").strip()
+            category = r.get("category", "").strip()
 
-            for pattern in _amount_patterns:
-                m = _re_week.search(pattern, summary)
-                if m:
-                    try:
-                        amount = float(m.group(1).replace(",", ""))
-                        break
-                    except (ValueError, IndexError):
-                        pass
-
-            if amount == 0:
-                m = _re_week.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
-                if m:
-                    merchant = m.group(1).strip()
-                    try:
-                        amount = float(m.group(2))
-                    except (ValueError, IndexError):
-                        pass
-
-            if amount > 0:
+            if total > 0:
                 last_spend_rows.append({
-                    "total": amount,
+                    "total": total,
                     "merchant": merchant,
-                    "shop_date": r.get("created_at", "").split("T")[0]
+                    "shop_date": shop_date,  # Use actual purchase date from receipt
+                    "category": category
                 })
             else:
-                # Log receipts that failed to parse amount
-                print(f"[week-full] WARNING LAST WEEK: Failed to extract amount from {merchant} | Summary preview: {(r.get('summary') or '')[:80]}")
+                # Log receipts with missing amount
+                print(f"[week-full] WARNING LAST WEEK: Receipt missing total: {merchant} | Date: {shop_date}")
 
         last_week["spend"] = sum(float(r.get("total", 0) or 0) for r in last_spend_rows)
         print(f"[week-full] LAST WEEK TOTAL: £{last_week['spend']:.2f}")
