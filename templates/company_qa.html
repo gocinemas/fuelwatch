@@ -182,6 +182,15 @@
             background: #f3f4f6;
             color: #1c1917;
             border-bottom-left-radius: 4px;
+            position: relative;
+        }
+
+        .message-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
         }
 
         .qa-input-area {
@@ -294,6 +303,26 @@
         .cta-button:hover {
             background: #1e40af;
             transform: translateY(-2px);
+        }
+
+        .share-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0f9ff;
+            color: #0369a1;
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: 1px solid #bfdbfe;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .share-button:hover {
+            background: #e0f2fe;
+            border-color: #7dd3fc;
         }
 
         .error {
@@ -497,7 +526,7 @@
                 document.getElementById('messagesContainer').lastChild.remove();
 
                 if (data.answer) {
-                    addMessage('assistant', data.answer);
+                    addMessage('assistant', data.answer, true);
                 } else {
                     addMessage('assistant', 'Unable to answer. Try another question.');
                 }
@@ -508,17 +537,58 @@
             }
         }
 
-        function addMessage(role, content) {
+        // Load company and question from URL on page load
+        window.addEventListener('load', function() {
+            const params = new URLSearchParams(window.location.search);
+            const company = params.get('company');
+            const ask = params.get('ask');
+
+            if (company) {
+                document.getElementById('companyInput').value = company;
+                searchCompany().then(() => {
+                    if (ask) {
+                        document.getElementById('questionInput').value = decodeURIComponent(ask);
+                        setTimeout(() => askQuestion(), 500);
+                    }
+                });
+            }
+        });
+
+        function addMessage(role, content, isShareable = false) {
             messages.push({ role, content });
 
             const container = document.getElementById('messagesContainer');
             const messageEl = document.createElement('div');
             messageEl.className = `message ${role}`;
-            messageEl.innerHTML = `<div class="message-content">${content}</div>`;
+
+            let html = `<div class="message-content">${content}`;
+
+            // Add share button for assistant messages
+            if (role === 'assistant' && isShareable && content.indexOf('<div class="loading">') === -1) {
+                const lastMsg = messages[messages.length - 2];
+                const question = lastMsg ? lastMsg.content : '';
+                html += `<div class="message-actions">
+                    <button class="share-button" onclick="shareConversation('${encodeURIComponent(question)}')">
+                        🔗 Share
+                    </button>
+                </div>`;
+            }
+
+            html += '</div>';
+            messageEl.innerHTML = html;
             container.appendChild(messageEl);
 
             // Scroll to bottom
             container.scrollTop = container.scrollHeight;
+        }
+
+        function shareConversation(question) {
+            const url = `${window.location.origin}${window.location.pathname}?company=${encodeURIComponent(currentCompany)}&ask=${question}`;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('✓ Link copied to clipboard!');
+            }).catch(() => {
+                prompt('Share this link:', url);
+            });
         }
 
         function handleQuestionKeypress(event) {
