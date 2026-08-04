@@ -37,65 +37,114 @@ class CompanyIntelligence:
             return {"error": str(e), "name": self.company_name}
 
     def _fetch_company_info(self):
-        """Fetch company info from Wikipedia and Crunchbase."""
+        """Fetch company info from multiple sources."""
         try:
-            # Try Wikipedia API for company info
+            # Company knowledge base - real data
+            company_info = {
+                "reckitt benckiser": {
+                    "description": "FMCG company specializing in hygiene, health, and home care products",
+                    "headquarters": "London, United Kingdom",
+                    "sector": "Consumer Goods & Health",
+                    "founded": "1840",
+                    "website": "reckitt.com",
+                    "brands": ["Dettol", "Lysol", "Nurofen", "Air Wick", "Gaviscon", "Finish", "Strepsils", "Clearasil"],
+                },
+                "reckitt": {
+                    "description": "FMCG company specializing in hygiene, health, and home care products",
+                    "headquarters": "London, United Kingdom",
+                    "sector": "Consumer Goods & Health",
+                    "founded": "1840",
+                    "website": "reckitt.com",
+                    "brands": ["Dettol", "Lysol", "Nurofen", "Air Wick", "Gaviscon", "Finish", "Strepsils", "Clearasil"],
+                },
+                "henkel": {
+                    "description": "German multinational chemical and consumer goods company",
+                    "headquarters": "Düsseldorf, Germany",
+                    "sector": "Consumer Goods",
+                    "founded": "1876",
+                    "website": "henkel.com",
+                    "brands": ["Persil", "Schwarzkopf", "Dial", "Right Guard", "Pritt", "Loctite"],
+                },
+                "unilever": {
+                    "description": "British-Dutch multinational FMCG company with brands in beauty, food, health, and home care",
+                    "headquarters": "London, United Kingdom & Rotterdam, Netherlands",
+                    "sector": "Consumer Goods & Food",
+                    "founded": "1930",
+                    "website": "unilever.com",
+                    "brands": ["Dove", "Axe", "Knorr", "Ben & Jerry's", "Hellmann's", "Lipton", "Magnum", "Cif"],
+                },
+                "sc johnson": {
+                    "description": "Family-owned American multinational chemicals and consumer goods company",
+                    "headquarters": "Racine, Wisconsin, USA",
+                    "sector": "Consumer Goods",
+                    "founded": "1886",
+                    "website": "scjohnson.com",
+                    "brands": ["Windex", "Raid", "Pledge", "Glade", "Mr Muscle", "Baygon"],
+                },
+                "google": {
+                    "description": "American tech giant specializing in search, advertising, cloud computing, and AI",
+                    "headquarters": "Mountain View, California, USA",
+                    "sector": "Technology & Internet",
+                    "founded": "1998",
+                    "website": "google.com",
+                    "brands": ["Google Search", "Chrome", "Android", "YouTube", "Gmail", "Maps", "Pixel"],
+                },
+                "apple": {
+                    "description": "American technology company designing and manufacturing consumer electronics",
+                    "headquarters": "Cupertino, California, USA",
+                    "sector": "Technology & Electronics",
+                    "founded": "1976",
+                    "website": "apple.com",
+                    "brands": ["iPhone", "Mac", "iPad", "Apple Watch", "AirPods", "Apple TV"],
+                },
+                "netflix": {
+                    "description": "American streaming entertainment service with original content",
+                    "headquarters": "Los Gatos, California, USA",
+                    "sector": "Entertainment & Media",
+                    "founded": "1997",
+                    "website": "netflix.com",
+                    "brands": ["Netflix Streaming", "Netflix Films", "Netflix Series"],
+                },
+                "microsoft": {
+                    "description": "American technology multinational developing software, cloud computing, and gaming",
+                    "headquarters": "Redmond, Washington, USA",
+                    "sector": "Technology & Software",
+                    "founded": "1975",
+                    "website": "microsoft.com",
+                    "brands": ["Windows", "Office", "Xbox", "Azure", "Teams", "Outlook"],
+                },
+            }
+
+            company_lower = self.company_name.lower().strip()
+
+            # Try exact match first
+            if company_lower in company_info:
+                self.basics.update(company_info[company_lower])
+                self.basics["source"] = "Company Database"
+                return
+
+            # Try partial match
+            for key, info in company_info.items():
+                if key in company_lower or company_lower in key:
+                    self.basics.update(info)
+                    self.basics["source"] = "Company Database"
+                    return
+
+            # Fallback: try Wikipedia
             url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{self.company_name}"
             response = requests.get(url, timeout=5)
 
-            company_data = {
-                "description": "",
-                "extract": "",
-                "headquarters": "",
-                "brands": [],
-                "sector": "",
-                "founded": "",
-                "website": "",
-            }
-
             if response.status_code == 200:
                 data = response.json()
-                company_data["description"] = data.get("description", "")
-                company_data["extract"] = data.get("extract", "")[:300]
-
-                # Parse Wikipedia extract for additional info
-                extract = company_data["extract"].lower()
-
-                # Guess headquarters from description
-                if "london" in extract:
-                    company_data["headquarters"] = "London, UK"
-                elif "new york" in extract or "usa" in extract:
-                    company_data["headquarters"] = "New York, USA"
-                elif "germany" in extract:
-                    company_data["headquarters"] = "Germany"
-
-                # Extract brands (common for CPG companies)
-                brands_map = {
-                    "reckitt": ["Dettol", "Lysol", "Nurofen", "Air Wick", "Gaviscon"],
-                    "henkel": ["Persil", "Schwarzkopf", "Dial", "Right Guard"],
-                    "unilever": ["Dove", "Axe", "Knorr", "Ben & Jerry's", "Hellmann's"],
-                    "sc johnson": ["Windex", "Raid", "Pledge", "Glade"],
-                    "google": ["Google Search", "Chrome", "Android", "YouTube"],
-                    "apple": ["iPhone", "Mac", "iPad", "Apple Watch"],
-                    "netflix": ["Netflix Streaming"],
-                    "microsoft": ["Windows", "Office", "Xbox", "Azure"],
-                }
-
-                company_lower = self.company_name.lower()
-                for key, brands in brands_map.items():
-                    if key in company_lower:
-                        company_data["brands"] = brands
-                        break
-
-                company_data["source"] = "Wikipedia"
+                self.basics["description"] = data.get("description", "")
+                self.basics["extract"] = data.get("extract", "")[:300]
+                self.basics["source"] = "Wikipedia"
             else:
-                company_data["description"] = f"Company: {self.company_name}"
-                company_data["source"] = "Search"
-
-            self.basics.update(company_data)
+                self.basics["description"] = f"Company: {self.company_name}"
+                self.basics["source"] = "Search"
 
         except Exception as e:
-            logger.debug(f"Wikipedia fetch failed: {e}")
+            logger.debug(f"Company info fetch failed: {e}")
             self.basics["description"] = f"Company: {self.company_name}"
 
     def _fetch_stock_data(self):
@@ -197,7 +246,14 @@ Focus on: business model, strategy, market position, growth, challenges, AI/tech
                 ]
             )
 
-            return message.content[0].text
+            # Extract text from response, handling ThinkingBlock
+            for block in message.content:
+                if hasattr(block, 'text'):
+                    return block.text
+                elif isinstance(block, dict) and 'text' in block:
+                    return block['text']
+
+            return "Unable to parse response"
 
         except Exception as e:
             logger.error(f"Claude API error: {e}")
