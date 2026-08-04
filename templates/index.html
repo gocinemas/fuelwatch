@@ -28402,22 +28402,36 @@ document.addEventListener('keydown', function(e) {
       "Other": "📌"
     };
 
+    // Build merchants with visit frequency and spend totals
     const retailers = {};
+    const merchantStats = {};  // Track {merchant|location: {count, total}}
+
     Object.entries(activeWeek.spend_by_category || {}).forEach(([cat, data]) => {
       if (!retailers[cat]) retailers[cat] = [];
       (data.merchants || []).forEach(m => {
-        retailers[cat].push(m);
+        const key = m.location ? `${m.name}|${m.location}` : m.name;
+        if (!merchantStats[key]) {
+          merchantStats[key] = { count: 0, total: 0, name: m.name, location: m.location };
+        }
+        merchantStats[key].count += 1;  // Each entry = 1 visit
+        merchantStats[key].total += m.amount;
+        retailers[cat].push(key);
       });
     });
 
     const retailersHtml = [];
-    Object.entries(retailers).forEach(([cat, merchants]) => {
-      if (merchants.length > 0) {
+    Object.entries(retailers).forEach(([cat, merchantKeys]) => {
+      if (merchantKeys.length > 0) {
         const emoji = categoryEmojis[cat] || "📍";
-        const merchantLines = merchants.map(m => {
-          // Format: "Merchant · Location" or just "Merchant" if no location
+
+        // Deduplicate merchant keys and build display
+        const uniqueMerchants = [...new Set(merchantKeys)].map(key => merchantStats[key]);
+
+        const merchantLines = uniqueMerchants.map(m => {
           const label = m.location ? `${m.name} · ${m.location}` : m.name;
-          return `<div style="font-size:12px;color:var(--text);padding:4px 0">${emoji} ${label}</div>`;
+          const visitText = m.count > 1 ? `${m.count}x` : `${m.count}x`;
+          const spendText = `£${m.total.toFixed(2)}`;
+          return `<div style="font-size:12px;color:var(--text);padding:4px 0;display:flex;justify-content:space-between;gap:12px"><span>${emoji} ${label}</span><span style="color:var(--muted);font-size:11px">${visitText} · ${spendText}</span></div>`;
         }).join('');
 
         retailersHtml.push(`
