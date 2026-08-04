@@ -15445,6 +15445,7 @@ def api_home_brief():
                     f"Saved events (use exact title only, no embellishment, do not infer attendance or tickets): {'; '.join(event_context)}."
                 )
         if facts:
+            app.logger.info(f"[brief] Facts for Groq ({time_mode}): {facts}")
             prompt_parts.append(f"Facts: {'; '.join(facts)}.")
         if _past_personal:
             _past_titles = "; ".join(pe.get("title","") for pe in _past_personal[:2] if pe.get("title"))
