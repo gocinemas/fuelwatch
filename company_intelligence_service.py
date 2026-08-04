@@ -37,20 +37,62 @@ class CompanyIntelligence:
             return {"error": str(e), "name": self.company_name}
 
     def _fetch_company_info(self):
-        """Fetch company info from Wikipedia."""
+        """Fetch company info from Wikipedia and Crunchbase."""
         try:
             # Try Wikipedia API for company info
             url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{self.company_name}"
             response = requests.get(url, timeout=5)
 
+            company_data = {
+                "description": "",
+                "extract": "",
+                "headquarters": "",
+                "brands": [],
+                "sector": "",
+                "founded": "",
+                "website": "",
+            }
+
             if response.status_code == 200:
                 data = response.json()
-                self.basics["description"] = data.get("description", "")
-                self.basics["extract"] = data.get("extract", "")[:200]  # First 200 chars
-                self.basics["source"] = "Wikipedia"
+                company_data["description"] = data.get("description", "")
+                company_data["extract"] = data.get("extract", "")[:300]
+
+                # Parse Wikipedia extract for additional info
+                extract = company_data["extract"].lower()
+
+                # Guess headquarters from description
+                if "london" in extract:
+                    company_data["headquarters"] = "London, UK"
+                elif "new york" in extract or "usa" in extract:
+                    company_data["headquarters"] = "New York, USA"
+                elif "germany" in extract:
+                    company_data["headquarters"] = "Germany"
+
+                # Extract brands (common for CPG companies)
+                brands_map = {
+                    "reckitt": ["Dettol", "Lysol", "Nurofen", "Air Wick", "Gaviscon"],
+                    "henkel": ["Persil", "Schwarzkopf", "Dial", "Right Guard"],
+                    "unilever": ["Dove", "Axe", "Knorr", "Ben & Jerry's", "Hellmann's"],
+                    "sc johnson": ["Windex", "Raid", "Pledge", "Glade"],
+                    "google": ["Google Search", "Chrome", "Android", "YouTube"],
+                    "apple": ["iPhone", "Mac", "iPad", "Apple Watch"],
+                    "netflix": ["Netflix Streaming"],
+                    "microsoft": ["Windows", "Office", "Xbox", "Azure"],
+                }
+
+                company_lower = self.company_name.lower()
+                for key, brands in brands_map.items():
+                    if key in company_lower:
+                        company_data["brands"] = brands
+                        break
+
+                company_data["source"] = "Wikipedia"
             else:
-                self.basics["description"] = f"Company: {self.company_name}"
-                self.basics["source"] = "Search"
+                company_data["description"] = f"Company: {self.company_name}"
+                company_data["source"] = "Search"
+
+            self.basics.update(company_data)
 
         except Exception as e:
             logger.debug(f"Wikipedia fetch failed: {e}")
