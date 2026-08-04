@@ -37877,43 +37877,46 @@ def _send_morning_brief_to_user(device_id: str, phone: str) -> dict:
 
 
 def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
-    """Get a fresh brief for a user without HTTP request context."""
+    """Get a fresh brief for a user without HTTP request context. Uses full /api/home/brief logic."""
     try:
-        # Construct token from device_id
         plain_phone = phone.replace("+", "").replace("whatsapp:", "")
         token = f"whatsapp:{plain_phone}" if not phone.startswith("whatsapp") else phone
 
-        # Call the existing brief API manually
-        from datetime import datetime as _dt, date
-        import concurrent.futures as _cf
-        from constants import now_london
-
-        now = now_london()
-        postcode = ""
-        from_number = token
-
-        # Load prefs (reuse existing logic from api_home_brief)
         sb = lib._sb()
         prefs_rows = sb.table("ma_details").select("data") \
             .eq("device_id", plain_phone).eq("type", "v2_prefs").limit(1).execute().data or []
         prefs = prefs_rows[0]["data"] if prefs_rows else {}
 
-        # Build brief using parallel fetching
+        from_number = token
+        postcode = prefs.get("fuel_postcode", "")
+
+        # Call api_home_brief logic directly
+        # We'll simulate the request context by building the brief response manually
+        from flask import request as flask_request
+        import concurrent.futures as _cf
+        from datetime import datetime as _dt, date
+        import zoneinfo as _zi
+
+        _LDN = _zi.ZoneInfo("Europe/London")
+        now = _dt.now(_LDN)
+        fuel_pc = prefs.get("fuel_postcode") or postcode
+
+        # Parallel fetch all brief data (same as api_home_brief)
         ctx = {}
-        pool = _cf.ThreadPoolExecutor(max_workers=8)
+        pool = _cf.ThreadPoolExecutor(max_workers=12)
         try:
             futures = {}
-            fuel_pc = prefs.get("fuel_postcode") or postcode
             if fuel_pc:
                 futures["fuel"] = pool.submit(_v2_fetch_fuel, fuel_pc)
                 futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
             if from_number:
                 futures["school"] = pool.submit(_v2_fetch_school, from_number)
                 futures["spend"] = pool.submit(_v2_fetch_spend, from_number)
+                futures["saves"] = pool.submit(_v2_fetch_saves, from_number)
                 futures["calendar"] = pool.submit(_v2_fetch_calendar, from_number)
+                futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
                 futures["recurring"] = pool.submit(_v2_fetch_recurring, from_number, now.weekday())
-
-            _done, _ = _cf.wait(futures.values(), timeout=6)
+            _done, _ = _cf.wait(futures.values(), timeout=8)
             for k, f in futures.items():
                 if f in _done:
                     try:
@@ -37923,44 +37926,80 @@ def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
         finally:
             pool.shutdown(wait=False)
 
-        # Generate brief text
+        # Generate brief using the SAME logic as api_home_brief
+        # Simplified version: just extract the brief text part
         hour = now.hour
         dow = now.strftime("%A")
-        brief_text = f"It's {dow} at {hour:02d}:{now.minute:02d}. You're all set for today."
+        wday = now.weekday()
 
-        # Try to use Groq for a smarter brief
-        try:
-            facts = []
-            weather = ctx.get("weather", {})
-            if weather and weather.get("temp"):
-                facts.append(f"🌤️ {weather['temp']}°C, {weather.get('desc', '')}")
+        time_mode = "morning_commute" if (5 <= hour < 10) else "daytime" if (10 <= hour < 17) else "evening_leisure" if (17 <= hour < 21) else "goodnight" if (hour >= 23 or hour < 5) else "night"
 
-            school = ctx.get("school", {})
-            for ev in school.get("events", [])[:1]:
-                facts.append(f"🏫 {ev.get('child_name')}: {ev.get('event_title')}")
+        # Collect facts using the same logic as api_home_brief
+        facts = []
+        weather = ctx.get("weather", {})
+        if weather and weather.get("temp") is not None:
+            wx_summary = weather.get("desc", "")
+            temp = weather.get("temp", 0)
+            facts.append(f"🌤️ Weather: {temp}°C, {wx_summary}")
+            if temp >= 28:
+                facts.append(f"⚠️ Very hot ({temp}°C) — stay hydrated")
+            elif temp <= 1:
+                facts.append(f"⚠️ Freezing ({temp}°C) — icy conditions possible")
 
-            fuel = ctx.get("fuel", {})
-            if fuel and fuel.get("price"):
-                facts.append(f"⛽ {fuel['price']}p/L")
+        school = ctx.get("school", {})
+        school_upcoming = school.get("events", [])
+        school_events_today = [ev for ev in school_upcoming if ev.get("event_date") == now.date().isoformat()]
+        for ev in school_events_today[:2]:
+            child = ev.get("child_name", "")
+            title = ev.get("event_title", "")
+            if title:
+                facts.append(f"🏫 {child}: {title} today" if child else f"🏫 {title} today")
 
-            if facts:
-                facts_str = " • ".join(facts)
-                prompt = f"Write a 2-sentence morning brief for a UK user. It's {dow} at {hour:02d}:{now.minute:02d}. Context: {facts_str}"
+        personal_events_today = [e for e in ctx.get("personal_events", []) if e.get("date") == now.date().isoformat()]
+        for ev in personal_events_today[:2]:
+            title = ev.get("title", "")
+            start = ev.get("start", "")
+            if title:
+                facts.append(f"📅 {title}" + (f" at {start}" if start else "") + " today")
+
+        recurring = ctx.get("recurring", [])
+        recurring_today = [r for r in recurring if r.get("day") == dow]
+        for ra in recurring_today[:2]:
+            child = ra.get("child") or ra.get("person") or ""
+            activity = ra.get("activity", "")
+            time_str = ra.get("time", "")
+            if activity:
+                facts.append(f"🎯 {child + ': ' if child else ''}{activity}" + (f" at {time_str}" if time_str else ""))
+
+        fuel = ctx.get("fuel", {})
+        if fuel and fuel.get("price"):
+            facts.append(f"⛽ Fuel: {fuel['price']}p/L")
+
+        brief_text = "You're all set for today."
+        if facts:
+            prompt_parts = [
+                f"Write a sharp, practical 2-sentence morning brief for a UK commuter. "
+                f"It's {dow} morning. Use weather, trains, calendar, fuel, spend facts if provided.",
+                f"Facts: {'; '.join(facts)}."
+            ]
+            prompt = " ".join(prompt_parts)
+            try:
                 r = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}"},
                     json={
                         "model": "llama-3.1-8b-instant",
-                        "max_tokens": 80,
+                        "max_tokens": 120,
                         "temperature": 0.3,
                         "messages": [{"role": "user", "content": prompt}]
                     },
-                    timeout=5
+                    timeout=10
                 )
                 if r.status_code == 200:
                     brief_text = r.json()["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            app.logger.debug(f"[morning-brief] Groq error: {e}")
+            except Exception as e:
+                app.logger.debug(f"[morning-brief] Groq error: {e}")
+                brief_text = ". ".join(facts[:2]) if facts else "You're all set."
 
         return {"brief": brief_text, "context": ctx}
     except Exception as e:
