@@ -9804,6 +9804,59 @@ def api_home_last_receipt():
         return jsonify({"error": str(e), "merchant": None}), 500
 
 
+@app.route("/api/shopping-history")
+def api_shopping_history():
+    """Get user's shopping history from database."""
+    token = request.args.get("token", "").strip()
+    if not token:
+        token = (request.cookies.get("miru_saves_token") or
+                 request.cookies.get("miru_saves_phone") or "").strip()
+    from_number = _v2_resolve(token)
+
+    if not from_number:
+        return jsonify({"error": "Not authenticated", "receipts": []})
+
+    try:
+        # Get filters from query params
+        days = int(request.args.get("days", 30))
+        limit = int(request.args.get("limit", 100))
+        merchant_filter = request.args.get("merchant", "").lower()
+
+        # Fetch from shopping_history
+        history = shopping_history.get_shopping_history(from_number, days_back=days, limit=limit)
+
+        # Apply merchant filter if provided
+        if merchant_filter:
+            history = [r for r in history if merchant_filter in r.get("merchant", "").lower()]
+
+        # Format response
+        receipts = []
+        for r in history:
+            receipts.append({
+                "id": r.get("id"),
+                "merchant": r.get("merchant"),
+                "amount": float(r.get("amount", 0)),
+                "shop_date": r.get("shop_date"),
+                "location": r.get("location"),
+                "postcode": r.get("postcode"),
+                "address": r.get("address"),
+                "category": r.get("category"),
+                "items": json.loads(r.get("items")) if r.get("items") else [],
+                "created_at": r.get("created_at")
+            })
+
+        return jsonify({
+            "count": len(receipts),
+            "days": days,
+            "receipts": receipts,
+            "total_spent": sum(r["amount"] for r in receipts)
+        })
+
+    except Exception as e:
+        app.logger.warning(f"[shopping-history] {e}")
+        return jsonify({"error": str(e), "receipts": []}), 500
+
+
 # ── AI Watch — vertical company discovery ─────────────────────────────────────
 _AI_WATCH_COMPANIES = {
     "foundation": [
