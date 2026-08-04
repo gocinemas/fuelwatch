@@ -9670,6 +9670,7 @@ def api_home_last_receipt():
 
             # Extract items — only product names, skip all metadata/totals
             items = []
+            address_lines = []  # Track potential address lines
             for line in summary.split("\n"):
                 line = line.strip()
                 if not line:
@@ -9684,10 +9685,18 @@ def api_home_last_receipt():
                 if re.match(r'^\s*£?[\d,]+\.?\d*\s*$', line):
                     continue
 
+                # Collect potential address lines (look for postcodes, street names, etc.)
+                if re.search(r'\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b|Street|Road|Avenue|Lane|Close|House|Building', line, re.IGNORECASE):
+                    address_lines.append(line)
+                    continue
+
                 # This is a product line (e.g. "Flat White SML TA (£3.90)")
                 items.append(line[:60])
                 if len(items) >= 3:
                     break
+
+            # Build full location from address lines
+            full_location = " ".join(address_lines[:2]) if address_lines else ""  # Combine first 2 address lines
 
             r = {
                 "id": wa_row.get("id"),
@@ -9695,6 +9704,7 @@ def api_home_last_receipt():
                 "total": total,
                 "shop_date": shop_date,
                 "items": items,
+                "location": full_location,  # Full address
                 "category": wa_row.get("category", "Other"),
             }
             break  # Return first valid receipt found
@@ -9774,13 +9784,19 @@ def api_home_last_receipt():
         except Exception as e:
             app.logger.debug(f"[last-receipt] Date format failed: {e}, keeping raw")
 
+        # Format merchant with location if available
+        location = r.get("location", "").strip()
+        merchant_display = f"{merchant} at {location}" if location else merchant
+
         return jsonify({
             "id": r.get("id"),
             "merchant": merchant,
+            "merchant_display": merchant_display,  # "Costa Coffee at Costa Coffee Hanover House, London Road, Virginia Water"
             "total": total,
             "shop_date": formatted_date,  # Now in DD/MM/YY format
             "category": r.get("category", "Other"),
-            "items": items
+            "items": items,
+            "location": location
         })
     except Exception as e:
         app.logger.warning(f"[last-receipt] {e}")

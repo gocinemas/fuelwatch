@@ -17612,7 +17612,8 @@ let _savesAll = [];
           const amount = document.getElementById("brief-receipt-amount");
           const dateEl = document.getElementById("brief-receipt-date");
 
-          if (merchant) merchant.textContent = d.merchant;
+          // Use full location display (e.g., "Costa Coffee at Costa Coffee Hanover House, London Road, Virginia Water")
+          if (merchant) merchant.textContent = d.merchant_display || d.merchant;
           if (amount) amount.textContent = "£" + (parseFloat(d.total).toFixed(2));
 
           if (d.shop_date && dateEl) {
@@ -19274,8 +19275,10 @@ let _savesAll = [];
             console.log('[spend-receipt] Formatted date:', formattedDate);
             var el = document.getElementById("brief-spend-last-receipt");
             if (el) {
+              // Use full location display (e.g., "Costa Coffee at Costa Coffee Hanover House, London Road, Virginia Water")
+              var merchantDisplay = d.merchant_display || d.merchant;
               el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">'
-                + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">🛒 ' + d.merchant + '</div>'
+                + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">🛒 ' + merchantDisplay + '</div>'
                 + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div></div>'
                 + '<div style="text-align:right;font-size:13px;font-weight:700;color:var(--accent)">£' + parseFloat(d.total).toFixed(2) + '</div>'
                 + '</div>';
@@ -19524,8 +19527,10 @@ let _savesAll = [];
                   // Replace "Bought:" with the appropriate label
                   itemsHtml = itemsHtml.replace('Bought: ', itemsLabel + ' ');
 
+                  // Use full location display if available (e.g., "Costa Coffee at Costa Coffee Hanover House, London Road, Virginia Water")
+                  var merchantDisplay = d.merchant_display || merchant;
                   el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-                    + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">' + categoryIcon + ' ' + categoryLabel + ' <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + merchant + '</strong></div>'
+                    + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">' + categoryIcon + ' ' + categoryLabel + ' <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + merchantDisplay + '</strong></div>'
                     + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div>'
                     + itemsHtml
                     + '</div>'
