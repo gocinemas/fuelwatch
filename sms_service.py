@@ -9622,24 +9622,43 @@ def api_home_last_receipt():
         for wa_row in rows_wa:
             title = wa_row.get("title", "") or ""
             summary = wa_row.get("summary", "") or ""
+            category = wa_row.get("category", "") or ""
 
-            # Is this a receipt? (has 🧾 emoji or says "receipt")
-            is_receipt = "🧾" in title or "receipt" in title.lower()
-            if not is_receipt:
+            # Is this a receipt? Check:
+            # 1. Category contains "Receipt" or merchant name (not "Save", "Link", "Note", etc.)
+            # 2. OR summary has £ amount
+            # 3. Skip if it looks like a save/link/note
+            skip_categories = ["Save", "Link", "Article", "Book", "Show", "Music", "Place", "Note", "Photo"]
+            if any(skip_cat in category for skip_cat in skip_categories):
                 continue
 
             # Extract total (£ amount)
             m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
             if not m_total:
-                app.logger.debug(f"[last-receipt] {title} has no £ amount, skipping")
+                # No amount found, skip
                 continue
 
             total = float(m_total.group(1).replace(",", ""))
             if total <= 0:
                 continue
 
+            # Extract merchant from title (remove emoji)
             merchant = title.replace("🧾", "").strip()
-            if not merchant or merchant in ("Receipt", "Photo", ""):
+
+            # If title is generic, try to extract from summary (common chains)
+            if not merchant or merchant.lower() in ("receipt", "photo", "image", "scanned"):
+                # Search summary for common merchants
+                merchant_patterns = [
+                    r'\b(Costa|Starbucks|Pret|Greggs|Caff[eé]|McDonald|Burger King|KFC|Subway|Tesco|Sainsbury|Asda|Morrisons|Waitrose|Aldi|Lidl|Marks|M&S|Boots|B&Q|Currys|John Lewis|Maplin|Screwfix|Toolstation|Next|Zara|H&M|Topshop|New Look|Primark|Sports Direct|Argos|BHS|Ryman|Pets at Home|Go Outdoors|Decathlon|Smyths|Toys R Us|Building Centre|Homebase|Screwfix Direct|Jewson|CPC|Toolstation|Travis Perkins|Wickes)\b',
+                    r'(Shopping|Groceries|Fuel|Petrol|Supermarket|Coffee|Cafe|Restaurant)',
+                ]
+                for pattern in merchant_patterns:
+                    m = re.search(pattern, summary, re.IGNORECASE)
+                    if m:
+                        merchant = m.group(1).title()
+                        break
+
+            if not merchant or merchant.lower() in ("receipt", "photo", "image", "scanned", "shopping", "groceries"):
                 continue
 
             # Use created_at as shop_date (when saved in Miru)
