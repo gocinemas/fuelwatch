@@ -28290,7 +28290,7 @@ document.addEventListener('keydown', function(e) {
     if (_weekCurrentTab === 'last') {
       const spendDiff = d.last_week.spend - d.this_week.spend;
       const spendPct = d.this_week.spend > 0 ? Math.round((Math.abs(spendDiff) / d.this_week.spend) * 100) : 0;
-      insightsList.push(`Last week you spent £${d.last_week.spend.toFixed(2)} (compared to £${d.this_week.spend.toFixed(2)} this week)`);
+      insightsList.push(`This week you spent £${d.this_week.spend.toFixed(2)} (compared to £${d.last_week.spend.toFixed(2)} last week)`);
     } else {
       const spendDiff = d.this_week.spend - d.last_week.spend;
       const spendPct = d.last_week.spend > 0 ? Math.round((spendDiff / d.last_week.spend) * 100) : 0;
