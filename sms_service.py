@@ -15163,6 +15163,16 @@ def api_home_brief():
             if activity:
                 facts.append(f"🎯 {child + ': ' if child else ''}{activity}" + (f" at {time_str}" if time_str else ""))
 
+    # === ADD FUEL PRICE ===
+    fuel = ctx.get("fuel", {})
+    if fuel and fuel.get("price"):
+        merchant = fuel.get("name", "").strip()
+        price = fuel.get("price")
+        if merchant:
+            facts.append(f"⛽ Fuel: {price}p/L at {merchant}")
+        else:
+            facts.append(f"⛽ Fuel: {price}p/L")
+
     # Build time-aware Groq prompt
     prompt_parts = []
 
