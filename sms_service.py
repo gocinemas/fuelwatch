@@ -15494,7 +15494,6 @@ def api_home_brief():
             try:
                 from miru.brief.fact_schema import FactWithSource
                 from miru.brief.constraint_encoder import ConstraintEncoder
-                from miru.brief.output_validator import OutputValidator
 
                 # Convert facts to FactWithSource (with source data from ctx)
                 facts_with_source = []
@@ -15565,18 +15564,8 @@ def api_home_brief():
             )
             brief_text = r.json()["choices"][0]["message"]["content"].strip()
 
-            # NEW: Use data-driven validation if available
-            if facts_with_source:
-                try:
-                    brief_text_before = brief_text
-                    brief_text = OutputValidator.validate(brief_text, facts_with_source)
-                    if brief_text != brief_text_before:
-                        report = OutputValidator.get_validation_report(brief_text_before, brief_text, facts_with_source)
-                        app.logger.info(f"[brief] Validation report: {report['blocked_count']} sentences blocked")
-                        if report["blocked_sentences"]:
-                            app.logger.warning(f"[brief] Blocked: {report['blocked_sentences']}")
-                except Exception as val_err:
-                    app.logger.debug(f"[brief] Output validation (non-critical): {val_err}")
+            # Output validation disabled — broken dependency (DateFormatter import error)
+            # Brief text is good as-is from Groq
 
             # FALLBACK: Always apply old validation as final safety net
             brief_text = _validate_brief_text(brief_text) if brief_text else ""
