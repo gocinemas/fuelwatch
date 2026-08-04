@@ -14633,8 +14633,14 @@ def api_home_brief():
     ]
 
     # Split content saves: event clips (🎫) surfaced separately with stricter prompt handling
+    # STRICT: Filter out past events from saved clips (no events before today)
+    _today_date_str = now.date().isoformat()
+    event_saves = [
+        s for s in content_saves
+        if (s.get("title") or "").startswith("🎫")
+        and s.get("created_at", _today_date_str)[:10] >= _today_date_str  # Only today+ events
+    ]
     # Also filter visited merchants out of all content — store clippings may have wrong category
-    event_saves   = [s for s in content_saves if (s.get("title") or "").startswith("🎫")]
     other_content = [
         s for s in content_saves
         if not (s.get("title") or "").startswith("🎫")
@@ -15204,8 +15210,11 @@ def api_home_brief():
         if title:
             facts.append(f"🏫 {child}: {title} today" if child else f"🏫 {title} today")
 
-    # === ADD PERSONAL EVENTS (already in calendar but emphasize in facts) ===
-    personal_events_today = [e for e in _cal_events if e.get("date") == _today_s and e.get("personal")]
+    # === ADD PERSONAL EVENTS (today only, strict filtering) ===
+    personal_events_today = [
+        e for e in _cal_events
+        if e.get("date") == _today_s and e.get("personal") and e.get("date", "") >= _today_iso
+    ]
     for ev in personal_events_today[:2]:
         title = ev.get("title", "")
         start = ev.get("start", "")
