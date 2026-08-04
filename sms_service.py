@@ -15058,7 +15058,7 @@ def api_home_brief():
             # Leave-time reminder — surface as explicit fact so Groq says "leave by X"
             if _pe_leave and _pe_date == _today_s and _pe_leave > _now_hhmm_cur:
                 facts.append(f"Leave by {_pe_leave} for {pe['title']}")
-    # Warn about paused activities (resume_from in future) — fetch full list to find them
+    # Highlight resuming activities only if resuming TODAY or TOMORROW (not every day)
     try:
         from datetime import date as _rwd
         _all_rec_rows = lib._sb().table("ma_details").select("data") \
@@ -15067,19 +15067,23 @@ def api_home_brief():
         _all_acts = (_all_rec_rows[0]["data"] if _all_rec_rows else []) or []
         _today_wday = now.weekday()
         for _pa in _all_acts:
-            if _pa.get("weekday") != _today_wday:
-                continue
             _prf = (_pa.get("resume_from") or "").strip()
-            if _prf and _prf > _today_s:
-                _pa_who = (_pa.get("child") or "").strip()
-                _pa_act = (_pa.get("activity") or "").strip()
+            if _prf:
                 try:
                     _prd = _rwd.fromisoformat(_prf)
-                    _pr_label = _prd.strftime("%-d %b")
+                    days_until = (_prd - _rwd.fromisoformat(_today_s)).days
+                    # Only show if resuming in next 2 days (today or tomorrow)
+                    if 0 <= days_until <= 2:
+                        _pa_who = (_pa.get("child") or "").strip()
+                        _pa_act = (_pa.get("activity") or "").strip()
+                        _pr_label = _prd.strftime("%-d %b")
+                        if days_until == 0:
+                            _msg = f"🎯 {_pa_who + ': ' if _pa_who else ''}{_pa_act} resumes TODAY"
+                        else:
+                            _msg = f"📅 {_pa_who + ': ' if _pa_who else ''}{_pa_act} back {_pr_label}"
+                        facts.append(_msg)
                 except Exception:
-                    _pr_label = _prf
-                _warn = f"⚠️ {_pa_who + ': ' if _pa_who else ''}{_pa_act} is NOT on today — resumes {_pr_label}"
-                facts.insert(0, _warn)
+                    pass
     except Exception:
         pass
 
@@ -15213,14 +15217,68 @@ def api_home_brief():
             if activity:
                 facts.append(f"🎯 {child + ': ' if child else ''}{activity}" + (f" at {time_str}" if time_str else ""))
 
-    # === ADD FUEL PRICE ===
+    # === ADD SAVINGS HIGHLIGHTS (if user saved articles/shows/music in last 3 days) ===
+    try:
+        from datetime import timedelta as _td
+        _today_iso = now.date().isoformat()
+        _recent_cutoff = (now.date() - _td(days=3)).isoformat()
+        _recent_saves = lib._sb().table("wa_saves").select("title,category,created_at") \
+            .eq("from_number", from_number) \
+            .gt("created_at", _recent_cutoff) \
+            .lt("created_at", _today_iso) \
+            .order("created_at", desc=True) \
+            .limit(10) \
+            .execute().data or []
+
+        # Group by category for variety
+        _saves_by_type = {}
+        for s in _recent_saves:
+            cat = (s.get("category") or "saved").lower()
+            if cat not in _saves_by_type:
+                _saves_by_type[cat] = []
+            _saves_by_type[cat].append(s.get("title", "Untitled"))
+
+        # Show one highlight from each category (if any)
+        _emoji_map = {"articles": "📰", "shows": "📺", "music": "🎵", "books": "📖", "places": "📍", "saved": "💾"}
+        for cat in ["shows", "articles", "music"]:
+            if cat in _saves_by_type and _saves_by_type[cat]:
+                _emoji = _emoji_map.get(cat, "💾")
+                _title = _saves_by_type[cat][0][:40]  # Truncate long titles
+                facts.append(f"{_emoji} Saved: {_title}")
+    except Exception as e:
+        app.logger.debug(f"[brief-savings] Could not fetch recent saves: {e}")
+
+    # === ADD FUEL PRICE WITH LOCATION ===
     fuel = ctx.get("fuel", {})
     app.logger.info(f"[brief-fuel] ctx['fuel'] = {fuel}")
     if fuel and fuel.get("price"):
         merchant = fuel.get("name", "").strip()
         price = fuel.get("price")
-        app.logger.info(f"[brief-fuel] Adding fact: price={price}, merchant={merchant}")
-        if merchant:
+        # Try to extract location from postcode (e.g., "Addlestone", "Wembley")
+        location = ""
+        if fuel_pc:
+            try:
+                ll = postcode_to_latlon(fuel_pc)
+                if ll:
+                    # Reverse geocode to get area name (simplified: just use postcode area)
+                    area_match = re.search(r'^([A-Z]+)', fuel_pc)
+                    if area_match:
+                        # Map postcode areas to common names (simplified for UK)
+                        postcode_areas = {
+                            "KT": "Addlestone",
+                            "SW": "London",
+                            "N": "North London",
+                            "E": "East London",
+                            "W": "West London",
+                        }
+                        location = postcode_areas.get(area_match.group(1), "")
+            except:
+                pass
+
+        app.logger.info(f"[brief-fuel] Adding fact: price={price}, merchant={merchant}, location={location}")
+        if merchant and location:
+            facts.append(f"⛽ Fuel: {price}p/L at {merchant} in {location}")
+        elif merchant:
             facts.append(f"⛽ Fuel: {price}p/L at {merchant}")
         else:
             facts.append(f"⛽ Fuel: {price}p/L")
