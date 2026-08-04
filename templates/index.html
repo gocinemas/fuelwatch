@@ -28388,23 +28388,42 @@ document.addEventListener('keydown', function(e) {
     }
 
     // ─── RETAILERS YOU SHOPPED AT (with locations) ───
+    const categoryEmojis = {
+      "Coffee & Lunch": "☕",
+      "Groceries": "🛒",
+      "Dining": "🍽️",
+      "Takeaway": "🥡",
+      "Fuel": "⛽",
+      "Parking": "🅿️",
+      "Transport": "🚌",
+      "Shopping": "🛍️",
+      "Entertainment": "🎬",
+      "Health": "💊",
+      "Other": "📌"
+    };
+
     const retailers = {};
     Object.entries(activeWeek.spend_by_category || {}).forEach(([cat, data]) => {
       if (!retailers[cat]) retailers[cat] = [];
       (data.merchants || []).forEach(m => {
-        // Format: "Merchant · Location" or just "Merchant" if no location
-        const label = m.location ? `${m.name} · ${m.location}` : m.name;
-        retailers[cat].push(label);
+        retailers[cat].push(m);
       });
     });
 
     const retailersHtml = [];
-    Object.entries(retailers).forEach(([cat, names]) => {
-      if (names.length > 0) {
+    Object.entries(retailers).forEach(([cat, merchants]) => {
+      if (merchants.length > 0) {
+        const emoji = categoryEmojis[cat] || "📍";
+        const merchantLines = merchants.map(m => {
+          // Format: "Merchant · Location" or just "Merchant" if no location
+          const label = m.location ? `${m.name} · ${m.location}` : m.name;
+          return `<div style="font-size:12px;color:var(--text);padding:4px 0">${emoji} ${label}</div>`;
+        }).join('');
+
         retailersHtml.push(`
           <div style="padding:10px;background:rgba(255,255,255,0.2);border-radius:10px">
-            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase">${cat}</div>
-            <div style="font-size:12px;color:var(--text);line-height:1.6">${names.join(' · ')}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase">${cat}</div>
+            ${merchantLines}
           </div>
         `);
       }
