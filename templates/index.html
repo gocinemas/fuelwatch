@@ -8870,7 +8870,8 @@ function _hcAdd() {
       return;
     }
 
-    var enabled = document.getElementById("setup-morning-enabled").checked;
+    var enabledChk = document.getElementById("setup-morning-enabled");
+    var enabled = enabledChk ? enabledChk.checked : false;
     var time = document.getElementById("setup-morning-time").value || "07:30";
     var optOutCats = [];
 
@@ -8880,24 +8881,31 @@ function _hcAdd() {
       }
     });
 
+    console.log("[morning-brief] Saving: enabled=" + enabled + ", time=" + time + ", optOut=" + JSON.stringify(optOutCats));
+
     var errEl = document.getElementById("setup-morning-err");
     var okEl = document.getElementById("setup-morning-ok");
     errEl.style.display = "none";
     okEl.style.display = "none";
 
     try {
+      var payload = {
+        token: token,
+        enabled: enabled,
+        time: time,
+        timezone: "Europe/London",
+        opt_out_categories: optOutCats
+      };
+      console.log("[morning-brief] Payload:", JSON.stringify(payload));
+
       var r = await fetch("/api/morning-brief/prefs", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          token: token,
-          enabled: enabled,
-          time: time,
-          timezone: "Europe/London",
-          opt_out_categories: optOutCats
-        })
+        body: JSON.stringify(payload)
       });
       var d = await r.json();
+      console.log("[morning-brief] Response:", JSON.stringify(d));
+
       if (d.success) {
         okEl.style.display = "block";
         setTimeout(() => { okEl.style.display = "none"; }, 3000);
@@ -8908,6 +8916,7 @@ function _hcAdd() {
     } catch(e) {
       errEl.textContent = e.message;
       errEl.style.display = "block";
+      console.error("[morning-brief] Error:", e);
     }
   };
 
