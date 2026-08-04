@@ -15173,13 +15173,39 @@ def api_home_brief():
         else:
             facts.append(f"⛽ Fuel: {price}p/L")
 
-    # === ADD NEARBY PLACES (always useful) ===
+    # === ADD NEARBY PLACES WITH TIME-AWARE CONTEXT ===
     if place_saves_unvisited:
         nearby = place_saves_unvisited[:2]
+
+        # Time-based activity suggestions
+        activity_hint = ""
+        if 6 <= hour < 10:
+            activity_hint = "breakfast or coffee"
+        elif 10 <= hour < 12:
+            activity_hint = "morning break"
+        elif 12 <= hour < 14:
+            activity_hint = "lunch"
+        elif 14 <= hour < 17:
+            activity_hint = "afternoon break or tea"
+        elif 17 <= hour < 19:
+            activity_hint = "dinner"
+        elif 19 <= hour < 21:
+            activity_hint = "evening plans or drinks"
+        elif 21 <= hour or hour < 6:
+            activity_hint = "late-night options"
+
+        # New location detection: if user has GPS data and it's not home/work
+        is_new_place = has_location and _loc_ctx_label not in ("home", "work", "school_run")
+
         for place in nearby:
             title = (place.get("title") or "").strip()
             if title:
-                facts.append(f"📍 Nearby: {title}")
+                if activity_hint and is_new_place:
+                    facts.append(f"📍 For {activity_hint}: {title}")
+                elif activity_hint:
+                    facts.append(f"📍 {activity_hint}: {title}")
+                else:
+                    facts.append(f"📍 Nearby: {title}")
 
     # Build time-aware Groq prompt
     prompt_parts = []
