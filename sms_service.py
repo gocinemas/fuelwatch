@@ -15371,8 +15371,6 @@ def api_home_brief():
         app.logger.info(f"[brief-places] Found {len(nearby_discovery)} places: {nearby_discovery}")
         for place in nearby_discovery[:2]:
             facts.append(place)
-    else:
-        app.logger.info(f"[brief-places] No places found for brief")
     elif place_saves_unvisited:
         nearby = place_saves_unvisited[:2]
 
@@ -16020,6 +16018,18 @@ def api_home_brief():
             brief_text = smart_brief
         app.logger.info(f"[brief] Using smart fallback: {brief_text[:60]}...")
 
+    # Add lat/lng for frontend places suggestions (from location classification or postcode)
+    _brief_lat, _brief_lng = None, None
+    if _loc_classification.get("lat") and _loc_classification.get("lng"):
+        _brief_lat, _brief_lng = _loc_classification.get("lat"), _loc_classification.get("lng")
+    elif fuel_pc:
+        try:
+            _pc_ll = postcode_to_latlon(fuel_pc)
+            if _pc_ll:
+                _brief_lat, _brief_lng = _pc_ll
+        except:
+            pass
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
@@ -16039,6 +16049,8 @@ def api_home_brief():
         "calendar_connected": _cal_connected,
         "location":        {"area": loc_str, "venue": loc_venue} if loc_str else {},
         "location_context": _loc_classification,
+        "lat": _brief_lat,  # For frontend places discovery
+        "lng": _brief_lng,  # For frontend places discovery
         "recent_capture":  recent_capture,
         "frequent_today":  _frequent_today,
         "active_trip":     _active_trip,
