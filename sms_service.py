@@ -9804,6 +9804,12 @@ def api_home_last_receipt():
         return jsonify({"error": str(e), "merchant": None}), 500
 
 
+@app.route("/shopping-dashboard")
+def shopping_dashboard():
+    """Shopping history dashboard."""
+    return render_template("shopping_dashboard.html")
+
+
 @app.route("/api/shopping-history")
 def api_shopping_history():
     """Get user's shopping history from database."""
