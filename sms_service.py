@@ -38510,6 +38510,55 @@ def cron_morning_briefs():
 
 
 # ────────────────────────────────────────────────────────────────────────
+# COMPANY INTELLIGENCE — Q&A Engine
+# ────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/company/basics", methods=["GET"])
+def api_company_basics():
+    """Fetch company basics (stock, market cap, employees, description)."""
+    try:
+        from company_intelligence_service import get_company_intelligence
+
+        company_name = request.args.get("name", "").strip()
+        if not company_name:
+            return jsonify({"error": "Company name required"}), 400
+
+        data = get_company_intelligence(company_name)
+        return jsonify(data)
+    except Exception as e:
+        app.logger.error(f"[company/basics] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/company/answer", methods=["POST"])
+def api_company_answer():
+    """Answer a question about a company using Claude API."""
+    try:
+        from company_intelligence_service import get_company_answer
+
+        data = request.json or {}
+        company_name = data.get("company", "").strip()
+        question = data.get("question", "").strip()
+
+        if not company_name or not question:
+            return jsonify({"error": "Company and question required"}), 400
+
+        answer = get_company_answer(company_name, question)
+        return jsonify({"answer": answer})
+    except Exception as e:
+        app.logger.error(f"[company/answer] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/company/<company_name>", methods=["GET"])
+def company_qa_page(company_name):
+    """Render company Q&A page."""
+    try:
+        return render_template("company_qa.html")
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+
+# ────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     print("🚀 Miru running on port 8080")
