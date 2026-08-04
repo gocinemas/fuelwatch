@@ -9612,61 +9612,82 @@ def api_home_last_receipt():
     try:
         r = None
 
-        # SIMPLE: Get most recent receipt by created_at (just newest save that looks like a receipt)
-        rows_wa = lib._sb().table("wa_saves").select(
-            "id,title,summary,created_at,category"
-        ).eq("from_number", from_number).order("created_at", desc=True).limit(100).execute().data or []
+        # Try receipts table first (has actual shop_date from receipt data)
+        try:
+            rows_receipts = lib._sb().table("receipts").select(
+                "id,merchant,total,shop_date,category,items"
+            ).eq("phone", phone).order("shop_date", desc=True).limit(1).execute().data or []
 
-        app.logger.info(f"[last-receipt] Scanning {len(rows_wa)} wa_saves for receipts")
+            if rows_receipts:
+                receipt = rows_receipts[0]
+                r = {
+                    "id": receipt.get("id"),
+                    "merchant": receipt.get("merchant", "Unknown"),
+                    "total": float(receipt.get("total", 0) or 0),
+                    "shop_date": receipt.get("shop_date"),
+                    "items": receipt.get("items", []) or [],
+                    "category": receipt.get("category", "Other"),
+                }
+                app.logger.info(f"[last-receipt] FOUND from receipts table: {r.get('merchant')} £{r.get('total')} on {r.get('shop_date')}")
+        except Exception as e:
+            app.logger.debug(f"[last-receipt] receipts table lookup failed: {e}, falling back to wa_saves")
 
-        for wa_row in rows_wa:
-            title = wa_row.get("title", "") or ""
-            summary = wa_row.get("summary", "") or ""
+        # Fallback: wa_saves (for receipts saved before receipts table existed)
+        if not r:
+            rows_wa = lib._sb().table("wa_saves").select(
+                "id,title,summary,created_at,category"
+            ).eq("from_number", from_number).order("created_at", desc=True).limit(100).execute().data or []
 
-            # Is this a receipt? (has 🧾 emoji or says "receipt")
-            is_receipt = "🧾" in title or "receipt" in title.lower()
-            if not is_receipt:
-                continue
+            app.logger.info(f"[last-receipt] Scanning {len(rows_wa)} wa_saves for receipts (fallback)")
 
-            # Extract total (£ amount)
-            m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
-            if not m_total:
-                app.logger.debug(f"[last-receipt] {title} has no £ amount, skipping")
-                continue
+            for wa_row in rows_wa:
+                title = wa_row.get("title", "") or ""
+                summary = wa_row.get("summary", "") or ""
 
-            total = float(m_total.group(1).replace(",", ""))
-            if total <= 0:
-                continue
+                # Is this a receipt? (has 🧾 emoji or says "receipt")
+                is_receipt = "🧾" in title or "receipt" in title.lower()
+                if not is_receipt:
+                    continue
 
-            merchant = title.replace("🧾", "").strip()
-            if not merchant or merchant in ("Receipt", "Photo", ""):
-                continue
+                # Extract total (£ amount)
+                m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
+                if not m_total:
+                    app.logger.debug(f"[last-receipt] {title} has no £ amount, skipping")
+                    continue
 
-            # Use created_at as shop_date (when saved in Miru)
-            shop_date = wa_row.get("created_at", "")[:10] if wa_row.get("created_at") else None
-            if not shop_date:
-                continue
+                total = float(m_total.group(1).replace(",", ""))
+                if total <= 0:
+                    continue
 
-            app.logger.info(f"[last-receipt] FOUND: {merchant} £{total} on {shop_date}")
+                merchant = title.replace("🧾", "").strip()
+                if not merchant or merchant in ("Receipt", "Photo", ""):
+                    continue
 
-            # Extract items
-            items = []
-            for line in summary.split("\n"):
-                line = line.strip()
-                if line and not any(x in line.lower() for x in ["total", "£", "vat", "date", "time"]):
-                    items.append(line[:50])
-                    if len(items) >= 3:
-                        break
+                # Use created_at as shop_date (fallback - when saved in Miru)
+                shop_date = wa_row.get("created_at", "")[:10] if wa_row.get("created_at") else None
+                if not shop_date:
+                    continue
 
-            r = {
-                "id": wa_row.get("id"),
-                "merchant": merchant,
-                "total": total,
-                "shop_date": shop_date,
-                "items": items,
-                "category": wa_row.get("category", "Other"),
-            }
-            break  # Return first valid receipt found
+                app.logger.info(f"[last-receipt] FOUND: {merchant} £{total} on {shop_date}")
+
+                # Extract items
+                items = []
+                for line in summary.split("\n"):
+                    line = line.strip()
+                    if line and not any(x in line.lower() for x in ["total", "£", "vat", "date", "time"]):
+                        items.append(line[:50])
+                        if len(items) >= 3:
+                            break
+
+                r = {
+                    "id": wa_row.get("id"),
+                    "merchant": merchant,
+                    "total": total,
+                    "shop_date": shop_date,
+                    "items": items,
+                    "category": wa_row.get("category", "Other"),
+                }
+                break  # Return first valid receipt found
 
         if not r:
             app.logger.warning(f"[last-receipt] No receipt found for {from_number}")
