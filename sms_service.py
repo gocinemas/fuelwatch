@@ -37993,6 +37993,7 @@ def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
                 f"Facts: {'; '.join(facts)}."
             ]
             prompt = " ".join(prompt_parts)
+            app.logger.info(f"[morning-brief] Facts sent to Groq: {facts}")
             try:
                 r = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
