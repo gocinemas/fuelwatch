@@ -38670,6 +38670,33 @@ def api_company_answer():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/company/competitors", methods=["GET"])
+def api_company_competitors():
+    """Get list of competitors for a company."""
+    try:
+        from company_intelligence_service import get_competitor_list, get_company_intelligence
+
+        company_name = request.args.get("name", "").strip()
+        if not company_name:
+            return jsonify({"error": "Company name required"}), 400
+
+        competitors = get_competitor_list(company_name)
+
+        # Fetch basic data for each competitor
+        competitor_data = []
+        for comp in competitors:
+            try:
+                data = get_company_intelligence(comp)
+                competitor_data.append(data)
+            except:
+                pass
+
+        return jsonify({"competitors": competitors, "data": competitor_data})
+    except Exception as e:
+        app.logger.error(f"[company/competitors] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/company/<company_name>", methods=["GET"])
 def company_qa_page(company_name):
     """Render company Q&A page."""

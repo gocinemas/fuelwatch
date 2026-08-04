@@ -274,3 +274,24 @@ def get_company_intelligence(company_name: str) -> dict:
 def get_company_answer(company_name: str, question: str) -> str:
     """Get answer to a question about a company."""
     return CompanyIntelligence.answer_question(company_name, question)
+
+
+def get_competitor_list(company_name: str) -> list:
+    """Get list of main competitors for a company."""
+    competitors_map = {
+        "reckitt": ["Henkel", "Unilever", "SC Johnson"],
+        "henkel": ["Reckitt", "Unilever", "Procter & Gamble"],
+        "unilever": ["Henkel", "Procter & Gamble", "Reckitt"],
+        "sc johnson": ["Reckitt", "Henkel", "Procter & Gamble"],
+        "google": ["Microsoft", "Amazon", "Meta"],
+        "apple": ["Microsoft", "Samsung", "Google"],
+        "netflix": ["Amazon Prime", "Disney+", "HBO Max"],
+        "microsoft": ["Google", "Apple", "Amazon"],
+    }
+
+    company_lower = company_name.lower().strip()
+    for key, comps in competitors_map.items():
+        if key in company_lower or company_lower in key:
+            return comps
+
+    return []
