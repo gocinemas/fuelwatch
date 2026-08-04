@@ -232,34 +232,37 @@ class CompanyIntelligence:
             client = Anthropic()
 
             # System prompt for company Q&A
-            system_prompt = f"""You are a company intelligence expert.
-Answer questions about {company_name} based on public information you know.
-Be concise, factual, and direct. If you don't have specific data, say so.
-Focus on: business model, strategy, market position, growth, challenges, AI/tech focus.
-
-Keep answers to 2-3 sentences max. Be direct."""
+            system_prompt = f"""You are a company intelligence expert. Answer questions about {company_name}.
+Be concise, factual, direct. 2-3 sentences max.
+Focus: business model, strategy, AI/tech focus, competitors, market position."""
 
             message = client.messages.create(
                 model="claude-opus-5",
-                max_tokens=200,
+                max_tokens=150,
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": question}
                 ]
             )
 
+            logger.info(f"[Q&A] Response: {message}")
+            logger.info(f"[Q&A] Content blocks: {len(message.content)} blocks")
+
             # Extract text from response content
-            if message.content and len(message.content) > 0:
-                # Get the last text block (skip any thinking blocks)
-                for block in reversed(message.content):
-                    if block.type == "text":
+            if message and message.content:
+                for block in message.content:
+                    logger.info(f"[Q&A] Block type: {block.type if hasattr(block, 'type') else type(block)}")
+                    if hasattr(block, 'type') and block.type == "text":
+                        return block.text
+                    elif hasattr(block, 'text'):
                         return block.text
 
-            return "No answer generated"
+            logger.warning(f"[Q&A] No text block found in response")
+            return "I can answer this, but encountered a technical issue. Try rephrasing your question."
 
         except Exception as e:
-            logger.error(f"Claude API error: {e}", exc_info=True)
-            return f"Error: {str(e)}"
+            logger.error(f"[Q&A] Claude API error: {e}", exc_info=True)
+            return f"Technical issue: {str(e)[:100]}"
 
 
 def get_company_intelligence(company_name: str) -> dict:
