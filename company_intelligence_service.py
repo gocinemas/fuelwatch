@@ -238,7 +238,7 @@ Focus: business model, strategy, AI/tech focus, competitors, market position."""
 
             message = client.messages.create(
                 model="claude-opus-5",
-                max_tokens=150,
+                max_tokens=500,
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": question}
