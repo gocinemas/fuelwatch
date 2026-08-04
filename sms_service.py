@@ -9612,27 +9612,27 @@ def api_home_last_receipt():
     try:
         r = None
 
-        # PRIMARY: wa_saves — user-curated clippings with manual corrections
-        # Fetch all receipts and sort by actual shop_date (not save date)
+        # SIMPLE: Get most recent receipt by created_at (just newest save that looks like a receipt)
         rows_wa = lib._sb().table("wa_saves").select(
             "id,title,summary,created_at,category"
-        ).eq("from_number", from_number).limit(100).execute().data or []
+        ).eq("from_number", from_number).order("created_at", desc=True).limit(100).execute().data or []
 
-        # Parse receipts and extract actual shop_date for sorting
-        receipts_with_dates = []
+        app.logger.info(f"[last-receipt] Scanning {len(rows_wa)} wa_saves for receipts")
 
         for wa_row in rows_wa:
             title = wa_row.get("title", "") or ""
             summary = wa_row.get("summary", "") or ""
 
-            # STRICT: Must have 🧾 receipt emoji AND £ total to be a real receipt
-            if not title.startswith("🧾"):
-                continue  # Not a receipt clipping
+            # Is this a receipt? (has 🧾 emoji or says "receipt")
+            is_receipt = "🧾" in title or "receipt" in title.lower()
+            if not is_receipt:
+                continue
 
-            # SIMPLE: If there's a £ total, it's a receipt. Use the title as merchant.
+            # Extract total (£ amount)
             m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
             if not m_total:
-                continue  # No total = not a receipt
+                app.logger.debug(f"[last-receipt] {title} has no £ amount, skipping")
+                continue
 
             total = float(m_total.group(1).replace(",", ""))
             if total <= 0:
@@ -9642,72 +9642,31 @@ def api_home_last_receipt():
             if not merchant or merchant in ("Receipt", "Photo", ""):
                 continue
 
-            # Extract date from summary (multiple formats)
-            shop_date = None
-            # STRICT: Must have a date to show as "Last Shopped"
-            # Try DD/MM/YYYY
-            m_date = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', summary)
-            # Try DD Mon YYYY
-            if not m_date:
-                m_date = re.search(r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})', summary, re.IGNORECASE)
-            # Try DD-MM-YYYY
-            if not m_date:
-                m_date = re.search(r'(\d{1,2}-\d{1,2}-\d{4})', summary)
-            # Try created_at as fallback
-            if not m_date and wa_row.get("created_at"):
-                shop_date = wa_row.get("created_at")[:10]  # YYYY-MM-DD format
-            elif m_date:
-                shop_date = m_date.group(1)
-
-            # STRICT: Skip receipts without both amount AND date
+            # Use created_at as shop_date (when saved in Miru)
+            shop_date = wa_row.get("created_at", "")[:10] if wa_row.get("created_at") else None
             if not shop_date:
-                continue  # No date found = incomplete receipt, skip it
+                continue
 
-            # Extract items from summary (bullet points or lines starting with •)
+            app.logger.info(f"[last-receipt] FOUND: {merchant} £{total} on {shop_date}")
+
+            # Extract items
             items = []
             for line in summary.split("\n"):
                 line = line.strip()
-                if line.startswith("•") or line.startswith("-"):
-                    item = line.lstrip("•-").strip()
-                    if item and len(item) > 2 and not any(x in item.lower() for x in ["total", "vat", "discount", "date", "time"]):
-                        items.append(item)
-            if not items:
-                # Fallback: look for lines that look like product names
-                for line in summary.split("\n"):
-                    line = line.strip()
-                    if (line and line[0].isupper() and len(line) > 3 and
-                        not any(x in line.lower() for x in ["total", "vat", "discount", "date", "time", "order", "payment"])):
-                        items.append(line)
-                        if len(items) >= 5:
-                            break
+                if line and not any(x in line.lower() for x in ["total", "£", "vat", "date", "time"]):
+                    items.append(line[:50])
+                    if len(items) >= 3:
+                        break
 
-            receipt = {
+            r = {
                 "id": wa_row.get("id"),
                 "merchant": merchant,
                 "total": total,
                 "shop_date": shop_date,
-                "items": items[:3],  # Limit to first 3 items
+                "items": items,
                 "category": wa_row.get("category", "Other"),
             }
-            receipts_with_dates.append(receipt)
-
-        # Sort by actual shop_date (most recent first)
-        if receipts_with_dates:
-            receipts_with_dates.sort(key=lambda x: x.get("shop_date", ""), reverse=True)
-            r = receipts_with_dates[0]
-
-        # FALLBACK: receipts table if wa_saves has nothing
-        if not r:
-            rcpt_rows = lib._sb().table("receipts").select(
-                "id,merchant,total,shop_date,created_at,items"
-            ).eq("phone", phone).order("created_at", desc=True).limit(50).execute().data or []
-
-            for row in rcpt_rows:
-                merchant = (row.get("merchant") or "").strip()
-                total = row.get("total")
-                if merchant and not merchant.startswith("Online:") and total and float(total) > 0:
-                    r = row
-                    break
+            break  # Return first valid receipt found
 
         if not r:
             app.logger.warning(f"[last-receipt] No receipt found for {from_number}")
