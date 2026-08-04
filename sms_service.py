@@ -9710,8 +9710,10 @@ def api_home_last_receipt():
                     break
 
         if not r:
+            app.logger.warning(f"[last-receipt] No receipt found for {from_number}")
             return jsonify({"merchant": None, "total": None, "shop_date": None})
-        app.logger.info(f"[last-receipt] RETURNING: {r.get('merchant')} on {r.get('shop_date')}")
+
+        app.logger.info(f"[last-receipt] FOUND: merchant={r.get('merchant')}, total=£{r.get('total')}, date={r.get('shop_date')}, items={len(r.get('items', []))}")
 
         merchant = r.get("merchant", "Unknown")
         total = r.get("total", 0)
