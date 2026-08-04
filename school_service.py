@@ -42,9 +42,44 @@ CREATE TABLE IF NOT EXISTS school_events (
   action_needed text NOT NULL DEFAULT '',
   deadline      date,
   gmail_msg_id  text UNIQUE,
+
+  -- NEW FIELDS: Rich data extraction
+  cost          numeric(10,2),                -- Total cost (e.g., 24.50)
+  cost_deadline date,                         -- When payment is due
+  cost_includes text,                         -- What's included in cost
+  location      text,                         -- Simple location (e.g., "Brighton Beach")
+  location_full text,                         -- Full address with parking info
+  pickup_point  text,                         -- Where to pickup (e.g., "School main gates")
+  pickup_time   time,                         -- What time pickup happens
+  return_time   time,                         -- When event/trip ends
+  return_location text,                       -- Where they return to
+  items_required jsonb DEFAULT '[]'::jsonb,   -- [{"item": "PE shorts", "deadline": "2026-09-01", "cost": null}]
+  permissions_needed jsonb DEFAULT '[]'::jsonb, -- [{"type": "trip_consent", "deadline": "...", "url": "..."}]
+  contacts      jsonb DEFAULT '[]'::jsonb,   -- [{"role": "Trip lead", "name": "Mrs Smith", "phone": "..."}]
+  recurring     jsonb DEFAULT '{}'::jsonb,   -- {"day_of_week": "Tuesday", "frequency": "weekly"}
+  link_url      text,                         -- URL to form/more info
+
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX ON school_events(from_number, event_date);
+CREATE INDEX ON school_events(event_type, cost_deadline);
+
+-- Migrations for existing systems (adds new columns if not present)
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS cost numeric(10,2);
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS cost_deadline date;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS cost_includes text;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS location text;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS location_full text;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS pickup_point text;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS pickup_time time;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS return_time time;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS return_location text;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS items_required jsonb DEFAULT '[]'::jsonb;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS permissions_needed jsonb DEFAULT '[]'::jsonb;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS contacts jsonb DEFAULT '[]'::jsonb;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS recurring jsonb DEFAULT '{}'::jsonb;
+-- ALTER TABLE school_events ADD COLUMN IF NOT EXISTS link_url text;
+-- Run these in Supabase UI or via migrations if needed
 ─────────────────────────────────────────────────────────────────────
 
 Env vars needed (add to .env / Railway):
@@ -599,13 +634,43 @@ def _groq_batch_parse_events(batch_items: list[tuple]) -> list[list[dict]]:
 
         all_prompts.append(f"[Email {i+1}] School: {school_name} | Year: {year_group} | Sent: {ref_str} ({weekday}) | Subject: {subject}")
 
-    combined_prompt = f"""Parse these {len(batch_items)} school email subjects and extract ONLY quick high-level events.
-For each email, return minimal JSON with event_title, event_type, event_date (ISO), and action_needed.
+    combined_prompt = f"""Parse these {len(batch_items)} school emails and extract COMPREHENSIVE event data.
+
+For each email, extract:
+{{
+  "event_title": "Event name (max 10 words)",
+  "event_type": "activity|permission|deadline|newsletter|club|reminder|other",
+  "event_date": "ISO date (YYYY-MM-DD) or null",
+  "description": "2-3 sentence summary",
+  "action_needed": "What parent must do (e.g., 'Submit consent', 'Pay £25', 'Bring PE kit')",
+  "deadline": "ISO date when action is due (if different from event_date)",
+  "cost": "Numeric cost (e.g., 24.50) or null",
+  "cost_deadline": "ISO date payment is due",
+  "cost_includes": "What's included (e.g., 'Entry, transport, lunch')",
+  "location": "Simple location (e.g., 'Brighton Beach')",
+  "pickup_time": "HH:MM (e.g., '09:00') or null",
+  "return_time": "HH:MM when event ends or null",
+  "items_required": [
+    {{"item": "Item name", "deadline": "ISO date or null", "cost": "numeric or null"}}
+  ],
+  "permissions_needed": [
+    {{"type": "trip_consent|photo_consent|other", "deadline": "ISO date"}}
+  ],
+  "contacts": [
+    {{"role": "Trip lead|Organizer|Teacher", "name": "Name", "phone": "Number"}}
+  ],
+  "link_url": "URL to form or more info",
+  "recurring": {{"day_of_week": "Monday|Tuesday|...|null", "frequency": "weekly|monthly|etc"}}
+}}
+
+Dates: "Thursday 8th May" → "2026-05-08". Extract costs from any mention ("£25", "25 pounds").
+For PE kit reminders, extract day-of-week and mark as recurring.
+Only include fields with actual data; omit nulls.
 
 {chr(10).join(all_prompts)}
 
-Return ONLY a JSON array of {len(batch_items)} arrays, one per email. Minimize tokens — just the essentials.
-Example: [[{{"event_title":"Sports day","event_type":"activity","event_date":"2026-07-15"}}], [{{"event_title":"Uniform order"}}]]"""
+Return ONLY a JSON array of {len(batch_items)} arrays, one per email.
+Example: [[{{"event_title":"School Trip to Brighton","event_type":"activity","event_date":"2026-09-15","cost":24.50,"cost_deadline":"2026-09-10","location":"Brighton Beach","pickup_time":"09:00","items_required":[{{"item":"Packed lunch"}}]}}], [{{}}]]"""
 
     try:
         client = _get_groq_client()
@@ -733,6 +798,21 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
                 "action_needed": action_needed[:300],
                 "deadline":      ev.get("deadline") or None,
                 "gmail_msg_id":  gmail_msg_id,
+                # NEW RICH FIELDS
+                "cost":          _safe_float(ev.get("cost")),
+                "cost_deadline": ev.get("cost_deadline") or None,
+                "cost_includes": (ev.get("cost_includes") or "")[:300],
+                "location":      (ev.get("location") or "")[:200],
+                "location_full": (ev.get("location_full") or "")[:500],
+                "pickup_point":  (ev.get("pickup_point") or "")[:200],
+                "pickup_time":   ev.get("pickup_time") or None,
+                "return_time":   ev.get("return_time") or None,
+                "return_location": (ev.get("return_location") or "")[:200],
+                "items_required": json.dumps(ev.get("items_required", [])),
+                "permissions_needed": json.dumps(ev.get("permissions_needed", [])),
+                "contacts":      json.dumps(ev.get("contacts", [])),
+                "recurring":     json.dumps(ev.get("recurring", {})),
+                "link_url":      (ev.get("link_url") or "")[:500],
             }
             result = lib._sb().table("school_events").insert(row).execute()
             existing_titles.add(title.lower())
@@ -747,6 +827,16 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
 
 
 # Action-needed types that warrant an immediate WhatsApp alert
+def _safe_float(value) -> float or None:
+    """Convert value to float, return None if invalid."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
 _ALERT_TYPES = {"reminder", "activity", "trip", "deadline", "payment", "event"}
 _INFO_TYPES  = {"info"}
 
