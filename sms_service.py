@@ -9644,6 +9644,7 @@ def api_home_last_receipt():
 
             # Extract date from summary (multiple formats)
             shop_date = None
+            # STRICT: Must have a date to show as "Last Shopped"
             # Try DD/MM/YYYY
             m_date = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', summary)
             # Try DD Mon YYYY
@@ -9652,11 +9653,15 @@ def api_home_last_receipt():
             # Try DD-MM-YYYY
             if not m_date:
                 m_date = re.search(r'(\d{1,2}-\d{1,2}-\d{4})', summary)
-            # Fallback: use created_at from wa_saves
+            # Try created_at as fallback
             if not m_date and wa_row.get("created_at"):
                 shop_date = wa_row.get("created_at")[:10]  # YYYY-MM-DD format
             elif m_date:
                 shop_date = m_date.group(1)
+
+            # STRICT: Skip receipts without both amount AND date
+            if not shop_date:
+                continue  # No date found = incomplete receipt, skip it
 
             # Extract items from summary (bullet points or lines starting with •)
             items = []
