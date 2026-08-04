@@ -15646,6 +15646,47 @@ def api_home_brief():
                     f"Recent saves (reference only if genuinely relevant): {'; '.join(saves_context)}. "
                     "Use the EXACT save title — do NOT add product names, descriptions, or any embellishment."
                 )
+
+            # Add engaging follow-up prompts for recently saved items (last 3 days)
+            try:
+                from datetime import timedelta as _td
+                _today_iso = now.date().isoformat()
+                _recent_cutoff = (now.date() - _td(days=3)).isoformat()
+                _recent_saves = lib._sb().table("wa_saves").select("title,category,created_at,url") \
+                    .eq("from_number", from_number) \
+                    .gt("created_at", _recent_cutoff) \
+                    .lt("created_at", _today_iso) \
+                    .order("created_at", desc=True) \
+                    .limit(5) \
+                    .execute().data or []
+
+                if _recent_saves:
+                    _recent_lines = []
+                    for _rs in _recent_saves[:2]:  # Only show top 2 recent
+                        _title = _rs.get("title", "").strip()
+                        _cat = (_rs.get("category") or "").lower()
+                        if not _title:
+                            continue
+
+                        # Generate contextual follow-up based on category
+                        if _cat in ("wine", "drinks", "food", "takeaway"):
+                            _recent_lines.append(f"• Saved: {_title} — You could ask: 'Did you enjoy it?' or 'Where can I buy it?'")
+                        elif _cat in ("articles", "books"):
+                            _recent_lines.append(f"• Saved: {_title} — You could ask: 'Read this yet?' or offer the link")
+                        elif _cat in ("shows", "music", "entertainment"):
+                            _recent_lines.append(f"• Saved: {_title} — You could ask: 'Planning to watch?' or 'Want to stream it?'")
+                        elif _cat == "places":
+                            _recent_lines.append(f"• Saved: {_title} — You could ask: 'Want to visit?' or 'When are you going?'")
+                        else:
+                            _recent_lines.append(f"• Saved: {_title} — Reference it naturally if relevant")
+
+                    if _recent_lines:
+                        prompt_parts.append(
+                            f"Recent saves (last 3 days) — ask ONE follow-up question naturally in the brief if it fits:\n"
+                            + "\n".join(_recent_lines)
+                        )
+            except Exception as e:
+                app.logger.debug(f"[brief-saves-followup] Error: {e}")
         if event_context:
             if time_mode == "evening_leisure":
                 prompt_parts.append(
