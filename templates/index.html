@@ -28382,11 +28382,15 @@ document.addEventListener('keydown', function(e) {
       document.getElementById('sw-spend-legend').innerHTML = legendHtml.join('');
     }
 
-    // ─── RETAILERS YOU SHOPPED AT ───
+    // ─── RETAILERS YOU SHOPPED AT (with locations) ───
     const retailers = {};
     Object.entries(activeWeek.spend_by_category || {}).forEach(([cat, data]) => {
       if (!retailers[cat]) retailers[cat] = [];
-      (data.merchants || []).forEach(m => retailers[cat].push(m.name));
+      (data.merchants || []).forEach(m => {
+        // Format: "Merchant · Location" or just "Merchant" if no location
+        const label = m.location ? `${m.name} · ${m.location}` : m.name;
+        retailers[cat].push(label);
+      });
     });
 
     const retailersHtml = [];

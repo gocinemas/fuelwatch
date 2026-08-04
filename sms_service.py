@@ -30419,10 +30419,26 @@ def api_home_week_full():
                         pass
 
             if amount > 0:
+                # Extract location (postcode or area name) from summary
+                location = ""
+                summary_str = (r.get("summary") or "") + " " + (r.get("title") or "")
+                # Look for UK postcode (e.g., "GU25 4QG", "SW1A 1AA")
+                pc_match = re.search(r'\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b', summary_str, re.IGNORECASE)
+                if pc_match:
+                    location = pc_match.group(1).upper()
+                else:
+                    # Fall back to area names (common UK towns)
+                    area_keywords = ["Virginia Water", "Weybridge", "Ascot", "Sunningdale", "Windsor", "Slough", "London", "Surrey", "Kent", "Sussex", "Berkshire", "Hampshire", "Wembley"]
+                    for area in area_keywords:
+                        if area.lower() in summary_str.lower():
+                            location = area
+                            break
+
                 spend_rows.append({
                     "total": amount,
                     "merchant": merchant,
-                    "shop_date": r.get("created_at", "").split("T")[0]
+                    "shop_date": r.get("created_at", "").split("T")[0],
+                    "location": location
                 })
             else:
                 # Log receipts that failed to parse amount
@@ -30432,10 +30448,13 @@ def api_home_week_full():
         print(f"[week-full] THIS WEEK TOTAL: £{this_week['spend']:.2f}")
 
         # Categorize spend by merchant (also track merchants for detail)
-        merchants_by_cat = {}  # Track merchant details per category
+        merchants_by_cat = {}  # Track merchant details per category: {cat: {merchant_key: {amount, location}}}
         try:
             for r in spend_rows:
                 merchant = r.get("merchant", "Unknown")
+                location = r.get("location", "")
+                merchant_key = f"{merchant}|{location}" if location else merchant  # Key includes location
+
                 # Use manually-set category if available, otherwise fall back to merchant-based categorization
                 if r.get("category") and r.get("category") != "Other":
                     cat = r.get("category")
@@ -30447,10 +30466,10 @@ def api_home_week_full():
                     merchants_by_cat[cat] = {}
                 this_week["spend_by_category"][cat]["total"] += amount
                 this_week["spend_by_category"][cat]["count"] += 1
-                # Track merchants per category
-                if merchant not in merchants_by_cat[cat]:
-                    merchants_by_cat[cat][merchant] = 0
-                merchants_by_cat[cat][merchant] += amount
+                # Track merchants per category (with location)
+                if merchant_key not in merchants_by_cat[cat]:
+                    merchants_by_cat[cat][merchant_key] = {"amount": 0, "location": location}
+                merchants_by_cat[cat][merchant_key]["amount"] += amount
             print(f"[week-full] Categorized {len(spend_rows)} receipts into {len(merchants_by_cat)} categories")
         except Exception as cat_err:
             print(f"[week-full] Categorization failed: {cat_err}")
@@ -30458,8 +30477,24 @@ def api_home_week_full():
 
         # Add merchant details to categories
         for cat in this_week["spend_by_category"]:
-            merchants = sorted(merchants_by_cat.get(cat, {}).items(), key=lambda x: x[1], reverse=True)
-            this_week["spend_by_category"][cat]["merchants"] = [{"name": m[0], "amount": round(m[1], 2)} for m in merchants]
+            merchant_items = merchants_by_cat.get(cat, {})
+            merchants = []
+            for merchant_key, data in merchant_items.items():
+                # merchant_key might be "Costa|Virginia Water" or just "Costa"
+                if "|" in merchant_key:
+                    merchant_name, location = merchant_key.split("|", 1)
+                else:
+                    merchant_name, location = merchant_key, ""
+
+                merchants.append({
+                    "name": merchant_name,
+                    "location": location,
+                    "amount": round(data.get("amount", 0), 2) if isinstance(data, dict) else round(data, 2)
+                })
+
+            # Sort by amount descending
+            merchants = sorted(merchants, key=lambda x: x["amount"], reverse=True)
+            this_week["spend_by_category"][cat]["merchants"] = merchants
 
         # Cafe/restaurant visits (based on merchant categorization, respecting manual categories)
         food_categories = ["Coffee & Lunch", "Dining", "Takeaway", "Fast Food"]
@@ -30618,10 +30653,26 @@ def api_home_week_full():
                         pass
 
             if amount > 0:
+                # Extract location (postcode or area name) from summary
+                location = ""
+                summary_str = (r.get("summary") or "") + " " + (r.get("title") or "")
+                # Look for UK postcode (e.g., "GU25 4QG", "SW1A 1AA")
+                pc_match = re.search(r'\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b', summary_str, re.IGNORECASE)
+                if pc_match:
+                    location = pc_match.group(1).upper()
+                else:
+                    # Fall back to area names (common UK towns)
+                    area_keywords = ["Virginia Water", "Weybridge", "Ascot", "Sunningdale", "Windsor", "Slough", "London", "Surrey", "Kent", "Sussex", "Berkshire", "Hampshire", "Wembley"]
+                    for area in area_keywords:
+                        if area.lower() in summary_str.lower():
+                            location = area
+                            break
+
                 last_spend_rows.append({
                     "total": amount,
                     "merchant": merchant,
-                    "shop_date": r.get("created_at", "").split("T")[0]
+                    "shop_date": r.get("created_at", "").split("T")[0],
+                    "location": location
                 })
             else:
                 # Log receipts that failed to parse amount
@@ -30635,6 +30686,9 @@ def api_home_week_full():
         try:
             for r in last_spend_rows:
                 merchant = r.get("merchant", "Unknown")
+                location = r.get("location", "")
+                merchant_key = f"{merchant}|{location}" if location else merchant
+
                 cat = _receipt_category(merchant)
                 amount = float(r.get("total", 0) or 0)
                 if cat not in last_week["spend_by_category"]:
@@ -30642,16 +30696,32 @@ def api_home_week_full():
                     last_merchants_by_cat[cat] = {}
                 last_week["spend_by_category"][cat]["total"] += amount
                 last_week["spend_by_category"][cat]["count"] += 1
-                if merchant not in last_merchants_by_cat[cat]:
-                    last_merchants_by_cat[cat][merchant] = 0
-                last_merchants_by_cat[cat][merchant] += amount
+                if merchant_key not in last_merchants_by_cat[cat]:
+                    last_merchants_by_cat[cat][merchant_key] = {"amount": 0, "location": location}
+                last_merchants_by_cat[cat][merchant_key]["amount"] += amount
         except Exception:
             pass
 
         # Add merchant details to last week categories
         for cat in last_week["spend_by_category"]:
-            merchants = sorted(last_merchants_by_cat.get(cat, {}).items(), key=lambda x: x[1], reverse=True)
-            last_week["spend_by_category"][cat]["merchants"] = [{"name": m[0], "amount": round(m[1], 2)} for m in merchants]
+            merchant_items = last_merchants_by_cat.get(cat, {})
+            merchants = []
+            for merchant_key, data in merchant_items.items():
+                # merchant_key might be "Costa|Virginia Water" or just "Costa"
+                if "|" in merchant_key:
+                    merchant_name, location = merchant_key.split("|", 1)
+                else:
+                    merchant_name, location = merchant_key, ""
+
+                merchants.append({
+                    "name": merchant_name,
+                    "location": location,
+                    "amount": round(data.get("amount", 0), 2) if isinstance(data, dict) else round(data, 2)
+                })
+
+            # Sort by amount descending
+            merchants = sorted(merchants, key=lambda x: x["amount"], reverse=True)
+            last_week["spend_by_category"][cat]["merchants"] = merchants
 
         # Last week cafe visits
         last_cafe_rows = [r for r in last_spend_rows if _receipt_category(r.get("merchant", "")).strip() in food_categories]
