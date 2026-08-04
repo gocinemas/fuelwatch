@@ -9733,11 +9733,21 @@ def api_home_last_receipt():
             app.logger.warning(f"[last-receipt] Failed to parse items: {e}", exc_info=True)
 
         app.logger.info(f"[last-receipt] Returning items: {items}")
+        # Format shop_date as DD/MM/YY for consistency across the site
+        formatted_date = shop_date
+        try:
+            from datetime import datetime as _dt_format
+            if shop_date:
+                date_obj = _dt_format.strptime(shop_date, "%Y-%m-%d").date()
+                formatted_date = date_obj.strftime(DATE_FORMAT_DISPLAY)  # DD/MM/YY
+        except Exception as e:
+            app.logger.debug(f"[last-receipt] Date format failed: {e}, keeping raw")
+
         return jsonify({
             "id": r.get("id"),
             "merchant": merchant,
             "total": total,
-            "shop_date": shop_date,
+            "shop_date": formatted_date,  # Now in DD/MM/YY format
             "category": r.get("category", "Other"),
             "items": items
         })
@@ -30119,7 +30129,7 @@ def api_home_week_summary():
 
         # === THIS WEEK ===
         this_week = {
-            "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
+            "period": f"{week_start.strftime('%d/%m/%y')} — {week_end.strftime('%d/%m/%y')}",
             "spend": 0,
             "saves": 0,
             "activities": [],
