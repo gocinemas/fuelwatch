@@ -16827,9 +16827,10 @@ _bkBadge();
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <!-- Bar breakdown -->
           <div id="sw-spend-breakdown" style="display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"></div>
-          <!-- Pie chart -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:center">
+          <!-- Pie chart + legend -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center">
             <canvas id="sw-spend-chart" width="200" height="200" style="max-width:100%;height:auto"></canvas>
+            <div id="sw-spend-legend" style="margin-top:12px;width:100%;display:flex;flex-direction:column;gap:6px;font-size:11px"></div>
           </div>
         </div>
       </div>
@@ -28361,6 +28362,24 @@ document.addEventListener('keydown', function(e) {
         ctx.fill();
         startAngle += sliceAngle;
       });
+
+      // ─── LEGEND FOR PIE CHART ───
+      const legendHtml = [];
+      categories.forEach(([cat, data], idx) => {
+        const pct = Math.round((data.total / total) * 100);
+        const color = colors[idx % colors.length];
+        legendHtml.push(`
+          <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+            <div style="width:12px;height:12px;border-radius:2px;background:${color}"></div>
+            <div style="flex:1;display:flex;justify-content:space-between;gap:8px;align-items:center">
+              <span style="color:var(--text);font-weight:500">${cat}</span>
+              <span style="color:var(--muted);font-size:10px">${pct}%</span>
+              <span style="color:var(--text);font-weight:600">£${data.total.toFixed(2)}</span>
+            </div>
+          </div>
+        `);
+      });
+      document.getElementById('sw-spend-legend').innerHTML = legendHtml.join('');
     }
 
     // ─── RETAILERS YOU SHOPPED AT ───
