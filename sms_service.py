@@ -30237,6 +30237,7 @@ def api_home_week_full():
             r'(?:Total|TOTAL)\s+to\s+(?:Pay|pay)[:\s]*£([\d,]+\.?\d*)',  # "Total to Pay: £104.58" or "Total to Pay £104.58"
             r'(?:Total|TOTAL)\s+due[:\s]*£([\d,]+\.?\d*)',               # "Total due: £12.34" or "Total due\n£12.34"
             r'(?:Total|TOTAL)\s+amount[:\s]*£([\d,]+\.?\d*)',            # "Total amount: £30.82"
+            r'(?:Total|TOTAL)\s+(?:Amount|AMOUNT)[:\s]*£([\d,]+\.?\d*)',  # "Total Amount: £14.19"
             r'(?:Total|TOTAL)\s+balance\s+due[:\s]*£([\d,]+\.?\d*)',     # "Total balance due £44.45" or with newline
             r'(?:Total|TOTAL)\s*\([^)]*\)[:\s]*£([\d,]+\.?\d*)',        # "Total (Net Price): £29.37"
             r'(?:Total|TOTAL)[:\s]*£([\d,]+\.?\d*)',                     # "Total: £67.73" or "TOTAL: £28.00"
