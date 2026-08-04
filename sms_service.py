@@ -15174,6 +15174,7 @@ def api_home_brief():
             facts.append(f"⛽ Fuel: {price}p/L")
 
     # === ADD NEARBY PLACES WITH TIME-AWARE CONTEXT ===
+    app.logger.info(f"[brief-places] unvisited={len(place_saves_unvisited)}, has_location={has_location}, loc_ctx={_loc_classification.get('context')}")
     if place_saves_unvisited:
         nearby = place_saves_unvisited[:2]
 
