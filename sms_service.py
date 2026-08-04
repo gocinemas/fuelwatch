@@ -13123,12 +13123,16 @@ def _v2_fetch_fuel(postcode: str) -> dict:
     try:
         price, station = _get_cheapest_fuel(postcode, "petrol")
         if not price or not station:
+            app.logger.warning(f"[fuel-fetch] No fuel data for {postcode}: price={price}, station={station}")
             return {}
-        return {
+        result = {
             "price": round(price, 1),
             "name":  station.get("brand", station.get("name", "")),
         }
-    except Exception:
+        app.logger.info(f"[fuel-fetch] {postcode}: {result}")
+        return result
+    except Exception as e:
+        app.logger.error(f"[fuel-fetch] Error for {postcode}: {e}")
         return {}
 
 
@@ -15159,9 +15163,11 @@ def api_home_brief():
 
     # === ADD FUEL PRICE ===
     fuel = ctx.get("fuel", {})
+    app.logger.info(f"[brief-fuel] ctx['fuel'] = {fuel}")
     if fuel and fuel.get("price"):
         merchant = fuel.get("name", "").strip()
         price = fuel.get("price")
+        app.logger.info(f"[brief-fuel] Adding fact: price={price}, merchant={merchant}")
         if merchant:
             facts.append(f"⛽ Fuel: {price}p/L at {merchant}")
         else:
