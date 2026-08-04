@@ -14257,6 +14257,58 @@ def _get_brief_intelligence(from_number, sb):
     return {"insights": {}, "data_summary": {}}
 
 
+def _log_place_visit(from_number: str, lat: float = None, lng: float = None, postcode: str = None):
+    """Log a place visit in background for intelligence building."""
+    try:
+        if not from_number:
+            return
+
+        from datetime import datetime as _dt
+        import zoneinfo as _zi
+
+        _LDN = _zi.ZoneInfo("Europe/London")
+        now = _dt.now(_LDN)
+
+        sb = lib._sb()
+
+        # Get reverse geocoding to identify place/area
+        place_name = None
+        if lat and lng:
+            try:
+                r = requests.get(
+                    "https://nominatim.openstreetmap.org/reverse",
+                    params={"lat": lat, "lon": lng, "format": "json"},
+                    timeout=5,
+                )
+                if r.status_code == 200:
+                    place_name = r.json().get("address", {}).get("town") or r.json().get("address", {}).get("city") or "Unknown"
+            except:
+                pass
+        elif postcode:
+            place_name = postcode
+
+        if not place_name:
+            place_name = "Unknown"
+
+        # Store visit in analytics table
+        try:
+            sb.table("place_visits").insert({
+                "device_id": from_number,
+                "place": place_name,
+                "latitude": lat,
+                "longitude": lng,
+                "postcode": postcode,
+                "visited_at": now.isoformat(),
+                "day_of_week": now.strftime("%A"),
+                "hour": now.hour,
+                "created_at": now.isoformat(),
+            }).execute()
+        except Exception:
+            pass  # Table might not exist yet
+    except Exception as e:
+        app.logger.debug(f"[place-visit] Logging error: {e}")
+
+
 @app.route("/api/home/brief")
 def api_home_brief():
     """V2 context engine — returns personalised brief text + raw context."""
@@ -14281,6 +14333,14 @@ def api_home_brief():
     except (TypeError, ValueError):
         _req_lat = _req_lng = None
     has_location = _req_lat is not None and _req_lng is not None
+
+    # Log place visit in background (for Your Week intelligence)
+    if from_number:
+        _threading.Thread(
+            target=_log_place_visit,
+            args=(from_number, _req_lat, _req_lng, postcode),
+            daemon=True
+        ).start()
 
     # Check cache — trains always fresh; rest cached 15 min; ?refresh=1 busts it
     # Goodnight hours (23:00–05:00) and GPS requests are never served from cache
