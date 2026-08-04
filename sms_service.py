@@ -15263,6 +15263,8 @@ def api_home_brief():
 
             # Fetch nearby places for each type
             gm_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+            use_osm_fallback = False
+
             if gm_key and search_types:
                 for place_type in search_types[:2]:  # Limit to 2 types per brief
                     try:
@@ -15277,9 +15279,18 @@ def api_home_brief():
                             },
                             timeout=5,
                         )
-                        if r.status_code == 200:
-                            results = r.json().get("results", [])
-                            # Filter by rating (4.5+) and get top result
+                        data = r.json() if r.status_code == 200 else {}
+
+                        # Check if quota exceeded or billing issue
+                        status = data.get("status", "")
+                        if status in ("OVER_QUERY_LIMIT", "REQUEST_DENIED", "INVALID_REQUEST"):
+                            app.logger.warning(f"[places] Google quota/error: {status} — switching to OpenStreetMap")
+                            use_osm_fallback = True
+                            break
+
+                        if status == "OK":
+                            results = data.get("results", [])
+                            # Filter by rating (4.3+) and get top result
                             for place in results[:3]:
                                 if place.get("rating", 0) >= 4.3:
                                     name = place.get("name", "").strip()
@@ -15287,8 +15298,32 @@ def api_home_brief():
                                     if name:
                                         nearby_discovery.append(f"📍 {name} ({rating}★)")
                                         break  # One per type
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        app.logger.debug(f"[places] Google API error: {e}")
+                        use_osm_fallback = True
+                        break
+
+            # Fallback to OpenStreetMap if Google failed
+            if use_osm_fallback or not gm_key:
+                try:
+                    # Get nearby places via OpenStreetMap Nominatim + Overpass API
+                    r = requests.get(
+                        "https://overpass-api.de/api/interpreter",
+                        params={
+                            "data": f"""[bbox:{search_lng-0.02},{search_lat-0.02},{search_lng+0.02},{search_lat+0.02}];
+                                (node["amenity"~"restaurant|cafe|pub|bar|restaurant"];);
+                                out center 100;"""
+                        },
+                        timeout=5,
+                    )
+                    if r.status_code == 200:
+                        places = r.json().get("elements", [])
+                        for place in places[:2]:
+                            name = place.get("tags", {}).get("name", "").strip()
+                            if name:
+                                nearby_discovery.append(f"📍 {name}")
+                except Exception:
+                    pass
     except Exception as e:
         app.logger.debug(f"[brief-places] Discovery API error: {e}")
 
