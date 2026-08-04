@@ -22196,9 +22196,27 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 if img_type == "receipt":
                     # ALWAYS categorize receipts, using merchant name OR title OR items
                     merchant = receipt_data.get("merchant", "")
-                    # Fallback: if merchant extraction failed, use title (with emoji removed)
+
+                    # Fallback 1: if merchant extraction failed, try to extract from receipt text
+                    if not merchant and receipt_summary:
+                        # Look for common chains in receipt text (e.g., "Costa Coffee", "Starbucks", "Pret")
+                        common_merchants = ["costa", "starbucks", "pret", "greggs", "leon", "itsu", "tesco", "sainsbury", "asda", "morrisons", "waitrose", "tfl", "shell", "bp", "esso"]
+                        summary_lower = receipt_summary.lower()
+                        for m in common_merchants:
+                            if m in summary_lower:
+                                # Find the actual case version in receipt
+                                for word in receipt_summary.split():
+                                    if word.lower() == m:
+                                        merchant = word
+                                        break
+                                if not merchant:
+                                    merchant = m.title()  # Costa, Starbucks, etc.
+                                break
+
+                    # Fallback 2: use title if still no merchant
                     if not merchant and title:
                         merchant = title.replace("🧾", "").strip()
+
                     items_text = " ".join([item.get("name", "") for item in receipt_data.get("items", [])])
                     summary_for_cat = receipt_summary or items_text
 
