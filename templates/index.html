@@ -16821,10 +16821,25 @@ _bkBadge();
       <!-- INSIGHTS -->
       <div id="sw-insights" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:32px;font-size:14px;line-height:1.7;color:var(--text)"></div>
 
-      <!-- SPEND BREAKDOWN -->
+      <!-- SPEND BREAKDOWN WITH PIE CHART -->
       <div style="margin-bottom:32px">
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px">💳 Spending by Category</div>
-        <div id="sw-spend-breakdown" style="display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <!-- Bar breakdown -->
+          <div id="sw-spend-breakdown" style="display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"></div>
+          <!-- Pie chart -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:center">
+            <canvas id="sw-spend-chart" width="200" height="200" style="max-width:100%;height:auto"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- RETAILERS YOU SHOPPED AT -->
+      <div style="margin-bottom:32px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px">🛍️ Retailers You Shopped At</div>
+        <div id="sw-retailers" style="display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="color:var(--muted);text-align:center;padding:20px 0">—</div>
+        </div>
       </div>
 
       <!-- ACTIVITY -->
@@ -28325,6 +28340,48 @@ document.addEventListener('keydown', function(e) {
       `);
     });
     document.getElementById('sw-spend-breakdown').innerHTML = breakdownHtml.join('') || '<div style="text-align:center;color:var(--muted);padding:20px">No spending data</div>';
+
+    // ─── PIE CHART ───
+    const canvas = document.getElementById('sw-spend-chart');
+    if (canvas && Object.keys(activeWeek.spend_by_category || {}).length > 0) {
+      const ctx = canvas.getContext('2d');
+      const categories = Object.entries(activeWeek.spend_by_category || {}).sort((a, b) => b[1].total - a[1].total);
+      const colors = ['#0369a1', '#d97706', '#16a34a', '#dc2626', '#7c3aed', '#db2777', '#ea580c', '#6366f1'];
+
+      const total = categories.reduce((sum, [_, data]) => sum + data.total, 0);
+      let startAngle = -Math.PI / 2;
+
+      categories.forEach(([cat, data], idx) => {
+        const sliceAngle = (data.total / total) * 2 * Math.PI;
+        ctx.fillStyle = colors[idx % colors.length];
+        ctx.beginPath();
+        ctx.moveTo(100, 100);
+        ctx.arc(100, 100, 90, startAngle, startAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fill();
+        startAngle += sliceAngle;
+      });
+    }
+
+    // ─── RETAILERS YOU SHOPPED AT ───
+    const retailers = {};
+    Object.entries(activeWeek.spend_by_category || {}).forEach(([cat, data]) => {
+      if (!retailers[cat]) retailers[cat] = [];
+      (data.merchants || []).forEach(m => retailers[cat].push(m.name));
+    });
+
+    const retailersHtml = [];
+    Object.entries(retailers).forEach(([cat, names]) => {
+      if (names.length > 0) {
+        retailersHtml.push(`
+          <div style="padding:10px;background:rgba(255,255,255,0.2);border-radius:10px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase">${cat}</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.6">${names.join(' · ')}</div>
+          </div>
+        `);
+      }
+    });
+    document.getElementById('sw-retailers').innerHTML = retailersHtml.length ? retailersHtml.join('') : '<div style="text-align:center;color:var(--muted);padding:20px">No retailers found</div>';
 
     // ─── CAFES ───
     const cafes = activeWeek.top_cafes || [];
