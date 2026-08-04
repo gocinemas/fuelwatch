@@ -44,6 +44,7 @@ import analytics
 import library as lib
 import school_service
 import personal_events_service
+import shopping_history
 from scoring_engine import MarketEntryScorer
 from intel_groq_optimizer import IntelGroqOptimizer
 
@@ -30437,19 +30438,58 @@ def api_home_week_full():
             if amount > 0:
                 # Extract location — use POSTCODE ONLY (most reliable, avoids duplicates)
                 location = ""
+                address = ""
                 summary_str = (r.get("summary") or "") + " " + (r.get("title") or "")
+
                 # Look for UK postcode (e.g., "GU25 4QG", "SW1A 1AA")
                 pc_match = re.search(r'\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b', summary_str, re.IGNORECASE)
                 if pc_match:
                     location = pc_match.group(1).upper()
-                # Note: Skip area name fallback to avoid duplicate entries (Costa · Virginia Water vs Costa · GU25 4AA)
 
+                # Extract address lines (street, building names)
+                address_lines = []
+                for line in summary_str.split("\n"):
+                    if re.search(r'Street|Road|Avenue|Lane|Close|House|Building', line, re.IGNORECASE):
+                        address_lines.append(line.strip())
+                if address_lines:
+                    address = " ".join(address_lines[:2])  # First 2 address lines
+
+                # Extract items (first 3 product lines)
+                items = []
+                for line in summary_str.split("\n"):
+                    line = line.strip()
+                    if not line or any(kw in line.lower() for kw in ["total", "vat", "date", "time", "meta", "paid"]):
+                        continue
+                    if re.match(r'^\s*£?[\d,]+\.?\d*\s*$', line):
+                        continue
+                    items.append(line[:60])
+                    if len(items) >= 3:
+                        break
+
+                shop_date = r.get("created_at", "").split("T")[0]
                 spend_rows.append({
                     "total": amount,
                     "merchant": merchant,
-                    "shop_date": r.get("created_at", "").split("T")[0],
+                    "shop_date": shop_date,
                     "location": location
                 })
+
+                # Store in shopping_history
+                try:
+                    shopping_history.store_receipt(
+                        from_number=from_number,
+                        merchant=merchant,
+                        amount=amount,
+                        shop_date=shop_date,
+                        location=location,
+                        address=address,
+                        postcode=location,  # location is postcode-only now
+                        category=_receipt_category(merchant),
+                        items=items if items else None,
+                        receipt_id=r.get("id", "")
+                    )
+                except Exception as hist_err:
+                    print(f"[week-full] shopping_history store error: {hist_err}")
             else:
                 # Log receipts that failed to parse amount
                 print(f"[week-full] WARNING: Failed to extract amount from {merchant} | Summary preview: {(r.get('summary') or '')[:80]}")
@@ -30665,19 +30705,58 @@ def api_home_week_full():
             if amount > 0:
                 # Extract location — use POSTCODE ONLY (most reliable, avoids duplicates)
                 location = ""
+                address = ""
                 summary_str = (r.get("summary") or "") + " " + (r.get("title") or "")
+
                 # Look for UK postcode (e.g., "GU25 4QG", "SW1A 1AA")
                 pc_match = re.search(r'\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b', summary_str, re.IGNORECASE)
                 if pc_match:
                     location = pc_match.group(1).upper()
-                # Note: Skip area name fallback to avoid duplicate entries (Costa · Virginia Water vs Costa · GU25 4AA)
 
+                # Extract address lines (street, building names)
+                address_lines = []
+                for line in summary_str.split("\n"):
+                    if re.search(r'Street|Road|Avenue|Lane|Close|House|Building', line, re.IGNORECASE):
+                        address_lines.append(line.strip())
+                if address_lines:
+                    address = " ".join(address_lines[:2])  # First 2 address lines
+
+                # Extract items (first 3 product lines)
+                items = []
+                for line in summary_str.split("\n"):
+                    line = line.strip()
+                    if not line or any(kw in line.lower() for kw in ["total", "vat", "date", "time", "meta", "paid"]):
+                        continue
+                    if re.match(r'^\s*£?[\d,]+\.?\d*\s*$', line):
+                        continue
+                    items.append(line[:60])
+                    if len(items) >= 3:
+                        break
+
+                shop_date = r.get("created_at", "").split("T")[0]
                 last_spend_rows.append({
                     "total": amount,
                     "merchant": merchant,
-                    "shop_date": r.get("created_at", "").split("T")[0],
+                    "shop_date": shop_date,
                     "location": location
                 })
+
+                # Store in shopping_history
+                try:
+                    shopping_history.store_receipt(
+                        from_number=from_number,
+                        merchant=merchant,
+                        amount=amount,
+                        shop_date=shop_date,
+                        location=location,
+                        address=address,
+                        postcode=location,  # location is postcode-only now
+                        category=_receipt_category(merchant),
+                        items=items if items else None,
+                        receipt_id=r.get("id", "")
+                    )
+                except Exception as hist_err:
+                    print(f"[week-full] shopping_history store error (last week): {hist_err}")
             else:
                 # Log receipts that failed to parse amount
                 print(f"[week-full] WARNING LAST WEEK: Failed to extract amount from {merchant} | Summary preview: {(r.get('summary') or '')[:80]}")
