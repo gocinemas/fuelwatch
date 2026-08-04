@@ -15173,9 +15173,70 @@ def api_home_brief():
         else:
             facts.append(f"⛽ Fuel: {price}p/L")
 
-    # === ADD NEARBY PLACES WITH TIME-AWARE CONTEXT ===
-    app.logger.info(f"[brief-places] unvisited={len(place_saves_unvisited)}, has_location={has_location}, loc_ctx={_loc_classification.get('context')}")
-    if place_saves_unvisited:
+    # === ADD NEARBY INTERESTING PLACES (discovery via Google Places API) ===
+    nearby_discovery = []
+    try:
+        # Determine search location: GPS if available, else home postcode
+        search_lat, search_lng = None, None
+        if has_location:
+            search_lat, search_lng = _req_lat, _req_lng
+        elif fuel_pc:
+            ll = postcode_to_latlon(fuel_pc)
+            if ll:
+                search_lat, search_lng = ll
+
+        if search_lat and search_lng:
+            # Based on time of day, search for relevant place types
+            search_types = []
+            if 7 <= hour < 10:
+                search_types = ["cafe", "restaurant", "bakery"]  # Breakfast
+            elif 10 <= hour < 12:
+                search_types = ["cafe", "restaurant"]  # Coffee/brunch
+            elif 12 <= hour < 14:
+                search_types = ["restaurant", "cafe"]  # Lunch
+            elif 14 <= hour < 17:
+                search_types = ["cafe", "dessert", "ice_cream_shop"]  # Afternoon break
+            elif 17 <= hour < 20:
+                search_types = ["restaurant", "bar", "pub"]  # Dinner/evening
+            elif 20 <= hour or hour < 7:
+                search_types = ["restaurant", "bar", "pub", "cafe"]  # Late options
+
+            # Fetch nearby places for each type
+            gm_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+            if gm_key and search_types:
+                for place_type in search_types[:2]:  # Limit to 2 types per brief
+                    try:
+                        r = requests.get(
+                            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                            params={
+                                "location": f"{search_lat},{search_lng}",
+                                "radius": 2000,  # 2km radius
+                                "type": place_type,
+                                "rankby": "prominence",
+                                "key": gm_key,
+                            },
+                            timeout=5,
+                        )
+                        if r.status_code == 200:
+                            results = r.json().get("results", [])
+                            # Filter by rating (4.5+) and get top result
+                            for place in results[:3]:
+                                if place.get("rating", 0) >= 4.3:
+                                    name = place.get("name", "").strip()
+                                    rating = place.get("rating", 0)
+                                    if name:
+                                        nearby_discovery.append(f"📍 {name} ({rating}★)")
+                                        break  # One per type
+                    except Exception:
+                        pass
+    except Exception as e:
+        app.logger.debug(f"[brief-places] Discovery API error: {e}")
+
+    # Add discovery places to facts
+    if nearby_discovery:
+        for place in nearby_discovery[:2]:
+            facts.append(place)
+    elif place_saves_unvisited:
         nearby = place_saves_unvisited[:2]
 
         # Time-based activity suggestions
