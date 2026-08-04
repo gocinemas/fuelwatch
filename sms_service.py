@@ -15212,10 +15212,8 @@ def api_home_brief():
             f"{_loc_preamble}"
             f"Write a sharp, practical 2-sentence morning brief for a UK commuter. "
             f"It's {dow} morning{_dep_note}. "
-            f"Reference: weather, next train(s), today's events, fuel price."
+            f"Use weather, trains, calendar, fuel, spend facts if provided."
         )
-        if facts:
-            prompt_parts.append(f"Facts: {'; '.join(facts)}.")
     elif time_mode == "evening_leisure":
         outdoor_note = ""
         if weather:
