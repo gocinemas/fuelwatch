@@ -235,29 +235,31 @@ class CompanyIntelligence:
             system_prompt = f"""You are a company intelligence expert.
 Answer questions about {company_name} based on public information you know.
 Be concise, factual, and direct. If you don't have specific data, say so.
-Focus on: business model, strategy, market position, growth, challenges, AI/tech focus."""
+Focus on: business model, strategy, market position, growth, challenges, AI/tech focus.
+
+Keep answers to 2-3 sentences max. Be direct."""
 
             message = client.messages.create(
                 model="claude-opus-5",
-                max_tokens=300,
+                max_tokens=200,
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": question}
                 ]
             )
 
-            # Extract text from response, handling ThinkingBlock
-            for block in message.content:
-                if hasattr(block, 'text'):
-                    return block.text
-                elif isinstance(block, dict) and 'text' in block:
-                    return block['text']
+            # Extract text from response content
+            if message.content and len(message.content) > 0:
+                # Get the last text block (skip any thinking blocks)
+                for block in reversed(message.content):
+                    if block.type == "text":
+                        return block.text
 
-            return "Unable to parse response"
+            return "No answer generated"
 
         except Exception as e:
-            logger.error(f"Claude API error: {e}")
-            return f"Unable to answer question: {str(e)}"
+            logger.error(f"Claude API error: {e}", exc_info=True)
+            return f"Error: {str(e)}"
 
 
 def get_company_intelligence(company_name: str) -> dict:
