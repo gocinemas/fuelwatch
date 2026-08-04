@@ -30129,7 +30129,7 @@ def api_home_week_summary():
 
         # === THIS WEEK ===
         this_week = {
-            "period": f"{week_start.strftime('%d/%m/%y')} — {week_end.strftime('%d/%m/%y')}",
+            "period": f"{week_start.strftime('%b %d')} — {week_end.strftime('%b %d')}",
             "spend": 0,
             "saves": 0,
             "activities": [],
