@@ -15173,6 +15173,14 @@ def api_home_brief():
         else:
             facts.append(f"⛽ Fuel: {price}p/L")
 
+    # === ADD NEARBY PLACES (daytime/evening only) ===
+    if time_mode in ("daytime", "evening_leisure") and place_saves_unvisited:
+        nearby = place_saves_unvisited[:2]
+        for place in nearby:
+            title = (place.get("title") or "").strip()
+            if title:
+                facts.append(f"📍 Nearby: {title}")
+
     # Build time-aware Groq prompt
     prompt_parts = []
 
