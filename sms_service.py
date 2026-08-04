@@ -11991,12 +11991,16 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
                 period_end = date(today.year, today.month + 1, 1).isoformat()
             period_label = today.strftime("%B %Y")
 
-        rows = lib._sb().table("wa_saves").select("summary,title,category,id") \
+        rows = lib._sb().table("wa_saves").select("summary,title,category,id,created_at") \
             .eq("from_number", from_number) \
             .gte("created_at", period_start) \
             .lt("created_at", period_end) \
             .ilike("title", "🧾%") \
             .execute().data or []
+
+        app.logger.info(f"[spend] {period_label}: Found {len(rows)} receipts between {period_start} and {period_end}")
+        for r in rows[:10]:
+            app.logger.info(f"  - {r.get('created_at')[:10]}: {r.get('title', 'unknown')[:40]}")
 
         # Deduplicate: same amount + same day = duplicate (keep first occurrence)
         # If amount is repeated on same day, it's the same transaction uploaded twice
