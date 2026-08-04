@@ -415,6 +415,16 @@
             </div>
         </div>
 
+        <!-- News Feed -->
+        <div id="newsSection" style="display: none; margin-top: 20px;">
+            <div style="background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 14px; font-weight: 600;">
+                    📰 Recent News
+                </div>
+                <div id="newsFeed" style="padding: 20px; display: flex; flex-direction: column; gap: 15px;"></div>
+            </div>
+        </div>
+
         <!-- Dig Deeper CTA -->
         <div class="cta-section" id="ctaSection" style="display: none;">
             <div class="cta-title">Want deeper insights?</div>
@@ -485,6 +495,26 @@
                     ).join('');
                 } else {
                     document.getElementById('basicBrands').innerHTML = '<span style="background: #e5e7eb; color: #6b7280; padding: 6px 12px; border-radius: 6px; font-size: 12px;">No brands data</span>';
+                }
+
+                // News Feed
+                const news = data.news || [];
+                if (news.length > 0) {
+                    document.getElementById('newsSection').style.display = 'block';
+                    const newsHTML = news.map(article => `
+                        <div style="padding: 12px; background: #f9fafb; border-radius: 8px; border-left: 3px solid #667eea;">
+                            <div style="font-size: 13px; font-weight: 700; color: #1c1917; line-height: 1.4; margin-bottom: 6px;">
+                                ${article.title}
+                            </div>
+                            <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px;">
+                                ${article.source} • ${article.published}
+                            </div>
+                            ${article.description ? `<div style="font-size: 12px; color: #4b5563; line-height: 1.4;">${article.description}</div>` : ''}
+                        </div>
+                    `).join('');
+                    document.getElementById('newsFeed').innerHTML = newsHTML;
+                } else {
+                    document.getElementById('newsSection').style.display = 'none';
                 }
 
                 document.getElementById('companyMeta').textContent = `${data.name} • Updated ${data.timestamp.split('T')[0]}`;
