@@ -15217,36 +15217,9 @@ def api_home_brief():
             if activity:
                 facts.append(f"🎯 {child + ': ' if child else ''}{activity}" + (f" at {time_str}" if time_str else ""))
 
-    # === ADD SAVINGS HIGHLIGHTS (if user saved articles/shows/music in last 3 days) ===
-    try:
-        from datetime import timedelta as _td
-        _today_iso = now.date().isoformat()
-        _recent_cutoff = (now.date() - _td(days=3)).isoformat()
-        _recent_saves = lib._sb().table("wa_saves").select("title,category,created_at") \
-            .eq("from_number", from_number) \
-            .gt("created_at", _recent_cutoff) \
-            .lt("created_at", _today_iso) \
-            .order("created_at", desc=True) \
-            .limit(10) \
-            .execute().data or []
-
-        # Group by category for variety
-        _saves_by_type = {}
-        for s in _recent_saves:
-            cat = (s.get("category") or "saved").lower()
-            if cat not in _saves_by_type:
-                _saves_by_type[cat] = []
-            _saves_by_type[cat].append(s.get("title", "Untitled"))
-
-        # Show one highlight from each category (if any)
-        _emoji_map = {"articles": "📰", "shows": "📺", "music": "🎵", "books": "📖", "places": "📍", "saved": "💾"}
-        for cat in ["shows", "articles", "music"]:
-            if cat in _saves_by_type and _saves_by_type[cat]:
-                _emoji = _emoji_map.get(cat, "💾")
-                _title = _saves_by_type[cat][0][:40]  # Truncate long titles
-                facts.append(f"{_emoji} Saved: {_title}")
-    except Exception as e:
-        app.logger.debug(f"[brief-savings] Could not fetch recent saves: {e}")
+    # NOTE: Savings highlights removed from facts — they were causing Groq to infer
+    # the user is actively doing things they only saved. Will be shown in dedicated
+    # saves_context section of prompt instead.
 
     # === ADD FUEL PRICE WITH LOCATION ===
     fuel = ctx.get("fuel", {})
@@ -15688,7 +15661,10 @@ def api_home_brief():
                 )
         if facts:
             app.logger.info(f"[brief] Facts for Groq ({time_mode}): {facts}")
-            prompt_parts.append(f"Facts: {'; '.join(facts)}.")
+            prompt_parts.append(
+                f"Facts (things happening NOW or soon): {'; '.join(facts)}. "
+                f"Do NOT assume the user is doing any of these activities — only reference them as relevant context."
+            )
         if _past_personal:
             _past_titles = "; ".join(pe.get("title","") for pe in _past_personal[:2] if pe.get("title"))
             if _past_titles:
