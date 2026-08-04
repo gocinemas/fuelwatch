@@ -9625,6 +9625,10 @@ def api_home_last_receipt():
             title = wa_row.get("title", "") or ""
             summary = wa_row.get("summary", "") or ""
 
+            # STRICT: Must have 🧾 receipt emoji AND £ total to be a real receipt
+            if not title.startswith("🧾"):
+                continue  # Not a receipt clipping
+
             # SIMPLE: If there's a £ total, it's a receipt. Use the title as merchant.
             m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
             if not m_total:
