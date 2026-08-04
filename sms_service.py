@@ -15273,10 +15273,16 @@ def api_home_brief():
         search_lat, search_lng = None, None
         if has_location:
             search_lat, search_lng = _req_lat, _req_lng
+            app.logger.info(f"[brief-places] Using GPS location: {search_lat}, {search_lng}")
         elif fuel_pc:
             ll = postcode_to_latlon(fuel_pc)
             if ll:
                 search_lat, search_lng = ll
+                app.logger.info(f"[brief-places] Using postcode {fuel_pc} → {search_lat}, {search_lng}")
+            else:
+                app.logger.info(f"[brief-places] Postcode {fuel_pc} could not be converted to lat/lon")
+        else:
+            app.logger.info(f"[brief-places] No location available (has_location={has_location}, fuel_pc={fuel_pc})")
 
         if search_lat and search_lng:
             # Based on time of day, search for relevant place types
@@ -15362,8 +15368,11 @@ def api_home_brief():
 
     # Add discovery places to facts
     if nearby_discovery:
+        app.logger.info(f"[brief-places] Found {len(nearby_discovery)} places: {nearby_discovery}")
         for place in nearby_discovery[:2]:
             facts.append(place)
+    else:
+        app.logger.info(f"[brief-places] No places found for brief")
     elif place_saves_unvisited:
         nearby = place_saves_unvisited[:2]
 
