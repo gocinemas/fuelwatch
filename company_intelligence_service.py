@@ -189,7 +189,7 @@ Be concise, factual, and direct. If you don't have specific data, say so.
 Focus on: business model, strategy, market position, growth, challenges, AI/tech focus."""
 
             message = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-opus-5",
                 max_tokens=300,
                 system=system_prompt,
                 messages=[
