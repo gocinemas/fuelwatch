@@ -30435,20 +30435,14 @@ def api_home_week_full():
                         pass
 
             if amount > 0:
-                # Extract location (postcode or area name) from summary
+                # Extract location — use POSTCODE ONLY (most reliable, avoids duplicates)
                 location = ""
                 summary_str = (r.get("summary") or "") + " " + (r.get("title") or "")
                 # Look for UK postcode (e.g., "GU25 4QG", "SW1A 1AA")
                 pc_match = re.search(r'\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b', summary_str, re.IGNORECASE)
                 if pc_match:
                     location = pc_match.group(1).upper()
-                else:
-                    # Fall back to area names (common UK towns)
-                    area_keywords = ["Virginia Water", "Weybridge", "Ascot", "Sunningdale", "Windsor", "Slough", "London", "Surrey", "Kent", "Sussex", "Berkshire", "Hampshire", "Wembley"]
-                    for area in area_keywords:
-                        if area.lower() in summary_str.lower():
-                            location = area
-                            break
+                # Note: Skip area name fallback to avoid duplicate entries (Costa · Virginia Water vs Costa · GU25 4AA)
 
                 spend_rows.append({
                     "total": amount,
@@ -30669,20 +30663,14 @@ def api_home_week_full():
                         pass
 
             if amount > 0:
-                # Extract location (postcode or area name) from summary
+                # Extract location — use POSTCODE ONLY (most reliable, avoids duplicates)
                 location = ""
                 summary_str = (r.get("summary") or "") + " " + (r.get("title") or "")
                 # Look for UK postcode (e.g., "GU25 4QG", "SW1A 1AA")
                 pc_match = re.search(r'\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b', summary_str, re.IGNORECASE)
                 if pc_match:
                     location = pc_match.group(1).upper()
-                else:
-                    # Fall back to area names (common UK towns)
-                    area_keywords = ["Virginia Water", "Weybridge", "Ascot", "Sunningdale", "Windsor", "Slough", "London", "Surrey", "Kent", "Sussex", "Berkshire", "Hampshire", "Wembley"]
-                    for area in area_keywords:
-                        if area.lower() in summary_str.lower():
-                            location = area
-                            break
+                # Note: Skip area name fallback to avoid duplicate entries (Costa · Virginia Water vs Costa · GU25 4AA)
 
                 last_spend_rows.append({
                     "total": amount,
