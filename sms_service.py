@@ -12479,9 +12479,21 @@ def _v2_fetch_recent_capture(from_number: str) -> dict:
 def _v2_fetch_personal_events(from_number: str) -> list:
     """Read user-added personal events from ma_details."""
     try:
+        from datetime import date
+        today = date.today().isoformat()
+
         rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number) \
             .eq("type", "personal_events").limit(1).execute().data or []
-        evs = rows[0]["data"] if rows else []
+        manual_events = rows[0]["data"] if rows else []
+
+        # DEFENSIVE: Filter out past events from manual list
+        evs = []
+        for ev in manual_events:
+            event_date = ev.get("date", "")
+            if event_date and event_date < today:
+                app.logger.warning(f"[personal-events] Filtering manual event: {event_date} < {today} ({ev.get('title')})")
+                continue
+            evs.append(ev)
 
         # Also fetch WhatsApp-extracted events from personal_events table
         try:
