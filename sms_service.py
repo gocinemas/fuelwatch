@@ -15195,7 +15195,8 @@ def api_home_brief():
             activity_hint = "late-night options"
 
         # New location detection: if user has GPS data and it's not home/work
-        is_new_place = has_location and _loc_ctx_label not in ("home", "work", "school_run")
+        # Safe access: _loc_ctx_label may not be defined on cache-hit paths
+        is_new_place = has_location and _loc_classification.get("context", "unknown") not in ("home", "work", "school_run")
 
         for place in nearby:
             title = (place.get("title") or "").strip()
