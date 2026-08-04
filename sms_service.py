@@ -9613,9 +9613,13 @@ def api_home_last_receipt():
         r = None
 
         # PRIMARY: wa_saves — user-curated clippings with manual corrections
+        # Fetch all receipts and sort by actual shop_date (not save date)
         rows_wa = lib._sb().table("wa_saves").select(
             "id,title,summary,created_at,category"
-        ).eq("from_number", from_number).order("created_at", desc=True).limit(50).execute().data or []
+        ).eq("from_number", from_number).limit(100).execute().data or []
+
+        # Parse receipts and extract actual shop_date for sorting
+        receipts_with_dates = []
 
         for wa_row in rows_wa:
             title = wa_row.get("title", "") or ""
@@ -9668,7 +9672,7 @@ def api_home_last_receipt():
                         if len(items) >= 5:
                             break
 
-            r = {
+            receipt = {
                 "id": wa_row.get("id"),
                 "merchant": merchant,
                 "total": total,
@@ -9676,7 +9680,12 @@ def api_home_last_receipt():
                 "items": items[:3],  # Limit to first 3 items
                 "category": wa_row.get("category", "Other"),
             }
-            break
+            receipts_with_dates.append(receipt)
+
+        # Sort by actual shop_date (most recent first)
+        if receipts_with_dates:
+            receipts_with_dates.sort(key=lambda x: x.get("shop_date", ""), reverse=True)
+            r = receipts_with_dates[0]
 
         # FALLBACK: receipts table if wa_saves has nothing
         if not r:
