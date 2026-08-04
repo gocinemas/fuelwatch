@@ -1368,35 +1368,54 @@ def brand_expansion_page():
 
 
 @app.route("/intelligence/<company_name>")
-def company_intelligence_card(company_name):
-    """Real-time company signals card (for deal-makers)."""
-    from intelligence_signals import get_company_signals
+def company_intelligence_tabbed(company_name):
+    """Two-tab intelligence interface (Signal + Deep Dive)."""
+    from intelligence_5signals import get_5_signals
+    from intelligence_tabbed_service import TabbedIntelligenceService
+    from flask import request
 
     try:
-        # Map company names to tickers
-        ticker_map = {
-            "reckitt": "RKT.L",
-            "henkel": "HEN3.DE",
-            "unilever": "UL.L",
-            "sc johnson": "SCJW",
-        }
+        # Get competitor from query params (default: Henkel for Reckitt, etc.)
+        competitor = request.args.get("vs")
 
-        ticker = ticker_map.get(company_name.lower())
+        available_competitors = TabbedIntelligenceService.get_available_competitors(company_name)
 
-        # Fetch signals
-        signals = get_company_signals(company_name, ticker)
+        # Default competitor if not specified
+        if not competitor or competitor.lower() not in [c.lower() for c in available_competitors]:
+            competitor = available_competitors[0] if available_competitors else "Unknown"
 
-        # Render card
+        # Fetch 5 signals for both companies
+        company_signals = get_5_signals(company_name)
+        competitor_signals = get_5_signals(competitor)
+
+        # Aggregate data for both tabs
+        tabbed_data = TabbedIntelligenceService.aggregate_for_both_tabs(
+            company_name, competitor, company_signals, competitor_signals
+        )
+
+        if "error" in tabbed_data:
+            return render_template(
+                "error.html",
+                message=f"Error loading intelligence for {company_name}"
+            ), 500
+
+        # Render tabbed interface
         return render_template(
-            "intelligence_card.html",
-            company=company_name,
-            signals=signals,
-            timestamp=datetime.now().isoformat()
+            "intelligence_tabbed.html",
+            company=tabbed_data["company"],
+            competitor=tabbed_data["competitor"],
+            signals=tabbed_data["signals"],
+            intelligence=tabbed_data["intelligence"],
+            available_competitors=tabbed_data["available_competitors"],
+            timestamp=tabbed_data["timestamp"]
         )
 
     except Exception as e:
-        app.logger.error(f"[intelligence_card] Error: {e}")
-        return render_template("error.html", message=f"Error loading intelligence for {company_name}"), 500
+        app.logger.error(f"[intelligence_tabbed] Error: {e}")
+        return render_template(
+            "error.html",
+            message=f"Error loading intelligence for {company_name}"
+        ), 500
 
 
 @app.route("/api/intelligence/<company_name>")
@@ -12913,12 +12932,9 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 uc_rows = sb_uc.table("user_commutes").select("id,label,dest,time_start,time_end,days_of_week") \
                     .eq("phone", _fn_wa).eq("show_on_homepage", True).execute().data or []
 
-            print(f"🎯 COMMUTE DEBUG: phone={_fn_plain}, dow={current_dow}, time={current_time}, found={len(uc_rows)} commutes", flush=True)
             for uc in uc_rows:
-                print(f"  - {uc.get('label')}: {uc.get('dest')} | days={uc.get('days_of_week')} | time={uc.get('time_start')}-{uc.get('time_end')}", flush=True)
                 days = uc.get("days_of_week") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
                 if current_dow not in days:
-                    print(f"    ✗ Day mismatch: {current_dow} not in {days}", flush=True)
                     continue
                 time_start = uc.get("time_start", "00:00")
                 time_end = uc.get("time_end", "23:59")
@@ -12941,12 +12957,8 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                 is_upcoming = now < start <= cutoff
 
                 if is_active_now or is_upcoming:
-                    print(f"    ✓ Match! (active_now={is_active_now}, upcoming={is_upcoming})", flush=True)
                     active_commutes.append(uc)
-                else:
-                    print(f"    ✗ Time mismatch: {current_time} not in {time_start}-{time_end} (and not in next 2h)", flush=True)
-        except Exception as e:
-            print(f"🎯 COMMUTE ERROR: {e}", flush=True)
+        except Exception:
             pass  # Silently fail and fall back to school_profiles
 
     # Fetch traffic for active user commutes
@@ -12954,10 +12966,8 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
         label = (uc.get("label") or "").strip()
         dest = (uc.get("dest") or "").strip()
         if not dest:
-            print(f"    ✗ No destination for {label}", flush=True)
             continue
         try:
-            print(f"    📍 Fetching traffic: {label} → {dest}", flush=True)
             r = requests.get(
                 "https://maps.googleapis.com/maps/api/directions/json",
                 params={
@@ -12990,14 +13000,13 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: di
                         "traffic":     traffic,
                         "emoji":       emoji,
                     })
-                    print(f"    ✓ Added: {dur_live // 60}min, {traffic} traffic", flush=True)
                     seen.add(label or dest)
-                except (KeyError, IndexError, TypeError) as parse_err:
-                    print(f"    ✗ Parse error: {parse_err}, response keys: {list(d.keys())}", flush=True)
+                except (KeyError, IndexError, TypeError):
+                    pass
             else:
-                print(f"    ✗ API error: {d.get('status')} - {d.get('error_message', d)}", flush=True)
-        except Exception as e:
-            print(f"    ✗ TRAFFIC ERROR for {label}: {e}", flush=True)
+                pass
+        except Exception:
+            pass
 
     # Then: school runs — only if no active user commutes configured
     for p in school_profiles[:3]:
@@ -14431,22 +14440,7 @@ def api_home_brief():
     # Bin day — cheap compute from prefs, no network call needed
     ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)
 
-    # Traffic — user's active commutes (show_on_homepage=true) + school/work anchors
-    # OPTIMIZATION: Only fetch during commute hours (6am-10am) on weekdays
-    # Skip entirely on weekends/evenings to save Google Directions API calls (99% reduction)
-    _is_commute_time = (6 <= now.hour <= 10) and (now.weekday() < 5)  # Weekdays 6-10am
-
-    _tr_pc      = postcode or prefs.get("fuel_postcode", "")
-    _tr_schl    = (ctx.get("school") or {}).get("schools") or []
-    _tr_work    = _loc_profile.get("work") or {}  # Work anchor from My Area location profile
-    _tr_school  = _loc_profile.get("school_run") or {}  # School run anchor from My Area location profile
-
-    # Fetch traffic only during commute hours (saves 99% of Directions API calls)
-    if _is_commute_time and _tr_pc:
-        try:
-            ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl, _tr_work, _tr_school, from_number)
-        except Exception:
-            pass
+    # Traffic fetch removed — Google Maps API has referer restrictions that prevent backend calls
 
     # WhatsApp thread signals — suppress irrelevant brief facts based on recent conversation
     _wa_thread = ctx.get("thread", [])

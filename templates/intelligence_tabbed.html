@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ company }} vs {{ competitor }} - Intelligence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0a0a0a;
+                color: #e0e0e0;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .header {
+                background: #1a1a1a;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        .header-title {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header-subtitle {
+            font-size: 0.95em;
+            opacity: 0.7;
+            margin-bottom: 20px;
+        }
+
+        .competitor-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .competitor-selector {
+                border-top-color: #333;
+            }
+        }
+
+        .competitor-selector label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .competitor-selector select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .competitor-selector select {
+                background: #2a2a2a;
+                border-color: #444;
+                color: #e0e0e0;
+            }
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            background: white;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tabs {
+                background: #1a1a1a;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 16px 20px;
+            border: none;
+            background: transparent;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tab-button {
+                color: #aaa;
+            }
+        }
+
+        .tab-button:hover {
+            color: #1a1a1a;
+            background: #f9f9f9;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tab-button:hover {
+                color: #e0e0e0;
+                background: #222;
+            }
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        /* Tab content */
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tab-content {
+                background: #1a1a1a;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* TAB 1: SIGNAL - Quick Decision */
+        .signal-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .signal-comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .signal-company {
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .signal-company {
+                background: #2a2a2a;
+                border-left-color: #764ba2;
+            }
+        }
+
+        .signal-company-name {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #1a1a1a;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .signal-company-name {
+                color: #e0e0e0;
+            }
+        }
+
+        .signal-row {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .signal-row {
+                border-bottom-color: #444;
+            }
+        }
+
+        .signal-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .signal-label {
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #666;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .signal-label {
+                color: #aaa;
+            }
+        }
+
+        .signal-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .direction-indicator {
+            font-size: 1.2em;
+        }
+
+        .direction-up { color: #28a745; }
+        .direction-down { color: #dc3545; }
+        .direction-flat { color: #ffc107; }
+
+        .risk-high { color: #dc3545; font-weight: 700; }
+        .risk-medium { color: #ffc107; font-weight: 700; }
+        .risk-low { color: #28a745; font-weight: 700; }
+
+        /* TAB 2: INTELLIGENCE - Deep Dive */
+        .intelligence-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 1024px) {
+            .intelligence-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .intelligence-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .intelligence-section {
+                background: #2a2a2a;
+                border-left-color: #764ba2;
+            }
+        }
+
+        .section-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* News Section */
+        .news-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .news-item {
+                border-bottom-color: #444;
+            }
+        }
+
+        .news-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .news-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+
+        .news-meta {
+            font-size: 0.85em;
+            opacity: 0.6;
+        }
+
+        /* Sentiment Section */
+        .sentiment-metric {
+            margin-bottom: 15px;
+        }
+
+        .sentiment-metric-label {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+
+        .sentiment-bar {
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .sentiment-bar {
+                background: #444;
+            }
+        }
+
+        .sentiment-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #667eea);
+            border-radius: 4px;
+        }
+
+        .sentiment-score {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        /* Hiring Section */
+        .hiring-stat {
+            margin-bottom: 12px;
+        }
+
+        .hiring-stat-label {
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+
+        .hiring-stat-value {
+            font-size: 1.2em;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        /* Leadership Section */
+        .executive {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .executive {
+                border-bottom-color: #444;
+            }
+        }
+
+        .executive:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .executive-name {
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .executive-title {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        /* Competitive Section */
+        .competitive-metric {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .competitive-metric {
+                border-bottom-color: #444;
+            }
+        }
+
+        .competitive-metric:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .metric-name {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .metric-comparison {
+            display: flex;
+            gap: 15px;
+            justify-content: space-between;
+        }
+
+        .metric-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .metric-item-value {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .metric-item-value {
+                color: #a0a0ff;
+            }
+        }
+
+        .metric-item-label {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.85em;
+            opacity: 0.6;
+            margin-top: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            opacity: 0.6;
+        }
+
+        .timestamp {
+            font-size: 0.8em;
+            opacity: 0.5;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-title">{{ company }} vs {{ competitor }}</div>
+            <div class="header-subtitle">Real-time company intelligence for deal-makers</div>
+
+            <div class="competitor-selector">
+                <label for="competitor-select">Compare with:</label>
+                <select id="competitor-select" onchange="changeCompetitor()">
+                    {% for comp in available_competitors %}
+                    <option value="{{ comp }}" {% if comp == competitor %}selected{% endif %}>{{ comp }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab(0)">⚡ SIGNAL</button>
+            <button class="tab-button" onclick="switchTab(1)">📊 INTELLIGENCE</button>
+        </div>
+
+        <!-- TAB 1: SIGNAL -->
+        <div class="tab-content active">
+            <div class="signal-comparison">
+                <!-- Left: Main Company -->
+                <div class="signal-company">
+                    <div class="signal-company-name">{{ company }}</div>
+
+                    <!-- Market Signal -->
+                    <div class="signal-row">
+                        <div class="signal-label">Market</div>
+                        <div class="signal-value">
+                            <span class="direction-indicator">
+                                {% if signals[company].market_direction == 'up' %}↑{% elif signals[company].market_direction == 'down' %}↓{% else %}→{% endif %}
+                            </span>
+                            <span class="direction-{{ signals[company].market_direction }}">
+                                {{ signals[company].market_direction|upper }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Risk Signal -->
+                    <div class="signal-row">
+                        <div class="signal-label">Risk</div>
+                        <div class="signal-value">
+                            <span class="risk-{{ signals[company].risk_level }}">
+                                {{ signals[company].risk_level|upper }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Watch Signal -->
+                    <div class="signal-row">
+                        <div class="signal-label">Watch</div>
+                        <div class="signal-value">
+                            {{ signals[company].watch_item or "—" }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Competitor -->
+                <div class="signal-company">
+                    <div class="signal-company-name">{{ competitor }}</div>
+
+                    <!-- Market Signal -->
+                    <div class="signal-row">
+                        <div class="signal-label">Market</div>
+                        <div class="signal-value">
+                            <span class="direction-indicator">
+                                {% if signals[competitor].market_direction == 'up' %}↑{% elif signals[competitor].market_direction == 'down' %}↓{% else %}→{% endif %}
+                            </span>
+                            <span class="direction-{{ signals[competitor].market_direction }}">
+                                {{ signals[competitor].market_direction|upper }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Risk Signal -->
+                    <div class="signal-row">
+                        <div class="signal-label">Risk</div>
+                        <div class="signal-value">
+                            <span class="risk-{{ signals[competitor].risk_level }}">
+                                {{ signals[competitor].risk_level|upper }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Watch Signal -->
+                    <div class="signal-row">
+                        <div class="signal-label">Watch</div>
+                        <div class="signal-value">
+                            {{ signals[competitor].watch_item or "—" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: INTELLIGENCE -->
+        <div class="tab-content">
+            <div class="intelligence-grid">
+                <!-- Company Intelligence -->
+                <div>
+                    <h2 style="margin-bottom: 20px; font-size: 1.1em;">{{ company }}</h2>
+
+                    <!-- Recent News -->
+                    <div class="intelligence-section">
+                        <div class="section-title">📰 Recent News</div>
+                        {% if intelligence[company].recent_news %}
+                            {% for article in intelligence[company].recent_news[:5] %}
+                            <div class="news-item">
+                                <div class="news-title">{{ article.title }}</div>
+                                <div class="news-meta">{{ article.published[:10] }}</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">No recent news</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Market Sentiment -->
+                    <div class="intelligence-section" style="margin-top: 20px;">
+                        <div class="section-title">💬 Market Sentiment</div>
+                        {% if intelligence[company].sentiment %}
+                            <div class="sentiment-metric">
+                                <div class="sentiment-metric-label">Trustpilot</div>
+                                <div class="sentiment-bar">
+                                    <div class="sentiment-bar-fill" style="width: {{ intelligence[company].sentiment.trustpilot_score or 50 }}%"></div>
+                                </div>
+                                <div class="sentiment-score">{{ intelligence[company].sentiment.trustpilot_score or 50 }}/100</div>
+                            </div>
+                            <div class="sentiment-metric">
+                                <div class="sentiment-metric-label">Hacker News</div>
+                                <div class="sentiment-bar">
+                                    <div class="sentiment-bar-fill" style="width: {{ intelligence[company].sentiment.hacker_news_score or 50 }}%"></div>
+                                </div>
+                                <div class="sentiment-score">{{ intelligence[company].sentiment.hacker_news_score or 50 }}/100</div>
+                            </div>
+                        {% else %}
+                            <div class="empty-state">Sentiment data unavailable</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Hiring -->
+                    <div class="intelligence-section" style="margin-top: 20px;">
+                        <div class="section-title">👥 Hiring</div>
+                        {% if intelligence[company].hiring %}
+                            <div class="hiring-stat">
+                                <div class="hiring-stat-label">Open Roles</div>
+                                <div class="hiring-stat-value">{{ intelligence[company].hiring.total_roles or "—" }}</div>
+                            </div>
+                            <div class="hiring-stat">
+                                <div class="hiring-stat-label">Growth</div>
+                                <div class="hiring-stat-value">{{ intelligence[company].hiring.growth_pct or "—" }}</div>
+                            </div>
+                            {% if intelligence[company].hiring.top_regions %}
+                            <div class="hiring-stat" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                                <div class="hiring-stat-label">Top Regions</div>
+                                <div style="font-size: 0.9em; margin-top: 4px;">{{ intelligence[company].hiring.top_regions }}</div>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="empty-state">Hiring data unavailable</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Leadership -->
+                    <div class="intelligence-section" style="margin-top: 20px;">
+                        <div class="section-title">👔 Leadership</div>
+                        {% if intelligence[company].leadership %}
+                            {% for exec in intelligence[company].leadership[:5] %}
+                            <div class="executive">
+                                <div class="executive-name">{{ exec.name }}</div>
+                                <div class="executive-title">{{ exec.title }}</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">Leadership data unavailable</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Competitor Intelligence -->
+                <div>
+                    <h2 style="margin-bottom: 20px; font-size: 1.1em;">{{ competitor }}</h2>
+
+                    <!-- Recent News -->
+                    <div class="intelligence-section">
+                        <div class="section-title">📰 Recent News</div>
+                        {% if intelligence[competitor].recent_news %}
+                            {% for article in intelligence[competitor].recent_news[:5] %}
+                            <div class="news-item">
+                                <div class="news-title">{{ article.title }}</div>
+                                <div class="news-meta">{{ article.published[:10] }}</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">No recent news</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Market Sentiment -->
+                    <div class="intelligence-section" style="margin-top: 20px;">
+                        <div class="section-title">💬 Market Sentiment</div>
+                        {% if intelligence[competitor].sentiment %}
+                            <div class="sentiment-metric">
+                                <div class="sentiment-metric-label">Trustpilot</div>
+                                <div class="sentiment-bar">
+                                    <div class="sentiment-bar-fill" style="width: {{ intelligence[competitor].sentiment.trustpilot_score or 50 }}%"></div>
+                                </div>
+                                <div class="sentiment-score">{{ intelligence[competitor].sentiment.trustpilot_score or 50 }}/100</div>
+                            </div>
+                            <div class="sentiment-metric">
+                                <div class="sentiment-metric-label">Hacker News</div>
+                                <div class="sentiment-bar">
+                                    <div class="sentiment-bar-fill" style="width: {{ intelligence[competitor].sentiment.hacker_news_score or 50 }}%"></div>
+                                </div>
+                                <div class="sentiment-score">{{ intelligence[competitor].sentiment.hacker_news_score or 50 }}/100</div>
+                            </div>
+                        {% else %}
+                            <div class="empty-state">Sentiment data unavailable</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Hiring -->
+                    <div class="intelligence-section" style="margin-top: 20px;">
+                        <div class="section-title">👥 Hiring</div>
+                        {% if intelligence[competitor].hiring %}
+                            <div class="hiring-stat">
+                                <div class="hiring-stat-label">Open Roles</div>
+                                <div class="hiring-stat-value">{{ intelligence[competitor].hiring.total_roles or "—" }}</div>
+                            </div>
+                            <div class="hiring-stat">
+                                <div class="hiring-stat-label">Growth</div>
+                                <div class="hiring-stat-value">{{ intelligence[competitor].hiring.growth_pct or "—" }}</div>
+                            </div>
+                            {% if intelligence[competitor].hiring.top_regions %}
+                            <div class="hiring-stat" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                                <div class="hiring-stat-label">Top Regions</div>
+                                <div style="font-size: 0.9em; margin-top: 4px;">{{ intelligence[competitor].hiring.top_regions }}</div>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="empty-state">Hiring data unavailable</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Leadership -->
+                    <div class="intelligence-section" style="margin-top: 20px;">
+                        <div class="section-title">👔 Leadership</div>
+                        {% if intelligence[competitor].leadership %}
+                            {% for exec in intelligence[competitor].leadership[:5] %}
+                            <div class="executive">
+                                <div class="executive-name">{{ exec.name }}</div>
+                                <div class="executive-title">{{ exec.title }}</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">Leadership data unavailable</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            Updated {{ timestamp[:10] }} • Intel for deal-makers
+        </div>
+    </div>
+
+    <script>
+        function switchTab(index) {
+            const tabs = document.querySelectorAll('.tab-button');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+
+            tabs[index].classList.add('active');
+            contents[index].classList.add('active');
+        }
+
+        function changeCompetitor() {
+            const competitor = document.getElementById('competitor-select').value;
+            const company = '{{ company }}';
+            window.location.href = `/intelligence/${company}?vs=${competitor}`;
+        }
+    </script>
+</body>
+</html>
