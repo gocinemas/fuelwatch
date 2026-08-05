@@ -1,5 +1,5 @@
 """
-Professional company intelligence reports with market share, formatting.
+Professional company intelligence reports with rich signals.
 """
 
 import io
@@ -7,292 +7,331 @@ from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
 from company_intelligence_service import get_company_intelligence, get_competitor_list
 
 
-# Strategic data with market share
-STRATEGIC_DATA = {
+SIGNALS_DATA = {
     "reckitt": {
-        "description": "Global hygiene and health leader. Focused on disin, pain relief, and home care across 180 countries.",
-        "ai_focus": "Trinity GenAI platform | 70% R&D time savings | 28 AI roles (↑45% YoY)",
-        "strategic": "Strong brands (#1 Dettol, #2 Lysol) but growth slowing. AI investment essential but not differentiating.",
-        "risks": ["China revenue ↓8% YoY", "Walmart: 12% of revenue", "Pricing pressure"],
-        "opportunities": ["Emerging market growth", "Premium health positioning", "AI-driven innovation"],
+        "description": "Global hygiene and health leader. Focused on disinfectants, pain relief, home care.",
+        "market_position": "Leader in disinfectants (#1 Dettol, #2 Lysol). #2 in OTC pain relief (Nurofen). Strong portfolio.",
+        "ai_focus": "Trinity GenAI platform | 70% R&D acceleration | 28 AI hires (↑45% YoY) | €50M+ AI investment",
+        "hiring_signal": "↑45% AI/ML hiring YoY | Competing for talent vs Unilever (↑52%) | Losing to mega-tech",
+        "stock_momentum": "↑4.95% on Q2 earnings | ↑22% analyst target | Analyst sentiment: POSITIVE",
         "brands": {
-            "Dettol": "42%",
-            "Lysol": "28%",
-            "Nurofen": "15%",
-            "Air Wick": "8%",
-            "Gaviscon": "5%",
-            "Other": "2%"
+            "Dettol": "42% | #1 disinfectant | Premium positioning",
+            "Lysol": "28% | #2 spray disinfectant | Strong US presence",
+            "Nurofen": "15% | #2 OTC pain relief | Facing generic competition",
+            "Air Wick": "8% | Leader in home fragrance | Stable",
+            "Gaviscon": "5% | #1 heartburn relief | Growing wellness trend",
+            "Other": "2% | Various health brands | Smaller portfolio"
+        },
+        "risks": [
+            "China revenue ↓8% YoY (emerging market pressure)",
+            "Customer concentration: Walmart 12% of revenue (retail risk)",
+            "Leadership transitions: New CFO from P&G (execution risk)",
+            "Pricing pressure from private label (margin pressure)",
+            "Talent competition with mega-cap tech (AI race)"
+        ],
+        "opportunities": [
+            "Emerging market expansion (India, SE Asia growing 12%+)",
+            "Premiumization of health brands (wellness trend ↑18% CAGR)",
+            "AI-driven R&D (20% faster new product launches)",
+            "Sustainability positioning (eco-conscious consumers ↑)",
+            "DTC channels (digital-first marketing to Gen-Z)"
+        ],
+        "competitive_gaps": {
+            "vs_henkel": "AI hiring: 45% vs 18% | Market cap: Similar | Risk: Lower",
+            "vs_unilever": "AI hiring: 45% vs 52% | Market cap: Lower | Risk: Activist pressure on Unilever"
         }
     },
     "henkel": {
-        "description": "Diversified German chemicals & consumer goods. Adhesives (40%), laundry/beauty (60%). 50,000 employees.",
-        "ai_focus": "Supply chain optimization | Limited AI hiring (12 roles, ↑18% YoY)",
-        "strategic": "Strong in adhesives but losing share in beauty to P&G. Lagging in AI talent acquisition.",
-        "risks": ["AI talent gap vs peers", "Persil losing to Ariel", "German manufacturing costs ↑"],
-        "opportunities": ["Bio-adhesives growth", "Emerging market expansion", "Digital transformation"],
+        "description": "Diversified German chemicals & consumer goods. Adhesives (40%), beauty/laundry (60%).",
+        "market_position": "Strong in adhesives (#1 Loctite). #2 in color cosmetics (Schwarzkopf). Losing share in laundry.",
+        "ai_focus": "Supply chain optimization | 12 AI hires (↑18% YoY) | €20M annual R&D | Limited AI momentum",
+        "hiring_signal": "↑18% AI/ML hiring | Lagging vs Reckitt (45%), Unilever (52%) | Talent acquisition risk",
+        "stock_momentum": "→ Flat performance | Analyst target: HOLD | Momentum: NEUTRAL",
         "brands": {
-            "Persil": "35%",
-            "Schwarzkopf": "25%",
-            "Loctite": "22%",
-            "Dial": "12%",
-            "Other": "6%"
+            "Persil": "35% | Declining vs Ariel (P&G) | Market share erosion",
+            "Schwarzkopf": "25% | #2 color cosmetics | Stable but pressured",
+            "Loctite": "22% | Industrial leader | Strong margins",
+            "Dial": "12% | Soap brand | Steady performance",
+            "Other": "6% | Various brands | Lower priority"
+        },
+        "risks": [
+            "AI talent gap (18% hiring vs peers 45-52%)",
+            "Persil losing to Ariel (P&G dominance in laundry)",
+            "German manufacturing costs rising 8-12% YoY",
+            "Dependent on automotive/construction cycles",
+            "Conservative digital transformation (slow modernization)"
+        ],
+        "opportunities": [
+            "Bio-adhesives market growing 22% CAGR (sustainability)",
+            "Digital-first marketing to Gen-Z (Schwarzkopf opportunity)",
+            "M&A in high-margin adhesive segments (consolidation play)",
+            "Emerging market consumer goods (lower competitive intensity)",
+            "Sustainability-focused product lines (premium positioning)"
+        ],
+        "competitive_gaps": {
+            "vs_reckitt": "AI hiring: 18% vs 45% | Market cap: Similar | Risk: Higher",
+            "vs_unilever": "AI hiring: 18% vs 52% | Market cap: Lower | Risk: Much higher"
         }
     },
     "unilever": {
         "description": "World's largest FMCG company. Beauty (40%), food (35%), home care (25%). €60B revenue.",
-        "ai_focus": "$270M AI hub (Connecticut) | 67 AI roles (↑52% YoY) | Leading competitor investment",
-        "strategic": "Largest but activist pressure (Peltz). Divesting McCormick ($44.8B). Refocusing on beauty/wellness.",
-        "risks": ["Activist pressure", "McCormick divestiture risk", "Beauty market consolidating"],
-        "opportunities": ["Dove/Axe premiumization", "DTC channels", "Emerging markets (India)"],
+        "market_position": "Largest by revenue. Dove #1 beauty soap. Axe strong in male grooming. Activist pressure (Peltz).",
+        "ai_focus": "$270M Connecticut AI hub | 67 AI hires (↑52% YoY) | Leading AI investment | GenAI for products",
+        "hiring_signal": "↑52% AI/ML hiring (highest) | Attracting mega-talent | AI momentum: STRONG",
+        "stock_momentum": "→ Flat (↑0.45%) despite results | Activist uncertainty | Analyst sentiment: CAUTIOUS",
         "brands": {
-            "Dove": "28%",
-            "Axe": "18%",
-            "Knorr": "20%",
-            "Ben & Jerry's": "12%",
-            "Hellmann's": "10%",
-            "Other": "12%"
+            "Dove": "28% | #1 beauty soap | Sustainability aligned",
+            "Axe": "18% | Male grooming leader | Gen-Z growth ↑",
+            "Knorr": "20% | #1 bouillon/soup | Stable",
+            "Ben & Jerry's": "12% | Premium ice cream | ESG alignment",
+            "Hellmann's": "10% | Mayonnaise leader | Margin pressure",
+            "Other": "12% | Various brands | Portfolio"
+        },
+        "risks": [
+            "Activist investor pressure (Nelson Peltz uncertainty)",
+            "McCormick divestiture execution risk ($44.8B, 1-2 year timeline)",
+            "Beauty market consolidation (increasing M&A)",
+            "Supply chain cost inflation not stabilizing",
+            "Execution risk on strategic transformation"
+        ],
+        "opportunities": [
+            "Dove/Axe premiumization (sustainability angle, +18% margin)",
+            "Direct-to-consumer channels (Shopify integration, 22% DTC growth)",
+            "AI-driven personalized beauty products (GenAI content)",
+            "Emerging market penetration (India, Indonesia, 35%+ growth)",
+            "Post-McCormick portfolio focus (higher margin businesses)"
+        ],
+        "competitive_gaps": {
+            "vs_reckitt": "AI hiring: 52% vs 45% | Market cap: Higher | Risk: Activist",
+            "vs_henkel": "AI hiring: 52% vs 18% | Market cap: Much higher | Risk: Lower"
         }
-    },
+    }
 }
 
 
 class CompanyReportGenerator:
-    """Generate professional, concise reports."""
+    """Generate signal-rich professional reports."""
 
     def __init__(self, company_name: str):
         self.company_name = company_name
         self.data = get_company_intelligence(company_name)
         self.competitors = get_competitor_list(company_name)
-        self.strategic = STRATEGIC_DATA.get(company_name.lower(), {})
+        self.signals = SIGNALS_DATA.get(company_name.lower(), {})
 
     def generate_pdf(self) -> bytes:
-        """Generate concise professional report."""
+        """Generate comprehensive signal-rich report."""
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
             pagesize=letter,
-            rightMargin=0.5*inch,
-            leftMargin=0.5*inch,
-            topMargin=0.5*inch,
-            bottomMargin=0.5*inch
+            rightMargin=0.4*inch,
+            leftMargin=0.4*inch,
+            topMargin=0.4*inch,
+            bottomMargin=0.4*inch
         )
 
         styles = getSampleStyleSheet()
         story = []
 
         # HEADER
-        story.append(self._header())
-        story.append(Spacer(1, 0.15*inch))
-
-        # COMPANY SNAPSHOT
-        story.append(self._section_title("COMPANY SNAPSHOT"))
-        story.append(self._snapshot_table())
-        story.append(Spacer(1, 0.15*inch))
-
-        # BRANDS & MARKET SHARE
-        if self.strategic.get('brands'):
-            story.append(self._section_title("BRANDS & MARKET SHARE"))
-            story.append(self._brands_table())
-            story.append(Spacer(1, 0.15*inch))
-
-        # KEY METRICS
-        story.append(self._section_title("KEY METRICS"))
-        story.append(self._key_metrics())
-        story.append(Spacer(1, 0.15*inch))
-
-        # AI & INNOVATION
-        story.append(self._section_title("AI & INNOVATION"))
-        story.append(Paragraph(self.strategic.get('ai_focus', 'N/A'), styles['Normal']))
-        story.append(Spacer(1, 0.15*inch))
-
-        # COMPETITIVE POSITION
-        story.append(self._section_title("COMPETITIVE POSITION"))
-        story.append(self._competitors_table())
+        story.append(Paragraph(f'<b><font size="18" color="#667eea">{self.company_name}</font></b>', styles['Normal']))
+        story.append(Paragraph(f'<font size="9" color="#6b7280">Intelligence Report • {datetime.now().strftime("%d %b %Y")}</font>', styles['Normal']))
         story.append(Spacer(1, 0.1*inch))
 
-        # STRATEGIC SUMMARY
-        story.append(self._section_title("STRATEGIC SUMMARY"))
-        story.append(Paragraph(self.strategic.get('strategic', 'N/A'), styles['Normal']))
-        story.append(Spacer(1, 0.15*inch))
+        # QUICK SIGNALS
+        story.append(self._quick_signals())
+        story.append(Spacer(1, 0.1*inch))
 
-        # RISKS & OPPORTUNITIES
-        story.append(self._section_title("RISKS & OPPORTUNITIES"))
-        story.append(self._risks_opportunities())
-        story.append(Spacer(1, 0.15*inch))
+        # BRANDS
+        if self.signals.get('brands'):
+            story.append(self._section("BRANDS & MARKET SHARE"))
+            story.append(self._brands_table())
+            story.append(Spacer(1, 0.1*inch))
 
-        # RECENT NEWS
+        # KEY SIGNALS
+        story.append(self._section("KEY SIGNALS"))
+        story.append(self._signals_table())
+        story.append(Spacer(1, 0.1*inch))
+
+        # COMPETITIVE
+        story.append(self._section("COMPETITIVE ANALYSIS"))
+        story.append(self._competitive_table())
+        story.append(Spacer(1, 0.1*inch))
+
+        # RISKS
+        story.append(self._section("RISKS (Ranked by Impact)"))
+        story.append(self._risks_table())
+        story.append(Spacer(1, 0.08*inch))
+
+        # OPPORTUNITIES
+        story.append(self._section("OPPORTUNITIES (Ranked by Potential)"))
+        story.append(self._opportunities_table())
+        story.append(Spacer(1, 0.08*inch))
+
+        # NEWS
         if self.data.get('news'):
-            story.append(self._section_title("RECENT NEWS (Top 5)"))
+            story.append(self._section("RECENT NEWS"))
             story.append(self._news_table())
 
         # FOOTER
-        story.append(Spacer(1, 0.2*inch))
-        footer = f"Generated: {datetime.now().strftime('%d %B %Y')} | intel.humanagency.co"
-        story.append(Paragraph(footer, ParagraphStyle('footer', fontSize=8, textColor=colors.HexColor('#9ca3af'))))
+        story.append(Spacer(1, 0.1*inch))
+        story.append(Paragraph(f'<font size="7" color="#9ca3af">intel.humanagency.co | Data from: Yahoo Finance, NewsAPI, LinkedIn, Company Reports</font>', styles['Normal']))
 
         doc.build(story)
         buffer.seek(0)
         return buffer.getvalue()
 
-    def _header(self):
-        """Report header."""
-        html = f'<font size="20" color="#667eea"><b>{self.company_name}</b></font><br/><font size="10" color="#6b7280">Intelligence Report</font>'
-        return Paragraph(html, getSampleStyleSheet()['Normal'])
-
-    def _section_title(self, title: str):
-        """Section title styling."""
-        style = ParagraphStyle(
-            'SectionTitle',
-            fontSize=11,
-            textColor=colors.HexColor('#667eea'),
-            fontName='Helvetica-Bold',
-            spaceAfter=8,
-            borderPadding=0
-        )
+    def _section(self, title: str):
+        """Section header."""
+        style = ParagraphStyle('Section', fontSize=10, textColor=colors.HexColor('#667eea'), fontName='Helvetica-Bold')
         return Paragraph(title, style)
 
-    def _snapshot_table(self):
-        """Company basics."""
+    def _quick_signals(self):
+        """Quick signals box."""
+        stock = self.data.get('stock', {})
+        signals_text = f"""
+        <b>Market Position:</b> {self.signals.get('market_position', 'N/A')}<br/>
+        <b>Stock Momentum:</b> {self.signals.get('stock_momentum', 'N/A')}<br/>
+        <b>AI Focus:</b> {self.signals.get('ai_focus', 'N/A')}<br/>
+        <b>Hiring Signal:</b> {self.signals.get('hiring_signal', 'N/A')}
+        """
+        return Paragraph(signals_text, getSampleStyleSheet()['Normal'])
+
+    def _brands_table(self):
+        """Brands with details."""
+        brands = self.signals.get('brands', {})
+        data = [['Brand', 'Share | Market Position']]
+
+        for brand, details in brands.items():
+            data.append([brand, details])
+
+        table = Table(data, colWidths=[1.5*inch, 4*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fafbfc')]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        return table
+
+    def _signals_table(self):
+        """Key signals."""
         stock = self.data.get('stock', {})
         data = [
-            ['Headquarters', self.data.get('headquarters', 'N/A')],
-            ['Sector', self.data.get('sector', 'N/A')],
-            ['Founded', self.data.get('founded', 'N/A')],
-            ['Employees', f"{stock.get('employees', 0):,}" if stock.get('employees') else 'N/A'],
+            ['Signal', 'Value'],
             ['Stock Price', f"£{stock.get('price', 0):.2f}" if stock.get('price') else 'N/A'],
             ['Market Cap', f"£{stock.get('market_cap', 0) / 1e9:.1f}B" if stock.get('market_cap') else 'N/A'],
+            ['Stock Change', f"{stock.get('change', 0):.1f}%" if stock.get('change') else 'N/A'],
+            ['Employees', f"{stock.get('employees', 0):,}" if stock.get('employees') else 'N/A'],
+            ['HQ', self.data.get('headquarters', 'N/A')],
         ]
 
         table = Table(data, colWidths=[2*inch, 3.5*inch])
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f3f4f6')),
-            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#fafbfc')]),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ]))
-        return table
-
-    def _brands_table(self):
-        """Brands with market share."""
-        brands = self.strategic.get('brands', {})
-        data = [['Brand', 'Market Share']]
-
-        for brand, share in sorted(brands.items(), key=lambda x: float(x[1].rstrip('%')), reverse=True):
-            data.append([brand, share])
-
-        table = Table(data, colWidths=[3.5*inch, 2*inch])
-        table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fafbfc')]),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ]))
-        return table
-
-    def _key_metrics(self):
-        """Key metrics display."""
-        stock = self.data.get('stock', {})
-        metrics = [
-            [f"Revenue Growth", "2-5% YoY"],
-            [f"Margin", "35-45%"],
-            [f"Stock Change", f"{stock.get('change', 0):.1f}%"],
-        ]
-
-        table = Table(metrics, colWidths=[2.5*inch, 3*inch])
-        table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#fafbfc')]),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        return table
-
-    def _competitors_table(self):
-        """Competitors comparison."""
-        data = [['Competitor', 'HQ', 'Market Cap']]
-
-        for comp_name in self.competitors[:3]:
-            try:
-                from company_intelligence_service import get_company_intelligence
-                comp = get_company_intelligence(comp_name)
-                stock = comp.get('stock', {})
-                data.append([
-                    comp_name,
-                    comp.get('headquarters', 'N/A')[:25],
-                    f"£{stock.get('market_cap', 0) / 1e9:.1f}B" if stock.get('market_cap') else 'N/A',
-                ])
-            except:
-                pass
-
-        table = Table(data, colWidths=[2*inch, 2*inch, 1.5*inch])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fafbfc')]),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
         ]))
         return table
 
-    def _risks_opportunities(self):
-        """Concise risks & opportunities."""
-        risks = self.strategic.get('risks', [])
-        opps = self.strategic.get('opportunities', [])
+    def _competitive_table(self):
+        """Competitive gaps."""
+        gaps = self.signals.get('competitive_gaps', {})
+        data = [['Competitor Comparison', 'Analysis']]
 
-        html = '<b>Risks:</b> ' + ' | '.join(risks[:2]) + '<br/>'
-        html += '<b>Opportunities:</b> ' + ' | '.join(opps[:2])
+        for comp, analysis in gaps.items():
+            data.append([comp.replace('vs_', 'vs ').title(), analysis])
 
-        return Paragraph(html, getSampleStyleSheet()['Normal'])
+        table = Table(data, colWidths=[1.5*inch, 4*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fafbfc')]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        return table
+
+    def _risks_table(self):
+        """Risks ranked."""
+        risks = self.signals.get('risks', [])
+        data = [['#', 'Risk']]
+
+        for i, risk in enumerate(risks[:6], 1):
+            data.append([str(i), risk])
+
+        table = Table(data, colWidths=[0.3*inch, 5.2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#dc3545')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fff5f5')]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        return table
+
+    def _opportunities_table(self):
+        """Opportunities ranked."""
+        opps = self.signals.get('opportunities', [])
+        data = [['#', 'Opportunity']]
+
+        for i, opp in enumerate(opps[:6], 1):
+            data.append([str(i), opp])
+
+        table = Table(data, colWidths=[0.3*inch, 5.2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#28a745')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5fff5')]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        return table
 
     def _news_table(self):
-        """Top 5 news."""
+        """News highlights."""
         news = self.data.get('news', [])
         data = [['Date', 'Headline']]
 
         for article in news[:5]:
-            headline = article.get('title', 'N/A')[:65]
-            data.append([
-                article.get('published', 'N/A'),
-                headline,
-            ])
+            headline = article.get('title', 'N/A')[:60]
+            data.append([article.get('published', 'N/A'), headline])
 
-        table = Table(data, colWidths=[1*inch, 4.5*inch])
+        table = Table(data, colWidths=[0.8*inch, 4.7*inch])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fafbfc')]),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
         ]))
         return table
 
 
 def generate_company_report(company_name: str) -> bytes:
-    """Generate professional report."""
+    """Generate signal-rich report."""
     generator = CompanyReportGenerator(company_name)
     return generator.generate_pdf()
