@@ -242,12 +242,16 @@ class CompanyIntelligence:
     @staticmethod
     def answer_question(company_name: str, question: str) -> str:
         """
-        Answer a question about a company using Claude API.
+        Answer a question about a company using Groq API (fast + cheap).
         """
         try:
-            from anthropic import Anthropic
+            import os
+            import requests
 
-            client = Anthropic()
+            groq_api_key = os.environ.get("GROQ_API_KEY")
+            if not groq_api_key:
+                logger.error("[Q&A] GROQ_API_KEY not set")
+                return "System error: API key missing. Try: 'What are Reckitt's brands?'"
 
             # System prompt for company Q&A
             system_prompt = f"""You are a company intelligence expert. Answer questions about {company_name}.
@@ -255,40 +259,46 @@ Be concise, factual, direct. 2-3 sentences max.
 Focus: business model, strategy, AI/tech focus, competitors, market position, brands, market share.
 IMPORTANT: If asked about brands or market share, provide specific numbers and percentages."""
 
-            message = client.messages.create(
-                model="claude-opus-5",
-                max_tokens=500,
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": question}
-                ]
+            # Call Groq API
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {groq_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "mixtral-8x7b-32768",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": question}
+                    ],
+                    "max_tokens": 500,
+                    "temperature": 0.7
+                },
+                timeout=10
             )
 
-            logger.info(f"[Q&A] Response: {message}")
-            logger.info(f"[Q&A] Content blocks: {len(message.content)} blocks")
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("choices") and len(data["choices"]) > 0:
+                    answer = data["choices"][0].get("message", {}).get("content", "")
+                    if answer:
+                        logger.info(f"[Q&A] Groq response for {company_name}: {answer[:100]}...")
+                        return answer.strip()
 
-            # Extract text from response content
-            if message and message.content:
-                for block in message.content:
-                    logger.info(f"[Q&A] Block type: {block.type if hasattr(block, 'type') else type(block)}")
-                    if hasattr(block, 'type') and block.type == "text":
-                        return block.text
-                    elif hasattr(block, 'text'):
-                        return block.text
-
-            logger.warning(f"[Q&A] No text block found in response")
+            logger.warning(f"[Q&A] Groq returned empty or error: {response.status_code}")
             return "I found information but couldn't format it. Try: 'What are Reckitt's main brands?' or 'List brand market share'"
 
         except Exception as e:
             error_msg = str(e).lower()
-            logger.error(f"[Q&A] Error: {error_msg}")
+            logger.error(f"[Q&A] Groq error: {error_msg}")
 
             # Suggest rephrasing based on error type
             if "rate" in error_msg or "quota" in error_msg:
                 return "System busy. Please try again in a moment."
             elif "timeout" in error_msg:
                 return "Request timed out. Try: 'What brands does Reckitt have?'"
-            elif any(word in error_msg for word in ["invalid", "token", "auth"]):
+            elif any(word in error_msg for word in ["invalid", "token", "auth", "api"]):
                 return "System error. Try: 'Tell me about Reckitt' or 'What is Reckitt?'"
             else:
                 return "Having trouble with that question. Try: 'What are Reckitt's brands?' or 'List Reckitt brands and market share'"
