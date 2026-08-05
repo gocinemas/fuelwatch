@@ -38698,9 +38698,10 @@ def api_company_competitors():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/company/<company_name>", methods=["GET"])
-def company_qa_page(company_name):
-    """Render company Q&A page."""
+@app.route("/company", methods=["GET"])
+@app.route("/company/", methods=["GET"])
+def company_qa_page():
+    """Render company Q&A page (search page)."""
     try:
         return render_template("company_qa.html")
     except Exception as e:
