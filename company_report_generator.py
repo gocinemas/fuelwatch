@@ -165,6 +165,9 @@ class ProfessionalReportGenerator:
         try:
             from supabase import create_client
             import os
+            import logging
+            logger = logging.getLogger(__name__)
+
             sb = create_client(
                 os.getenv("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
                 os.getenv("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
@@ -173,7 +176,11 @@ class ProfessionalReportGenerator:
             self.financial_history = history_tracker.get_financial_history(company_name, periods=4)
             self.deals = history_tracker.get_deals(company_name, limit=5)
             self.market_trends = history_tracker.get_market_trends(company_name)
+            logger.info(f"[report] Loaded history: {len(self.financial_history)} financials, {len(self.deals)} deals, {len(self.market_trends)} trends")
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[report] Failed to load history: {e}")
             self.financial_history = []
             self.deals = []
             self.market_trends = []
