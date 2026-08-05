@@ -16,6 +16,39 @@ from company_knowledge_service import CompanyKnowledgeBase
 
 
 SIGNALS_DATA = {
+    "netflix": {
+        "industry": "Technology & Entertainment",
+        "description": "Leading streaming entertainment service. 220M+ paid memberships across 192 countries. Original content + licensed library.",
+        "market_position": "Clear market leader in streaming. Facing intensifying competition from Disney+, Amazon Prime, Max.",
+        "ai_focus": "AI recommendation engine (core product) | Personalization ML | Content prediction | 15+ AI engineers dedicated",
+        "hiring_signal": "↑28% ML/AI hiring YoY | Content algorithm focus | Competing with mega-tech for talent",
+        "stock_momentum": "↑65% YoY (↑27% on latest results) | Analyst target: $300+ | Sentiment: VERY POSITIVE",
+        "subscribers": {
+            "Paid Memberships": "220M | Growing 12% YoY | ARPU stable",
+            "Ad Tier": "55M | New revenue stream | Monetization upside",
+            "Free Tier": "Phase out | Legacy | Conversion to paid ongoing"
+        },
+        "risks": [
+            "Subscriber growth plateau in mature markets (US/UK saturated at 72M)",
+            "Password sharing crack-down impact (retention risk)",
+            "Churn acceleration in 2025 (competition, content fatigue)",
+            "Content spend rising 8-12% annually (margin pressure)",
+            "Licensing cost inflation (studio consolidation)",
+            "International market penetration challenges (Asia profitability)"
+        ],
+        "opportunities": [
+            "Ad tier monetization ($50-100M runway potential)",
+            "Live sports (F1, WWE exclusives) expanding TAM",
+            "Gaming integration (revenue diversification)",
+            "Price increases (premium tier willingness ↑18%)",
+            "International expansion (India, SE Asia growth 25%+ CAGR)",
+            "Bundling deals with telecom partners"
+        ],
+        "competitive_gaps": {
+            "vs_disney_plus": "Subscribers: 220M vs 150M | Content: Broader | Margin: Higher",
+            "vs_amazon_prime": "Focus: Dedicated vs multi-purpose | Pricing power: Higher | Content spend: Netflix leads"
+        }
+    },
     "reckitt": {
         "description": "Global hygiene and health leader specializing in disinfectants, pain relief, and home care across 180 countries.",
         "market_position": "Leader in disinfectants (#1 Dettol, #2 Lysol). Strong in OTC pain relief (Nurofen). Premium portfolio.",
@@ -125,6 +158,26 @@ class ProfessionalReportGenerator:
         self.data = get_company_intelligence(company_name)
         self.competitors = get_competitor_list(company_name)
         self.signals = SIGNALS_DATA.get(company_name.lower(), {})
+        self.industry = self._detect_industry()
+
+    def _detect_industry(self) -> str:
+        """Detect company industry from signals or data."""
+        if self.signals and 'industry' in self.signals:
+            return self.signals['industry']
+
+        sector = self.data.get('sector', '').lower()
+        if any(word in sector for word in ['consumer', 'fmcg', 'health']):
+            return 'CPG'
+        elif any(word in sector for word in ['tech', 'software', 'internet']):
+            return 'Technology'
+        elif any(word in sector for word in ['entertainment', 'media', 'streaming']):
+            return 'Entertainment'
+        elif any(word in sector for word in ['pharma', 'biotech', 'health']):
+            return 'Pharma'
+        elif any(word in sector for word in ['finance', 'bank']):
+            return 'Finance'
+        else:
+            return 'Other'
 
     def generate_pdf(self) -> bytes:
         """Generate beautifully designed report."""
@@ -177,8 +230,13 @@ class ProfessionalReportGenerator:
         story.append(self._verdict())
         story.append(Spacer(1, 0.15*inch))
 
-        story.append(self._section_title("BRAND PORTFOLIO"))
-        story.append(self._brands_section())
+        # Industry-specific key metrics
+        if self.industry == 'Entertainment':
+            story.append(self._section_title("SUBSCRIBER METRICS"))
+            story.append(self._subscriber_metrics())
+        else:
+            story.append(self._section_title("BRAND PORTFOLIO"))
+            story.append(self._brands_section())
         story.append(Spacer(1, 0.15*inch))
 
         story.append(self._section_title("FINANCIAL SNAPSHOT"))
@@ -263,8 +321,35 @@ class ProfessionalReportGenerator:
         """
         return Paragraph(html, getSampleStyleSheet()['Normal'])
 
+    def _subscriber_metrics(self):
+        """Streaming subscriber metrics (Entertainment industry)."""
+        subs = self.signals.get('subscribers', {})
+        if not subs:
+            return Paragraph('<font size="9" color="#1c1917">Subscriber data unavailable</font>', getSampleStyleSheet()['Normal'])
+
+        data = [['Metric', 'Value | Details']]
+        for metric, details in subs.items():
+            data.append([metric, details])
+
+        table = Table(data, colWidths=[1.3*inch, 4.2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        return table
+
     def _brands_section(self):
-        """Brands with beautiful layout."""
+        """Brands with beautiful layout (CPG industry)."""
         brands = self.signals.get('brands', {})
         data = [['Brand', 'Market Share | Position']]
 
@@ -382,18 +467,31 @@ class ProfessionalReportGenerator:
         return Paragraph(html, getSampleStyleSheet()['Normal'])
 
     def _verdict(self):
-        """Investment thesis one-liner."""
+        """Investment thesis one-liner (industry-aware)."""
         stock = self.data.get('stock', {})
         change = stock.get('change', 0)
 
-        if change > 5 and '45' in self.signals.get('hiring_signal', '') or '52' in self.signals.get('hiring_signal', ''):
-            verdict = "🟢 Strong momentum: Positive stock trend + leading AI investment. Monitor execution."
-        elif change > 0 and '45' in self.signals.get('hiring_signal', ''):
-            verdict = "🟡 Cautiously optimistic: Growing AI focus but execution risk remains."
-        elif change > 0:
-            verdict = "🟡 Stable but challenged: Positive momentum masked by competitive pressure."
+        if self.industry == 'Entertainment':
+            # Streaming/Entertainment verdict based on subscriber growth + margins
+            hiring = self.signals.get('hiring_signal', '')
+            if change > 25 and '28' in hiring:
+                verdict = "🟢 Strong momentum: Stock up 65%+ YoY + AI/tech focus. Profitability proven, subscriber growth stabilizing."
+            elif change > 0 and '28' in hiring:
+                verdict = "🟡 Positive trend: Recovering from saturation concerns, ad tier monetization upside."
+            elif change > 0:
+                verdict = "🟡 Watch for churn: Stock recovery but subscriber growth vulnerable to competition."
+            else:
+                verdict = "🔴 Cautious: Churn acceleration risk. Monitor ad tier execution + international growth."
         else:
-            verdict = "🔴 Headwinds: Negative stock trend + competitive intensity. Monitor closely."
+            # CPG verdict (existing logic)
+            if change > 5 and ('45' in self.signals.get('hiring_signal', '') or '52' in self.signals.get('hiring_signal', '')):
+                verdict = "🟢 Strong momentum: Positive stock trend + leading AI investment. Monitor execution."
+            elif change > 0 and '45' in self.signals.get('hiring_signal', ''):
+                verdict = "🟡 Cautiously optimistic: Growing AI focus but execution risk remains."
+            elif change > 0:
+                verdict = "🟡 Stable but challenged: Positive momentum masked by competitive pressure."
+            else:
+                verdict = "🔴 Headwinds: Negative stock trend + competitive intensity. Monitor closely."
 
         html = f'<font size="10" color="#1c1917"><b>{verdict}</b></font>'
         return Paragraph(html, getSampleStyleSheet()['Normal'])
