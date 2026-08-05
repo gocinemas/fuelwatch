@@ -20,3 +20,4 @@ tgtg>=0.18.0
 groq>=0.11.0
 together>=0.2.11
 anthropic>=0.40.0
+reportlab>=4.0.0
