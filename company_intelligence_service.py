@@ -189,36 +189,45 @@ class CompanyIntelligence:
         """Fetch recent news about company."""
         try:
             # Use NewsAPI (free tier available)
-            api_key = "6d61957fc82b49e9b0ad1d2e15e6e50e"  # Free tier key for demo
+            import os
+            api_key = os.environ.get("NEWSAPI_KEY", "6d61957fc82b49e9b0ad1d2e15e6e50e")
             url = f"https://newsapi.org/v2/everything"
 
             params = {
                 "q": self.company_name,
                 "sortBy": "publishedAt",
                 "language": "en",
-                "pageSize": 5,
+                "pageSize": 10,
                 "apiKey": api_key
             }
 
-            response = requests.get(url, params=params, timeout=5)
+            response = requests.get(url, params=params, timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                self.news = [
-                    {
-                        "title": article["title"],
-                        "description": article["description"],
-                        "source": article["source"]["name"],
-                        "url": article["url"],
-                        "published": article["publishedAt"][:10],
-                    }
-                    for article in data.get("articles", [])[:5]
-                ]
-                self.basics["news"] = self.news
+                articles = data.get("articles", [])
+
+                if articles:
+                    self.news = [
+                        {
+                            "title": article.get("title", "N/A"),
+                            "description": article.get("description", ""),
+                            "source": article.get("source", {}).get("name", "News"),
+                            "url": article.get("url", ""),
+                            "published": article.get("publishedAt", "")[:10] if article.get("publishedAt") else "",
+                        }
+                        for article in articles[:8]
+                    ]
+                    self.basics["news"] = self.news
+                    logger.info(f"[news] Found {len(self.news)} articles for {self.company_name}")
+                else:
+                    logger.warning(f"[news] No articles found for {self.company_name}")
+                    self.basics["news"] = []
             else:
+                logger.warning(f"[news] API returned {response.status_code}")
                 self.basics["news"] = []
 
         except Exception as e:
-            logger.debug(f"News fetch failed: {e}")
+            logger.error(f"[news] Fetch failed: {str(e)[:100]}")
             self.basics["news"] = []
 
     @staticmethod
