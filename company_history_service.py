@@ -5,7 +5,7 @@ Stores and analyzes historical metrics for trend analysis.
 
 import logging
 from datetime import datetime, timedelta
-from typing import dict, list
+from typing import Dict, List
 import json
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class CompanyHistoryTracker:
         """Inject Supabase client."""
         self.db = supabase_client
 
-    def add_financials(self, company_name: str, period: str, data: dict) -> bool:
+    def add_financials(self, company_name: str, period: str, data: Dict) -> bool:
         """
         Store historical financial data.
 
@@ -61,7 +61,7 @@ class CompanyHistoryTracker:
             logger.error(f"[history] Failed to add financials: {e}")
             return False
 
-    def get_financial_history(self, company_name: str, periods: int = 8) -> list:
+    def get_financial_history(self, company_name: str, periods: int = 8) -> List:
         """
         Get historical financials for a company (last N periods).
         Returns sorted by period descending (most recent first).
