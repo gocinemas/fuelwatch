@@ -38656,6 +38656,7 @@ def api_company_answer():
     """Answer a question about a company using Claude API."""
     try:
         from company_intelligence_service import get_company_answer
+        from company_knowledge_service import CompanyKnowledgeBase
 
         data = request.json or {}
         company_name = data.get("company", "").strip()
@@ -38665,6 +38666,13 @@ def api_company_answer():
             return jsonify({"error": "Company and question required"}), 400
 
         answer = get_company_answer(company_name, question)
+
+        # Store query in knowledge base (background)
+        try:
+            CompanyKnowledgeBase.save_query(company_name, question, answer)
+        except Exception as e:
+            app.logger.debug(f"[knowledge] Failed to store: {e}")
+
         return jsonify({"answer": answer})
     except Exception as e:
         app.logger.error(f"[company/answer] Error: {e}")
