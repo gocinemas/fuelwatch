@@ -45,7 +45,7 @@ def store_receipt(from_number: str, merchant: str, amount: float, shop_date: str
                   location: str = "", address: str = "", postcode: str = "",
                   category: str = "", items: list = None, receipt_id: str = ""):
     """
-    Store a receipt in shopping_history table.
+    Store a receipt in shopping_history table (with deduplication).
 
     Args:
         from_number: User's WhatsApp number (plain or whatsapp:)
@@ -63,21 +63,38 @@ def store_receipt(from_number: str, merchant: str, amount: float, shop_date: str
         sb = lib._sb()
         plain_number = from_number.replace("whatsapp:", "").strip()
 
-        # Check if already stored (by receipt_id or merchant+date+amount)
+        # Check if already stored (by receipt_id first)
         if receipt_id:
             existing = sb.table("shopping_history").select("id") \
                 .eq("from_number", plain_number) \
                 .eq("receipt_id", receipt_id) \
                 .execute().data or []
             if existing:
-                print(f"[shopping-history] Already stored: {receipt_id}")
+                print(f"[shopping-history] Already stored (receipt_id): {receipt_id}")
                 return True
 
-        # Store
+        # Check by merchant + date + amount (catch duplicates without receipt_id)
+        # Round amount to 2 decimals for comparison
+        amount_rounded = round(float(amount), 2) if amount else 0
+        existing = sb.table("shopping_history").select("id") \
+            .eq("from_number", plain_number) \
+            .eq("merchant", merchant) \
+            .eq("shop_date", shop_date) \
+            .execute().data or []
+
+        if existing:
+            # Check if amount matches (within 1p tolerance for rounding)
+            for row in existing:
+                existing_amount = round(float(row.get("amount", 0)), 2)
+                if abs(existing_amount - amount_rounded) < 0.01:
+                    print(f"[shopping-history] Already stored (duplicate): {merchant} £{amount} on {shop_date}")
+                    return True
+
+        # Store (no duplicate found)
         sb.table("shopping_history").insert({
             "from_number": plain_number,
             "merchant": merchant,
-            "amount": float(amount) if amount else 0,
+            "amount": amount_rounded,
             "shop_date": shop_date,
             "location": location,
             "address": address,
