@@ -231,7 +231,7 @@ class ProfessionalReportGenerator:
         story.append(Spacer(1, 0.15*inch))
 
         # Industry-specific key metrics
-        if self.industry == 'Entertainment':
+        if 'Entertainment' in self.industry or 'Streaming' in self.industry:
             story.append(self._section_title("SUBSCRIBER METRICS"))
             story.append(self._subscriber_metrics())
         else:
@@ -434,15 +434,24 @@ class ProfessionalReportGenerator:
 
     def _growth_metrics(self):
         """Growth trajectory."""
-        stock = self.data.get('stock', {})
-        direction = "↑" if stock.get('change', 0) > 0 else "↓"
-        html = f"""
-        <font size="9" color="#1c1917">
-        <b>1-Year Stock Performance:</b> {direction} {abs(stock.get('change', 0)):.1f}%<br/>
-        <b>Market Momentum:</b> {'Positive' if stock.get('change', 0) > 0 else 'Negative'}<br/>
-        <b>Analyst Sentiment:</b> {'POSITIVE' if stock.get('change', 0) > 2 else 'NEUTRAL'}
-        </font>
-        """
+        # Use signals data if available (more accurate), else stock API
+        signals_momentum = self.signals.get('stock_momentum', '')
+        if signals_momentum:
+            html = f"""
+            <font size="9" color="#1c1917">
+            <b>Stock Performance:</b> {signals_momentum}
+            </font>
+            """
+        else:
+            stock = self.data.get('stock', {})
+            direction = "↑" if stock.get('change', 0) > 0 else "↓"
+            html = f"""
+            <font size="9" color="#1c1917">
+            <b>1-Year Stock Performance:</b> {direction} {abs(stock.get('change', 0)):.1f}%<br/>
+            <b>Market Momentum:</b> {'Positive' if stock.get('change', 0) > 0 else 'Negative'}<br/>
+            <b>Analyst Sentiment:</b> {'POSITIVE' if stock.get('change', 0) > 2 else 'NEUTRAL'}
+            </font>
+            """
         return Paragraph(html, getSampleStyleSheet()['Normal'])
 
     def _competitive_intensity(self):
@@ -471,7 +480,7 @@ class ProfessionalReportGenerator:
         stock = self.data.get('stock', {})
         change = stock.get('change', 0)
 
-        if self.industry == 'Entertainment':
+        if 'Entertainment' in self.industry or 'Streaming' in self.industry:
             # Streaming/Entertainment verdict based on subscriber growth + margins
             hiring = self.signals.get('hiring_signal', '')
             if change > 25 and '28' in hiring:
