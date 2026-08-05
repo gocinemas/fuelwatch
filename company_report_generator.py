@@ -17,6 +17,38 @@ from company_history_service import history_tracker
 
 
 SIGNALS_DATA = {
+    "gsk": {
+        "industry": "Pharmaceutical & Healthcare",
+        "description": "Global pharmaceutical and healthcare company specializing in vaccines, oncology, and specialty medicines across 150+ countries.",
+        "market_position": "Leading pharma in UK (8.5% market share). Strong in vaccines and oncology. Competition from Pfizer, Moderna, J&J.",
+        "ai_focus": "AI drug discovery platform | Genomics research | Predictive analytics | 12 AI researchers",
+        "hiring_signal": "↑8% AI/ML hiring YoY | Focus on data science for drug development | Modest AI investment vs peers",
+        "stock_momentum": "→ Flat YoY (↑0.1%) | Analyst target: Neutral | Sentiment: STABLE",
+        "brands": {
+            "Oncology": "32% | Lung cancer, breast cancer treatments | Strong patent portfolio | Growing market",
+            "Vaccines": "28% | Shingrix (shingles), HPV vaccines | Market leader | Stable revenue",
+            "Specialty": "22% | Respiratory, immunology | Established franchise | Mature market",
+            "Other": "18% | Legacy brands, emerging markets | Portfolio optimization | Declining"
+        },
+        "risks": [
+            "Patent cliff: Oncology drug exclusivity ending 2027-2028",
+            "Regulatory pressure on drug pricing (UK, US)",
+            "R&D productivity: High cost, mixed success rates",
+            "Competition from biosimilars (margin erosion)",
+            "AI talent acquisition lag vs Pfizer, Moderna"
+        ],
+        "opportunities": [
+            "Oncology pipeline expansion (15+ drugs in trials)",
+            "Vaccine market recovery post-pandemic",
+            "Emerging markets growth (India, Brazil, 20%+ CAGR)",
+            "AI-accelerated drug discovery (time-to-market -30%)",
+            "Gene therapy & cell therapy partnerships"
+        ],
+        "competitive_gaps": {
+            "vs_pfizer": "Market cap: £76.7B vs £150B | AI hiring: 8% vs 25% | Pipeline: Smaller",
+            "vs_moderna": "mRNA focus: N/A vs 100% | Valuation: Mature vs Growth | Risk: Higher"
+        }
+    },
     "netflix": {
         "industry": "Technology & Entertainment",
         "description": "Leading streaming entertainment service. 220M+ paid memberships across 192 countries. Original content + licensed library.",
@@ -554,11 +586,12 @@ class ProfessionalReportGenerator:
         html = '<font size="9" color="#1c1917">'
         for record in self.financial_history[:4]:
             period = record.get('period', 'N/A')
-            revenue = record.get('revenue_millions', 0)
+            revenue_millions = record.get('revenue_millions', 0)
+            revenue_billions = revenue_millions / 1000  # Convert to billions
             margin = record.get('operating_margin_pct', 0)
             growth = record.get('revenue_growth_pct', 0)
             direction = "↑" if growth > 0 else "↓"
-            html += f"<b>{period}:</b> £{revenue}M revenue ({direction}{abs(growth):.1f}% YoY), {margin}% operating margin<br/>"
+            html += f"<b>{period}:</b> £{revenue_billions:.1f}B revenue ({direction}{abs(growth):.1f}% YoY), {margin}% operating margin<br/>"
 
         html += '</font>'
         return Paragraph(html, getSampleStyleSheet()['Normal'])
