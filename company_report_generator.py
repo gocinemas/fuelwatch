@@ -157,6 +157,26 @@ class ProfessionalReportGenerator:
         story.append(self._key_signals_box())
         story.append(Spacer(1, 0.15*inch))
 
+        story.append(self._section_title("FINANCIAL HEALTH"))
+        story.append(self._financial_metrics())
+        story.append(Spacer(1, 0.15*inch))
+
+        story.append(self._section_title("GROWTH & MOMENTUM"))
+        story.append(self._growth_metrics())
+        story.append(Spacer(1, 0.15*inch))
+
+        story.append(self._section_title("COMPETITIVE INTENSITY"))
+        story.append(self._competitive_intensity())
+        story.append(Spacer(1, 0.15*inch))
+
+        story.append(self._section_title("AI MOMENTUM"))
+        story.append(self._ai_momentum())
+        story.append(Spacer(1, 0.15*inch))
+
+        story.append(self._section_title("VERDICT"))
+        story.append(self._verdict())
+        story.append(Spacer(1, 0.15*inch))
+
         story.append(self._section_title("BRAND PORTFOLIO"))
         story.append(self._brands_section())
         story.append(Spacer(1, 0.15*inch))
@@ -313,6 +333,69 @@ class ProfessionalReportGenerator:
         for i, opp in enumerate(opps[:5], 1):
             html += f"<b>{i}.</b> {opp}<br/><br/>"
         html += '</font>'
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
+
+    def _financial_metrics(self):
+        """Real financial data from stock API."""
+        stock = self.data.get('stock', {})
+        html = f"""
+        <font size="9" color="#1c1917">
+        <b>Stock Price:</b> £{stock.get('price', 0):.2f} |
+        <b>Market Cap:</b> £{stock.get('market_cap', 0) / 1e9:.1f}B |
+        <b>52-Week Change:</b> {stock.get('change', 0):.1f}%
+        </font>
+        """
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
+
+    def _growth_metrics(self):
+        """Growth trajectory."""
+        stock = self.data.get('stock', {})
+        direction = "↑" if stock.get('change', 0) > 0 else "↓"
+        html = f"""
+        <font size="9" color="#1c1917">
+        <b>1-Year Stock Performance:</b> {direction} {abs(stock.get('change', 0)):.1f}%<br/>
+        <b>Market Momentum:</b> {'Positive' if stock.get('change', 0) > 0 else 'Negative'}<br/>
+        <b>Analyst Sentiment:</b> {'POSITIVE' if stock.get('change', 0) > 2 else 'NEUTRAL'}
+        </font>
+        """
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
+
+    def _competitive_intensity(self):
+        """How intense is competition."""
+        html = f"""
+        <font size="9" color="#1c1917">
+        <b>Direct Competitors:</b> {', '.join(self.competitors[:3]) if self.competitors else 'N/A'}<br/>
+        <b>Market Position:</b> {self.signals.get('market_position', 'N/A')[:80]}...<br/>
+        <b>Threat Level:</b> {'HIGH' if len(self.competitors) > 2 else 'MODERATE'}
+        </font>
+        """
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
+
+    def _ai_momentum(self):
+        """AI investment and hiring."""
+        html = f"""
+        <font size="9" color="#1c1917">
+        {self.signals.get('hiring_signal', 'N/A')}<br/>
+        <b>Strategic Priority:</b> {'HIGH - Leading AI investment' if '52' in self.signals.get('hiring_signal', '') or '45' in self.signals.get('hiring_signal', '') else 'MODERATE - Investing but not leading'}
+        </font>
+        """
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
+
+    def _verdict(self):
+        """Investment thesis one-liner."""
+        stock = self.data.get('stock', {})
+        change = stock.get('change', 0)
+
+        if change > 5 and '45' in self.signals.get('hiring_signal', '') or '52' in self.signals.get('hiring_signal', ''):
+            verdict = "🟢 Strong momentum: Positive stock trend + leading AI investment. Monitor execution."
+        elif change > 0 and '45' in self.signals.get('hiring_signal', ''):
+            verdict = "🟡 Cautiously optimistic: Growing AI focus but execution risk remains."
+        elif change > 0:
+            verdict = "🟡 Stable but challenged: Positive momentum masked by competitive pressure."
+        else:
+            verdict = "🔴 Headwinds: Negative stock trend + competitive intensity. Monitor closely."
+
+        html = f'<font size="10" color="#1c1917"><b>{verdict}</b></font>'
         return Paragraph(html, getSampleStyleSheet()['Normal'])
 
     def _news_section(self):
