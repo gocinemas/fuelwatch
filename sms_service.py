@@ -38878,6 +38878,8 @@ def api_company_report():
     """Generate and download PDF report for a company."""
     try:
         from company_report_generator import generate_company_report
+        import logging
+        logger = logging.getLogger(__name__)
 
         company_name = request.args.get("name", "").strip()
         if not company_name:
@@ -38896,8 +38898,14 @@ def api_company_report():
             }), 202  # 202 Accepted (processing in background)
 
         # Data exists, generate full report
+        logger.info(f"[report] Generating report for {company_name}")
         pdf_bytes = generate_company_report(company_name)
 
+        if not pdf_bytes or len(pdf_bytes) == 0:
+            logger.error(f"[report] PDF generation returned empty for {company_name}")
+            return jsonify({"error": "Failed to generate PDF - no content"}), 500
+
+        logger.info(f"[report] Successfully generated {len(pdf_bytes)} bytes for {company_name}")
         return send_file(
             io.BytesIO(pdf_bytes),
             mimetype="application/pdf",
@@ -38905,8 +38913,9 @@ def api_company_report():
             download_name=f"{company_name}_Intelligence_Report.pdf"
         )
     except Exception as e:
-        app.logger.error(f"[company/report] Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        app.logger.error(f"[company/report] Error: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e), "details": traceback.format_exc()}), 500
 
 # ────────────────────────────────────────────────────────────────────────
 
