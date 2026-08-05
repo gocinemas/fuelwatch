@@ -122,28 +122,28 @@ def build_smart_prompt(facts: List[str], analysis: Dict[str, Any], context: Dict
     key_action = analysis.get("key_action", "")
     anomalies = analysis.get("anomalies", [])
 
-    prompt = f"""You are writing a smart, personal daily brief.
+    # Build fact-only brief: NO inventions, NO suggestions outside facts
+    fact_str = "\n".join(f"- {f}" for f in facts) if facts else "- No events today"
 
-Today's context:
-- Priorities (order matters): {', '.join(priorities) if priorities else 'normal day'}
-- Mood: {mood_desc}
-- Key action: {key_action if key_action else 'none urgent'}
-- Anomalies: {', '.join(anomalies) if anomalies else 'none'}
+    prompt = f"""Write a 2-3 sentence brief for the user. STRICT RULES:
 
-Facts to reference:
-{chr(10).join(f'- {f}' for f in facts)}
+ONLY use facts from this list. Do NOT invent, suggest, or reference anything not listed:
+{fact_str}
 
-Write a 2-3 sentence brief that:
-1. Leads with TOP priority (not what's easiest to mention)
-2. Includes 1 actionable recommendation
-3. References anomalies if important (spend spike, pattern break)
-4. Speaks directly to the user ('you')
-5. Is clear, direct, NOT generic
+Priority order (lead with first if present): {', '.join(priorities) if priorities else 'none'}
 
-Mood: {mood_desc}
-Avoid: generic phrases, invented suggestions, wishy-washy language
-Use: specific details, action verbs, clear priorities
-"""
+Rules:
+1. Lead with TOP priority fact (if any)
+2. Next: any time-sensitive or anomaly facts
+3. NEVER suggest products, purchases, or items not in the facts above
+4. NEVER invent event counts or details
+5. NEVER reference events not listed above
+6. Speak directly to user (use 'you' or direct statements)
+7. 2-3 sentences max. Direct, specific, no fluff.
+
+Tone: {mood_desc}
+
+Output ONLY the brief. No labels, no explanation."""
     return prompt
 
 
