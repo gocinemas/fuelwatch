@@ -53,7 +53,8 @@ class CompanyReportGenerator:
             parent=styles['Normal'],
             fontSize=10,
             textColor=colors.HexColor('#6b7280'),
-            spaceAfter=20
+            spaceAfter=20,
+            alignment=TA_LEFT
         )
         story.append(Paragraph(f"Generated: {datetime.now().strftime('%d %B %Y')}", date_style))
         story.append(Spacer(1, 0.2*inch))
@@ -96,13 +97,10 @@ class CompanyReportGenerator:
         style = ParagraphStyle(
             'SectionHeading',
             fontSize=14,
-            textColor=colors.HexColor('#1c1917'),
+            textColor=colors.HexColor('#667eea'),
             fontName='Helvetica-Bold',
             spaceAfter=12,
-            borderPadding=10,
-            borderColor=colors.HexColor('#667eea'),
-            borderWidth=2,
-            borderRadius=4
+            alignment=TA_LEFT
         )
         return Paragraph(text, style)
 
