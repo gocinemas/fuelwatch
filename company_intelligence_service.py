@@ -113,6 +113,14 @@ class CompanyIntelligence:
                     "website": "microsoft.com",
                     "brands": ["Windows", "Office", "Xbox", "Azure", "Teams", "Outlook"],
                 },
+                "gsk": {
+                    "description": "Global pharmaceutical and healthcare company specializing in vaccines, oncology, and specialty medicines",
+                    "headquarters": "London, United Kingdom",
+                    "sector": "Pharmaceutical & Healthcare",
+                    "founded": "2000",
+                    "website": "gsk.com",
+                    "brands": ["Avandia", "Avodart", "Cervarix", "Dyrenium", "Flonase", "Polarimine", "Trizivir"],
+                },
             }
 
             company_lower = self.company_name.lower().strip()
@@ -157,6 +165,7 @@ class CompanyIntelligence:
                 "reckitt": "RKT.L",
                 "henkel": "HEN3.DE",
                 "unilever": "ULVR.L",
+                "gsk": "GSK.L",
                 "google": "GOOGL",
                 "netflix": "NFLX",
                 "apple": "AAPL",
@@ -303,6 +312,7 @@ def get_competitor_list(company_name: str) -> list:
         "henkel": ["Reckitt", "Unilever", "Procter & Gamble"],
         "unilever": ["Henkel", "Procter & Gamble", "Reckitt"],
         "sc johnson": ["Reckitt", "Henkel", "Procter & Gamble"],
+        "gsk": ["Pfizer", "Moderna", "Johnson & Johnson"],
         "google": ["Microsoft", "Amazon", "Meta"],
         "apple": ["Microsoft", "Samsung", "Google"],
         "netflix": ["Amazon Prime", "Disney+", "HBO Max"],
