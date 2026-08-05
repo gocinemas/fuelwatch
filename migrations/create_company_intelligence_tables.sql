@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS company_queries (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_company_queries_company ON company_queries(company_name);
-CREATE INDEX idx_company_queries_created ON company_queries(created_at);
+CREATE INDEX IF NOT EXISTS idx_company_queries_company ON company_queries(company_name);
+CREATE INDEX IF NOT EXISTS idx_company_queries_created ON company_queries(created_at);
 
 -- Table: company_profiles
 -- Cumulative company intelligence (updated as queries come in)
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS company_profiles (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_company_profiles_name ON company_profiles(company_name);
+CREATE INDEX IF NOT EXISTS idx_company_profiles_name ON company_profiles(company_name);
 
 -- Sample data structure for company_profiles.data:
 -- {
@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS company_financials (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_company_financials_company ON company_financials(company_name);
-CREATE INDEX idx_company_financials_period ON company_financials(period);
+CREATE INDEX IF NOT EXISTS idx_company_financials_company ON company_financials(company_name);
+CREATE INDEX IF NOT EXISTS idx_company_financials_period ON company_financials(period);
 
 -- Table: company_deals
 -- M&A activity, acquisitions, fundraising
@@ -85,8 +85,8 @@ CREATE TABLE IF NOT EXISTS company_deals (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_company_deals_company ON company_deals(company_name);
-CREATE INDEX idx_company_deals_date ON company_deals(announcement_date);
+CREATE INDEX IF NOT EXISTS idx_company_deals_company ON company_deals(company_name);
+CREATE INDEX IF NOT EXISTS idx_company_deals_date ON company_deals(announcement_date);
 
 -- Table: company_market_trends
 -- Market share, TAM, category growth trends
@@ -101,5 +101,5 @@ CREATE TABLE IF NOT EXISTS company_market_trends (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_company_market_trends_company ON company_market_trends(company_name);
-CREATE INDEX idx_company_market_trends_category ON company_market_trends(category);
+CREATE INDEX IF NOT EXISTS idx_company_market_trends_company ON company_market_trends(company_name);
+CREATE INDEX IF NOT EXISTS idx_company_market_trends_category ON company_market_trends(category);
