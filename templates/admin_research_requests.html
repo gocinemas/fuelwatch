@@ -277,11 +277,8 @@
                                     </div>
                                 </div>
                                 <div class="request-actions">
-                                    <button class="btn btn-research" onclick="triggerResearch(${req.id}, '${req.company_name}')">
-                                        🔍 Research
-                                    </button>
                                     <button class="btn btn-complete" onclick="markCompleted(${req.id})">
-                                        ✓ Mark Done
+                                        ✓ Mark Done (after manual research)
                                     </button>
                                 </div>
                             </div>
@@ -317,32 +314,6 @@
                         <p>${error.message}</p>
                     </div>
                 `;
-            }
-        }
-
-        async function triggerResearch(requestId, companyName) {
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = '⏳ Researching...';
-
-            try {
-                const response = await fetch('/api/company/research/' + companyName, {
-                    method: 'POST'
-                });
-
-                const data = await response.json();
-
-                if (data.status === 'success' || response.ok) {
-                    btn.textContent = '✓ Research Done!';
-                    alert(`✅ Research completed for ${companyName}! Data is now live.`);
-                    setTimeout(() => loadRequests(), 1000);
-                } else {
-                    throw new Error(data.message || 'Research failed');
-                }
-            } catch (error) {
-                alert(`❌ Research error: ${error.message}\n\nYou'll need to add the data manually.`);
-                btn.disabled = false;
-                btn.textContent = '🔍 Research';
             }
         }
 
