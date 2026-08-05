@@ -13300,8 +13300,15 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
 
 
 def _v2_fetch_fuel(postcode: str) -> dict:
-    """Cheapest petrol near postcode."""
+    """Cheapest petrol near postcode — force fresh cache if stale."""
     try:
+        # Force refresh if cache is older than 15 min to catch price updates
+        now = time.time()
+        cache_age = now - _station_cache.get("loaded_at", 0)
+        if cache_age > 900:  # 15 min
+            app.logger.info(f"[fuel-fetch] Cache is {int(cache_age)}s old, forcing refresh")
+            get_stations()  # This will reload if TTL exceeded
+
         price, station = _get_cheapest_fuel(postcode, "petrol")
         if not price or not station:
             app.logger.warning(f"[fuel-fetch] No fuel data for {postcode}: price={price}, station={station}")

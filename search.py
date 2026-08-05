@@ -150,12 +150,15 @@ def fetch_retailer(name: str, url: str) -> list:
             if lat is None or lon is None:
                 continue
 
-            # Some feeds give prices in tenths of a penny (e.g. 1389 = 138.9p)
+            # Some feeds give prices in tenths of pence (e.g. 1610 = 161.0p), others in pence (e.g. 161 = 161p)
+            # UK petrol prices realistically range 130-200p. If price > 1000, assume tenths of pence
             def normalise(p):
                 if p is None:
                     return None
                 p = float(p)
-                return p / 10 if p > 500 else p
+                # If price > 1000, it's almost certainly in tenths of pence (divide by 10)
+                # If price < 1000, it's in pence (use as-is)
+                return p / 10 if p > 1000 else p
 
             stations.append({
                 "brand":    s.get("brand", name),
