@@ -1516,6 +1516,80 @@ def api_company_research(company_name):
         return jsonify({"error": str(e), "company": company_name, "status": "failed"}), 500
 
 
+@app.route("/api/company/request-research", methods=["POST"])
+def api_request_research():
+    """
+    Submit a research request for a company.
+    User-triggered endpoint to request company research.
+
+    POST body: {
+        "company": "Samsung",
+        "email": "user@example.com" (optional),
+        "notes": "Need to track this competitor" (optional)
+    }
+    """
+    from company_research_requests_service import research_request_service
+    from supabase import create_client
+
+    try:
+        data = request.json or {}
+        company_name = data.get("company", "").strip()
+        email = data.get("email", "").strip()
+        notes = data.get("notes", "").strip()
+
+        if not company_name:
+            return jsonify({"error": "Company name required"}), 400
+
+        # Initialize service with DB
+        sb = create_client(
+            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+        research_request_service.set_db(sb)
+
+        # Submit request
+        result = research_request_service.request_research(company_name, email, notes)
+        return jsonify(result)
+
+    except Exception as e:
+        app.logger.error(f"[request_research] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/research-requests", methods=["GET"])
+def api_admin_research_requests():
+    """
+    Admin endpoint to view all research requests.
+    Shows pending and completed requests.
+    """
+    from company_research_requests_service import research_request_service
+    from supabase import create_client
+
+    try:
+        # Initialize service
+        sb = create_client(
+            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+        research_request_service.set_db(sb)
+
+        # Get all requests
+        requests = research_request_service.get_all_requests(limit=100)
+        pending = [r for r in requests if r.get("status") == "pending"]
+        completed = [r for r in requests if r.get("status") == "completed"]
+
+        return jsonify({
+            "total": len(requests),
+            "pending": len(pending),
+            "completed": len(completed),
+            "requests": requests
+        })
+
+    except Exception as e:
+        app.logger.error(f"[admin_requests] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 # ── NEW SIMPLIFIED 5-SIGNAL DASHBOARD ROUTES ─────────────────────────────────
 @app.route("/intelligence/5signals/<company_name>")
 def company_5signals_dashboard(company_name):

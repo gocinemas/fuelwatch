@@ -435,6 +435,13 @@
                 </div>
             </div>
 
+            <!-- Request Research Button (shows when data is minimal) -->
+            <div id="requestResearchCard" style="display: none; margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">📝 Data Not Available Yet</div>
+                <div style="font-size: 13px; line-height: 1.5; margin-bottom: 12px; opacity: 0.9;">We don't have full intelligence for this company yet. Request research and we'll add it to our database.</div>
+                <button onclick="openRequestModal()" style="padding: 10px 16px; background: white; color: #667eea; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px;">Request Research →</button>
+            </div>
+
             <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #d1d5db;">
                 <div style="font-size: 13px; color: #6b7280; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">🏷️ Brands</div>
                 <div id="basicBrands" style="display: flex; flex-wrap: wrap; gap: 8px;">
@@ -478,6 +485,34 @@
             <div class="cta-title">Want deeper insights?</div>
             <div class="cta-text">Upload internal documents, financial reports, or strategy plans to get personalized analysis.</div>
             <div class="cta-button" onclick="alert('Coming soon: Document upload for deeper analysis')">📄 Upload Documents (Coming Soon)</div>
+        </div>
+    </div>
+
+    <!-- Request Research Modal -->
+    <div id="requestModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">📝 Request Research</div>
+            <div style="font-size: 13px; color: #6b7280; margin-bottom: 20px;">Tell us which company you'd like us to research and add to our intelligence database.</div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Company Name</label>
+                <input type="text" id="requestCompanyInput" placeholder="e.g., Apple, Samsung, Microsoft" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" />
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Your Email (optional)</label>
+                <input type="email" id="requestEmailInput" placeholder="so we can notify you when it's ready" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Notes (optional)</label>
+                <textarea id="requestNotesInput" placeholder="e.g., Main competitor, important for Q3" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; min-height: 80px; font-family: inherit;" />
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="submitResearchRequest()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Submit Request</button>
+                <button onclick="closeRequestModal()" style="flex: 1; padding: 12px; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -534,6 +569,19 @@
 
                 // Description
                 document.getElementById('basicDesc').textContent = data.description || data.extract || `Leading company in its sector`;
+
+                // Check if we have minimal data (show "Request Research" card)
+                const hasStockData = stock.price !== null && stock.price !== undefined;
+                const hasEmployees = stock.employees !== null && stock.employees !== undefined;
+                const hasHQ = data.headquarters && data.headquarters !== 'N/A';
+                const hasDescription = data.description || data.extract;
+                const dataQuality = [hasStockData, hasEmployees, hasHQ, hasDescription].filter(Boolean).length;
+
+                if (dataQuality < 2) {
+                    showRequestCard(true);
+                } else {
+                    showRequestCard(false);
+                }
 
                 // Brands
                 const brands = data.brands || [];
@@ -781,6 +829,64 @@
                 }
             } catch (error) {
                 console.error('Error loading competitors:', error);
+            }
+        }
+
+        // Research Request Functions
+        function openRequestModal() {
+            const modal = document.getElementById('requestModal');
+            document.getElementById('requestCompanyInput').value = currentCompany || '';
+            modal.style.display = 'flex';
+        }
+
+        function closeRequestModal() {
+            document.getElementById('requestModal').style.display = 'none';
+        }
+
+        async function submitResearchRequest() {
+            const company = document.getElementById('requestCompanyInput').value.trim();
+            const email = document.getElementById('requestEmailInput').value.trim();
+            const notes = document.getElementById('requestNotesInput').value.trim();
+
+            if (!company) {
+                alert('Please enter a company name');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Submitting...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/company/request-research', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company, email, notes })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message);
+                    closeRequestModal();
+                } else {
+                    alert(`Error: ${data.message || data.error}`);
+                }
+            } catch (error) {
+                alert(`Failed to submit request: ${error.message}`);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function showRequestCard(show) {
+            const card = document.getElementById('requestResearchCard');
+            if (show) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
             }
         }
 
