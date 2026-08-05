@@ -9647,18 +9647,23 @@ def api_home_last_receipt():
             # Extract merchant from title (remove emoji)
             merchant = title.replace("🧾", "").strip()
 
-            # If title is generic, try to extract from summary (common chains)
+            # If title is generic, try to extract from summary or domain
             if not merchant or merchant.lower() in ("receipt", "photo", "image", "scanned"):
-                # Search summary for common merchants
-                merchant_patterns = [
-                    r'\b(Costa|Starbucks|Pret|Greggs|Caff[eé]|McDonald|Burger King|KFC|Subway|Tesco|Sainsbury|Asda|Morrisons|Waitrose|Aldi|Lidl|Marks|M&S|Boots|B&Q|Currys|John Lewis|Maplin|Screwfix|Toolstation|Next|Zara|H&M|Topshop|New Look|Primark|Sports Direct|Argos|BHS|Ryman|Pets at Home|Go Outdoors|Decathlon|Smyths|Toys R Us|Building Centre|Homebase|Screwfix Direct|Jewson|CPC|Toolstation|Travis Perkins|Wickes)\b',
-                    r'(Shopping|Groceries|Fuel|Petrol|Supermarket|Coffee|Cafe|Restaurant)',
-                ]
-                for pattern in merchant_patterns:
-                    m = re.search(pattern, summary, re.IGNORECASE)
-                    if m:
-                        merchant = m.group(1).title()
-                        break
+                # First try: Extract from domain (e.g., waitrose.com → Waitrose)
+                domain_match = re.search(r'(waitrose|tesco|sainsbury|asda|morrisons|costa|starbucks|pret)\.', summary, re.IGNORECASE)
+                if domain_match:
+                    merchant = domain_match.group(1).title()
+                else:
+                    # Second try: Search summary for common merchants
+                    merchant_patterns = [
+                        r'\b(Costa|Starbucks|Pret|Greggs|Caff[eé]|McDonald|Burger King|KFC|Subway|Tesco|Sainsbury|Asda|Morrisons|Waitrose|Aldi|Lidl|Marks|M&S|Boots|B&Q|Currys|John Lewis|Maplin|Screwfix|Toolstation|Next|Zara|H&M|Topshop|New Look|Primark|Sports Direct|Argos|BHS|Ryman|Pets at Home|Go Outdoors|Decathlon|Smyths|Toys R Us|Building Centre|Homebase|Screwfix Direct|Jewson|CPC|Toolstation|Travis Perkins|Wickes)\b',
+                        r'(Shopping|Groceries|Fuel|Petrol|Supermarket|Coffee|Cafe|Restaurant)',
+                    ]
+                    for pattern in merchant_patterns:
+                        m = re.search(pattern, summary, re.IGNORECASE)
+                        if m:
+                            merchant = m.group(1).title()
+                            break
 
             if not merchant or merchant.lower() in ("receipt", "photo", "image", "scanned", "shopping", "groceries"):
                 continue
@@ -9670,32 +9675,49 @@ def api_home_last_receipt():
 
             app.logger.info(f"[last-receipt] FOUND: {merchant} £{total} on {shop_date}")
 
-            # Extract items — only product names, skip all metadata/totals
+            # Extract items — try "Main items include:" section first, then fallback to line-by-line
             items = []
             address_lines = []  # Track potential address lines
-            for line in summary.split("\n"):
-                line = line.strip()
-                if not line:
-                    continue
 
-                # Skip metadata/totals (they're redundant with already-shown total)
-                skip_keywords = ["total", "vat", "date", "time", "subtotal", "payment", "card", "receipt", "amount", "balance", "meta", "paid by"]
-                if any(kw in line.lower() for kw in skip_keywords):
-                    continue
+            # Try to find "Main items include:" section and parse comma-separated items
+            main_items_match = re.search(r'Main items include:\s*(.+?)(?:Discounts applied|$)', summary, re.IGNORECASE | re.DOTALL)
+            if main_items_match:
+                items_text = main_items_match.group(1)
+                # Split by comma and extract individual items (format: "Item £price (×qty), Item £price, ...")
+                item_chunks = re.split(r',(?=[A-Z]|\d)', items_text)
+                for chunk in item_chunks[:10]:  # Get up to 10 items
+                    item_clean = chunk.strip()
+                    # Remove multiplier notation like "(×2)"
+                    item_clean = re.sub(r'\s*\(\s*×\s*\d+\s*\)', '', item_clean).strip()
+                    if item_clean and len(item_clean) > 2:
+                        items.append(item_clean[:70])
 
-                # Skip lines that are JUST amounts (£3.90, 3.90, etc.)
-                if re.match(r'^\s*£?[\d,]+\.?\d*\s*$', line):
-                    continue
+            # Fallback: line-by-line parsing if main items section not found or too few items
+            if len(items) < 3:
+                for line in summary.split("\n"):
+                    line = line.strip()
+                    if not line:
+                        continue
 
-                # Collect potential address lines (look for postcodes, street names, etc.)
-                if re.search(r'\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b|Street|Road|Avenue|Lane|Close|House|Building', line, re.IGNORECASE):
-                    address_lines.append(line)
-                    continue
+                    # Skip metadata/totals
+                    skip_keywords = ["total", "vat", "date", "time", "subtotal", "payment", "card", "receipt", "amount", "balance", "meta", "paid by", "main items", "discounts"]
+                    if any(kw in line.lower() for kw in skip_keywords):
+                        continue
 
-                # This is a product line (e.g. "Flat White SML TA (£3.90)")
-                items.append(line[:60])
-                if len(items) >= 3:
-                    break
+                    # Skip lines that are JUST amounts
+                    if re.match(r'^\s*£?[\d,]+\.?\d*\s*$', line):
+                        continue
+
+                    # Collect potential address lines
+                    if re.search(r'\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b|Street|Road|Avenue|Lane|Close|House|Building', line, re.IGNORECASE):
+                        address_lines.append(line)
+                        continue
+
+                    # This is a product line
+                    if line not in items:  # Avoid duplicates
+                        items.append(line[:70])
+                    if len(items) >= 8:  # Allow up to 8 from fallback
+                        break
 
             # Build full location from address lines
             full_location = " ".join(address_lines[:2]) if address_lines else ""  # Combine first 2 address lines
@@ -38720,6 +38742,29 @@ def company_qa_page(company_name):
         return render_template("company_qa.html")
     except Exception as e:
         return f"Error: {str(e)}", 500
+
+
+@app.route("/api/company/report", methods=["GET"])
+def api_company_report():
+    """Generate and download PDF report for a company."""
+    try:
+        from company_report_generator import generate_company_report
+
+        company_name = request.args.get("name", "").strip()
+        if not company_name:
+            return jsonify({"error": "Company name required"}), 400
+
+        pdf_bytes = generate_company_report(company_name)
+
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"{company_name}_Intelligence_Report.pdf"
+        )
+    except Exception as e:
+        app.logger.error(f"[company/report] Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # ────────────────────────────────────────────────────────────────────────
 

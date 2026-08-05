@@ -305,6 +305,26 @@
             transform: translateY(-2px);
         }
 
+        .download-button {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .download-button:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+        }
+
         .share-button {
             display: inline-flex;
             align-items: center;
@@ -362,8 +382,15 @@
                 <button onclick="searchCompany()">Search</button>
             </div>
             <div id="companyInfo" style="display: none;">
-                <div class="company-title" id="companyName">—</div>
-                <div class="company-meta" id="companyMeta">Loading...</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div class="company-title" id="companyName">—</div>
+                        <div class="company-meta" id="companyMeta">Loading...</div>
+                    </div>
+                    <button class="download-button" id="downloadBtn" onclick="downloadReport()">
+                        📄 Download Report
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -632,6 +659,15 @@
             }).catch(() => {
                 prompt('Share this link:', url);
             });
+        }
+
+        function downloadReport() {
+            if (!currentCompany) {
+                alert('Please search for a company first');
+                return;
+            }
+            const url = `/api/company/report?name=${encodeURIComponent(currentCompany)}`;
+            window.location.href = url;
         }
 
         function handleQuestionKeypress(event) {
