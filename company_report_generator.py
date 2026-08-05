@@ -597,14 +597,24 @@ class ProfessionalReportGenerator:
         return Paragraph(html, getSampleStyleSheet()['Normal'])
 
     def _market_trends_box(self):
-        """Display market share and growth trends."""
+        """Display market share and growth trends (de-duplicated)."""
         if not self.market_trends:
             return Paragraph('<font size="9" color="#1c1917">No market data available</font>', getSampleStyleSheet()['Normal'])
 
         html = '<font size="9" color="#1c1917">'
         by_category = {}
+        seen_metrics = set()  # Track unique metrics to avoid duplicates
+
         for trend in self.market_trends[:8]:
             category = trend.get('category', 'other')
+            metric_name = trend.get('metric_name', '')
+
+            # Skip if we've already seen this metric
+            if metric_name in seen_metrics:
+                continue
+
+            seen_metrics.add(metric_name)
+
             if category not in by_category:
                 by_category[category] = []
             by_category[category].append(trend)
