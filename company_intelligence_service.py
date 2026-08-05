@@ -234,7 +234,8 @@ class CompanyIntelligence:
             # System prompt for company Q&A
             system_prompt = f"""You are a company intelligence expert. Answer questions about {company_name}.
 Be concise, factual, direct. 2-3 sentences max.
-Focus: business model, strategy, AI/tech focus, competitors, market position."""
+Focus: business model, strategy, AI/tech focus, competitors, market position, brands, market share.
+IMPORTANT: If asked about brands or market share, provide specific numbers and percentages."""
 
             message = client.messages.create(
                 model="claude-opus-5",
@@ -258,11 +259,21 @@ Focus: business model, strategy, AI/tech focus, competitors, market position."""
                         return block.text
 
             logger.warning(f"[Q&A] No text block found in response")
-            return "I can answer this, but encountered a technical issue. Try rephrasing your question."
+            return "I found information but couldn't format it. Try: 'What are Reckitt's main brands?' or 'List brand market share'"
 
         except Exception as e:
-            logger.error(f"[Q&A] Claude API error: {e}", exc_info=True)
-            return f"Technical issue: {str(e)[:100]}"
+            error_msg = str(e).lower()
+            logger.error(f"[Q&A] Error: {error_msg}")
+
+            # Suggest rephrasing based on error type
+            if "rate" in error_msg or "quota" in error_msg:
+                return "System busy. Please try again in a moment."
+            elif "timeout" in error_msg:
+                return "Request timed out. Try: 'What brands does Reckitt have?'"
+            elif any(word in error_msg for word in ["invalid", "token", "auth"]):
+                return "System error. Try: 'Tell me about Reckitt' or 'What is Reckitt?'"
+            else:
+                return "Having trouble with that question. Try: 'What are Reckitt's brands?' or 'List Reckitt brands and market share'"
 
 
 def get_company_intelligence(company_name: str) -> dict:
