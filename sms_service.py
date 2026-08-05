@@ -45,6 +45,7 @@ import library as lib
 import school_service
 import personal_events_service
 import shopping_history
+import brief_analyzer
 from scoring_engine import MarketEntryScorer
 from intel_groq_optimizer import IntelGroqOptimizer
 
@@ -15645,14 +15646,23 @@ def api_home_brief():
                 f"Output ONLY the two sentences. No labels, no explanation, no 'Note:'. "
                 f"Plain English. No metaphors. Under 40 words total."
             )
-        prompt = " ".join(prompt_parts)
+        # === SMART BRIEF: Analyze priorities before narrative ===
+        try:
+            analysis = brief_analyzer.analyze_brief_priorities(facts, ctx)
+            app.logger.info(f"[brief-smart] Analysis: {analysis['summary']} | Mood: {analysis['mood']}")
+            # Use smart prompt that leads with priorities
+            prompt = brief_analyzer.build_smart_prompt(facts, analysis, ctx)
+        except Exception as analyze_err:
+            app.logger.debug(f"[brief-smart] Analyzer failed, using standard prompt: {analyze_err}")
+            prompt = " ".join(prompt_parts)
+
         brief_text = ""
         try:
             r = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                          "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "max_tokens": 80,
+                json={"model": "llama-3.1-8b-instant", "max_tokens": 100,
                       "messages": [{"role": "user", "content": prompt}]},
                 timeout=10,
             )
