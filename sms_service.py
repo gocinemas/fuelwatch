@@ -1583,6 +1583,12 @@ def api_request_research():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/admin/research-requests")
+def admin_research_requests():
+    """Admin dashboard to view and manage research requests."""
+    return render_template("admin_research_requests.html")
+
+
 @app.route("/api/admin/research-requests", methods=["GET"])
 def api_admin_research_requests():
     """
@@ -1614,6 +1620,36 @@ def api_admin_research_requests():
 
     except Exception as e:
         app.logger.error(f"[admin_requests] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/research-requests/<int:request_id>/complete", methods=["POST"])
+def api_mark_research_complete(request_id):
+    """
+    Mark a research request as completed.
+    Admin action after manually researching and adding company data.
+    """
+    from company_research_requests_service import research_request_service
+    from supabase import create_client
+
+    try:
+        # Initialize service
+        sb = create_client(
+            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+        research_request_service.set_db(sb)
+
+        # Mark as completed
+        success = research_request_service.mark_completed(request_id)
+
+        if success:
+            return jsonify({"status": "completed", "id": request_id})
+        else:
+            return jsonify({"error": "Failed to mark request as completed"}), 400
+
+    except Exception as e:
+        app.logger.error(f"[mark_complete] Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
