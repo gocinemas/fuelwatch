@@ -1495,6 +1495,27 @@ def api_company_sentiment(company_name):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/company/research/<company_name>", methods=["POST", "GET"])
+def api_company_research(company_name):
+    """
+    Trigger background research for a company.
+    Researches and populates: financials, deals, market trends.
+
+    Usage: POST /api/company/research/Reckitt
+    Returns: {status, financials, deals, market_trends}
+    """
+    from company_research_agent import CompanyResearchAgent
+
+    try:
+        agent = CompanyResearchAgent()
+        result = agent.research_company(company_name)
+        return jsonify(result)
+
+    except Exception as e:
+        app.logger.error(f"[research] Error researching {company_name}: {e}")
+        return jsonify({"error": str(e), "company": company_name, "status": "failed"}), 500
+
+
 # ── NEW SIMPLIFIED 5-SIGNAL DASHBOARD ROUTES ─────────────────────────────────
 @app.route("/intelligence/5signals/<company_name>")
 def company_5signals_dashboard(company_name):
