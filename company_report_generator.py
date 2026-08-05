@@ -10,6 +10,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
 from company_intelligence_service import get_company_intelligence, get_competitor_list
+from company_knowledge_service import CompanyKnowledgeBase
 
 
 SIGNALS_DATA = {
@@ -146,6 +147,13 @@ class CompanyReportGenerator:
         # QUICK SIGNALS
         story.append(self._quick_signals())
         story.append(Spacer(1, 0.1*inch))
+
+        # INTELLIGENCE TRENDS (from stored data)
+        trends = CompanyKnowledgeBase.get_trends(self.company_name)
+        if trends.get('total_queries', 0) > 0:
+            story.append(self._section("INTELLIGENCE TRENDS (from stored queries)"))
+            story.append(self._trends_display(trends))
+            story.append(Spacer(1, 0.1*inch))
 
         # BRANDS
         if self.signals.get('brands'):
@@ -308,6 +316,18 @@ class CompanyReportGenerator:
             ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
         ]))
         return table
+
+    def _trends_display(self, trends: dict):
+        """Show intelligence trends from stored queries."""
+        html = f"""
+        <b>Total Queries Analyzed:</b> {trends.get('total_queries', 0)}<br/>
+        <b>Interest Breakdown:</b><br/>
+        • AI & Innovation: {trends.get('ai_interest', '0%')}<br/>
+        • Hiring & Talent: {trends.get('hiring_interest', '0%')}<br/>
+        • Strategy & Positioning: {trends.get('strategy_interest', '0%')}<br/>
+        • Risks & Challenges: {trends.get('risk_interest', '0%')}<br/>
+        """
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
 
     def _news_table(self):
         """News highlights."""
