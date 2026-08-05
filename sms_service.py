@@ -1520,7 +1520,7 @@ def api_company_research(company_name):
 def api_request_research():
     """
     Submit a research request for a company.
-    User-triggered endpoint to request company research.
+    Automatically triggers background research and populates database.
 
     POST body: {
         "company": "Samsung",
@@ -1529,7 +1529,9 @@ def api_request_research():
     }
     """
     from company_research_requests_service import research_request_service
+    from company_research_agent import CompanyResearchAgent
     from supabase import create_client
+    import threading
 
     try:
         data = request.json or {}
@@ -1549,7 +1551,32 @@ def api_request_research():
 
         # Submit request
         result = research_request_service.request_research(company_name, email, notes)
-        return jsonify(result)
+        request_id = result.get("id")
+
+        # Trigger background research immediately
+        def auto_research():
+            try:
+                app.logger.info(f"[auto_research] Starting research for {company_name} (request #{request_id})")
+                agent = CompanyResearchAgent()
+                research_result = agent.research_company(company_name)
+
+                # Mark as completed if research succeeded
+                if research_result.get("status") == "success":
+                    research_request_service.mark_completed(request_id)
+                    app.logger.info(f"[auto_research] Completed research for {company_name} - marked request #{request_id} as done")
+                else:
+                    app.logger.warning(f"[auto_research] Research for {company_name} returned {research_result.get('status')}")
+            except Exception as e:
+                app.logger.error(f"[auto_research] Failed to research {company_name}: {e}")
+
+        # Run research in background (non-blocking)
+        thread = threading.Thread(target=auto_research, daemon=True)
+        thread.start()
+
+        return jsonify({
+            **result,
+            "message": f"✅ Research started for {company_name}! Check back in 30 seconds for full intelligence."
+        })
 
     except Exception as e:
         app.logger.error(f"[request_research] Error: {e}")
