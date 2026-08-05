@@ -38737,6 +38737,34 @@ def company_qa_page():
         return f"Error: {str(e)}", 500
 
 
+def _company_has_history(company_name: str) -> bool:
+    """Check if company has historical data in database."""
+    try:
+        from company_history_service import history_tracker
+        history = history_tracker.get_financial_history(company_name, periods=1)
+        return len(history) > 0
+    except:
+        return False
+
+
+def _trigger_background_research(company_name: str):
+    """Trigger research agent in background thread (non-blocking)."""
+    import threading
+
+    def research_in_background():
+        try:
+            from company_research_agent import CompanyResearchAgent
+            agent = CompanyResearchAgent()
+            result = agent.research_company(company_name)
+            app.logger.info(f"[background] Research complete for {company_name}: {result['status']}")
+        except Exception as e:
+            app.logger.error(f"[background] Research failed for {company_name}: {e}")
+
+    # Start research in background thread (don't block user)
+    thread = threading.Thread(target=research_in_background, daemon=True)
+    thread.start()
+
+
 @app.route("/api/company/report", methods=["GET"])
 def api_company_report():
     """Generate and download PDF report for a company."""
@@ -38747,6 +38775,19 @@ def api_company_report():
         if not company_name:
             return jsonify({"error": "Company name required"}), 400
 
+        # Check if we have historical data
+        has_history = _company_has_history(company_name)
+
+        if not has_history:
+            # Trigger background research and return "loading" message
+            _trigger_background_research(company_name)
+            return jsonify({
+                "status": "securing_data",
+                "message": f"🔍 Securing data for {company_name}... Please try again in 30 seconds.",
+                "company": company_name
+            }), 202  # 202 Accepted (processing in background)
+
+        # Data exists, generate full report
         pdf_bytes = generate_company_report(company_name)
 
         return send_file(

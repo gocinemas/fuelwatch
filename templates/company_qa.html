@@ -672,13 +672,67 @@
             });
         }
 
-        function downloadReport() {
+        async function downloadReport() {
             if (!currentCompany) {
                 alert('Please search for a company first');
                 return;
             }
-            const url = `/api/company/report?name=${encodeURIComponent(currentCompany)}`;
-            window.location.href = url;
+
+            const btn = document.getElementById('downloadBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Preparing...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/company/report?name=${encodeURIComponent(currentCompany)}`);
+
+                if (response.status === 202) {
+                    // Data is being secured - show message and retry
+                    const data = await response.json();
+                    btn.textContent = '🔄 Retry in 5s...';
+
+                    setTimeout(async () => {
+                        try {
+                            const retryResponse = await fetch(`/api/company/report?name=${encodeURIComponent(currentCompany)}`);
+                            if (retryResponse.ok) {
+                                const blob = await retryResponse.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `${currentCompany}_Intelligence_Report.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                window.URL.revokeObjectURL(url);
+                            }
+                        } finally {
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                        }
+                    }, 5000);
+                    return;
+                }
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${currentCompany}_Intelligence_Report.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.message || error.error}`);
+                }
+            } catch (error) {
+                alert(`Download failed: ${error.message}`);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
         }
 
         function handleQuestionKeypress(event) {
