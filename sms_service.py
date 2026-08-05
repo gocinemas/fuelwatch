@@ -77,45 +77,8 @@ def _ensure_json_serializable(obj):
 
 # CENTRAL BRIEF TEXT VALIDATION — Used by /api/home/brief and all Groq brief paths
 def _validate_brief_text(text):
-    """Remove personal advice/imperatives. Allow facts, humor, situational context, place suggestions."""
-    if not text:
-        return ""
-
-    sentences = [s.strip() for s in text.split(".") if s.strip()]
-    valid = []
-
-    for sent in sentences:
-        sent_lower = sent.lower().strip()
-
-        # BLOCK: Personal imperatives and "you should/might/need" advice
-        hard_blocks = [
-            # You-form direct advice (anywhere in sentence)
-            "you should", "you might", "you could", "you need",
-            "you have", "you've got",
-            # I-form inferences
-            "i think", "i believe", "i know",
-            # Imperative verbs targeting user (grab YOUR, get A, don't forget)
-            "grab your", "get a ", "don't forget", "remember to",
-            "make sure", "ensure you", "consider",
-        ]
-
-        # Check if ANY blocked phrase appears ANYWHERE in the sentence
-        if any(block in sent_lower for block in hard_blocks):
-            app.logger.debug(f"[validate] Blocked advice: {sent[:50]}")
-            continue
-
-        # Allow: weather facts, time facts, place suggestions, situational humor
-        # Allow: "try the café", "perfect day for", "it's raining", "3pm shows", etc.
-        valid.append(sent)
-
-    result = ". ".join(valid)
-    if result and not result.endswith("."):
-        result += "."
-
-    if not result:
-        app.logger.warning(f"[validate] ALL blocked, returning empty")
-
-    return result
+    """Pass through brief text as-is. Smart brief analyzer already filters appropriately."""
+    return text if text else ""
 
 
 _CORS_ORIGINS = {"https://ai.humanagency.co", "http://ai.humanagency.co", "http://localhost:8080",
