@@ -13,6 +13,7 @@ from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from company_intelligence_service import get_company_intelligence, get_competitor_list
 from company_knowledge_service import CompanyKnowledgeBase
+from company_history_service import history_tracker
 
 
 SIGNALS_DATA = {
@@ -160,6 +161,23 @@ class ProfessionalReportGenerator:
         self.signals = SIGNALS_DATA.get(company_name.lower(), {})
         self.industry = self._detect_industry()
 
+        # Initialize Supabase for history tracking
+        try:
+            from supabase import create_client
+            import os
+            sb = create_client(
+                os.getenv("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                os.getenv("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+            )
+            history_tracker.set_db(sb)
+            self.financial_history = history_tracker.get_financial_history(company_name, periods=4)
+            self.deals = history_tracker.get_deals(company_name, limit=5)
+            self.market_trends = history_tracker.get_market_trends(company_name)
+        except Exception as e:
+            self.financial_history = []
+            self.deals = []
+            self.market_trends = []
+
     def _detect_industry(self) -> str:
         """Detect company industry from signals or data."""
         if self.signals and 'industry' in self.signals:
@@ -258,6 +276,22 @@ class ProfessionalReportGenerator:
         story.append(self._section_title("OPPORTUNITIES"))
         story.append(self._opportunities_box())
         story.append(Spacer(1, 0.15*inch))
+
+        # Historical trends (if data available)
+        if self.financial_history:
+            story.append(self._section_title("REVENUE TRAJECTORY"))
+            story.append(self._financial_trends_box())
+            story.append(Spacer(1, 0.15*inch))
+
+        if self.market_trends:
+            story.append(self._section_title("MARKET SHARE & GROWTH"))
+            story.append(self._market_trends_box())
+            story.append(Spacer(1, 0.15*inch))
+
+        if self.deals:
+            story.append(self._section_title("DEAL ACTIVITY"))
+            story.append(self._deals_box())
+            story.append(Spacer(1, 0.15*inch))
 
         story.append(self._section_title("RECENT NEWS"))
         story.append(self._news_section())
@@ -503,6 +537,63 @@ class ProfessionalReportGenerator:
                 verdict = "🔴 Headwinds: Negative stock trend + competitive intensity. Monitor closely."
 
         html = f'<font size="10" color="#1c1917"><b>{verdict}</b></font>'
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
+
+    def _financial_trends_box(self):
+        """Display historical revenue and margin trends."""
+        if not self.financial_history:
+            return Paragraph('<font size="9" color="#1c1917">No historical data available</font>', getSampleStyleSheet()['Normal'])
+
+        html = '<font size="9" color="#1c1917">'
+        for record in self.financial_history[:4]:
+            period = record.get('period', 'N/A')
+            revenue = record.get('revenue_millions', 0)
+            margin = record.get('operating_margin_pct', 0)
+            growth = record.get('revenue_growth_pct', 0)
+            direction = "↑" if growth > 0 else "↓"
+            html += f"<b>{period}:</b> £{revenue}M revenue ({direction}{abs(growth):.1f}% YoY), {margin}% operating margin<br/>"
+
+        html += '</font>'
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
+
+    def _market_trends_box(self):
+        """Display market share and growth trends."""
+        if not self.market_trends:
+            return Paragraph('<font size="9" color="#1c1917">No market data available</font>', getSampleStyleSheet()['Normal'])
+
+        html = '<font size="9" color="#1c1917">'
+        by_category = {}
+        for trend in self.market_trends[:8]:
+            category = trend.get('category', 'other')
+            if category not in by_category:
+                by_category[category] = []
+            by_category[category].append(trend)
+
+        for category, trends in by_category.items():
+            html += f"<b>{category.replace('_', ' ').title()}:</b><br/>"
+            for trend in trends[:2]:
+                metric = trend.get('metric_name', '').replace('_', ' ').title()
+                value = trend.get('value_pct', 0)
+                html += f"  • {metric}: {value}%<br/>"
+            html += "<br/>"
+
+        html += '</font>'
+        return Paragraph(html, getSampleStyleSheet()['Normal'])
+
+    def _deals_box(self):
+        """Display M&A and investment activity."""
+        if not self.deals:
+            return Paragraph('<font size="9" color="#1c1917">No deal data available</font>', getSampleStyleSheet()['Normal'])
+
+        html = '<font size="9" color="#1c1917">'
+        for deal in self.deals[:3]:
+            deal_type = deal.get('deal_type', 'N/A').upper()
+            target = deal.get('target_company') or deal.get('investor_company', 'N/A')
+            amount = deal.get('amount_millions', 0)
+            date = deal.get('announcement_date', 'N/A')
+            html += f"<b>{date} - {deal_type}:</b> {target} (£{amount}M)<br/>"
+
+        html += '</font>'
         return Paragraph(html, getSampleStyleSheet()['Normal'])
 
     def _news_section(self):
