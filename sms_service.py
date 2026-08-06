@@ -14841,11 +14841,35 @@ def api_home_brief():
     # Extend day_type with bank holiday context
     is_long_weekend = bank_holiday_monday and wday >= 4  # Fri/Sat/Sun before BH Monday
 
-    # Extract birthdays from calendar events
+    # Extract birthdays from calendar events + manual list
     birthdays = []
     try:
         _cal_data = ctx.get("calendar", []) + ctx.get("ms_calendar", [])
         birthdays, _ = _v2_extract_birthdays_and_upcoming(_cal_data, now)
+
+        # Also fetch manual birthday list from DB
+        if from_number:
+            try:
+                _bd_rows = lib._sb().table("ma_details").select("data") \
+                    .eq("device_id", from_number).eq("type", "birthdays").limit(1).execute().data or []
+                _manual_bds = _bd_rows[0]["data"] if _bd_rows else []
+                for _mbd in _manual_bds:
+                    _name = (_mbd.get("name") or "").strip()
+                    _date = (_mbd.get("date") or "").strip()
+                    if _name and _date:
+                        try:
+                            from datetime import date as _bd_date
+                            _bd_dt = _bd_date.fromisoformat(_date)
+                            _days_away = (_bd_dt - now.date()).days
+                            if 0 <= _days_away <= 30 and not any(b.get("name") == _name for b in birthdays):
+                                birthdays.append({"name": _name, "date": _date, "days_away": _days_away})
+                        except (ValueError, TypeError):
+                            pass
+            except Exception:
+                pass
+
+        # Re-sort after adding manual birthdays
+        birthdays.sort(key=lambda x: x["days_away"])
     except Exception as e:
         app.logger.debug(f"[birthdays] extraction failed: {e}")
 
@@ -29511,6 +29535,61 @@ def api_calendar_disconnect():
     lib._sb().table("ma_details").delete().eq("device_id", from_number) \
         .eq("type", "calendar_token").execute()
     return _cors(jsonify({"ok": True}))
+
+
+# ── Birthdays (Manual List) ────────────────────────────────────────────────────
+
+@app.route("/api/birthdays", methods=["GET", "POST", "OPTIONS"])
+def api_birthdays():
+    """Get/set user's birthday list. Format: [{"name": "Jane", "date": "2026-06-23"}, ...]"""
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+
+    data = request.json or {}
+    token = data.get("token", "").strip() if request.method in ("POST", "PUT") else request.args.get("token", "").strip()
+    from_number = _v2_resolve(token) if token else None
+    if not from_number:
+        return _cors(jsonify({"error": "token required"})), 400
+
+    if request.method == "GET":
+        # Fetch saved birthdays
+        try:
+            rows = lib._sb().table("ma_details").select("data") \
+                .eq("device_id", from_number).eq("type", "birthdays").limit(1).execute().data or []
+            birthdays = rows[0]["data"] if rows else []
+            return _cors(jsonify({"birthdays": birthdays}))
+        except Exception as e:
+            return _cors(jsonify({"error": str(e)})), 500
+
+    elif request.method == "POST":
+        # Save birthdays
+        birthdays = data.get("birthdays", [])
+        if not isinstance(birthdays, list):
+            return _cors(jsonify({"error": "birthdays must be list"})), 400
+
+        try:
+            # Validate format
+            for bd in birthdays:
+                if not bd.get("name") or not bd.get("date"):
+                    return _cors(jsonify({"error": "each birthday needs name + date (YYYY-MM-DD)"})), 400
+
+            # Save or update
+            existing = lib._sb().table("ma_details").select("id") \
+                .eq("device_id", from_number).eq("type", "birthdays").limit(1).execute().data or []
+
+            if existing:
+                lib._sb().table("ma_details").update({"data": birthdays}) \
+                    .eq("device_id", from_number).eq("type", "birthdays").execute()
+            else:
+                lib._sb().table("ma_details").insert({
+                    "device_id": from_number,
+                    "type": "birthdays",
+                    "data": birthdays,
+                }).execute()
+
+            return _cors(jsonify({"ok": True, "count": len(birthdays)}))
+        except Exception as e:
+            return _cors(jsonify({"error": str(e)})), 500
 
 
 # ── Microsoft Calendar ─────────────────────────────────────────────────────────
