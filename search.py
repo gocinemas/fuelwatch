@@ -77,6 +77,10 @@ def _fuel_finder_auth():
         print("[fuel-finder] Missing FUEL_FINDER_ACCESS_TOKEN — run fuel_token_refresher.py locally")
         return None
 
+    # Debug: show token prefix to verify it's set
+    token_preview = access_token[:50] + "..." if len(access_token) > 50 else access_token
+    print(f"[fuel-finder] Using token: {token_preview}")
+
     # Cache token locally for 40 min (actual token lasts 1 hour, cron refreshes every 45 min)
     _fuel_finder_token = access_token
     _fuel_finder_token_expires = datetime.now() + timedelta(minutes=40)
