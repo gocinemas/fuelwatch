@@ -336,29 +336,63 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: CMA feeds (only reliable source, though stale as of Aug 2026)."""
+    """Fetch fuel prices: Fuel Finder CSV (8,040 current stations) + CMA fallback."""
     import concurrent.futures as _cf
+    import csv as _csv
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # NOTE (Aug 2026): Fuel Finder API not accessible (endpoints don't resolve).
-    # CMA feeds are the only working source but return stale data (24h+).
-    # This is a known issue with the UK fuel price infrastructure transition.
+    # Primary: Fuel Finder official CSV (8,040 stations, CURRENT prices)
+    print("\n1. Fuel Finder CSV (official data, 8,040 stations)...")
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "fuel_prices_latest.csv")) as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    brand = row.get("forecourts.brand_name", "") or row.get("forecourts.trading_name", "Unknown")
+                    lat = float(row.get("forecourts.location.latitude", 0) or 0)
+                    lon = float(row.get("forecourts.location.longitude", 0) or 0)
+                    e10 = float(row.get("forecourts.fuel_price.E10", 0) or 0)
+                    diesel = float(row.get("forecourts.fuel_price.B7P", 0) or row.get("forecourts.fuel_price.B7S", 0) or 0)
+                    postcode = row.get("forecourts.location.postcode", "")
+                    address = row.get("forecourts.location.address_line_1", "")
 
-    # Primary: CMA retailer feeds (Esso, Jet, MFG — only working source)
-    print("\n1. CMA retailer feeds (only accessible source)...")
-    working = []
+                    if lat and lon and (e10 or diesel):
+                        all_stations.append({
+                            "brand": brand,
+                            "address": address,
+                            "postcode": postcode,
+                            "lat": lat,
+                            "lon": lon,
+                            "petrol": e10 if e10 else None,
+                            "diesel": diesel if diesel else None,
+                            "source": "fuel_finder_csv",
+                        })
+                except (ValueError, TypeError):
+                    continue
 
-    with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
-        futures = {ex.submit(fetch_retailer, name, url): name for name, url in RETAILER_FEEDS.items()}
-        for fut in _cf.as_completed(futures):
-            name = futures[fut]
-            stations = fut.result()
-            if stations:
-                all_stations.extend(stations)
-                working.append(f"{name} ({len(stations)})")
-                print(f"   ✓ {name}: {len(stations)} stations")
+        if all_stations:
+            print(f"   ✓ Loaded {len(all_stations)} stations from Fuel Finder CSV")
+    except FileNotFoundError:
+        print("   ✗ fuel_prices_latest.csv not found (need to update from Fuel Finder portal)")
+    except Exception as e:
+        print(f"   ✗ CSV parse error: {e}")
+
+    # Fallback: CMA retailer feeds (if CSV missing or has limited coverage)
+    if len(all_stations) < 500:
+        print("\n2. CMA retailer feeds (fallback)...")
+        working = []
+
+        with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
+            futures = {ex.submit(fetch_retailer, name, url): name for name, url in RETAILER_FEEDS.items()}
+            for fut in _cf.as_completed(futures):
+                name = futures[fut]
+                stations = fut.result()
+                if stations:
+                    all_stations.extend(stations)
+                    working.append(f"{name} ({len(stations)})")
+                    print(f"   ✓ {name}: {len(stations)} stations")
 
     # Fallback: PetrolPrices.com if we have limited coverage (they aggregate live data)
     if len(all_stations) < 500:
