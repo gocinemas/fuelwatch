@@ -23705,6 +23705,48 @@ def _wa_triage_respond(from_number: str, cmd: str) -> str:
     return reply
 
 
+def _parse_fuel_query_nlu(body: str, from_number: str) -> dict:
+    """
+    Parse natural language fuel query using Groq NLU.
+    Extracts: postcode, fuel_type (petrol/diesel), radius_miles.
+
+    Examples:
+      "What's the cheapest petrol near me?" → {postcode, fuel: "petrol", radius: 5}
+      "Show me diesel prices in Kingston KT1" → {postcode: "KT1", fuel: "diesel", radius: 5}
+      "Nearest Tesco fuel station" → {postcode, fuel: "petrol", retailer: "Tesco"}
+    """
+    try:
+        prompt = f"""Extract fuel query parameters from: "{body}"
+
+Return JSON with (use null if not specified):
+- postcode: UK postcode or outcode (e.g. "KT15", "SW1A"), or null if use home
+- fuel: "petrol" or "diesel", default "petrol"
+- radius: miles (default 5)
+- retailer: brand name if mentioned (Tesco, Asda, Jet, Shell, Esso, etc), or null
+
+STRICT JSON ONLY, no explanation."""
+
+        messages = [{"role": "user", "content": prompt}]
+        result = _groq_chat("You are a fuel query parser.", messages, max_tokens=100, json_mode=True)
+
+        data = json.loads(result) if isinstance(result, str) else result
+
+        # Fallback to home postcode if not specified
+        if not data.get("postcode"):
+            data["postcode"] = _get_wa_home_postcode(from_number)
+
+        # Normalize
+        data["postcode"] = (data.get("postcode") or "").replace(" ", "").upper() if data.get("postcode") else None
+        data["fuel"] = (data.get("fuel") or "petrol").lower()
+        data["radius"] = float(data.get("radius") or 5.0)
+
+        return data if data.get("postcode") else None
+
+    except Exception as e:
+        print(f"[nlu] Fuel query parse error: {e}")
+        return None
+
+
 _FUEL_WORDS = {"petrol", "diesel", "unleaded", "fuel", "gas", "price", "prices", "cheapest", "nearest", "near", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
 _ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
                    "polling", "ballot", "stand", "standing"}
@@ -27992,14 +28034,27 @@ def _whatsapp_reply_inner():
         resp.message(_CLARIFY_MSG)
         return str(resp)
 
-    # ── "fuel near [me]" / "petrol near me" — use saved home postcode ──────────
-    if re.match(r'^(?:fuel|petrol|diesel)\s+near(?:\s+me)?\s*$', body_lower):
-        _home_pc2 = _get_wa_home_postcode(from_number)
-        if _home_pc2:
-            postcode = _home_pc2.replace(" ", "")
+    # ── Natural Language Fuel Query (Groq NLU) ──────────────────────────────────
+    # Detect fuel intent even in conversational language
+    if any(word in body_lower for word in ["fuel", "petrol", "diesel", "cheapest", "nearest", "station"]):
+        nlu_result = _parse_fuel_query_nlu(body, from_number)
+        if nlu_result and nlu_result.get("postcode"):
+            postcode = nlu_result["postcode"]
+            fuel = nlu_result.get("fuel", "petrol")
+            radius = nlu_result.get("radius", 5.0)
+            # Continue to fuel handler below with extracted params
         else:
-            resp.message("Just send your postcode to find fuel, e.g. *KT15 petrol*")
-            return str(resp)
+            # Fallback: "fuel near [me]" — use saved home postcode
+            if re.match(r'^(?:fuel|petrol|diesel)\s+near(?:\s+me)?\s*$', body_lower):
+                _home_pc2 = _get_wa_home_postcode(from_number)
+                if _home_pc2:
+                    postcode = _home_pc2.replace(" ", "")
+                else:
+                    resp.message("Just send your postcode to find fuel, e.g. *KT15 petrol*")
+                    return str(resp)
+            else:
+                # Not a fuel query after all
+                pass
 
     # ── Drink info — "what's in a Negroni", "what is a mojito" ──────────────────
     _COCKTAIL_NAMES = {"negroni","martini","mojito","margarita","aperol","spritz","daiquiri",
