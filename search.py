@@ -337,30 +337,51 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: Fuel Finder API (OAuth2) ONLY — force OAuth to work."""
+    """Fetch fuel prices: CSV (works everywhere) → OAuth (UK-only geofence)."""
     import concurrent.futures as _cf
     import csv as _csv
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # PRIMARY: Fuel Finder API (OAuth2, LIVE data) — ONLY SOURCE
-    print("\n1. Fuel Finder API (OAuth2, live)...")
+    # Primary: Fuel Finder CSV (works everywhere, 8,040 current stations)
+    print("\n1. Fuel Finder CSV (reliable, 8,040 stations)...")
     try:
-        api_stations = _fetch_fuel_finder_api()
-        if api_stations:
-            all_stations.extend(api_stations)
-            print(f"   ✓ Loaded {len(api_stations)} stations from Fuel Finder API")
-            return all_stations
-        else:
-            print("   ✗ API returned no stations — CHECK AUTH ERROR ABOVE")
-            return []
-    except Exception as e:
-        print(f"   ✗ Fuel Finder API error: {e}")
-        return []
+        with open(os.path.join(os.path.dirname(__file__), "fuel_prices_latest.csv")) as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    brand = row.get("forecourts.brand_name", "") or row.get("forecourts.trading_name", "Unknown")
+                    lat = float(row.get("forecourts.location.latitude", 0) or 0)
+                    lon = float(row.get("forecourts.location.longitude", 0) or 0)
+                    e10 = float(row.get("forecourts.fuel_price.E10", 0) or 0)
+                    diesel = float(row.get("forecourts.fuel_price.B7P", 0) or row.get("forecourts.fuel_price.B7S", 0) or 0)
+                    postcode = row.get("forecourts.location.postcode", "")
+                    address = row.get("forecourts.location.address_line_1", "")
 
-    # OLD CODE (keeping commented for now):
-    # Fallback: Fuel Finder CSV (if API unavailable)
+                    if lat and lon and (e10 or diesel):
+                        all_stations.append({
+                            "brand": brand,
+                            "address": address,
+                            "postcode": postcode,
+                            "lat": lat,
+                            "lon": lon,
+                            "petrol": e10 if e10 else None,
+                            "diesel": diesel if diesel else None,
+                            "source": "fuel_finder_csv",
+                        })
+                except (ValueError, TypeError):
+                    continue
+
+        if all_stations:
+            print(f"   ✓ Loaded {len(all_stations)} stations from Fuel Finder CSV")
+            return all_stations
+    except FileNotFoundError:
+        print("   ✗ fuel_prices_latest.csv not found")
+    except Exception as e:
+        print(f"   ✗ CSV parse error: {e}")
+
+    # Fallback: Fuel Finder API (OAuth2, UK-geofenced)
     if len(all_stations) < 500:
         print("\n2. Fuel Finder CSV (fallback, 8,040 stations)...")
         try:
