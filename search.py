@@ -363,44 +363,7 @@ def fetch_all_stations() -> list:
 
     # Fallback: CMA retailer feeds (if API fails)
     if len(all_stations) < 500:
-        print("\n2. Fuel Finder CSV (fallback, 8,040 stations)...")
-        try:
-            with open(os.path.join(os.path.dirname(__file__), "fuel_prices_latest.csv")) as f:
-                reader = _csv.DictReader(f)
-                for row in reader:
-                    try:
-                        brand = row.get("forecourts.brand_name", "") or row.get("forecourts.trading_name", "Unknown")
-                        lat = float(row.get("forecourts.location.latitude", 0) or 0)
-                        lon = float(row.get("forecourts.location.longitude", 0) or 0)
-                        e10 = float(row.get("forecourts.fuel_price.E10", 0) or 0)
-                        diesel = float(row.get("forecourts.fuel_price.B7P", 0) or row.get("forecourts.fuel_price.B7S", 0) or 0)
-                        postcode = row.get("forecourts.location.postcode", "")
-                        address = row.get("forecourts.location.address_line_1", "")
-
-                        if lat and lon and (e10 or diesel):
-                            all_stations.append({
-                                "brand": brand,
-                                "address": address,
-                                "postcode": postcode,
-                                "lat": lat,
-                                "lon": lon,
-                                "petrol": e10 if e10 else None,
-                                "diesel": diesel if diesel else None,
-                                "source": "fuel_finder_csv",
-                            })
-                    except (ValueError, TypeError):
-                        continue
-
-            if all_stations:
-                print(f"   ✓ Loaded {len(all_stations)} stations from Fuel Finder CSV")
-        except FileNotFoundError:
-            print("   ✗ fuel_prices_latest.csv not found")
-        except Exception as e:
-            print(f"   ✗ CSV parse error: {e}")
-
-    # Fallback: CMA retailer feeds (if API & CSV both fail)
-    if len(all_stations) < 500:
-        print("\n3. CMA retailer feeds (fallback)...")
+        print("\n2. CMA retailer feeds (fallback)...")
         working = []
 
         with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
