@@ -13414,6 +13414,8 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
 def _v2_fetch_fuel(postcode: str) -> dict:
     """Cheapest petrol near postcode — from cache (kept fresh by cron job every 12h)."""
     try:
+        from search import postcode_to_latlon, _get_cheapest_fuel
+
         # Try cached fuel data (refreshed by cron every 12h)
         fuel_cache = lib._sb().table("ma_details").select("data") \
             .eq("type", "fuel_cache").execute().data or []
@@ -13421,9 +13423,6 @@ def _v2_fetch_fuel(postcode: str) -> dict:
         if fuel_cache and fuel_cache[0].get("data", {}).get("stations"):
             cached = fuel_cache[0].get("data", {})
             stations = cached.get("stations", [])
-
-            # Find cheapest station near postcode
-            from search import postcode_to_latlon, _get_cheapest_fuel
             ll = postcode_to_latlon(postcode)
             if not ll:
                 app.logger.warning(f"[fuel-fetch] Could not convert {postcode} to lat/lon")
