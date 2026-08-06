@@ -278,8 +278,11 @@
                                 </div>
                                 <div class="request-actions">
                                     <button class="btn btn-complete" onclick="markCompleted(${req.id})">
-                                        ✓ Mark Done (after manual research)
+                                        ✓ Approve & Complete
                                     </button>
+                                </div>
+                                <div style="font-size: 12px; color: #6b7280; margin-top: 8px;">
+                                    Auto-research findings will be saved when you approve
                                 </div>
                             </div>
                         `;
@@ -320,23 +323,29 @@
         async function markCompleted(requestId) {
             const btn = event.target;
             btn.disabled = true;
-            btn.textContent = '⏳ Saving...';
+            btn.textContent = '⏳ Approving...';
 
             try {
                 const response = await fetch(`/api/admin/research-requests/${requestId}/complete`, {
                     method: 'POST'
                 });
 
+                const data = await response.json();
+
                 if (response.ok) {
-                    btn.textContent = '✓ Done!';
-                    setTimeout(() => loadRequests(), 1000);
+                    btn.textContent = '✓ Approved!';
+                    const message = data.findings_saved
+                        ? `✅ ${data.company.toUpperCase()} research approved & data saved!`
+                        : `✅ ${data.company.toUpperCase()} marked complete (no auto findings)`;
+                    alert(message);
+                    setTimeout(() => loadRequests(), 1500);
                 } else {
-                    throw new Error('Failed to mark completed');
+                    throw new Error(data.error || 'Failed to complete');
                 }
             } catch (error) {
                 alert(`Error: ${error.message}`);
                 btn.disabled = false;
-                btn.textContent = '✓ Mark Done';
+                btn.textContent = '✓ Approve & Complete';
             }
         }
 
