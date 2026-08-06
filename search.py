@@ -87,6 +87,53 @@ def _fuel_finder_auth():
     return access_token
 
 
+def _fetch_fuel_prices_from_cache() -> list:
+    """Fetch cached fuel prices from Supabase (updated every 30 min by local daemon)."""
+    try:
+        print("[fuel-cache] Reading fuel prices from Supabase cache...")
+
+        supabase_url = os.environ.get("SUPABASE_URL", "")
+        supabase_key = os.environ.get("SUPABASE_KEY", "")
+
+        if not supabase_url or not supabase_key:
+            print("[fuel-cache] Missing Supabase credentials")
+            return []
+
+        # Fetch from Supabase
+        resp = requests.get(
+            f"{supabase_url}/rest/v1/fuel_prices_cache?id=eq.current&select=data",
+            headers={
+                "apikey": supabase_key,
+                "Authorization": f"Bearer {supabase_key}",
+            },
+            timeout=10
+        )
+
+        if resp.status_code != 200:
+            print(f"[fuel-cache] Fetch failed: {resp.status_code}")
+            return []
+
+        data = resp.json()
+        if not data or len(data) == 0:
+            print("[fuel-cache] No cached data")
+            return []
+
+        # Extract stations from cached data
+        cache_data = data[0].get("data", {})
+        stations = cache_data.get("stations", [])
+        print(f"[fuel-cache] ✓ Got {len(stations)} stations from cache")
+
+        # Add source marker
+        for s in stations:
+            s["source"] = "fuel_finder_cache"
+
+        return stations
+
+    except Exception as e:
+        print(f"[fuel-cache] Error: {e}")
+        return []
+
+
 def _fetch_fuel_finder_api() -> list:
     """Fetch fuel prices + location data from Fuel Finder API (paginated, ~500 per batch)."""
     try:
@@ -339,24 +386,24 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: Fuel Finder API (OAuth2 via refresh_token, fully sustainable)."""
+    """Fetch fuel prices: Supabase cache (updated by local daemon) > CMA feeds."""
     import concurrent.futures as _cf
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # PRIMARY: Fuel Finder API (OAuth2 via refresh_token, no geofencing, sustainable)
-    print("\n1. Fuel Finder API (via refresh_token, ~8,000 stations)...")
+    # PRIMARY: Supabase cache (updated every 30 min by local daemon from UK IP)
+    print("\n1. Supabase fuel prices cache (~8,000 stations)...")
     try:
-        api_stations = _fetch_fuel_finder_api()
-        if api_stations and len(api_stations) > 100:
-            all_stations.extend(api_stations)
-            print(f"   ✓ Loaded {len(api_stations)} stations from Fuel Finder API")
+        cache_stations = _fetch_fuel_prices_from_cache()
+        if cache_stations and len(cache_stations) > 100:
+            all_stations.extend(cache_stations)
+            print(f"   ✓ Loaded {len(cache_stations)} stations from cache")
             return all_stations
         else:
-            print(f"   ✗ API returned insufficient data ({len(api_stations) if api_stations else 0} stations)")
+            print(f"   ✗ Cache returned insufficient data ({len(cache_stations) if cache_stations else 0} stations)")
     except Exception as e:
-        print(f"   ✗ Fuel Finder API error: {e}")
+        print(f"   ✗ Cache error: {e}")
 
     # Fallback: CMA retailer feeds (if API fails)
     if len(all_stations) < 500:
