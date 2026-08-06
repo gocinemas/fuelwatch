@@ -1138,8 +1138,79 @@ def sms_reply():
 
     resp = MessagingResponse()
 
+    # Handle PDF receipts (auto-detect: if PDF sent without command, treat as receipt)
+    num_media = int(request.form.get("NumMedia", 0))
+    if num_media > 0:
+        media_type = request.form.get("MediaContentType0", "")
+        media_url = request.form.get("MediaUrl0", "")
+
+        # PDF receipt handler (auto-detect receipts)
+        if media_type == "application/pdf" and media_url:
+            try:
+                import fitz
+                pdf_response = requests.get(media_url)
+                pdf_data = pdf_response.content
+
+                # Extract text from PDF
+                pdf_doc = fitz.open(stream=pdf_data, filetype="pdf")
+                pdf_text = ""
+                for page in pdf_doc:
+                    pdf_text += page.get_text()
+                pdf_doc.close()
+
+                # Use Groq to extract receipt data from PDF text
+                extracted = _groq_chat(
+                    "You are a receipt data extractor. Extract data from the provided receipt text.",
+                    [{"role": "user", "content": f"Extract receipt data CLEANLY from this PDF text. Format exactly like this:\n\nSTORE: [store name only]\nDATE: [YYYY-MM-DD]\nTOTAL: [amount with £]\nMain items include: [item1, item2, item3, ...]\nLOCATION: [address if shown]\n\nRULES:\n- Items only: product names\n- NO prices, NO quantities, NO metadata\n- Skip garbled/corrupted text\n- Max 10 items\n\nReceipt text:\n{pdf_text}"}],
+                    max_tokens=300
+                )
+
+                # Parse extracted data (same as image receipts)
+                merchant = None
+                total = 0
+                shop_date = datetime.now().date().isoformat()
+                items = []
+
+                for line in extracted.split("\n"):
+                    if line.startswith("STORE:"):
+                        merchant = line.replace("STORE:", "").strip()
+                    elif line.startswith("DATE:"):
+                        shop_date = line.replace("DATE:", "").strip()
+                    elif line.startswith("TOTAL:"):
+                        total_str = line.replace("TOTAL:", "").strip().replace("£", "").replace(",", "")
+                        try:
+                            total = float(total_str)
+                        except:
+                            pass
+                    elif line.startswith("Main items include:"):
+                        items_text = line.replace("Main items include:", "").strip()
+                        items = [i.strip() for i in items_text.split(",") if i.strip()]
+
+                # Store in database
+                if merchant:
+                    plain_phone = from_number.replace("whatsapp:", "").strip()
+                    lib._sb().table("receipts").insert({
+                        "phone": plain_phone,
+                        "merchant": merchant,
+                        "total": total,
+                        "shop_date": shop_date,
+                        "items": items,
+                        "raw_summary": extracted
+                    }).execute()
+
+                    resp.message(f"✅ Receipt saved!\n\n🏪 {merchant}\n📅 {shop_date}\n💰 £{total:.2f}\n📦 {len(items)} items")
+                    return str(resp)
+                else:
+                    resp.message("⚠️ Couldn't extract receipt data from PDF. Make sure it's a clear receipt with store name and total.")
+                    return str(resp)
+
+            except Exception as e:
+                print(f"[pdf-receipt] Error: {e}")
+                resp.message(f"❌ PDF processing failed: {str(e)[:80]}")
+                return str(resp)
+
     # Handle "event" command with poster image
-    if body.lower().startswith("event") and request.form.get("NumMedia", "0") != "0":
+    if body.lower().startswith("event") and num_media > 0:
         try:
             import personal_events_service as pes
             from anthropic import Anthropic
