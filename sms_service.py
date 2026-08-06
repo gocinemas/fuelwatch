@@ -12624,12 +12624,13 @@ def _v2_fetch_calendar(from_number: str) -> list:
 
 
 def _v2_extract_birthdays_and_upcoming(calendar_events: list, now) -> tuple:
-    """Extract birthdays from calendar and upcoming special dates.
+    """Extract birthdays from calendar (flexible format detection).
     Returns (birthdays, upcoming_special) where:
     - birthdays: [{"name": "Jane", "date": "2026-06-23", "days_away": 8}, ...]
     - upcoming_special: list of dict with cultural/special observances
     """
     from datetime import datetime as _bdt, timedelta as _btd, date as _bdate
+    import re as _bre
     birthdays = []
     upcoming = []
     today = now.date()
@@ -12642,21 +12643,44 @@ def _v2_extract_birthdays_and_upcoming(calendar_events: list, now) -> tuple:
         if not ev_date or "T" in ev_date:  # skip times, we need just dates
             continue
 
-        # Look for birthday events (case-insensitive)
+        # Extract name and check if it's a birthday
+        is_birthday = False
+        name = title
+
+        # Format 1: "Birthday - Jane", "Birthday - John", "Jane's Birthday", "Birthday of Jane"
         if "birthday" in title.lower() or "bday" in title.lower():
-            # Extract name if format is "Jane's Birthday" or "Birthday - Jane"
-            name = title.replace("'s Birthday", "").replace("Birthday", "").replace("—", "").replace("-", "").strip()
-            if not name or name.lower() == "birthday":
+            is_birthday = True
+            # Extract name by removing birthday keywords
+            name = title.replace("'s Birthday", "").replace("'s Bday", "").replace("Birthday", "").replace("Bday", "").replace("—", "-").strip()
+            # Clean up remaining dash
+            if name.startswith("-"):
+                name = name[1:].strip()
+            if name.endswith("-"):
+                name = name[:-1].strip()
+            if not name or name.lower() in ("birthday", "bday", ""):
                 name = "Someone"
+
+        # Format 2: Just a name (single word, capitalized) on recurring all-day event = likely birthday
+        # Names are typically 2-20 chars, capitalized, single or double word
+        elif len(title) <= 20 and not any(x in title.lower() for x in ["meeting", "call", "standup", "sync", "event"]):
+            # Check if it looks like a name (capitalized, 1-2 words, no special chars except space)
+            if _bre.match(r'^[A-Z][a-z]+(\s[A-Z][a-z]+)?$', title):
+                # This COULD be a birthday if it's recurring. For now, assume all-day events with names are birthdays
+                is_birthday = True
+                name = title
+
+        if is_birthday:
             try:
                 ev_dt = _bdate.fromisoformat(ev_date)
                 days_away = (ev_dt - today).days
                 if 0 <= days_away <= 30:  # Only upcoming in next 30 days
-                    birthdays.append({
-                        "name": name,
-                        "date": ev_date,
-                        "days_away": days_away
-                    })
+                    # Avoid duplicates
+                    if not any(b.get("name") == name for b in birthdays):
+                        birthdays.append({
+                            "name": name,
+                            "date": ev_date,
+                            "days_away": days_away
+                        })
             except (ValueError, TypeError):
                 pass
 
