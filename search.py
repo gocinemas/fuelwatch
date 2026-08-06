@@ -4,7 +4,7 @@ FuelWatch UK — Postcode Search
 ================================
 Find cheapest fuel stations near any UK postcode.
 
-Data: CMA-mandated retailer price feeds (updated daily, no API key needed)
+Data: UK Government Fuel Finder API (30-min updates, OAuth required) + CMA feeds (fallback)
 Geocoding: postcodes.io (free, no API key needed)
 """
 
@@ -14,7 +14,7 @@ import os
 import requests
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -51,6 +51,114 @@ RETAILER_FEEDS = {
 }
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+
+# ── UK Government Fuel Finder API (OAuth) ─────────────────────────────────────
+
+_fuel_finder_token = None
+_fuel_finder_token_expires = None
+
+def _fuel_finder_auth():
+    """Get OAuth2 access token from UK Government Fuel Finder API."""
+    global _fuel_finder_token, _fuel_finder_token_expires
+
+    # Return cached token if still valid
+    if _fuel_finder_token and _fuel_finder_token_expires and datetime.now() < _fuel_finder_token_expires:
+        return _fuel_finder_token
+
+    client_id = os.environ.get("FUEL_FINDER_CLIENT_ID", "")
+    client_secret = os.environ.get("FUEL_FINDER_CLIENT_SECRET", "")
+
+    if not client_id or not client_secret:
+        print("[fuel-finder] Missing credentials")
+        return None
+
+    try:
+        resp = requests.post(
+            "https://dev.api.fuel-finder.service.gov.uk/oauth/token",
+            data={
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            },
+            timeout=10
+        )
+        if resp.status_code != 200:
+            print(f"[fuel-finder] Auth failed: {resp.status_code}")
+            return None
+
+        data = resp.json()
+        _fuel_finder_token = data.get("access_token")
+        expires_in = data.get("expires_in", 3600)
+        _fuel_finder_token_expires = datetime.now() + timedelta(seconds=expires_in - 60)
+
+        print(f"[fuel-finder] Auth successful, token expires in {expires_in}s")
+        return _fuel_finder_token
+    except Exception as e:
+        print(f"[fuel-finder] Auth error: {e}")
+        return None
+
+
+def fetch_fuel_finder_stations() -> list:
+    """Fetch UK Government Fuel Finder data (30-min updates, ~8,500 stations)."""
+    token = _fuel_finder_auth()
+    if not token:
+        return []
+
+    try:
+        resp = requests.get(
+            "https://dev.api.fuel-finder.service.gov.uk/fuel-stations",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15
+        )
+        if resp.status_code != 200:
+            print(f"[fuel-finder] API error: {resp.status_code}")
+            return []
+
+        data = resp.json()
+        stations_raw = data.get("fuelStations", [])
+
+        stations = []
+        for s in stations_raw:
+            # Extract fuel prices (E10 petrol, B7 diesel)
+            prices = s.get("prices", {}) or {}
+            petrol = prices.get("E10") or prices.get("Petrol")
+            diesel = prices.get("B7") or prices.get("Diesel")
+
+            if not petrol and not diesel:
+                continue
+
+            # Extract location
+            location = s.get("location", {}) or {}
+            lat = location.get("latitude")
+            lon = location.get("longitude")
+
+            if lat is None or lon is None:
+                continue
+
+            # Normalize prices (if given in tenths of pence, divide by 10)
+            def normalise(p):
+                if p is None:
+                    return None
+                p = float(p)
+                return p / 10 if p > 1000 else p
+
+            stations.append({
+                "brand": s.get("retailer", s.get("brand", "Unknown")),
+                "address": s.get("address", ""),
+                "postcode": s.get("postcode", ""),
+                "lat": float(lat),
+                "lon": float(lon),
+                "petrol": normalise(petrol),
+                "diesel": normalise(diesel),
+                "source": "fuel_finder",
+            })
+
+        print(f"[fuel-finder] Fetched {len(stations)} stations")
+        return stations
+
+    except Exception as e:
+        print(f"[fuel-finder] Fetch error: {e}")
+        return []
 
 # ── Geocoding ─────────────────────────────────────────────────────────────────
 
@@ -190,22 +298,44 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch from all CMA retailer feeds in parallel. Returns combined station list."""
+    """Fetch fuel prices: UK Government Fuel Finder (primary) + CMA feeds (fallback)."""
     import concurrent.futures as _cf
-    print("Fetching live prices from CMA retailer feeds (parallel)...")
+
+    print("Fetching live fuel prices...")
     all_stations = []
-    with _cf.ThreadPoolExecutor(max_workers=len(RETAILER_FEEDS)) as ex:
+
+    # Try Fuel Finder first (30-min updates, official, 8,500 stations)
+    ff_stations = fetch_fuel_finder_stations()
+    if ff_stations:
+        all_stations.extend(ff_stations)
+        print(f"\n✓ UK Government Fuel Finder: {len(ff_stations)} stations (30-min updates)")
+    else:
+        print("⚠ UK Government Fuel Finder unavailable, falling back to CMA feeds...")
+
+    # Fallback: CMA retailer feeds (for older/missing data)
+    print("Fetching CMA retailer feeds (parallel)...")
+    with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
         futures = {ex.submit(fetch_retailer, name, url): name for name, url in RETAILER_FEEDS.items()}
         for fut in _cf.as_completed(futures):
             name = futures[fut]
             stations = fut.result()
             if stations:
                 all_stations.extend(stations)
-                print(f"  {name}: {len(stations)} stations loaded")
+                print(f"  {name}: {len(stations)} stations")
             else:
-                print(f"  {name}: unavailable")
-    print(f"\n  Total: {len(all_stations)} stations\n")
-    return all_stations
+                print(f"  {name}: unavailable (>12h old or unreachable)")
+
+    # Deduplicate by postcode+brand (keep Fuel Finder priority over CMA)
+    seen = {}
+    deduped = []
+    for s in all_stations:
+        key = (s.get("postcode", ""), s.get("brand", ""))
+        if key not in seen:
+            seen[key] = s
+            deduped.append(s)
+
+    print(f"\nTotal (deduplicated): {len(deduped)} stations\n")
+    return deduped
 
 
 # ── Weather ───────────────────────────────────────────────────────────────────
