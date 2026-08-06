@@ -23708,12 +23708,12 @@ def _wa_triage_respond(from_number: str, cmd: str) -> str:
 def _parse_fuel_query_nlu(body: str, from_number: str) -> dict:
     """
     Parse natural language fuel query using Groq NLU.
-    Extracts: postcode, fuel_type (petrol/diesel), radius_miles.
+    Extracts: postcode, fuel_type (petrol/diesel), radius_miles (1-20), retailer.
 
     Examples:
       "What's the cheapest petrol near me?" → {postcode, fuel: "petrol", radius: 5}
-      "Show me diesel prices in Kingston KT1" → {postcode: "KT1", fuel: "diesel", radius: 5}
-      "Nearest Tesco fuel station" → {postcode, fuel: "petrol", retailer: "Tesco"}
+      "Show me diesel prices in Kingston KT1 within 20 miles" → {postcode: "KT1", fuel: "diesel", radius: 20}
+      "Nearest Tesco petrol" → {postcode, fuel: "petrol", retailer: "Tesco", radius: 5}
     """
     try:
         prompt = f"""Extract fuel query parameters from: "{body}"
@@ -23721,8 +23721,8 @@ def _parse_fuel_query_nlu(body: str, from_number: str) -> dict:
 Return JSON with (use null if not specified):
 - postcode: UK postcode or outcode (e.g. "KT15", "SW1A"), or null if use home
 - fuel: "petrol" or "diesel", default "petrol"
-- radius: miles (default 5)
-- retailer: brand name if mentioned (Tesco, Asda, Jet, Shell, Esso, etc), or null
+- radius: miles (1-20, default 5)
+- retailer: brand name if mentioned (Tesco, Asda, Jet, Shell, Esso, Sainsburys, Morrisons, BP, Texaco), or null
 
 STRICT JSON ONLY, no explanation."""
 
@@ -23738,7 +23738,8 @@ STRICT JSON ONLY, no explanation."""
         # Normalize
         data["postcode"] = (data.get("postcode") or "").replace(" ", "").upper() if data.get("postcode") else None
         data["fuel"] = (data.get("fuel") or "petrol").lower()
-        data["radius"] = float(data.get("radius") or 5.0)
+        data["radius"] = min(max(float(data.get("radius") or 5.0), 1), 20)  # Clamp to 1-20 miles
+        data["retailer"] = (data.get("retailer") or "").lower() if data.get("retailer") else None
 
         return data if data.get("postcode") else None
 
