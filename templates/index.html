@@ -4319,13 +4319,17 @@
 
   let _fuelResultStations = [];
 
-  function renderFuel(d) {
-const _ts = new Date(d.timestamp);
+  async function renderFuel(d) {
+    const _ts = new Date(d.timestamp);
     document.getElementById("fuel-time").textContent = "Prices refreshed " + _ts.toLocaleString("en-GB", {hour:"2-digit", minute:"2-digit", day:"numeric", month:"short"});
     document.getElementById("fuel-title").textContent   = `${d.fuel==="petrol"?"Petrol":"Diesel"} near ${d.postcode}`;
     document.getElementById("fuel-meta").textContent    = `${d.stations.length} stations within ${d.radius} miles`;
 
     _fuelResultStations = d.stations.slice(0, 8);
+
+    // Load saved stations once
+    const savedStations = await _myFuelLoad();
+
     const sl = document.getElementById("fuel-stations");
     sl.innerHTML = "";
     _fuelResultStations.forEach((s,i) => {
@@ -4336,7 +4340,7 @@ const _ts = new Date(d.timestamp);
       const gUrl = `https://maps.google.com/?q=${s.lat},${s.lon}`;
       const wUrl = `https://waze.com/ul?ll=${s.lat},${s.lon}&navigate=yes`;
       const aUrl = `maps://maps.apple.com/?ll=${s.lat},${s.lon}&q=${encodeURIComponent(s.brand)}`;
-      const isSaved = _myFuelIsSaved(s);
+      const isSaved = savedStations.some(x => Math.abs(x.lat - s.lat) < 0.001 && Math.abs(x.lon - s.lon) < 0.001);
       const starId = `mf-star-${i}`;
       sl.innerHTML += `
         <div class="py-2.5 flex items-start justify-between gap-2">
@@ -4399,37 +4403,70 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── My Fuel Spots ────────────────────────────────────────────────────────────
-  const _MF_KEY = "my_fuel_stations";
   const _MF_MAX = 3;
+  let _MF_CACHE = [];  // In-memory cache of saved stations
 
-  function _myFuelLoad() { try { return JSON.parse(localStorage.getItem(_MF_KEY) || "[]"); } catch { return []; } }
-  function _myFuelSave(arr) { localStorage.setItem(_MF_KEY, JSON.stringify(arr)); }
-
-  function _myFuelIsSaved(s) {
-    return _myFuelLoad().some(x => Math.abs(x.lat - s.lat) < 0.001 && Math.abs(x.lon - s.lon) < 0.001);
+  async function _myFuelLoad() {
+    const phone = _miruPhone();
+    if (!phone) return [];
+    try {
+      const res = await fetch(`/api/fuel/stations/list?phone=${encodeURIComponent(phone)}`);
+      const data = await res.json();
+      _MF_CACHE = data.stations || [];
+      return _MF_CACHE;
+    } catch (e) {
+      console.error("[fuel-stations] Load error:", e);
+      return [];
+    }
   }
 
-  function _myFuelToggle(stationIdx, starId) {
+  async function _myFuelIsSaved(s) {
+    const saved = await _myFuelLoad();
+    return saved.some(x => Math.abs(x.lat - s.lat) < 0.001 && Math.abs(x.lon - s.lon) < 0.001);
+  }
+
+  async function _myFuelToggle(stationIdx, starId) {
     const s = _fuelResultStations[stationIdx];
     if (!s) return;
-    let saved = _myFuelLoad();
-    const idx = saved.findIndex(x => Math.abs(x.lat - s.lat) < 0.001 && Math.abs(x.lon - s.lon) < 0.001);
+    const phone = _miruPhone();
+    if (!phone) { alert("Link your phone first"); return; }
+
+    const isSaved = _MF_CACHE.some(x => Math.abs(x.lat - s.lat) < 0.001 && Math.abs(x.lon - s.lon) < 0.001);
     const btn = document.getElementById(starId);
-    if (idx >= 0) {
-      saved.splice(idx, 1);
-      if (btn) { btn.textContent = "☆"; btn.style.opacity = "0.5"; btn.title = "Save as regular station"; }
+
+    if (isSaved) {
+      // Delete
+      await fetch("/api/fuel/stations/delete", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({phone, lat: s.lat, lon: s.lon})
+      });
+      if (btn) { btn.textContent = "☆"; btn.style.opacity = "0.5"; }
+      _MF_CACHE = _MF_CACHE.filter(x => !(Math.abs(x.lat - s.lat) < 0.001 && Math.abs(x.lon - s.lon) < 0.001));
     } else {
-      if (saved.length >= _MF_MAX) { alert(`You can save up to ${_MF_MAX} regular stations. Remove one first.`); return; }
-      saved.push({ brand: s.brand, address: s.address || "", postcode: s.postcode || "", lat: s.lat, lon: s.lon });
+      if (_MF_CACHE.length >= _MF_MAX) { alert(`You can save up to ${_MF_MAX} regular stations. Remove one first.`); return; }
+      // Save to API
+      await fetch("/api/fuel/stations/save", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          phone,
+          lat: s.lat,
+          lon: s.lon,
+          brand: s.brand,
+          node_id: s.node_id || "",
+          postcode: s.postcode || ""
+        })
+      });
+      _MF_CACHE.push({lat: s.lat, lon: s.lon, brand: s.brand, postcode: s.postcode});
       if (btn) { btn.textContent = "⭐"; btn.style.opacity = "1"; btn.title = "Remove from My Fuel"; }
     }
-    _myFuelSave(saved);
-    _myFuelRenderCard();
+    await _myFuelRenderCard();
   }
 
-  function _myFuelRenderCard() {
+  async function _myFuelRenderCard() {
     const card = document.getElementById("my-fuel-card");
-    const saved = _myFuelLoad();
+    const saved = await _myFuelLoad();
     const emptyEl = document.getElementById("my-fuel-empty");
     const refreshBtn = document.getElementById("my-fuel-refresh-btn");
     if (!saved.length) {
@@ -4457,11 +4494,11 @@ const _ts = new Date(d.timestamp);
           <button onclick="_myFuelRemove(${i})" style="font-size:14px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0;line-height:1" title="Remove">✕</button>
         </div>
       </div>`).join("");
-    _myFuelFetch();
+    await _myFuelFetch();
   }
 
-  function _myFuelFetch() {
-    const saved = _myFuelLoad();
+  async function _myFuelFetch() {
+    const saved = await _myFuelLoad();
     if (!saved.length) return;
     fetch("/api/my-fuel?stations=" + encodeURIComponent(JSON.stringify(saved)))
       .then(r => r.json())
@@ -4482,13 +4519,20 @@ const _ts = new Date(d.timestamp);
       .catch(() => {});
   }
 
-  function _myFuelRefresh() { _myFuelFetch(); }
+  async function _myFuelRefresh() { await _myFuelFetch(); }
 
-  function _myFuelRemove(i) {
-    const saved = _myFuelLoad();
-    saved.splice(i, 1);
-    _myFuelSave(saved);
-    _myFuelRenderCard();
+  async function _myFuelRemove(i) {
+    const saved = await _myFuelLoad();
+    if (saved[i]) {
+      const st = saved[i];
+      await fetch("/api/fuel/stations/delete", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({phone: _miruPhone(), lat: st.lat, lon: st.lon})
+      });
+      _MF_CACHE = _MF_CACHE.filter((_, idx) => idx !== i);
+      await _myFuelRenderCard();
+    }
   }
 
   // Init on page load

@@ -39218,6 +39218,84 @@ def api_company_report():
         app.logger.error(f"[company/report] Error: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e), "details": traceback.format_exc()}), 500
 
+# ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
+
+@app.route("/api/fuel/stations/list", methods=["GET"])
+def fuel_stations_list():
+    """Load user's saved fuel stations from Supabase."""
+    try:
+        phone = request.args.get("phone", "")
+        if not phone:
+            return jsonify({"error": "phone required"}), 400
+
+        result = lib._sb().table("my_fuel_stations").select("*").eq("phone", phone).execute()
+        stations = result.data or []
+
+        return jsonify({
+            "stations": stations,
+            "count": len(stations),
+            "max": 3
+        })
+    except Exception as e:
+        print(f"[fuel-stations] List error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/fuel/stations/save", methods=["POST"])
+def fuel_stations_save():
+    """Save a fuel station bookmark."""
+    try:
+        data = request.json
+        phone = data.get("phone", "")
+        lat = float(data.get("lat", 0))
+        lon = float(data.get("lon", 0))
+        brand = data.get("brand", "")
+        node_id = data.get("node_id", "")
+        postcode = data.get("postcode", "")
+
+        if not phone or not lat or not lon:
+            return jsonify({"error": "phone, lat, lon required"}), 400
+
+        # Check max count
+        result = lib._sb().table("my_fuel_stations").select("id").eq("phone", phone).execute()
+        if len(result.data or []) >= 3:
+            return jsonify({"error": "Max 3 stations. Remove one first."}), 400
+
+        # Insert (handles duplicate key gracefully)
+        lib._sb().table("my_fuel_stations").insert({
+            "phone": phone,
+            "lat": lat,
+            "lon": lon,
+            "brand": brand,
+            "node_id": node_id,
+            "postcode": postcode
+        }).execute()
+
+        return jsonify({"status": "saved"})
+    except Exception as e:
+        print(f"[fuel-stations] Save error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/fuel/stations/delete", methods=["POST"])
+def fuel_stations_delete():
+    """Remove a saved fuel station."""
+    try:
+        data = request.json
+        phone = data.get("phone", "")
+        lat = float(data.get("lat", 0))
+        lon = float(data.get("lon", 0))
+
+        if not phone or not lat or not lon:
+            return jsonify({"error": "phone, lat, lon required"}), 400
+
+        lib._sb().table("my_fuel_stations").delete().eq("phone", phone).eq("lat", lat).eq("lon", lon).execute()
+
+        return jsonify({"status": "deleted"})
+    except Exception as e:
+        print(f"[fuel-stations] Delete error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # ────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
