@@ -38981,7 +38981,7 @@ def cron_refresh_fuel_prices():
         sb = lib._sb()
 
         # Fetch fresh fuel prices from all sources
-        stations = fetch_all_stations(postcode="UK")  # Fetch national coverage
+        stations = fetch_all_stations()  # Fetch national coverage
         if not stations:
             app.logger.warning("[cron-fuel] No stations fetched, using fallback")
             return jsonify({"success": False, "error": "No stations found"}), 500
