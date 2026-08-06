@@ -13412,64 +13412,53 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
 
 
 def _v2_fetch_fuel(postcode: str) -> dict:
-    """Cheapest petrol near postcode — from cache (kept fresh by cron job every 12h)."""
+    """Cheapest petrol near postcode — from live station data."""
     try:
-        from search import postcode_to_latlon, _get_cheapest_fuel
+        from search import postcode_to_latlon, get_stations, _station_cache
 
-        # Try cached fuel data (refreshed by cron every 12h)
-        fuel_cache = lib._sb().table("ma_details").select("data") \
-            .eq("type", "fuel_cache").execute().data or []
-
-        if fuel_cache and fuel_cache[0].get("data", {}).get("stations"):
-            cached = fuel_cache[0].get("data", {})
-            stations = cached.get("stations", [])
-            ll = postcode_to_latlon(postcode)
-            if not ll:
-                app.logger.warning(f"[fuel-fetch] Could not convert {postcode} to lat/lon")
-                return {}
-
-            lat, lon = ll
-            price, station = None, None
-            min_dist = float('inf')
-
-            for s in stations:
-                try:
-                    slat, slon = float(s.get("lat", 0)), float(s.get("lon", 0))
-                    dist = math.sqrt((slat - lat)**2 + (slon - lon)**2)
-                    p = s.get("petrol") or s.get("e10")
-                    if p and dist < min_dist:
-                        min_dist = dist
-                        price, station = float(p), s
-                except Exception:
-                    continue
-
-            if price and station:
-                result = {
-                    "price": round(price, 1),
-                    "name": station.get("brand", station.get("name", "")),
-                    "source": "cache"
-                }
-                app.logger.info(f"[fuel-fetch] {postcode}: {result} (cached)")
-                return result
-
-        # Fallback: fetch fresh (if cache miss)
-        app.logger.info(f"[fuel-fetch] Cache miss, fetching fresh for {postcode}")
+        # Get live stations
         now = time.time()
         cache_age = now - _station_cache.get("loaded_at", 0)
-        if cache_age > 900:
+        if cache_age > 900:  # Refresh if >15min old
             get_stations()
 
-        price, station = _get_cheapest_fuel(postcode, "petrol")
+        stations = _station_cache.get("stations", [])
+        if not stations:
+            app.logger.warning(f"[fuel-fetch] No stations loaded for {postcode}")
+            return {}
+
+        # Convert postcode to lat/lon
+        ll = postcode_to_latlon(postcode)
+        if not ll:
+            app.logger.warning(f"[fuel-fetch] Could not convert {postcode} to lat/lon")
+            return {}
+
+        lat, lon = ll
+        price, station = None, None
+        min_dist = float('inf')
+
+        # Find cheapest station near postcode
+        for s in stations:
+            try:
+                slat, slon = float(s.get("lat", 0)), float(s.get("lon", 0))
+                dist = math.sqrt((slat - lat)**2 + (slon - lon)**2)
+                p = s.get("petrol") or s.get("e10")
+                if p and dist < min_dist:
+                    min_dist = dist
+                    price, station = float(p), s
+            except Exception:
+                continue
+
         if not price or not station:
-            app.logger.warning(f"[fuel-fetch] No fuel data for {postcode}")
+            app.logger.warning(f"[fuel-fetch] No fuel data found for {postcode}")
             return {}
 
         result = {
             "price": round(price, 1),
             "name": station.get("brand", station.get("name", "")),
-            "source": "fresh"
+            "source": "live"
         }
-        app.logger.info(f"[fuel-fetch] {postcode}: {result} (fresh)")
+        app.logger.info(f"[fuel-fetch] {postcode}: {result}")
         return result
     except Exception as e:
         app.logger.error(f"[fuel-fetch] Error for {postcode}: {e}")
