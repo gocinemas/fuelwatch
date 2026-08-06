@@ -133,15 +133,6 @@ def _fuel_finder_auth():
     except Exception as e:
         print(f"[fuel-finder] Auth error: {e}")
         return None
-            return None
-
-        # Cache token; refresh 60s before expiry
-        _fuel_finder_token_expires = datetime.now() + timedelta(seconds=expires_in - 60)
-        print(f"[fuel-finder] Auth OK ({token_type}, expires {expires_in}s)")
-        return _fuel_finder_token
-    except Exception as e:
-        print(f"[fuel-finder] Auth error: {e}")
-        return None
 
 
 def _fetch_fuel_finder_api() -> list:
