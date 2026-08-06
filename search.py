@@ -337,23 +337,29 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: Fuel Finder API (OAuth2) → CSV → CMA fallback."""
+    """Fetch fuel prices: Fuel Finder API (OAuth2) ONLY — force OAuth to work."""
     import concurrent.futures as _cf
     import csv as _csv
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # Primary: Fuel Finder API (OAuth2, LIVE data)
+    # PRIMARY: Fuel Finder API (OAuth2, LIVE data) — ONLY SOURCE
     print("\n1. Fuel Finder API (OAuth2, live)...")
     try:
         api_stations = _fetch_fuel_finder_api()
         if api_stations:
             all_stations.extend(api_stations)
             print(f"   ✓ Loaded {len(api_stations)} stations from Fuel Finder API")
+            return all_stations
+        else:
+            print("   ✗ API returned no stations — CHECK AUTH ERROR ABOVE")
+            return []
     except Exception as e:
         print(f"   ✗ Fuel Finder API error: {e}")
+        return []
 
+    # OLD CODE (keeping commented for now):
     # Fallback: Fuel Finder CSV (if API unavailable)
     if len(all_stations) < 500:
         print("\n2. Fuel Finder CSV (fallback, 8,040 stations)...")
