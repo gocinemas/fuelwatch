@@ -13412,24 +13412,65 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
 
 
 def _v2_fetch_fuel(postcode: str) -> dict:
-    """Cheapest petrol near postcode — force fresh cache if stale."""
+    """Cheapest petrol near postcode — from cache (kept fresh by cron job every 12h)."""
     try:
-        # Force refresh if cache is older than 15 min to catch price updates
+        # Try cached fuel data (refreshed by cron every 12h)
+        fuel_cache = lib._sb().table("ma_details").select("data") \
+            .eq("type", "fuel_cache").execute().data or []
+
+        if fuel_cache and fuel_cache[0].get("data", {}).get("stations"):
+            cached = fuel_cache[0].get("data", {})
+            stations = cached.get("stations", [])
+
+            # Find cheapest station near postcode
+            from search import postcode_to_latlon, _get_cheapest_fuel
+            ll = postcode_to_latlon(postcode)
+            if not ll:
+                app.logger.warning(f"[fuel-fetch] Could not convert {postcode} to lat/lon")
+                return {}
+
+            lat, lon = ll
+            price, station = None, None
+            min_dist = float('inf')
+
+            for s in stations:
+                try:
+                    slat, slon = float(s.get("lat", 0)), float(s.get("lon", 0))
+                    dist = math.sqrt((slat - lat)**2 + (slon - lon)**2)
+                    p = s.get("petrol") or s.get("e10")
+                    if p and dist < min_dist:
+                        min_dist = dist
+                        price, station = float(p), s
+                except Exception:
+                    continue
+
+            if price and station:
+                result = {
+                    "price": round(price, 1),
+                    "name": station.get("brand", station.get("name", "")),
+                    "source": "cache"
+                }
+                app.logger.info(f"[fuel-fetch] {postcode}: {result} (cached)")
+                return result
+
+        # Fallback: fetch fresh (if cache miss)
+        app.logger.info(f"[fuel-fetch] Cache miss, fetching fresh for {postcode}")
         now = time.time()
         cache_age = now - _station_cache.get("loaded_at", 0)
-        if cache_age > 900:  # 15 min
-            app.logger.info(f"[fuel-fetch] Cache is {int(cache_age)}s old, forcing refresh")
-            get_stations()  # This will reload if TTL exceeded
+        if cache_age > 900:
+            get_stations()
 
         price, station = _get_cheapest_fuel(postcode, "petrol")
         if not price or not station:
-            app.logger.warning(f"[fuel-fetch] No fuel data for {postcode}: price={price}, station={station}")
+            app.logger.warning(f"[fuel-fetch] No fuel data for {postcode}")
             return {}
+
         result = {
             "price": round(price, 1),
-            "name":  station.get("brand", station.get("name", "")),
+            "name": station.get("brand", station.get("name", "")),
+            "source": "fresh"
         }
-        app.logger.info(f"[fuel-fetch] {postcode}: {result}")
+        app.logger.info(f"[fuel-fetch] {postcode}: {result} (fresh)")
         return result
     except Exception as e:
         app.logger.error(f"[fuel-fetch] Error for {postcode}: {e}")
@@ -38920,6 +38961,63 @@ def cron_morning_briefs():
         })
     except Exception as e:
         app.logger.error(f"[cron] Morning briefs error: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/cron/refresh-fuel", methods=["POST"])
+def cron_refresh_fuel_prices():
+    """Cron endpoint: refresh fuel prices cache every 12h. Fuel Finder CSV is updated 2x daily."""
+    cron_secret = request.headers.get("X-Cron-Secret", "")
+    expected_secret = os.environ.get("CRON_SECRET", "")
+
+    if not expected_secret or cron_secret != expected_secret:
+        app.logger.warning(f"[cron-fuel] Unauthorized request")
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        from search import fetch_all_stations
+        import json
+
+        sb = lib._sb()
+
+        # Fetch fresh fuel prices from all sources
+        stations = fetch_all_stations(postcode="UK")  # Fetch national coverage
+        if not stations:
+            app.logger.warning("[cron-fuel] No stations fetched, using fallback")
+            return jsonify({"success": False, "error": "No stations found"}), 500
+
+        # Cache in ma_details as fuel_cache (single record for all users)
+        cache_data = {
+            "stations": stations[:500],  # Top 500 cheapest nationally
+            "fetched_at": datetime.now().isoformat(),
+            "source": "fuel_finder_csv"
+        }
+
+        # Upsert cache record
+        existing = sb.table("ma_details").select("id") \
+            .eq("type", "fuel_cache") \
+            .execute().data or []
+
+        if existing:
+            sb.table("ma_details").update({"data": cache_data}) \
+                .eq("type", "fuel_cache") \
+                .execute()
+        else:
+            sb.table("ma_details").insert({
+                "device_id": "system",
+                "type": "fuel_cache",
+                "data": cache_data
+            }).execute()
+
+        app.logger.info(f"[cron-fuel] Cached {len(stations)} stations")
+        return jsonify({
+            "success": True,
+            "stations_cached": len(stations),
+            "fetched_at": cache_data["fetched_at"]
+        })
+
+    except Exception as e:
+        app.logger.error(f"[cron-fuel] Error: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
