@@ -1627,24 +1627,49 @@ def api_admin_research_requests():
 def api_mark_research_complete(request_id):
     """
     Mark a research request as completed.
-    Admin action after manually researching and adding company data.
+    Auto-saves findings from research agent to database.
+    Hybrid workflow: AI-gathered data + admin approval.
     """
     from company_research_requests_service import research_request_service
+    from company_research_findings_service import research_findings_service
+    from company_history_service import history_tracker
     from supabase import create_client
 
     try:
-        # Initialize service
+        # Initialize services
         sb = create_client(
             os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
             os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
         )
         research_request_service.set_db(sb)
+        research_findings_service.set_db(sb)
+        history_tracker.set_db(sb)
 
-        # Mark as completed
+        # Get request to find company name
+        request_result = sb.table("company_research_requests").select("company_name").eq("id", request_id).execute()
+        if not request_result.data:
+            return jsonify({"error": "Request not found"}), 404
+
+        company_name = request_result.data[0]["company_name"]
+
+        # Get auto-gathered findings
+        findings = research_findings_service.get_findings(company_name)
+
+        # Save findings to history if available
+        if findings and findings.get("auto_financials"):
+            app.logger.info(f"[complete] Saving auto findings for {company_name} to history")
+            history_tracker.add_financials(company_name, "2026", findings.get("auto_financials", {}))
+
+        # Mark request as completed
         success = research_request_service.mark_completed(request_id)
 
         if success:
-            return jsonify({"status": "completed", "id": request_id})
+            return jsonify({
+                "status": "completed",
+                "id": request_id,
+                "company": company_name,
+                "findings_saved": bool(findings)
+            })
         else:
             return jsonify({"error": "Failed to mark request as completed"}), 400
 
