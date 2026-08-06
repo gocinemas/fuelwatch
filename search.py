@@ -58,7 +58,7 @@ _fuel_finder_token = None
 _fuel_finder_token_expires = None
 
 def _fuel_finder_auth():
-    """Get OAuth2 access token from UK Government Fuel Finder API."""
+    """Get OAuth2 access token from UK Government Fuel Finder API (official endpoints)."""
     global _fuel_finder_token, _fuel_finder_token_expires
 
     # Return cached token if still valid
@@ -73,9 +73,10 @@ def _fuel_finder_auth():
         return None
 
     try:
+        # Correct endpoint: api.fuel-finder.service.gov.uk (not dev.api.*)
         resp = requests.post(
-            "https://dev.api.fuel-finder.service.gov.uk/oauth/token",
-            data={
+            "https://api.fuel-finder.service.gov.uk/api/v1/oauth/generate_access_token",
+            json={
                 "grant_type": "client_credentials",
                 "client_id": client_id,
                 "client_secret": client_secret,
@@ -83,7 +84,7 @@ def _fuel_finder_auth():
             timeout=10
         )
         if resp.status_code != 200:
-            print(f"[fuel-finder] Auth failed: {resp.status_code}")
+            print(f"[fuel-finder] Auth failed: {resp.status_code} - {resp.text[:200]}")
             return None
 
         data = resp.json()
@@ -99,38 +100,39 @@ def _fuel_finder_auth():
 
 
 def fetch_fuel_finder_stations() -> list:
-    """Fetch UK Government Fuel Finder data (30-min updates, ~8,500 stations)."""
+    """Fetch UK Government Fuel Finder data (30-min updates, ~8,500 stations, official endpoint)."""
     token = _fuel_finder_auth()
     if not token:
         return []
 
     try:
+        # Correct endpoint: /api/v1/pfs/fuel-prices (not /fuel-stations)
         resp = requests.get(
-            "https://dev.api.fuel-finder.service.gov.uk/fuel-stations",
+            "https://api.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices",
             headers={"Authorization": f"Bearer {token}"},
             timeout=15
         )
         if resp.status_code != 200:
-            print(f"[fuel-finder] API error: {resp.status_code}")
+            print(f"[fuel-finder] API error: {resp.status_code} - {resp.text[:200]}")
             return []
 
         data = resp.json()
-        stations_raw = data.get("fuelStations", [])
+        # Handle different possible response formats
+        stations_raw = data.get("fuelStations") or data.get("stations") or data.get("data") or []
 
         stations = []
         for s in stations_raw:
             # Extract fuel prices (E10 petrol, B7 diesel)
             prices = s.get("prices", {}) or {}
-            petrol = prices.get("E10") or prices.get("Petrol")
-            diesel = prices.get("B7") or prices.get("Diesel")
+            petrol = prices.get("E10") or prices.get("Petrol") or prices.get("unleaded")
+            diesel = prices.get("B7") or prices.get("Diesel") or prices.get("diesel")
 
             if not petrol and not diesel:
                 continue
 
-            # Extract location
-            location = s.get("location", {}) or {}
-            lat = location.get("latitude")
-            lon = location.get("longitude")
+            # Extract location (handle both nested and flat formats)
+            lat = s.get("latitude") or (s.get("location", {}) or {}).get("latitude")
+            lon = s.get("longitude") or (s.get("location", {}) or {}).get("longitude")
 
             if lat is None or lon is None:
                 continue
@@ -143,7 +145,7 @@ def fetch_fuel_finder_stations() -> list:
                 return p / 10 if p > 1000 else p
 
             stations.append({
-                "brand": s.get("retailer", s.get("brand", "Unknown")),
+                "brand": s.get("retailer") or s.get("brand") or "Unknown",
                 "address": s.get("address", ""),
                 "postcode": s.get("postcode", ""),
                 "lat": float(lat),
@@ -298,11 +300,23 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch from CMA retailer feeds (skip stale >12h)."""
+    """Fetch fuel prices: UK Fuel Finder (primary, official) + CMA feeds (fallback)."""
     import concurrent.futures as _cf
 
-    print("Fetching live fuel prices from CMA retailer feeds (parallel)...")
+    print("Fetching live fuel prices...")
     all_stations = []
+
+    # Primary: UK Government Fuel Finder API (30-min updates, ~8,500 stations, official)
+    print("\n1. UK Government Fuel Finder (official API)...")
+    ff_stations = fetch_fuel_finder_stations()
+    if ff_stations:
+        all_stations.extend(ff_stations)
+        print(f"   ✓ Loaded {len(ff_stations)} stations from Fuel Finder")
+    else:
+        print("   ✗ Fuel Finder unavailable, falling back to CMA feeds...")
+
+    # Fallback: CMA retailer feeds (skip stale >12h)
+    print("\n2. CMA retailer feeds (fallback, skipping stale)...")
     working = []
     stale = []
 
@@ -314,12 +328,11 @@ def fetch_all_stations() -> list:
             if stations:
                 all_stations.extend(stations)
                 working.append(f"{name} ({len(stations)})")
-                print(f"  ✓ {name}: {len(stations)} stations")
+                print(f"   ✓ {name}: {len(stations)} stations")
             else:
                 stale.append(name)
-                print(f"  ✗ {name}: unavailable (>12h old)")
 
-    # Deduplicate by postcode+brand
+    # Deduplicate by postcode+brand (Fuel Finder takes priority)
     seen = {}
     deduped = []
     for s in all_stations:
@@ -328,10 +341,10 @@ def fetch_all_stations() -> list:
             seen[key] = s
             deduped.append(s)
 
-    print(f"\n✓ Working: {', '.join(working)}")
+    print(f"\n✓ Fuel Finder + Working CMA: {', '.join(working) if working else 'none'}")
     if stale:
-        print(f"✗ Stale/Unavailable: {', '.join(stale)} (>12h old, skipped)")
-    print(f"\nTotal (deduplicated): {len(deduped)} stations\n")
+        print(f"✗ Stale/Unavailable CMA: {', '.join(stale)} (>12h old, skipped)")
+    print(f"   Total (deduplicated): {len(deduped)} stations\n")
     return deduped
 
 
