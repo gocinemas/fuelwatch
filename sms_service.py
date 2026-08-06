@@ -13414,17 +13414,12 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
 def _v2_fetch_fuel(postcode: str) -> dict:
     """Cheapest petrol near postcode — from live station data."""
     try:
-        from search import postcode_to_latlon, get_stations, _station_cache
+        from search import postcode_to_latlon, fetch_all_stations
 
-        # Get live stations
-        now = time.time()
-        cache_age = now - _station_cache.get("loaded_at", 0)
-        if cache_age > 900:  # Refresh if >15min old
-            get_stations()
-
-        stations = _station_cache.get("stations", [])
+        # Get live stations (fetches from API/CSV/CMA)
+        stations = fetch_all_stations()
         if not stations:
-            app.logger.warning(f"[fuel-fetch] No stations loaded for {postcode}")
+            app.logger.warning(f"[fuel-fetch] No stations available for {postcode}")
             return {}
 
         # Convert postcode to lat/lon
