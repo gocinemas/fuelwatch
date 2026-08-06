@@ -63,29 +63,30 @@ _fuel_finder_token = None
 _fuel_finder_token_expires = None
 
 def _fuel_finder_auth():
-    """Get OAuth2 access token from Fuel Finder API (CORRECT endpoint)."""
+    """Get OAuth2 access token using refresh_token (sustainable, no geofencing)."""
     global _fuel_finder_token, _fuel_finder_token_expires
 
     # Return cached token if still valid (reuse tokens to avoid rate limits)
     if _fuel_finder_token and _fuel_finder_token_expires and datetime.now() < _fuel_finder_token_expires:
         return _fuel_finder_token
 
+    refresh_token = os.environ.get("FUEL_FINDER_REFRESH_TOKEN", "")
     client_id = os.environ.get("FUEL_FINDER_CLIENT_ID", "")
     client_secret = os.environ.get("FUEL_FINDER_CLIENT_SECRET", "")
 
-    if not client_id or not client_secret:
-        print("[fuel-finder] Missing FUEL_FINDER_CLIENT_ID or FUEL_FINDER_CLIENT_SECRET")
+    if not refresh_token or not client_id or not client_secret:
+        print("[fuel-finder] Missing FUEL_FINDER_REFRESH_TOKEN or credentials")
         return None
 
     try:
-        # CORRECT OAuth2 Token Endpoint (not api.fuelfinder, use www.fuel-finder)
+        # Use refresh_token to get new access_token (works from anywhere, no geofencing)
         resp = requests.post(
             "https://www.fuel-finder.service.gov.uk/api/v1/oauth/generate_access_token",
             data={
-                "grant_type": "client_credentials",
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
                 "client_id": client_id,
                 "client_secret": client_secret,
-                "scope": "fuelfinder.read",
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=10
@@ -109,7 +110,7 @@ def _fuel_finder_auth():
 
         # Cache token; refresh 60s before expiry
         _fuel_finder_token_expires = datetime.now() + timedelta(seconds=expires_in - 60)
-        print(f"[fuel-finder] Auth OK ({token_type}, expires {expires_in}s)")
+        print(f"[fuel-finder] Auth OK via refresh_token ({token_type}, expires {expires_in}s)")
         return _fuel_finder_token
     except Exception as e:
         print(f"[fuel-finder] Auth error: {e}")
@@ -117,9 +118,9 @@ def _fuel_finder_auth():
 
 
 def _fetch_fuel_finder_api() -> list:
-    """Fetch fuel prices from Fuel Finder API using OAuth2 (all UK stations, paginated)."""
+    """Fetch fuel prices from Fuel Finder API via OAuth2 refresh_token (paginated, ~500 per batch)."""
     try:
-        print("[fuel-finder-api] Fetching from Fuel Finder API (OAuth2)...")
+        print("[fuel-finder-api] Fetching from Fuel Finder API (via refresh_token)...")
         token = _fuel_finder_auth()
         if not token:
             print("[fuel-finder-api] Could not authenticate")
@@ -129,70 +130,74 @@ def _fetch_fuel_finder_api() -> list:
         batch_number = 1
 
         # Fetch paginated fuel prices (up to 500 per batch)
-        while True:
-            resp = requests.get(
-                f"https://www.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices",
-                params={"batch-number": batch_number},
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=15
-            )
+        while batch_number <= 20:  # Safety limit
+            try:
+                resp = requests.get(
+                    "https://www.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices",
+                    params={"batch-number": batch_number},
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=15
+                )
 
-            if resp.status_code != 200:
-                print(f"[fuel-finder-api] Batch {batch_number} failed: {resp.status_code}")
-                break
+                if resp.status_code != 200:
+                    print(f"[fuel-finder-api] Batch {batch_number}: {resp.status_code}")
+                    break
 
-            data = resp.json()
-            if not data or len(data) == 0:
-                print(f"[fuel-finder-api] No more batches (stopped at {batch_number})")
-                break
+                data = resp.json()
+                if not data or len(data) == 0:
+                    print(f"[fuel-finder-api] Batch {batch_number}: no data — stopping")
+                    break
 
-            for item in data:
-                try:
-                    node_id = item.get("node_id", "")
-                    trading_name = item.get("trading_name", "Unknown")
-                    fuel_prices = item.get("fuel_prices", [])
+                batch_count = 0
+                for item in data:
+                    try:
+                        node_id = item.get("node_id", "")
+                        trading_name = item.get("trading_name", "Unknown")
+                        fuel_prices = item.get("fuel_prices", [])
 
-                    if not node_id or not fuel_prices:
+                        if not node_id or not fuel_prices:
+                            continue
+
+                        # Extract E10 (petrol) and B7S/B7P (diesel) prices
+                        petrol_price = None
+                        diesel_price = None
+
+                        for fuel in fuel_prices:
+                            fuel_type = fuel.get("fuel_type", "")
+                            price = float(fuel.get("price") or 0)
+                            if fuel_type == "E10" and price > 0:
+                                petrol_price = price
+                            elif fuel_type in ("B7S", "B7P") and price > 0:
+                                diesel_price = price
+
+                        if petrol_price or diesel_price:
+                            all_stations.append({
+                                "node_id": node_id,
+                                "brand": trading_name,
+                                "address": "",
+                                "postcode": "",
+                                "lat": 0,
+                                "lon": 0,
+                                "petrol": petrol_price,
+                                "diesel": diesel_price,
+                                "source": "fuel_finder_api",
+                            })
+                            batch_count += 1
+
+                    except (ValueError, TypeError, KeyError):
                         continue
 
-                    # Extract price data (E10=petrol, B7S/B7P=diesel)
-                    petrol_price = None
-                    diesel_price = None
+                print(f"[fuel-finder-api] Batch {batch_number}: {batch_count} stations")
+                batch_number += 1
 
-                    for fuel in fuel_prices:
-                        fuel_type = fuel.get("fuel_type", "")
-                        price = float(fuel.get("price") or 0)
-                        if fuel_type == "E10":
-                            petrol_price = price
-                        elif fuel_type in ("B7S", "B7P"):
-                            diesel_price = price
-
-                    # Try to get location from PFS information (would need separate call)
-                    # For now, store what we have
-                    all_stations.append({
-                        "node_id": node_id,
-                        "brand": trading_name,
-                        "address": "",
-                        "postcode": "",
-                        "lat": 0,
-                        "lon": 0,
-                        "petrol": petrol_price,
-                        "diesel": diesel_price,
-                        "source": "fuel_finder_api",
-                    })
-
-                except (ValueError, TypeError, KeyError) as e:
-                    continue
-
-            print(f"[fuel-finder-api] Batch {batch_number}: {len(data)} stations")
-            batch_number += 1
-
-            # Limit to reasonable number of batches (avoid infinite loops)
-            if batch_number > 20:
-                print(f"[fuel-finder-api] Reached batch limit, stopping")
+            except requests.exceptions.Timeout:
+                print(f"[fuel-finder-api] Batch {batch_number}: timeout")
+                break
+            except requests.exceptions.RequestException as e:
+                print(f"[fuel-finder-api] Batch {batch_number}: {e}")
                 break
 
-        print(f"[fuel-finder-api] Fetched {len(all_stations)} total stations from API")
+        print(f"[fuel-finder-api] Total: {len(all_stations)} stations from API")
         return all_stations
 
     except Exception as e:
@@ -337,51 +342,26 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: CSV (works everywhere) → OAuth (UK-only geofence)."""
+    """Fetch fuel prices: Fuel Finder API (OAuth2 via refresh_token, fully sustainable)."""
     import concurrent.futures as _cf
-    import csv as _csv
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # Primary: Fuel Finder CSV (works everywhere, 8,040 current stations)
-    print("\n1. Fuel Finder CSV (reliable, 8,040 stations)...")
+    # PRIMARY: Fuel Finder API (OAuth2 via refresh_token, no geofencing, sustainable)
+    print("\n1. Fuel Finder API (via refresh_token, ~8,000 stations)...")
     try:
-        with open(os.path.join(os.path.dirname(__file__), "fuel_prices_latest.csv")) as f:
-            reader = _csv.DictReader(f)
-            for row in reader:
-                try:
-                    brand = row.get("forecourts.brand_name", "") or row.get("forecourts.trading_name", "Unknown")
-                    lat = float(row.get("forecourts.location.latitude", 0) or 0)
-                    lon = float(row.get("forecourts.location.longitude", 0) or 0)
-                    e10 = float(row.get("forecourts.fuel_price.E10", 0) or 0)
-                    diesel = float(row.get("forecourts.fuel_price.B7P", 0) or row.get("forecourts.fuel_price.B7S", 0) or 0)
-                    postcode = row.get("forecourts.location.postcode", "")
-                    address = row.get("forecourts.location.address_line_1", "")
-
-                    if lat and lon and (e10 or diesel):
-                        all_stations.append({
-                            "brand": brand,
-                            "address": address,
-                            "postcode": postcode,
-                            "lat": lat,
-                            "lon": lon,
-                            "petrol": e10 if e10 else None,
-                            "diesel": diesel if diesel else None,
-                            "source": "fuel_finder_csv",
-                        })
-                except (ValueError, TypeError):
-                    continue
-
-        if all_stations:
-            print(f"   ✓ Loaded {len(all_stations)} stations from Fuel Finder CSV")
+        api_stations = _fetch_fuel_finder_api()
+        if api_stations and len(api_stations) > 100:
+            all_stations.extend(api_stations)
+            print(f"   ✓ Loaded {len(api_stations)} stations from Fuel Finder API")
             return all_stations
-    except FileNotFoundError:
-        print("   ✗ fuel_prices_latest.csv not found")
+        else:
+            print(f"   ✗ API returned insufficient data ({len(api_stations) if api_stations else 0} stations)")
     except Exception as e:
-        print(f"   ✗ CSV parse error: {e}")
+        print(f"   ✗ Fuel Finder API error: {e}")
 
-    # Fallback: Fuel Finder API (OAuth2, UK-geofenced)
+    # Fallback: CMA retailer feeds (if API fails)
     if len(all_stations) < 500:
         print("\n2. Fuel Finder CSV (fallback, 8,040 stations)...")
         try:
