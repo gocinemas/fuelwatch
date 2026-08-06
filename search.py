@@ -63,10 +63,10 @@ _fuel_finder_token = None
 _fuel_finder_token_expires = None
 
 def _fuel_finder_auth():
-    """Get OAuth2 access token from UK Government Fuel Finder API (client credentials)."""
+    """Get OAuth2 access token from Fuel Finder API (client credentials grant)."""
     global _fuel_finder_token, _fuel_finder_token_expires
 
-    # Return cached token if still valid
+    # Return cached token if still valid (reuse tokens to avoid rate limits)
     if _fuel_finder_token and _fuel_finder_token_expires and datetime.now() < _fuel_finder_token_expires:
         return _fuel_finder_token
 
@@ -74,30 +74,40 @@ def _fuel_finder_auth():
     client_secret = os.environ.get("FUEL_FINDER_CLIENT_SECRET", "")
 
     if not client_id or not client_secret:
-        print("[fuel-finder] Missing credentials")
+        print("[fuel-finder] Missing FUEL_FINDER_CLIENT_ID or FUEL_FINDER_CLIENT_SECRET")
         return None
 
     try:
-        # OAuth2 endpoint (no dashes in domain)
+        # OAuth2 Token Request (application/x-www-form-urlencoded)
         resp = requests.post(
             "https://api.fuelfinder.service.gov.uk/oauth2/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": client_id,
                 "client_secret": client_secret,
+                "scope": "fuelfinder.read",
             },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=10
         )
         if resp.status_code != 200:
-            print(f"[fuel-finder] Auth failed: {resp.status_code} - {resp.text[:200]}")
+            print(f"[fuel-finder] Auth failed: {resp.status_code}")
+            if resp.text:
+                print(f"  Response: {resp.text[:300]}")
             return None
 
         data = resp.json()
         _fuel_finder_token = data.get("access_token")
+        token_type = data.get("token_type", "Bearer")
         expires_in = data.get("expires_in", 3600)
-        _fuel_finder_token_expires = datetime.now() + timedelta(seconds=expires_in - 60)
 
-        print(f"[fuel-finder] Auth successful, token expires in {expires_in}s")
+        if not _fuel_finder_token:
+            print("[fuel-finder] No access_token in response")
+            return None
+
+        # Cache token; refresh 60s before expiry
+        _fuel_finder_token_expires = datetime.now() + timedelta(seconds=expires_in - 60)
+        print(f"[fuel-finder] Auth OK ({token_type}, expires {expires_in}s)")
         return _fuel_finder_token
     except Exception as e:
         print(f"[fuel-finder] Auth error: {e}")
