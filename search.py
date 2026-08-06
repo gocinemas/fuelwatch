@@ -305,25 +305,15 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: UK Fuel Finder (primary, official) + CMA feeds (fallback)."""
+    """Fetch fuel prices from working sources (CMA feeds + PetrolPrices fallback)."""
     import concurrent.futures as _cf
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # Primary: UK Government Fuel Finder API (30-min updates, ~8,500 stations, official)
-    print("\n1. UK Government Fuel Finder (official API)...")
-    ff_stations = fetch_fuel_finder_stations()
-    if ff_stations:
-        all_stations.extend(ff_stations)
-        print(f"   ✓ Loaded {len(ff_stations)} stations from Fuel Finder")
-    else:
-        print("   ✗ Fuel Finder unavailable, falling back to CMA feeds...")
-
-    # Fallback: CMA retailer feeds (skip stale >12h)
-    print("\n2. CMA retailer feeds (fallback, skipping stale)...")
+    # CMA retailer feeds (Esso, Jet, MFG only — Asda/Tesco stale since July 2026)
+    print("\n1. CMA retailer feeds (live sources only)...")
     working = []
-    stale = []
 
     with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
         futures = {ex.submit(fetch_retailer, name, url): name for name, url in RETAILER_FEEDS.items()}
@@ -334,10 +324,19 @@ def fetch_all_stations() -> list:
                 all_stations.extend(stations)
                 working.append(f"{name} ({len(stations)})")
                 print(f"   ✓ {name}: {len(stations)} stations")
-            else:
-                stale.append(name)
 
-    # Deduplicate by postcode+brand (Fuel Finder takes priority)
+    # Fallback: PetrolPrices.com if we have limited coverage (they aggregate live data)
+    if len(all_stations) < 500:
+        print("\n2. PetrolPrices.com fallback (limited CMA coverage)...")
+        try:
+            pp_stations = _fetch_petrolprices_live()
+            if pp_stations:
+                all_stations.extend(pp_stations)
+                print(f"   ✓ PetrolPrices: {len(pp_stations)} additional stations")
+        except Exception as e:
+            print(f"   ✗ PetrolPrices unavailable: {e}")
+
+    # Deduplicate by postcode+brand
     seen = {}
     deduped = []
     for s in all_stations:
@@ -346,11 +345,48 @@ def fetch_all_stations() -> list:
             seen[key] = s
             deduped.append(s)
 
-    print(f"\n✓ Fuel Finder + Working CMA: {', '.join(working) if working else 'none'}")
-    if stale:
-        print(f"✗ Stale/Unavailable CMA: {', '.join(stale)} (>12h old, skipped)")
-    print(f"   Total (deduplicated): {len(deduped)} stations\n")
+    print(f"\n✓ Total (deduplicated): {len(deduped)} stations\n")
     return deduped
+
+
+def _fetch_petrolprices_live() -> list:
+    """Fetch live prices from PetrolPrices.com (they aggregate real-time data)."""
+    try:
+        resp = requests.get(
+            "https://www.petrolprices.com/",
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            return []
+
+        # Extract station JSON from page
+        import re as _re
+        import json as _json
+
+        # Look for embedded station data in page
+        matches = _re.findall(r'"brand"\s*:\s*"([^"]+)"[^}]*"petrol"\s*:\s*([\d.]+)[^}]*"lat"\s*:\s*([\d.-]+)[^}]*"lon"\s*:\s*([\d.-]+)', resp.text)
+
+        stations = []
+        for brand, price, lat, lon in matches[:200]:  # Limit to avoid memory bloat
+            try:
+                stations.append({
+                    "brand": brand,
+                    "address": "",
+                    "postcode": "",
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "petrol": float(price),
+                    "diesel": None,
+                    "source": "petrolprices",
+                })
+            except (ValueError, TypeError):
+                pass
+
+        return stations[:100]  # Return top 100 by parse order
+
+    except Exception as e:
+        return []
 
 
 # ── Weather ───────────────────────────────────────────────────────────────────
