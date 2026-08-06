@@ -23495,30 +23495,74 @@ def _wa_save_thread(from_number: str, user_msg: str, bot_reply: str) -> None:
 
 
 def _wa_general_chat(from_number: str, body: str, thread: list) -> str:
-    """Answer a general question from the user with Groq, using conversation thread."""
+    """Answer a general question using UNIFIED INTELLIGENCE HUB context."""
     ctx_parts = []
+
+    # Fetch unified intelligence context
     try:
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
-        prefs = rows[0]["data"] if rows else {}
-        if prefs.get("fuel_postcode"):
-            ctx_parts.append(f"User lives near {prefs['fuel_postcode']}, UK.")
-        if prefs.get("train_from") and prefs.get("train_to"):
-            ctx_parts.append(f"Commutes {prefs['train_from']} → {prefs['train_to']}.")
-    except Exception:
-        pass
+        from intelligence_hub import UnifiedIntelligenceHub
+        hub = UnifiedIntelligenceHub(from_number=from_number, supabase_client=lib._sb())
+        ask_ctx = hub.get_ask_miru_context()
+
+        # Extract relevant context for system prompt
+        rt = ask_ctx.get("user_context", {})
+        if rt.get("location"):
+            loc = rt["location"]
+            ctx_parts.append(f"User is in {loc.get('area', 'UK')}, postcode {loc.get('postcode', '')}.")
+
+        # Add real-time weather/conditions
+        full_ctx = hub.get_full_context()
+        weather = full_ctx.get("real_time", {}).get("weather", {})
+        if weather:
+            ctx_parts.append(f"Current weather: {weather.get('temp')}°C, {weather.get('condition')}.")
+            if weather.get("rain_prob", 0) > 60:
+                ctx_parts.append(f"⚠️ Rain expected at {weather.get('rain_time')}.")
+
+        # Add upcoming events
+        upcoming = ask_ctx.get("upcoming", [])
+        if upcoming:
+            next_evt = upcoming[0]
+            ctx_parts.append(f"Next event: {next_evt.get('title', 'event')} at {next_evt.get('time', 'unknown')}.")
+
+        # Add spending context
+        spend = ask_ctx.get("relevant_history", {}).get("spend_summary", {})
+        if spend.get("this_week_vs_avg"):
+            ctx_parts.append(f"Spending this week: {spend.get('this_week_vs_avg')}.")
+
+        # Add recommendations
+        recs = ask_ctx.get("recommendations", {})
+        if recs.get("should_i_go_to_costa", {}).get("recommendation") == "YES":
+            ctx_parts.append("💡 Costa nearby with 20% off — worth mentioning if relevant.")
+
+    except Exception as e:
+        # Fallback: basic context only
+        print(f"[ask-miru] Hub fetch failed: {e}")
+        try:
+            rows = lib._sb().table("ma_details").select("data") \
+                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            prefs = rows[0]["data"] if rows else {}
+            if prefs.get("fuel_postcode"):
+                ctx_parts.append(f"User lives near {prefs['fuel_postcode']}, UK.")
+        except:
+            pass
+
     system = (
         "You are Miru, a concise British AI assistant for everyday UK life — "
-        "trains, fuel, school, local area, saves. "
+        "trains, fuel, weather, school, local area, saves. "
+        "You have FULL CONTEXT about what's happening in the user's life RIGHT NOW. "
+        "Use this context to give relevant, helpful answers. "
         "Reply in plain text, under 60 words. No bullet points. No greetings. "
-        "If you don't know, say so briefly. "
-        + (" ".join(ctx_parts))
+        "If asked 'Is it windy?', you can see weather and suggest umbrella if school pickup soon. "
+        "If asked 'Should I go to Costa?', you know it's nearby, 20% off, they're under budget. "
+        "If you don't know something, say so briefly. "
+        + (" ".join(ctx_parts) if ctx_parts else "Context: User is in UK.")
     )
     messages = list(thread) + [{"role": "user", "content": body}]
     try:
         return _groq_chat(system, messages, max_tokens=120)
-    except Exception:
-        return "I didn't quite get that — try asking about fuel, trains, or send a link to save."
+    except Exception as e:
+        print(f"[ask-miru] Chat error: {e}")
+        return "I didn't quite get that — try asking about fuel, trains, weather, or send a link to save."
 
 
 def _wa_doc_search(from_number: str, query: str) -> str:
@@ -39307,3 +39351,80 @@ if __name__ == "__main__":
     print("  https://YOUR-NGROK-URL/sms\n")
     port = int(os.environ.get("PORT", 8080))
     app.run(debug=False, host="0.0.0.0", port=port)
+
+
+# ── UNIFIED INTELLIGENCE HUB API ──────────────────────────────────────────
+
+@app.route("/api/intelligence/hub", methods=["GET"])
+def api_intelligence_hub():
+    """Expose unified intelligence hub for all modules."""
+    try:
+        from intelligence_hub import UnifiedIntelligenceHub
+        phone = request.args.get("phone", "")
+        if not phone:
+            return jsonify({"error": "phone required"}), 400
+
+        hub = UnifiedIntelligenceHub(from_number=phone, supabase_client=lib._sb())
+        return jsonify(hub.get_full_context())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/intelligence/brief", methods=["GET"])
+def api_intelligence_brief():
+    """Intelligence shaped for BRIEF module."""
+    try:
+        from intelligence_hub import UnifiedIntelligenceHub
+        phone = request.args.get("phone", "")
+        if not phone:
+            return jsonify({"error": "phone required"}), 400
+
+        hub = UnifiedIntelligenceHub(from_number=phone, supabase_client=lib._sb())
+        return jsonify(hub.get_brief_insights())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/intelligence/ask-miru", methods=["GET"])
+def api_intelligence_ask_miru():
+    """Full context for ASK MIRU module (chat)."""
+    try:
+        from intelligence_hub import UnifiedIntelligenceHub
+        phone = request.args.get("phone", "")
+        if not phone:
+            return jsonify({"error": "phone required"}), 400
+
+        hub = UnifiedIntelligenceHub(from_number=phone, supabase_client=lib._sb())
+        return jsonify(hub.get_ask_miru_context())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/intelligence/week", methods=["GET"])
+def api_intelligence_week():
+    """Intelligence for YOUR WEEK module."""
+    try:
+        from intelligence_hub import UnifiedIntelligenceHub
+        phone = request.args.get("phone", "")
+        if not phone:
+            return jsonify({"error": "phone required"}), 400
+
+        hub = UnifiedIntelligenceHub(from_number=phone, supabase_client=lib._sb())
+        return jsonify(hub.get_week_insights())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/intelligence/receipts", methods=["GET"])
+def api_intelligence_receipts():
+    """Intelligence for RECEIPTS INTEL module."""
+    try:
+        from intelligence_hub import UnifiedIntelligenceHub
+        phone = request.args.get("phone", "")
+        if not phone:
+            return jsonify({"error": "phone required"}), 400
+
+        hub = UnifiedIntelligenceHub(from_number=phone, supabase_client=lib._sb())
+        return jsonify(hub.get_receipts_insights())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
