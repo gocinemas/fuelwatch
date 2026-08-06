@@ -32,22 +32,27 @@ _MA_DETAIL_TYPES_MAP = {
 }
 
 # ── CMA Retailer Price Feed URLs ──────────────────────────────────────────────
-# Confirmed working (tested May 2026)
-# BP removed from this list — they retired their own CMA feed (returns 403/404 as of May 2026).
-# BP has migrated to the new gov.uk Fuel Finder scheme (OAuth required, not yet integrated).
+# LIVE & UPDATED (as of Aug 2026):
+# - Esso, Jet, MFG: Actively updating ✓
+# - Asda, Tesco, Sainsburys, Morrisons: STALE (stopped updating mid-July 2026) ✗
+# - Shell, Applegreen, Rontec, Moto, SGN: Unreliable/outdated ✗
+#
+# NOTE: Major retailers stopped complying with CMA reporting in July 2026.
+# Only showing feeds that are actively updated (checked 12h staleness).
 RETAILER_FEEDS = {
-    "Asda":        "https://storelocator.asda.com/fuel_prices_data.json",
-    "Tesco":       "https://www.tesco.com/fuel_prices/fuel_prices_data.json",
-    "Shell":       "https://www.shell.co.uk/fuel-prices-data.html",
-    "Sainsburys":  "https://api.sainsburys.co.uk/v1/exports/latest/fuel_prices_data.json",
-    "Morrisons":   "https://www.morrisons.com/fuel-prices/fuel.json",
     "Esso":        "https://fuelprices.esso.co.uk/latestdata.json",
     "MFG":         "https://fuel.motorfuelgroup.com/fuel_prices_data.json",
     "Jet":         "https://jetlocal.co.uk/fuel_prices_data.json",
-    "Applegreen":  "https://applegreenstores.com/fuel-prices/data.json",
-    "Rontec":      "https://www.rontec-servicestations.co.uk/fuel-prices/data/fuel_prices_data.json",
-    "Moto":        "https://www.moto-way.com/fuel-price/fuel_prices.json",
-    "SGN":         "https://www.sgnretail.uk/files/data/SGN_daily_fuel_prices.json",
+    # DEPRECATED (not updating):
+    # "Asda":        "https://storelocator.asda.com/fuel_prices_data.json",  # Stale since mid-July
+    # "Tesco":       "https://www.tesco.com/fuel_prices/fuel_prices_data.json",  # Stale
+    # "Sainsburys":  "https://api.sainsburys.co.uk/v1/exports/latest/fuel_prices_data.json",  # Stale
+    # "Morrisons":   "https://www.morrisons.com/fuel-prices/fuel.json",  # Stale
+    # "Shell":       "https://www.shell.co.uk/fuel-prices-data.html",
+    # "Applegreen":  "https://applegreenstores.com/fuel-prices/data.json",
+    # "Rontec":      "https://www.rontec-servicestations.co.uk/fuel-prices/data/fuel_prices_data.json",
+    # "Moto":        "https://www.moto-way.com/fuel-price/fuel_prices.json",
+    # "SGN":         "https://www.sgnretail.uk/files/data/SGN_daily_fuel_prices.json",
 }
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
