@@ -118,19 +118,72 @@ def _fuel_finder_auth():
 
 
 def _fetch_fuel_finder_api() -> list:
-    """Fetch fuel prices from Fuel Finder API via OAuth2 refresh_token (paginated, ~500 per batch)."""
+    """Fetch fuel prices + location data from Fuel Finder API (paginated, ~500 per batch)."""
     try:
-        print("[fuel-finder-api] Fetching from Fuel Finder API (via refresh_token)...")
+        print("[fuel-finder-api] Fetching from Fuel Finder API (prices + locations)...")
         token = _fuel_finder_auth()
         if not token:
             print("[fuel-finder-api] Could not authenticate")
             return []
 
-        all_stations = []
+        # First: fetch locations (lat/lon, postcode, trading_name)
+        print("[fuel-finder-api] Step 1: Fetching PFS locations...")
+        stations_by_id = {}
         batch_number = 1
 
-        # Fetch paginated fuel prices (up to 500 per batch)
-        while batch_number <= 20:  # Safety limit
+        while batch_number <= 20:
+            try:
+                resp = requests.get(
+                    "https://www.fuel-finder.service.gov.uk/api/v1/pfs",
+                    params={"batch-number": batch_number},
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=15
+                )
+
+                if resp.status_code != 200:
+                    print(f"[fuel-finder-api] PFS batch {batch_number}: {resp.status_code}")
+                    break
+
+                data = resp.json()
+                if not data or len(data) == 0:
+                    break
+
+                for item in data:
+                    try:
+                        node_id = item.get("node_id", "")
+                        if not node_id:
+                            continue
+
+                        location = item.get("location", {})
+                        lat = float(location.get("latitude") or 0)
+                        lon = float(location.get("longitude") or 0)
+
+                        stations_by_id[node_id] = {
+                            "node_id": node_id,
+                            "brand": item.get("brand_name", item.get("trading_name", "Unknown")),
+                            "address": location.get("address_line_1", ""),
+                            "postcode": location.get("postcode", ""),
+                            "lat": lat,
+                            "lon": lon,
+                            "petrol": None,
+                            "diesel": None,
+                            "source": "fuel_finder_api",
+                        }
+                    except (ValueError, TypeError, KeyError):
+                        continue
+
+                batch_number += 1
+            except requests.exceptions.RequestException:
+                break
+
+        print(f"[fuel-finder-api] Fetched {len(stations_by_id)} locations")
+
+        # Second: fetch fuel prices and merge
+        print("[fuel-finder-api] Step 2: Fetching fuel prices...")
+        batch_number = 1
+        price_count = 0
+
+        while batch_number <= 20:
             try:
                 resp = requests.get(
                     "https://www.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices",
@@ -140,64 +193,38 @@ def _fetch_fuel_finder_api() -> list:
                 )
 
                 if resp.status_code != 200:
-                    print(f"[fuel-finder-api] Batch {batch_number}: {resp.status_code}")
                     break
 
                 data = resp.json()
                 if not data or len(data) == 0:
-                    print(f"[fuel-finder-api] Batch {batch_number}: no data — stopping")
                     break
 
-                batch_count = 0
                 for item in data:
                     try:
                         node_id = item.get("node_id", "")
-                        trading_name = item.get("trading_name", "Unknown")
                         fuel_prices = item.get("fuel_prices", [])
 
-                        if not node_id or not fuel_prices:
-                            continue
-
-                        # Extract E10 (petrol) and B7S/B7P (diesel) prices
-                        petrol_price = None
-                        diesel_price = None
-
-                        for fuel in fuel_prices:
-                            fuel_type = fuel.get("fuel_type", "")
-                            price = float(fuel.get("price") or 0)
-                            if fuel_type == "E10" and price > 0:
-                                petrol_price = price
-                            elif fuel_type in ("B7S", "B7P") and price > 0:
-                                diesel_price = price
-
-                        if petrol_price or diesel_price:
-                            all_stations.append({
-                                "node_id": node_id,
-                                "brand": trading_name,
-                                "address": "",
-                                "postcode": "",
-                                "lat": 0,
-                                "lon": 0,
-                                "petrol": petrol_price,
-                                "diesel": diesel_price,
-                                "source": "fuel_finder_api",
-                            })
-                            batch_count += 1
-
+                        if node_id in stations_by_id and fuel_prices:
+                            for fuel in fuel_prices:
+                                fuel_type = fuel.get("fuel_type", "")
+                                price = float(fuel.get("price") or 0)
+                                if fuel_type == "E10" and price > 0:
+                                    stations_by_id[node_id]["petrol"] = price
+                                    price_count += 1
+                                elif fuel_type in ("B7S", "B7P") and price > 0:
+                                    stations_by_id[node_id]["diesel"] = price
                     except (ValueError, TypeError, KeyError):
                         continue
 
-                print(f"[fuel-finder-api] Batch {batch_number}: {batch_count} stations")
                 batch_number += 1
-
-            except requests.exceptions.Timeout:
-                print(f"[fuel-finder-api] Batch {batch_number}: timeout")
-                break
-            except requests.exceptions.RequestException as e:
-                print(f"[fuel-finder-api] Batch {batch_number}: {e}")
+            except requests.exceptions.RequestException:
                 break
 
-        print(f"[fuel-finder-api] Total: {len(all_stations)} stations from API")
+        print(f"[fuel-finder-api] Merged {price_count} prices into locations")
+
+        # Filter: only stations with valid location AND price data
+        all_stations = [s for s in stations_by_id.values() if (s["lat"] and s["lon"]) and (s["petrol"] or s["diesel"])]
+        print(f"[fuel-finder-api] Total: {len(all_stations)} valid stations (with location + price)")
         return all_stations
 
     except Exception as e:
