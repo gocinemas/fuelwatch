@@ -63,58 +63,24 @@ _fuel_finder_token = None
 _fuel_finder_token_expires = None
 
 def _fuel_finder_auth():
-    """Get OAuth2 access token using refresh_token (sustainable, no geofencing)."""
+    """Get access_token (pre-refreshed by local cron from UK IP to bypass geofencing)."""
     global _fuel_finder_token, _fuel_finder_token_expires
 
-    # Return cached token if still valid (reuse tokens to avoid rate limits)
+    # Return cached token if still valid
     if _fuel_finder_token and _fuel_finder_token_expires and datetime.now() < _fuel_finder_token_expires:
         return _fuel_finder_token
 
-    refresh_token = os.environ.get("FUEL_FINDER_REFRESH_TOKEN", "")
-    client_id = os.environ.get("FUEL_FINDER_CLIENT_ID", "")
-    client_secret = os.environ.get("FUEL_FINDER_CLIENT_SECRET", "")
+    # Use pre-refreshed access_token (updated every 45 min by local fuel_token_refresher.py)
+    access_token = os.environ.get("FUEL_FINDER_ACCESS_TOKEN", "")
 
-    if not refresh_token or not client_id or not client_secret:
-        print("[fuel-finder] Missing FUEL_FINDER_REFRESH_TOKEN or credentials")
+    if not access_token:
+        print("[fuel-finder] Missing FUEL_FINDER_ACCESS_TOKEN — run fuel_token_refresher.py locally")
         return None
 
-    try:
-        # Use refresh_token to get new access_token (works from anywhere, no geofencing)
-        resp = requests.post(
-            "https://www.fuel-finder.service.gov.uk/api/v1/oauth/generate_access_token",
-            data={
-                "grant_type": "refresh_token",
-                "refresh_token": refresh_token,
-                "client_id": client_id,
-                "client_secret": client_secret,
-            },
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            timeout=10
-        )
-
-        if resp.status_code != 200:
-            print(f"[fuel-finder] Auth failed: {resp.status_code}")
-            if resp.text:
-                print(f"  Response: {resp.text[:300]}")
-            return None
-
-        data = resp.json()
-        token_data = data.get("data", {})
-        _fuel_finder_token = token_data.get("access_token")
-        token_type = token_data.get("token_type", "Bearer")
-        expires_in = token_data.get("expires_in", 3600)
-
-        if not _fuel_finder_token:
-            print("[fuel-finder] No access_token in response")
-            return None
-
-        # Cache token; refresh 60s before expiry
-        _fuel_finder_token_expires = datetime.now() + timedelta(seconds=expires_in - 60)
-        print(f"[fuel-finder] Auth OK via refresh_token ({token_type}, expires {expires_in}s)")
-        return _fuel_finder_token
-    except Exception as e:
-        print(f"[fuel-finder] Auth error: {e}")
-        return None
+    # Cache token locally for 40 min (actual token lasts 1 hour, cron refreshes every 45 min)
+    _fuel_finder_token = access_token
+    _fuel_finder_token_expires = datetime.now() + timedelta(minutes=40)
+    return access_token
 
 
 def _fetch_fuel_finder_api() -> list:
