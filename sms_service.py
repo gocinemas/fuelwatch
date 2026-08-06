@@ -3904,8 +3904,18 @@ def api_library_upload():
             try:
                 extracted = _groq_vision(
                     img_b64, mime,
-                    "Extract ALL text visible in this image exactly as shown. "
-                    "If this is a receipt, include store name, items, prices, totals, date. "
+                    "Extract receipt data CLEANLY. Format exactly like this:\n\n"
+                    "STORE: [store name only]\n"
+                    "DATE: [YYYY-MM-DD]\n"
+                    "TOTAL: [amount with £]\n"
+                    "Main items include: [item1, item2, item3, ...]\n"
+                    "LOCATION: [address if shown]\n\n"
+                    "RULES:\n"
+                    "- Items only: product names (e.g., 'Milk', 'Bread', 'Coffee')\n"
+                    "- NO prices, NO quantities, NO metadata mixed in items section\n"
+                    "- If you see garbled/corrupted text in items, SKIP that line\n"
+                    "- Max 10 items\n"
+                    "- Ignore: barcodes, VAT, payment methods, loyalty numbers"
                     "Return only the extracted text, no commentary."
                 )
                 text = extracted or ""
