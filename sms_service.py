@@ -1141,11 +1141,13 @@ def sms_reply():
     # Handle PDF receipts (auto-detect: if PDF sent without command, treat as receipt)
     num_media = int(request.form.get("NumMedia", 0))
     if num_media > 0:
-        media_type = request.form.get("MediaContentType0", "")
+        media_type = request.form.get("MediaContentType0", "").lower()
         media_url = request.form.get("MediaUrl0", "")
 
-        # PDF receipt handler (auto-detect receipts)
-        if media_type == "application/pdf" and media_url:
+        print(f"[pdf-receipt-debug] NumMedia={num_media}, MediaType={media_type}, URL={media_url[:50] if media_url else 'none'}")
+
+        # PDF receipt handler (auto-detect receipts) - match application/pdf or variants
+        if ("pdf" in media_type or "application/pdf" in media_type) and media_url:
             try:
                 import fitz
                 pdf_response = requests.get(media_url)
@@ -1205,8 +1207,8 @@ def sms_reply():
                     return str(resp)
 
             except Exception as e:
-                print(f"[pdf-receipt] Error: {e}")
-                resp.message(f"❌ PDF processing failed: {str(e)[:80]}")
+                print(f"[pdf-receipt] Error: {e}", exc_info=True)
+                resp.message(f"❌ PDF processing failed: {str(e)[:80]}\n\nTry: send a photo of the receipt instead, or check file format.")
                 return str(resp)
 
     # Handle "event" command with poster image
