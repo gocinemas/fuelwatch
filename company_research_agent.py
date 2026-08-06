@@ -32,6 +32,10 @@ class CompanyResearchAgent:
         self.db = None
         self._init_db()
 
+        # Initialize findings service
+        from company_research_findings_service import research_findings_service
+        research_findings_service.set_db(self.db)
+
     def _init_db(self):
         """Initialize Supabase connection."""
         try:
@@ -46,14 +50,13 @@ class CompanyResearchAgent:
 
     def research_company(self, company_name: str) -> dict:
         """
-        Research a company using Claude and populate database.
+        Research a company using Claude and save findings for admin review.
+        Hybrid workflow: auto-gather + human approval.
 
         Returns: {
             'company': company_name,
-            'financials': [years of data],
-            'deals': [list of deals],
-            'market_trends': [trends],
-            'status': 'success' | 'partial' | 'failed'
+            'status': 'success' | 'partial' | 'failed',
+            'findings_saved': bool
         }
         """
         logger.info(f"🔍 Starting research for {company_name}...")
@@ -70,37 +73,45 @@ class CompanyResearchAgent:
 
         result = {
             'company': company_name,
-            'financials': [],
-            'deals': [],
-            'market_trends': [],
-            'status': 'partial'
+            'status': 'partial',
+            'findings_saved': False
         }
 
-        # Step 1: Research financials via Claude
+        # Gather auto data
+        auto_data = {
+            'description': basics.get('description'),
+            'market_position': basics.get('sector'),
+            'risks': [],
+            'opportunities': [],
+            'brands': basics.get('brands', []),
+            'financials': {
+                'stock_price': basics.get('stock', {}).get('price'),
+                'market_cap': basics.get('stock', {}).get('market_cap'),
+                'employees': basics.get('stock', {}).get('employees'),
+            }
+        }
+
+        # Step 1: Research financials
         logger.info(f"  📊 Researching financials...")
         financials = self._research_financials(company_name, basics)
-        if financials:
-            result['financials'] = financials
-            self._save_financials(company_name, financials)
+        if financials and len(financials) > 0:
+            auto_data['financials'].update(financials[0])
 
-        # Step 2: Research deals via Claude
+        # Step 2: Research deals
         logger.info(f"  🤝 Researching deals...")
         deals = self._research_deals(company_name, basics)
-        if deals:
-            result['deals'] = deals
-            self._save_deals(company_name, deals)
 
         # Step 3: Research market trends
         logger.info(f"  📈 Researching market trends...")
         trends = self._research_market_trends(company_name, basics)
-        if trends:
-            result['market_trends'] = trends
-            self._save_market_trends(company_name, trends)
 
-        if result['financials'] or result['deals'] or result['market_trends']:
-            result['status'] = 'success'
+        # Save auto-gathered findings for admin review
+        logger.info(f"  💾 Saving findings for admin review...")
+        self._save_findings(company_name, auto_data)
+        result['findings_saved'] = True
+        result['status'] = 'success'
 
-        logger.info(f"✅ Research complete for {company_name}: {result['status']}")
+        logger.info(f"✅ Research complete for {company_name}: findings ready for admin review")
         return result
 
     def _research_financials(self, company_name: str, basics: dict) -> list:
@@ -280,6 +291,16 @@ Return ONLY valid JSON array, no explanations."""
                 history_tracker.add_market_trend(company_name, category, {**trend, 'period': period})
             except Exception as e:
                 logger.error(f"Failed to save trend: {e}")
+
+    def _save_findings(self, company_name: str, auto_data: dict):
+        """Save auto-gathered findings for admin review (hybrid workflow)."""
+        try:
+            from company_research_findings_service import research_findings_service
+            research_findings_service.set_db(self.db)
+            research_findings_service.save_agent_findings(company_name, auto_data)
+            logger.info(f"[findings] Saved auto-gathered data for {company_name}")
+        except Exception as e:
+            logger.error(f"[findings] Failed to save: {e}")
 
 
 def main():
