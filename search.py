@@ -336,24 +336,18 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: Fuel Finder CSV (primary) + CMA fallback."""
+    """Fetch fuel prices: CMA feeds (only reliable source, though stale as of Aug 2026)."""
     import concurrent.futures as _cf
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # Primary: Fuel Finder API (OAuth2, real-time, 30-min updates)
-    print("\n1. Fuel Finder API (primary - OAuth2)...")
-    try:
-        api_stations = _fetch_fuel_finder_api()
-        if api_stations:
-            all_stations.extend(api_stations)
-            print(f"   ✓ Loaded {len(api_stations)} stations from Fuel Finder API")
-    except Exception as e:
-        print(f"   ✗ Fuel Finder API unavailable: {e}")
+    # NOTE (Aug 2026): Fuel Finder API not accessible (endpoints don't resolve).
+    # CMA feeds are the only working source but return stale data (24h+).
+    # This is a known issue with the UK fuel price infrastructure transition.
 
-    # Fallback: CMA retailer feeds (Esso, Jet, MFG only — Asda/Tesco stale since July 2026)
-    print("\n2. CMA retailer feeds (fallback)...")
+    # Primary: CMA retailer feeds (Esso, Jet, MFG — only working source)
+    print("\n1. CMA retailer feeds (only accessible source)...")
     working = []
 
     with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
