@@ -112,6 +112,7 @@ def fetch_retailer(name: str, url: str) -> list:
     """
     Fetch and normalise a CMA retailer price feed.
     CMA standard format: {stations: [{location: {latitude, longitude}, prices: {E10, B7}}]}
+    Skip feeds older than 12 hours to avoid stale prices.
     """
     try:
         resp = requests.get(url, timeout=5, headers=HEADERS)
@@ -119,6 +120,19 @@ def fetch_retailer(name: str, url: str) -> list:
             print(f"  [fetch_retailer] {name}: HTTP {resp.status_code}")
             return []
         data = resp.json()
+
+        # Check feed freshness: skip if older than 12 hours
+        last_updated_str = data.get("last_updated", "")
+        if last_updated_str:
+            from datetime import datetime as _dt
+            try:
+                feed_time = _dt.strptime(last_updated_str, "%d/%m/%Y %H:%M:%S")
+                age_hours = (_dt.now() - feed_time).total_seconds() / 3600
+                if age_hours > 12:
+                    print(f"  [fetch_retailer] {name}: STALE ({age_hours:.1f}h old) — skipping")
+                    return []
+            except:
+                pass  # If parsing fails, proceed anyway
 
         stations_raw = (
             data.get("stations") or
