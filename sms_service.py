@@ -23705,7 +23705,7 @@ def _wa_triage_respond(from_number: str, cmd: str) -> str:
     return reply
 
 
-_FUEL_WORDS = {"petrol", "diesel", "unleaded", "fuel", "gas", "price", "prices", "cheapest", "nearest", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
+_FUEL_WORDS = {"petrol", "diesel", "unleaded", "fuel", "gas", "price", "prices", "cheapest", "nearest", "near", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
 _ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
                    "polling", "ballot", "stand", "standing"}
 _MP_WORDS = {"mp", "my mp", "who is my mp", "who represents me", "contact mp",
