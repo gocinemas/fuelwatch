@@ -298,22 +298,14 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: UK Government Fuel Finder (primary) + CMA feeds (fallback)."""
+    """Fetch from CMA retailer feeds (skip stale >12h)."""
     import concurrent.futures as _cf
 
-    print("Fetching live fuel prices...")
+    print("Fetching live fuel prices from CMA retailer feeds (parallel)...")
     all_stations = []
+    working = []
+    stale = []
 
-    # Try Fuel Finder first (30-min updates, official, 8,500 stations)
-    ff_stations = fetch_fuel_finder_stations()
-    if ff_stations:
-        all_stations.extend(ff_stations)
-        print(f"\n✓ UK Government Fuel Finder: {len(ff_stations)} stations (30-min updates)")
-    else:
-        print("⚠ UK Government Fuel Finder unavailable, falling back to CMA feeds...")
-
-    # Fallback: CMA retailer feeds (for older/missing data)
-    print("Fetching CMA retailer feeds (parallel)...")
     with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
         futures = {ex.submit(fetch_retailer, name, url): name for name, url in RETAILER_FEEDS.items()}
         for fut in _cf.as_completed(futures):
@@ -321,11 +313,13 @@ def fetch_all_stations() -> list:
             stations = fut.result()
             if stations:
                 all_stations.extend(stations)
-                print(f"  {name}: {len(stations)} stations")
+                working.append(f"{name} ({len(stations)})")
+                print(f"  ✓ {name}: {len(stations)} stations")
             else:
-                print(f"  {name}: unavailable (>12h old or unreachable)")
+                stale.append(name)
+                print(f"  ✗ {name}: unavailable (>12h old)")
 
-    # Deduplicate by postcode+brand (keep Fuel Finder priority over CMA)
+    # Deduplicate by postcode+brand
     seen = {}
     deduped = []
     for s in all_stations:
@@ -334,6 +328,9 @@ def fetch_all_stations() -> list:
             seen[key] = s
             deduped.append(s)
 
+    print(f"\n✓ Working: {', '.join(working)}")
+    if stale:
+        print(f"✗ Stale/Unavailable: {', '.join(stale)} (>12h old, skipped)")
     print(f"\nTotal (deduplicated): {len(deduped)} stations\n")
     return deduped
 
