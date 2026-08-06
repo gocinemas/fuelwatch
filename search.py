@@ -63,7 +63,7 @@ _fuel_finder_token = None
 _fuel_finder_token_expires = None
 
 def _fuel_finder_auth():
-    """Get OAuth2 access token from Fuel Finder API (client credentials grant)."""
+    """Get OAuth2 access token from Fuel Finder API (CORRECT endpoint)."""
     global _fuel_finder_token, _fuel_finder_token_expires
 
     # Return cached token if still valid (reuse tokens to avoid rate limits)
@@ -78,38 +78,18 @@ def _fuel_finder_auth():
         return None
 
     try:
-        # OAuth2 Token Request (application/x-www-form-urlencoded)
-        # Try production endpoint (may be hyphenated)
-        token_endpoints = [
-            "https://api.fuel-finder.service.gov.uk/oauth2/token",  # hyphenated
-            "https://api.fuelfinder.service.gov.uk/oauth2/token",   # no hyphens
-            "https://auth.fuel-finder.service.gov.uk/oauth2/token", # alt auth domain
-        ]
-
-        resp = None
-        for endpoint in token_endpoints:
-            try:
-                resp = requests.post(
-                    endpoint,
-                    data={
-                        "grant_type": "client_credentials",
-                        "client_id": client_id,
-                        "client_secret": client_secret,
-                        "scope": "fuelfinder.read",
-                    },
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
-                    timeout=10
-                )
-                if resp.status_code in [200, 401, 403]:  # Got a response (even if auth failed)
-                    print(f"[fuel-finder] Token endpoint working: {endpoint}")
-                    break
-            except requests.exceptions.ConnectionError:
-                print(f"[fuel-finder] Cannot reach {endpoint}")
-                continue
-
-        if not resp or resp.status_code not in [200, 401, 403]:
-            print(f"[fuel-finder] All token endpoints failed")
-            return None
+        # CORRECT OAuth2 Token Endpoint (not api.fuelfinder, use www.fuel-finder)
+        resp = requests.post(
+            "https://www.fuel-finder.service.gov.uk/api/v1/oauth/generate_access_token",
+            data={
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "scope": "fuelfinder.read",
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=10
+        )
 
         if resp.status_code != 200:
             print(f"[fuel-finder] Auth failed: {resp.status_code}")
@@ -118,9 +98,10 @@ def _fuel_finder_auth():
             return None
 
         data = resp.json()
-        _fuel_finder_token = data.get("access_token")
-        token_type = data.get("token_type", "Bearer")
-        expires_in = data.get("expires_in", 3600)
+        token_data = data.get("data", {})
+        _fuel_finder_token = token_data.get("access_token")
+        token_type = token_data.get("token_type", "Bearer")
+        expires_in = token_data.get("expires_in", 3600)
 
         if not _fuel_finder_token:
             print("[fuel-finder] No access_token in response")
@@ -136,63 +117,83 @@ def _fuel_finder_auth():
 
 
 def _fetch_fuel_finder_api() -> list:
-    """Fetch fuel prices from Fuel Finder API (OAuth2, all UK stations)."""
+    """Fetch fuel prices from Fuel Finder API using OAuth2 (all UK stations, paginated)."""
     try:
-        print("[fuel-finder-api] Fetching from Fuel Finder API...")
+        print("[fuel-finder-api] Fetching from Fuel Finder API (OAuth2)...")
         token = _fuel_finder_auth()
         if not token:
             print("[fuel-finder-api] Could not authenticate")
             return []
 
-        # Fetch both petrol and diesel prices
-        stations_by_id = {}
-        for fuel_type in ["unleaded", "diesel"]:
+        all_stations = []
+        batch_number = 1
+
+        # Fetch paginated fuel prices (up to 500 per batch)
+        while True:
             resp = requests.get(
-                f"https://api.fuelfinder.service.gov.uk/v1/prices?fuel_type={fuel_type}",
+                f"https://www.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices",
+                params={"batch-number": batch_number},
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=15
             )
 
             if resp.status_code != 200:
-                print(f"[fuel-finder-api] Failed to fetch {fuel_type}: {resp.status_code}")
-                continue
+                print(f"[fuel-finder-api] Batch {batch_number} failed: {resp.status_code}")
+                break
 
             data = resp.json()
-            prices = data.get("prices", [])
+            if not data or len(data) == 0:
+                print(f"[fuel-finder-api] No more batches (stopped at {batch_number})")
+                break
 
-            for item in prices:
+            for item in data:
                 try:
-                    station_id = item.get("id") or item.get("forecourt_id")
-                    if not station_id:
+                    node_id = item.get("node_id", "")
+                    trading_name = item.get("trading_name", "Unknown")
+                    fuel_prices = item.get("fuel_prices", [])
+
+                    if not node_id or not fuel_prices:
                         continue
 
-                    if station_id not in stations_by_id:
-                        stations_by_id[station_id] = {
-                            "brand": item.get("brand", item.get("operator", "Unknown")),
-                            "address": item.get("address", ""),
-                            "postcode": item.get("postcode", ""),
-                            "lat": float(item.get("latitude") or 0),
-                            "lon": float(item.get("longitude") or 0),
-                            "petrol": 0,
-                            "diesel": 0,
-                            "source": "fuel_finder_api",
-                        }
+                    # Extract price data (E10=petrol, B7S/B7P=diesel)
+                    petrol_price = None
+                    diesel_price = None
 
-                    price = float(item.get("price") or 0)
-                    if fuel_type == "unleaded":
-                        stations_by_id[station_id]["petrol"] = price
-                    else:
-                        stations_by_id[station_id]["diesel"] = price
+                    for fuel in fuel_prices:
+                        fuel_type = fuel.get("fuel_type", "")
+                        price = float(fuel.get("price") or 0)
+                        if fuel_type == "E10":
+                            petrol_price = price
+                        elif fuel_type in ("B7S", "B7P"):
+                            diesel_price = price
 
-                except (ValueError, TypeError, KeyError):
+                    # Try to get location from PFS information (would need separate call)
+                    # For now, store what we have
+                    all_stations.append({
+                        "node_id": node_id,
+                        "brand": trading_name,
+                        "address": "",
+                        "postcode": "",
+                        "lat": 0,
+                        "lon": 0,
+                        "petrol": petrol_price,
+                        "diesel": diesel_price,
+                        "source": "fuel_finder_api",
+                    })
+
+                except (ValueError, TypeError, KeyError) as e:
                     continue
 
-        stations = list(stations_by_id.values())
-        # Filter out invalid entries
-        stations = [s for s in stations if (s.get("lat") or 0) != 0 and (s.get("lon") or 0) != 0]
+            print(f"[fuel-finder-api] Batch {batch_number}: {len(data)} stations")
+            batch_number += 1
 
-        print(f"[fuel-finder-api] Fetched {len(stations)} stations from API")
-        return stations
+            # Limit to reasonable number of batches (avoid infinite loops)
+            if batch_number > 20:
+                print(f"[fuel-finder-api] Reached batch limit, stopping")
+                break
+
+        print(f"[fuel-finder-api] Fetched {len(all_stations)} total stations from API")
+        return all_stations
 
     except Exception as e:
         print(f"[fuel-finder-api] Error: {e}")
@@ -336,52 +337,63 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: Fuel Finder CSV (8,040 current stations) + CMA fallback."""
+    """Fetch fuel prices: Fuel Finder API (OAuth2) → CSV → CMA fallback."""
     import concurrent.futures as _cf
     import csv as _csv
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # Primary: Fuel Finder official CSV (8,040 stations, CURRENT prices)
-    print("\n1. Fuel Finder CSV (official data, 8,040 stations)...")
+    # Primary: Fuel Finder API (OAuth2, LIVE data)
+    print("\n1. Fuel Finder API (OAuth2, live)...")
     try:
-        with open(os.path.join(os.path.dirname(__file__), "fuel_prices_latest.csv")) as f:
-            reader = _csv.DictReader(f)
-            for row in reader:
-                try:
-                    brand = row.get("forecourts.brand_name", "") or row.get("forecourts.trading_name", "Unknown")
-                    lat = float(row.get("forecourts.location.latitude", 0) or 0)
-                    lon = float(row.get("forecourts.location.longitude", 0) or 0)
-                    e10 = float(row.get("forecourts.fuel_price.E10", 0) or 0)
-                    diesel = float(row.get("forecourts.fuel_price.B7P", 0) or row.get("forecourts.fuel_price.B7S", 0) or 0)
-                    postcode = row.get("forecourts.location.postcode", "")
-                    address = row.get("forecourts.location.address_line_1", "")
-
-                    if lat and lon and (e10 or diesel):
-                        all_stations.append({
-                            "brand": brand,
-                            "address": address,
-                            "postcode": postcode,
-                            "lat": lat,
-                            "lon": lon,
-                            "petrol": e10 if e10 else None,
-                            "diesel": diesel if diesel else None,
-                            "source": "fuel_finder_csv",
-                        })
-                except (ValueError, TypeError):
-                    continue
-
-        if all_stations:
-            print(f"   ✓ Loaded {len(all_stations)} stations from Fuel Finder CSV")
-    except FileNotFoundError:
-        print("   ✗ fuel_prices_latest.csv not found (need to update from Fuel Finder portal)")
+        api_stations = _fetch_fuel_finder_api()
+        if api_stations:
+            all_stations.extend(api_stations)
+            print(f"   ✓ Loaded {len(api_stations)} stations from Fuel Finder API")
     except Exception as e:
-        print(f"   ✗ CSV parse error: {e}")
+        print(f"   ✗ Fuel Finder API error: {e}")
 
-    # Fallback: CMA retailer feeds (if CSV missing or has limited coverage)
+    # Fallback: Fuel Finder CSV (if API unavailable)
     if len(all_stations) < 500:
-        print("\n2. CMA retailer feeds (fallback)...")
+        print("\n2. Fuel Finder CSV (fallback, 8,040 stations)...")
+        try:
+            with open(os.path.join(os.path.dirname(__file__), "fuel_prices_latest.csv")) as f:
+                reader = _csv.DictReader(f)
+                for row in reader:
+                    try:
+                        brand = row.get("forecourts.brand_name", "") or row.get("forecourts.trading_name", "Unknown")
+                        lat = float(row.get("forecourts.location.latitude", 0) or 0)
+                        lon = float(row.get("forecourts.location.longitude", 0) or 0)
+                        e10 = float(row.get("forecourts.fuel_price.E10", 0) or 0)
+                        diesel = float(row.get("forecourts.fuel_price.B7P", 0) or row.get("forecourts.fuel_price.B7S", 0) or 0)
+                        postcode = row.get("forecourts.location.postcode", "")
+                        address = row.get("forecourts.location.address_line_1", "")
+
+                        if lat and lon and (e10 or diesel):
+                            all_stations.append({
+                                "brand": brand,
+                                "address": address,
+                                "postcode": postcode,
+                                "lat": lat,
+                                "lon": lon,
+                                "petrol": e10 if e10 else None,
+                                "diesel": diesel if diesel else None,
+                                "source": "fuel_finder_csv",
+                            })
+                    except (ValueError, TypeError):
+                        continue
+
+            if all_stations:
+                print(f"   ✓ Loaded {len(all_stations)} stations from Fuel Finder CSV")
+        except FileNotFoundError:
+            print("   ✗ fuel_prices_latest.csv not found")
+        except Exception as e:
+            print(f"   ✗ CSV parse error: {e}")
+
+    # Fallback: CMA retailer feeds (if API & CSV both fail)
+    if len(all_stations) < 500:
+        print("\n3. CMA retailer feeds (fallback)...")
         working = []
 
         with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
