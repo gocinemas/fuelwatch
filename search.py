@@ -79,17 +79,38 @@ def _fuel_finder_auth():
 
     try:
         # OAuth2 Token Request (application/x-www-form-urlencoded)
-        resp = requests.post(
-            "https://api.fuelfinder.service.gov.uk/oauth2/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "scope": "fuelfinder.read",
-            },
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            timeout=10
-        )
+        # Try production endpoint (may be hyphenated)
+        token_endpoints = [
+            "https://api.fuel-finder.service.gov.uk/oauth2/token",  # hyphenated
+            "https://api.fuelfinder.service.gov.uk/oauth2/token",   # no hyphens
+            "https://auth.fuel-finder.service.gov.uk/oauth2/token", # alt auth domain
+        ]
+
+        resp = None
+        for endpoint in token_endpoints:
+            try:
+                resp = requests.post(
+                    endpoint,
+                    data={
+                        "grant_type": "client_credentials",
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "scope": "fuelfinder.read",
+                    },
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    timeout=10
+                )
+                if resp.status_code in [200, 401, 403]:  # Got a response (even if auth failed)
+                    print(f"[fuel-finder] Token endpoint working: {endpoint}")
+                    break
+            except requests.exceptions.ConnectionError:
+                print(f"[fuel-finder] Cannot reach {endpoint}")
+                continue
+
+        if not resp or resp.status_code not in [200, 401, 403]:
+            print(f"[fuel-finder] All token endpoints failed")
+            return None
+
         if resp.status_code != 200:
             print(f"[fuel-finder] Auth failed: {resp.status_code}")
             if resp.text:
@@ -103,6 +124,15 @@ def _fuel_finder_auth():
 
         if not _fuel_finder_token:
             print("[fuel-finder] No access_token in response")
+            return None
+
+        # Cache token; refresh 60s before expiry
+        _fuel_finder_token_expires = datetime.now() + timedelta(seconds=expires_in - 60)
+        print(f"[fuel-finder] Auth OK ({token_type}, expires {expires_in}s)")
+        return _fuel_finder_token
+    except Exception as e:
+        print(f"[fuel-finder] Auth error: {e}")
+        return None
             return None
 
         # Cache token; refresh 60s before expiry
