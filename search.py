@@ -104,67 +104,71 @@ def _fuel_finder_auth():
         return None
 
 
-def fetch_fuel_finder_stations() -> list:
-    """Fetch UK Government Fuel Finder data (30-min updates, ~8,500 stations, official endpoint)."""
-    token = _fuel_finder_auth()
-    if not token:
-        return []
-
+def _fetch_fuel_finder_csv() -> list:
+    """Download and parse Fuel Finder CSV (updated twice daily, ~8,500 stations)."""
     try:
-        # Correct endpoint: /api/v1/pfs/fuel-prices (not /fuel-stations)
+        print("[fuel-finder-csv] Downloading CSV from Fuel Finder...")
+
+        # Direct CSV download URL
         resp = requests.get(
-            "https://api.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices",
-            headers={"Authorization": f"Bearer {token}"},
+            "https://www.developer.fuel-finder.service.gov.uk/api/latest",
+            headers={"User-Agent": "Mozilla/5.0"},
             timeout=15
         )
+
         if resp.status_code != 200:
-            print(f"[fuel-finder] API error: {resp.status_code} - {resp.text[:200]}")
+            # Try alternative download URL
+            resp = requests.get(
+                "https://www.developer.fuel-finder.service.gov.uk/files/latest.csv",
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=15
+            )
+
+        if resp.status_code != 200:
+            print(f"[fuel-finder-csv] Download failed: {resp.status_code}")
             return []
 
-        data = resp.json()
-        # Handle different possible response formats
-        stations_raw = data.get("fuelStations") or data.get("stations") or data.get("data") or []
+        # Parse CSV
+        import csv as _csv
+        import io as _io
 
         stations = []
-        for s in stations_raw:
-            # Extract fuel prices (E10 petrol, B7 diesel)
-            prices = s.get("prices", {}) or {}
-            petrol = prices.get("E10") or prices.get("Petrol") or prices.get("unleaded")
-            diesel = prices.get("B7") or prices.get("Diesel") or prices.get("diesel")
+        csv_reader = _csv.DictReader(_io.StringIO(resp.text))
 
-            if not petrol and not diesel:
+        for row in csv_reader:
+            try:
+                # CSV fields: Brand, Trading Name, Postcode, Latitude, Longitude, E10, B7, etc.
+                brand = row.get("Brand") or row.get("brand") or row.get("Trading Name") or "Unknown"
+                postcode = row.get("Postcode") or row.get("postcode") or ""
+                address = row.get("Address") or row.get("address") or ""
+                lat = float(row.get("Latitude") or row.get("latitude") or 0)
+                lon = float(row.get("Longitude") or row.get("longitude") or 0)
+                petrol = float(row.get("E10") or row.get("e10") or row.get("Petrol") or 0)
+                diesel = float(row.get("B7") or row.get("b7") or row.get("Diesel") or 0)
+
+                if lat == 0 or lon == 0:
+                    continue
+                if petrol == 0 and diesel == 0:
+                    continue
+
+                stations.append({
+                    "brand": brand,
+                    "address": address,
+                    "postcode": postcode,
+                    "lat": lat,
+                    "lon": lon,
+                    "petrol": petrol,
+                    "diesel": diesel,
+                    "source": "fuel_finder_csv",
+                })
+            except (ValueError, TypeError, KeyError):
                 continue
 
-            # Extract location (handle both nested and flat formats)
-            lat = s.get("latitude") or (s.get("location", {}) or {}).get("latitude")
-            lon = s.get("longitude") or (s.get("location", {}) or {}).get("longitude")
-
-            if lat is None or lon is None:
-                continue
-
-            # Normalize prices (if given in tenths of pence, divide by 10)
-            def normalise(p):
-                if p is None:
-                    return None
-                p = float(p)
-                return p / 10 if p > 1000 else p
-
-            stations.append({
-                "brand": s.get("retailer") or s.get("brand") or "Unknown",
-                "address": s.get("address", ""),
-                "postcode": s.get("postcode", ""),
-                "lat": float(lat),
-                "lon": float(lon),
-                "petrol": normalise(petrol),
-                "diesel": normalise(diesel),
-                "source": "fuel_finder",
-            })
-
-        print(f"[fuel-finder] Fetched {len(stations)} stations")
+        print(f"[fuel-finder-csv] Parsed {len(stations)} stations from CSV")
         return stations
 
     except Exception as e:
-        print(f"[fuel-finder] Fetch error: {e}")
+        print(f"[fuel-finder-csv] Error: {e}")
         return []
 
 # ── Geocoding ─────────────────────────────────────────────────────────────────
@@ -305,21 +309,21 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices: Fuel Finder (primary, UK-IP access) + CMA (fallback)."""
+    """Fetch fuel prices: Fuel Finder CSV (primary) + CMA fallback."""
     import concurrent.futures as _cf
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # Primary: Fuel Finder API (if accessible from UK IP)
-    print("\n1. Fuel Finder Public API (primary - UK access)...")
+    # Primary: Fuel Finder CSV (updated twice daily, no auth needed)
+    print("\n1. Fuel Finder CSV (primary - direct download)...")
     try:
-        ff_stations = fetch_fuel_finder_stations()
-        if ff_stations:
-            all_stations.extend(ff_stations)
-            print(f"   ✓ Loaded {len(ff_stations)} stations from Fuel Finder")
+        csv_stations = _fetch_fuel_finder_csv()
+        if csv_stations:
+            all_stations.extend(csv_stations)
+            print(f"   ✓ Loaded {len(csv_stations)} stations from Fuel Finder CSV")
     except Exception as e:
-        print(f"   ✗ Fuel Finder unavailable: {e}")
+        print(f"   ✗ Fuel Finder CSV unavailable: {e}")
 
     # Fallback: CMA retailer feeds (Esso, Jet, MFG only — Asda/Tesco stale since July 2026)
     print("\n2. CMA retailer feeds (fallback)...")
