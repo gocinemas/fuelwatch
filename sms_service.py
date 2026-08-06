@@ -9840,6 +9840,7 @@ def api_home_last_receipt():
 
             # Fallback: line-by-line parsing if main items section not found or too few items
             if len(items) < 3:
+                garbage_keywords = ["toothpaste", "advance", "plaid", "aquafresh", "and pecan", "chicken st", "yogurt st"]
                 for line in summary.split("\n"):
                     line = line.strip()
                     if not line:
@@ -9848,6 +9849,10 @@ def api_home_last_receipt():
                     # Skip metadata/totals
                     skip_keywords = ["total", "vat", "date", "time", "subtotal", "payment", "card", "receipt", "amount", "balance", "meta", "paid by", "main items", "discounts"]
                     if any(kw in line.lower() for kw in skip_keywords):
+                        continue
+
+                    # Skip obvious garbage (metadata mixed with products)
+                    if any(gw in line.lower() for gw in garbage_keywords):
                         continue
 
                     # Skip lines that are JUST amounts
@@ -9859,8 +9864,12 @@ def api_home_last_receipt():
                         address_lines.append(line)
                         continue
 
+                    # Skip lines with suspicious multi-product markers (e.g., "Item1 And Item2 And Item3")
+                    if line.count(" And ") > 2:
+                        continue
+
                     # This is a product line
-                    if line not in items:  # Avoid duplicates
+                    if line not in items and len(line) > 3:  # Avoid duplicates and too-short lines
                         items.append(line[:70])
                     if len(items) >= 8:  # Allow up to 8 from fallback
                         break
