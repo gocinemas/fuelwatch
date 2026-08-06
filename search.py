@@ -305,14 +305,24 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch fuel prices from working sources (CMA feeds + PetrolPrices fallback)."""
+    """Fetch fuel prices: Fuel Finder (primary, UK-IP access) + CMA (fallback)."""
     import concurrent.futures as _cf
 
     print("Fetching live fuel prices...")
     all_stations = []
 
-    # CMA retailer feeds (Esso, Jet, MFG only — Asda/Tesco stale since July 2026)
-    print("\n1. CMA retailer feeds (live sources only)...")
+    # Primary: Fuel Finder API (if accessible from UK IP)
+    print("\n1. Fuel Finder Public API (primary - UK access)...")
+    try:
+        ff_stations = fetch_fuel_finder_stations()
+        if ff_stations:
+            all_stations.extend(ff_stations)
+            print(f"   ✓ Loaded {len(ff_stations)} stations from Fuel Finder")
+    except Exception as e:
+        print(f"   ✗ Fuel Finder unavailable: {e}")
+
+    # Fallback: CMA retailer feeds (Esso, Jet, MFG only — Asda/Tesco stale since July 2026)
+    print("\n2. CMA retailer feeds (fallback)...")
     working = []
 
     with _cf.ThreadPoolExecutor(max_workers=min(len(RETAILER_FEEDS), 6)) as ex:
