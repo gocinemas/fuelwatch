@@ -1148,48 +1148,64 @@ def sms_reply():
 
         # PDF receipt handler (auto-detect receipts) - match application/pdf or variants
         if ("pdf" in media_type or "application/pdf" in media_type) and media_url:
+            print(f"[pdf-receipt] Detected PDF file, downloading from {media_url[:80]}")
             try:
                 import fitz
-                pdf_response = requests.get(media_url)
+                print(f"[pdf-receipt] Downloading PDF...")
+                pdf_response = requests.get(media_url, timeout=30)
                 pdf_data = pdf_response.content
+                print(f"[pdf-receipt] Downloaded {len(pdf_data)} bytes")
 
                 # Extract text from PDF
+                print(f"[pdf-receipt] Extracting text from PDF...")
                 pdf_doc = fitz.open(stream=pdf_data, filetype="pdf")
                 pdf_text = ""
-                for page in pdf_doc:
-                    pdf_text += page.get_text()
+                for page_num, page in enumerate(pdf_doc):
+                    page_text = page.get_text()
+                    pdf_text += page_text
+                    print(f"[pdf-receipt] Page {page_num+1}: {len(page_text)} chars")
                 pdf_doc.close()
+                print(f"[pdf-receipt] Total PDF text: {len(pdf_text)} chars")
+
+                if not pdf_text or len(pdf_text.strip()) < 10:
+                    resp.message("⚠️ PDF appears to be empty or unreadable. Try a different format or send a photo.")
+                    return str(resp)
 
                 # Use Groq to extract receipt data from PDF text
+                print(f"[pdf-receipt] Calling Groq to extract receipt data...")
                 extracted = _groq_chat(
-                    "You are a receipt data extractor. Extract data from the provided receipt text.",
-                    [{"role": "user", "content": f"Extract receipt data CLEANLY from this PDF text. Format exactly like this:\n\nSTORE: [store name only]\nDATE: [YYYY-MM-DD]\nTOTAL: [amount with £]\nMain items include: [item1, item2, item3, ...]\nLOCATION: [address if shown]\n\nRULES:\n- Items only: product names\n- NO prices, NO quantities, NO metadata\n- Skip garbled/corrupted text\n- Max 10 items\n\nReceipt text:\n{pdf_text}"}],
-                    max_tokens=300
+                    "You are a receipt data extractor. Extract data CLEANLY from receipt text.",
+                    [{"role": "user", "content": f"Extract receipt data CLEANLY from this text. Format exactly:\n\nSTORE: [store]\nDATE: [YYYY-MM-DD]\nTOTAL: [£amount]\nMain items include: [item1, item2, ...]\nLOCATION: [address]\n\n{pdf_text[:2000]}"}],  # Limit to first 2000 chars
+                    max_tokens=250
                 )
+                print(f"[pdf-receipt] Groq response: {extracted[:200]}")
 
-                # Parse extracted data (same as image receipts)
+                # Parse extracted data
                 merchant = None
-                total = 0
+                total = 0.0
                 shop_date = datetime.now().date().isoformat()
                 items = []
 
                 for line in extracted.split("\n"):
+                    line = line.strip()
                     if line.startswith("STORE:"):
                         merchant = line.replace("STORE:", "").strip()
                     elif line.startswith("DATE:"):
                         shop_date = line.replace("DATE:", "").strip()
                     elif line.startswith("TOTAL:"):
-                        total_str = line.replace("TOTAL:", "").strip().replace("£", "").replace(",", "")
+                        total_str = line.replace("TOTAL:", "").strip().replace("£", "").replace(",", "").strip()
                         try:
                             total = float(total_str)
-                        except:
-                            pass
+                        except Exception as e:
+                            print(f"[pdf-receipt] Failed to parse total '{total_str}': {e}")
                     elif line.startswith("Main items include:"):
                         items_text = line.replace("Main items include:", "").strip()
                         items = [i.strip() for i in items_text.split(",") if i.strip()]
 
+                print(f"[pdf-receipt] Parsed: merchant={merchant}, total={total}, items={len(items)}")
+
                 # Store in database
-                if merchant:
+                if merchant and len(merchant) > 2:
                     plain_phone = from_number.replace("whatsapp:", "").strip()
                     lib._sb().table("receipts").insert({
                         "phone": plain_phone,
@@ -1199,16 +1215,18 @@ def sms_reply():
                         "items": items,
                         "raw_summary": extracted
                     }).execute()
+                    print(f"[pdf-receipt] Saved to database")
 
                     resp.message(f"✅ Receipt saved!\n\n🏪 {merchant}\n📅 {shop_date}\n💰 £{total:.2f}\n📦 {len(items)} items")
                     return str(resp)
                 else:
-                    resp.message("⚠️ Couldn't extract receipt data from PDF. Make sure it's a clear receipt with store name and total.")
+                    print(f"[pdf-receipt] No valid merchant extracted")
+                    resp.message("⚠️ Couldn't find store name in receipt. Make sure it's a clear receipt PDF.")
                     return str(resp)
 
             except Exception as e:
-                print(f"[pdf-receipt] Error: {e}", exc_info=True)
-                resp.message(f"❌ PDF processing failed: {str(e)[:80]}\n\nTry: send a photo of the receipt instead, or check file format.")
+                print(f"[pdf-receipt] ERROR: {e}", exc_info=True)
+                resp.message(f"❌ PDF extraction failed: {str(e)[:60]}")
                 return str(resp)
 
     # Handle "event" command with poster image
