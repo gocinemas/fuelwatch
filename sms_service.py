@@ -1289,6 +1289,18 @@ def sms_reply():
             resp.message(f"Error: {str(e)[:100]}")
             return str(resp)
 
+    # Handle PDF filename mentions (WhatsApp Web sends filenames as text, not actual files)
+    if ".pdf" in body.lower() and num_media == 0:
+        resp.message(
+            "📎 I see you're trying to send a PDF receipt!\n\n"
+            "WhatsApp Web limitation: I can't access files sent as text.\n\n"
+            "Two options:\n"
+            "1️⃣ Use WhatsApp Mobile app → attach PDF file → I'll extract it\n"
+            "2️⃣ Take a photo of the receipt → send photo → I'll scan it\n\n"
+            "Try again with either method! 📸"
+        )
+        return str(resp)
+
     if not body:
         resp.message("FuelWatch UK\nText your postcode to get fuel prices.\nExample: KT16 0DA\nOr: KT16 0DA diesel 10")
         return str(resp)
