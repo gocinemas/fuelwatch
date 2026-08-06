@@ -1135,6 +1135,8 @@ def sms_reply():
     from_number = request.form.get("From", "unknown")
 
     print(f"SMS from {from_number}: {body}")
+    print(f"[whatsapp-debug] NumMedia={request.form.get('NumMedia', '0')}, ContentType={request.form.get('MediaContentType0', 'none')}, URL={request.form.get('MediaUrl0', 'none')[:50]}")
+    print(f"[whatsapp-debug] Full request.form keys: {list(request.form.keys())}")
 
     resp = MessagingResponse()
 
