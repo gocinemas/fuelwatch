@@ -1127,13 +1127,6 @@ def _refresh_all_ask_miru_contexts() -> dict:
 
 # ── Webhook ───────────────────────────────────────────────────────────────────
 
-@app.errorhandler(Exception)
-def handle_error(e):
-    app.logger.error(f"UNHANDLED EXCEPTION: {e}", exc_info=True)
-    resp = MessagingResponse()
-    resp.message("⚠️ Service error — please try again in a moment.")
-    return str(resp)
-
 @app.route("/sms", methods=["POST"])
 def sms_reply():
     body = request.form.get("Body", "").strip()
@@ -1142,104 +1135,11 @@ def sms_reply():
     from_number = request.form.get("From", "unknown")
 
     print(f"SMS from {from_number}: {body}")
-    print(f"[whatsapp-debug] NumMedia={request.form.get('NumMedia', '0')}, ContentType={request.form.get('MediaContentType0', 'none')}, URL={request.form.get('MediaUrl0', 'none')[:50]}")
-    print(f"[whatsapp-debug] Full request.form keys: {list(request.form.keys())}")
 
     resp = MessagingResponse()
 
-    # Handle PDF receipts (auto-detect: if PDF sent without command, treat as receipt)
-    num_media = int(request.form.get("NumMedia", 0))
-    if num_media > 0:
-        media_type = request.form.get("MediaContentType0", "").lower()
-        media_url = request.form.get("MediaUrl0", "")
-
-        print(f"[pdf-receipt-debug] NumMedia={num_media}, MediaType={media_type}, URL={media_url[:50] if media_url else 'none'}")
-
-        # PDF receipt handler (auto-detect receipts) - match application/pdf or variants
-        if ("pdf" in media_type or "application/pdf" in media_type) and media_url:
-            print(f"[pdf-receipt] Detected PDF file, downloading from {media_url[:80]}")
-            try:
-                import fitz
-                print(f"[pdf-receipt] Downloading PDF...")
-                pdf_response = requests.get(media_url, timeout=30)
-                pdf_data = pdf_response.content
-                print(f"[pdf-receipt] Downloaded {len(pdf_data)} bytes")
-
-                # Extract text from PDF
-                print(f"[pdf-receipt] Extracting text from PDF...")
-                pdf_doc = fitz.open(stream=pdf_data, filetype="pdf")
-                pdf_text = ""
-                for page_num, page in enumerate(pdf_doc):
-                    page_text = page.get_text()
-                    pdf_text += page_text
-                    print(f"[pdf-receipt] Page {page_num+1}: {len(page_text)} chars")
-                pdf_doc.close()
-                print(f"[pdf-receipt] Total PDF text: {len(pdf_text)} chars")
-
-                if not pdf_text or len(pdf_text.strip()) < 10:
-                    resp.message("⚠️ PDF appears to be empty or unreadable. Try a different format or send a photo.")
-                    return str(resp)
-
-                # Use Groq to extract receipt data from PDF text
-                print(f"[pdf-receipt] Calling Groq to extract receipt data...")
-                extracted = _groq_chat(
-                    "You are a receipt data extractor. Extract data CLEANLY from receipt text.",
-                    [{"role": "user", "content": f"Extract receipt data CLEANLY from this text. Format exactly:\n\nSTORE: [store]\nDATE: [YYYY-MM-DD]\nTOTAL: [£amount]\nMain items include: [item1, item2, ...]\nLOCATION: [address]\n\n{pdf_text[:2000]}"}],  # Limit to first 2000 chars
-                    max_tokens=250
-                )
-                print(f"[pdf-receipt] Groq response: {extracted[:200]}")
-
-                # Parse extracted data
-                merchant = None
-                total = 0.0
-                shop_date = datetime.now().date().isoformat()
-                items = []
-
-                for line in extracted.split("\n"):
-                    line = line.strip()
-                    if line.startswith("STORE:"):
-                        merchant = line.replace("STORE:", "").strip()
-                    elif line.startswith("DATE:"):
-                        shop_date = line.replace("DATE:", "").strip()
-                    elif line.startswith("TOTAL:"):
-                        total_str = line.replace("TOTAL:", "").strip().replace("£", "").replace(",", "").strip()
-                        try:
-                            total = float(total_str)
-                        except Exception as e:
-                            print(f"[pdf-receipt] Failed to parse total '{total_str}': {e}")
-                    elif line.startswith("Main items include:"):
-                        items_text = line.replace("Main items include:", "").strip()
-                        items = [i.strip() for i in items_text.split(",") if i.strip()]
-
-                print(f"[pdf-receipt] Parsed: merchant={merchant}, total={total}, items={len(items)}")
-
-                # Store in database
-                if merchant and len(merchant) > 2:
-                    plain_phone = from_number.replace("whatsapp:", "").strip()
-                    lib._sb().table("receipts").insert({
-                        "phone": plain_phone,
-                        "merchant": merchant,
-                        "total": total,
-                        "shop_date": shop_date,
-                        "items": items,
-                        "raw_summary": extracted
-                    }).execute()
-                    print(f"[pdf-receipt] Saved to database")
-
-                    resp.message(f"✅ Receipt saved!\n\n🏪 {merchant}\n📅 {shop_date}\n💰 £{total:.2f}\n📦 {len(items)} items")
-                    return str(resp)
-                else:
-                    print(f"[pdf-receipt] No valid merchant extracted")
-                    resp.message("⚠️ Couldn't find store name in receipt. Make sure it's a clear receipt PDF.")
-                    return str(resp)
-
-            except Exception as e:
-                print(f"[pdf-receipt] ERROR: {e}", exc_info=True)
-                resp.message(f"❌ PDF extraction failed: {str(e)[:60]}")
-                return str(resp)
-
     # Handle "event" command with poster image
-    if body.lower().startswith("event") and num_media > 0:
+    if body.lower().startswith("event") and request.form.get("NumMedia", "0") != "0":
         try:
             import personal_events_service as pes
             from anthropic import Anthropic
@@ -1295,18 +1195,6 @@ def sms_reply():
             print(f"[event] Error: {e}")
             resp.message(f"Error: {str(e)[:100]}")
             return str(resp)
-
-    # Handle PDF filename mentions (WhatsApp Web sends filenames as text, not actual files)
-    if ".pdf" in body.lower() and num_media == 0:
-        resp.message(
-            "📎 I see you're trying to send a PDF receipt!\n\n"
-            "WhatsApp Web limitation: I can't access files sent as text.\n\n"
-            "Two options:\n"
-            "1️⃣ Use WhatsApp Mobile app → attach PDF file → I'll extract it\n"
-            "2️⃣ Take a photo of the receipt → send photo → I'll scan it\n\n"
-            "Try again with either method! 📸"
-        )
-        return str(resp)
 
     if not body:
         resp.message("FuelWatch UK\nText your postcode to get fuel prices.\nExample: KT16 0DA\nOr: KT16 0DA diesel 10")
@@ -1423,7 +1311,7 @@ def brand_search():
         return render_template("intel_directory_professional.html")
 
     # Miru subdomain - show brand page
-    return render_template("intel_brand_full.html")
+    return render_template("intel_brand.html")
 
 
 @app.route("/company")
@@ -4016,18 +3904,8 @@ def api_library_upload():
             try:
                 extracted = _groq_vision(
                     img_b64, mime,
-                    "Extract receipt data CLEANLY. Format exactly like this:\n\n"
-                    "STORE: [store name only]\n"
-                    "DATE: [YYYY-MM-DD]\n"
-                    "TOTAL: [amount with £]\n"
-                    "Main items include: [item1, item2, item3, ...]\n"
-                    "LOCATION: [address if shown]\n\n"
-                    "RULES:\n"
-                    "- Items only: product names (e.g., 'Milk', 'Bread', 'Coffee')\n"
-                    "- NO prices, NO quantities, NO metadata mixed in items section\n"
-                    "- If you see garbled/corrupted text in items, SKIP that line\n"
-                    "- Max 10 items\n"
-                    "- Ignore: barcodes, VAT, payment methods, loyalty numbers"
+                    "Extract ALL text visible in this image exactly as shown. "
+                    "If this is a receipt, include store name, items, prices, totals, date. "
                     "Return only the extracted text, no commentary."
                 )
                 text = extracted or ""
@@ -9962,7 +9840,6 @@ def api_home_last_receipt():
 
             # Fallback: line-by-line parsing if main items section not found or too few items
             if len(items) < 3:
-                garbage_keywords = ["toothpaste", "advance", "plaid", "aquafresh", "and pecan", "chicken st", "yogurt st"]
                 for line in summary.split("\n"):
                     line = line.strip()
                     if not line:
@@ -9971,10 +9848,6 @@ def api_home_last_receipt():
                     # Skip metadata/totals
                     skip_keywords = ["total", "vat", "date", "time", "subtotal", "payment", "card", "receipt", "amount", "balance", "meta", "paid by", "main items", "discounts"]
                     if any(kw in line.lower() for kw in skip_keywords):
-                        continue
-
-                    # Skip obvious garbage (metadata mixed with products)
-                    if any(gw in line.lower() for gw in garbage_keywords):
                         continue
 
                     # Skip lines that are JUST amounts
@@ -9986,12 +9859,8 @@ def api_home_last_receipt():
                         address_lines.append(line)
                         continue
 
-                    # Skip lines with suspicious multi-product markers (e.g., "Item1 And Item2 And Item3")
-                    if line.count(" And ") > 2:
-                        continue
-
                     # This is a product line
-                    if line not in items and len(line) > 3:  # Avoid duplicates and too-short lines
+                    if line not in items:  # Avoid duplicates
                         items.append(line[:70])
                     if len(items) >= 8:  # Allow up to 8 from fallback
                         break
@@ -21909,7 +21778,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
 
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
 
-        # Book scan mode — extract essence and quotes using Groq
+        # Book scan mode — extract essence and quotes using Claude
         if is_book_mode:
             prompt_text = (
                 "You are analysing a photo of a book page for a reading app.\n"
@@ -21919,30 +21788,31 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 "3. Concepts or takeaways (3 bullet points)\n\n"
                 "Be concise, capture the soul of what this page is about."
             )
+            # Use Claude for book scanning instead of Groq
             analysis = ""
             try:
-                from groq import Groq
-                groq_key = os.environ.get("GROQ_API_KEY", "")
-                app.logger.info(f"[vision-groq] book scan starting, API key present: {bool(groq_key)}, img_size={len(b64)} bytes")
-                if not groq_key:
-                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
-                    raise ValueError("GROQ_API_KEY not configured")
-                groq_client = Groq(api_key=groq_key)
-                msg = groq_client.chat.completions.create(
-                    model="llama-3.2-90b-vision-preview",
+                from anthropic import Anthropic
+                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+                app.logger.info(f"[vision-claude] book scan starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
+                if not api_key:
+                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
+                    raise ValueError("ANTHROPIC_API_KEY not configured")
+                claude_client = Anthropic(api_key=api_key)
+                msg = claude_client.messages.create(
+                    model="claude-opus-4-8",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
                         "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
                             {"type": "text", "text": prompt_text}
                         ]
                     }]
                 )
-                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
-                app.logger.info(f"[vision-groq] book scan success, length={len(analysis)}")
+                analysis = msg.content[0].text.strip() if msg.content else ""
+                app.logger.info(f"[vision-claude] book scan success, length={len(analysis)}")
             except Exception as e:
-                app.logger.error(f"[vision-groq] book scan failed: {str(e)[:500]}", exc_info=True)
+                app.logger.error(f"[vision-claude] book scan failed: {str(e)[:500]}", exc_info=True)
         else:
             prompt_text = (
                 "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
@@ -21982,30 +21852,31 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
             )
+            # Use Claude for regular image analysis as well
             analysis = ""
             try:
-                from groq import Groq
-                groq_key = os.environ.get("GROQ_API_KEY", "")
-                app.logger.info(f"[vision-groq] image analysis starting, API key present: {bool(groq_key)}, img_size={len(b64)} bytes")
-                if not groq_key:
-                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
-                    raise ValueError("GROQ_API_KEY not configured")
-                groq_client = Groq(api_key=groq_key)
-                msg = groq_client.chat.completions.create(
-                    model="llama-3.2-90b-vision-preview",
+                from anthropic import Anthropic
+                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+                app.logger.info(f"[vision-claude] image analysis starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
+                if not api_key:
+                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
+                    raise ValueError("ANTHROPIC_API_KEY not configured")
+                claude_client = Anthropic(api_key=api_key)
+                msg = claude_client.messages.create(
+                    model="claude-opus-4-8",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
                         "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
                             {"type": "text", "text": prompt_text}
                         ]
                     }]
                 )
-                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
-                app.logger.info(f"[vision-groq] image analysis success, length={len(analysis)}")
+                analysis = msg.content[0].text.strip() if msg.content else ""
+                app.logger.info(f"[vision-claude] image analysis success, length={len(analysis)}")
             except Exception as e:
-                app.logger.error(f"[vision-groq] image analysis failed: {str(e)[:500]}", exc_info=True)
+                app.logger.error(f"[vision-claude] image analysis failed: {str(e)[:500]}", exc_info=True)
 
         # ── Book scan: save essence to wa_saves ────────────────────────────────────
         if is_book_mode and analysis and sid:
