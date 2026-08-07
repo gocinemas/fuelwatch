@@ -4424,7 +4424,7 @@ def _local_sb_get(postcode: str):
     """Read cached local data from Supabase (survives redeploys)."""
     try:
         from supabase import create_client as _sc
-        sb = _sc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb = _sc(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
         row = sb.table("area_local_cache").select("data,cached_at").eq("postcode", postcode).maybe_single().execute()
         if row and row.data:
             import datetime as _dt
@@ -4441,7 +4441,7 @@ def _local_sb_set(postcode: str, data: dict):
     """Write local data to Supabase cache."""
     try:
         from supabase import create_client as _sc
-        sb = _sc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb = _sc(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
         sb.table("area_local_cache").upsert({
             "postcode":  postcode,
             "data":      data,
