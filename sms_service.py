@@ -15172,7 +15172,7 @@ def api_home_brief():
         facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
 
     # Intelligence insights — spend trends, patterns, alerts
-    if insights:
+    if insights and isinstance(insights, dict):
         # Spend trend: show if significantly above/below average
         spend_trend = insights.get("spend_trend")
         if spend_trend and isinstance(spend_trend, dict):
