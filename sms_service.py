@@ -1161,7 +1161,7 @@ def sms_reply():
                     img_b64 = base64.standard_b64encode(img_data).decode()
 
                     message = client.messages.create(
-                        model="claude-opus-4-1",
+                        model="claude-3-opus-20250219",
                         max_tokens=500,
                         messages=[{
                             "role": "user",
@@ -21799,7 +21799,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     raise ValueError("ANTHROPIC_API_KEY not configured")
                 claude_client = Anthropic(api_key=api_key)
                 msg = claude_client.messages.create(
-                    model="claude-opus-4-1",
+                    model="claude-3-opus-20250219",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
@@ -21863,7 +21863,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     raise ValueError("ANTHROPIC_API_KEY not configured")
                 claude_client = Anthropic(api_key=api_key)
                 msg = claude_client.messages.create(
-                    model="claude-opus-4-1",
+                    model="claude-3-opus-20250219",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
@@ -22117,7 +22117,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     from anthropic import Anthropic
                     _menu_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
                     _menu_msg = _menu_client.messages.create(
-                        model="claude-opus-4-1",
+                        model="claude-3-opus-20250219",
                         max_tokens=800,
                         messages=[{
                             "role": "user",
@@ -22205,7 +22205,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     from anthropic import Anthropic
                     _wine_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
                     _wine_msg = _wine_client.messages.create(
-                        model="claude-opus-4-1",
+                        model="claude-3-opus-20250219",
                         max_tokens=200,
                         messages=[{
                             "role": "user",
@@ -22350,7 +22350,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         from anthropic import Anthropic
                         _claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
                         _claude_msg = _claude_client.messages.create(
-                            model="claude-opus-4-1",
+                            model="claude-3-opus-20250219",
                             max_tokens=600,
                             messages=[{
                                 "role": "user",
@@ -38226,7 +38226,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
         client = Anthropic()
 
         response = client.messages.create(
-            model="claude-opus-4-1",
+            model="claude-3-opus-20250219",
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -38370,7 +38370,7 @@ Answer their question about spending concisely in 1-2 sentences. Only use the da
         client = Anthropic()
 
         response = client.messages.create(
-            model="claude-opus-4-1",
+            model="claude-3-opus-20250219",
             max_tokens=200,
             messages=[{"role": "user", "content": groq_prompt}]
         )
