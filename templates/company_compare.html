@@ -258,19 +258,27 @@
             const c2 = document.getElementById('company2Input').value.trim();
 
             if (!c1 || !c2) {
-                alert('Enter both company names');
+                alert('Enter at least 2 company names');
                 return;
             }
 
-            window.location.href = `/company/compare?c1=${encodeURIComponent(c1)}&c2=${encodeURIComponent(c2)}`;
+            let url = `/company/compare?c1=${encodeURIComponent(c1)}&c2=${encodeURIComponent(c2)}`;
+            window.location.href = url;
         }
 
         async function loadComparison() {
-            const c1 = new URLSearchParams(window.location.search).get('c1') || 'Apple';
-            const c2 = new URLSearchParams(window.location.search).get('c2') || 'Microsoft';
+            const params = new URLSearchParams(window.location.search);
+            const c1 = params.get('c1') || 'Apple';
+            const c2 = params.get('c2') || 'Microsoft';
+            const c3 = params.get('c3');
+            const c4 = params.get('c4');
 
             try {
-                const response = await fetch(`/api/company/compare?company1=${encodeURIComponent(c1)}&company2=${encodeURIComponent(c2)}`);
+                let url = `/api/company/compare?company1=${encodeURIComponent(c1)}&company2=${encodeURIComponent(c2)}`;
+                if (c3) url += `&company3=${encodeURIComponent(c3)}`;
+                if (c4) url += `&company4=${encodeURIComponent(c4)}`;
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.error) {
