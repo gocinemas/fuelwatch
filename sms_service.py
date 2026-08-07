@@ -15158,6 +15158,7 @@ def api_home_brief():
     # Check if user just filled up (within last 24 hours) using intelligence data
     intel = ctx.get("intelligence", {})
     data_summary = intel.get("data_summary", {}) if intel else {}
+    insights = intel.get("insights", {}) if intel else {}
     days_since_fuel = data_summary.get("days_since_fuel") if isinstance(data_summary, dict) else None
     just_filled = isinstance(days_since_fuel, (int, float)) and days_since_fuel <= 1
 
@@ -15169,6 +15170,22 @@ def api_home_brief():
     if fuel.get("price") and time_mode in ("morning_commute", "daytime") and not _car_at_service and not just_filled:
         change = f" ({fuel['change']})" if fuel.get("change") else ""
         facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
+
+    # Intelligence insights — spend trends, patterns, alerts
+    if insights:
+        # Spend trend: show if significantly above/below average
+        spend_trend = insights.get("spend_trend")
+        if spend_trend and isinstance(spend_trend, dict):
+            trend_text = spend_trend.get("description", "")
+            if trend_text:
+                facts.append(f"Spend: {trend_text}")
+
+        # Top merchant pattern (if user has a clear routine)
+        merchant_pattern = insights.get("merchant_pattern")
+        if merchant_pattern and isinstance(merchant_pattern, dict):
+            pattern_text = merchant_pattern.get("description", "")
+            if pattern_text:
+                facts.append(f"Routine: {pattern_text}")
     # School holiday status — Surrey term dates + Gmail inset days
     _hs = school_data.get("holiday_status") if isinstance(school_data, dict) else None
     if _hs and kids:
