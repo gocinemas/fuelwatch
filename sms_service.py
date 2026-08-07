@@ -21830,11 +21830,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             "- Use 'event/ticket' for any poster, flyer, or ticket for an event (quiz night, gig, show, festival, class, etc.).\n"
             "Then give 3 bullet points starting with • covering ONLY factual details — no marketing copy or promotional language from the image.\n"
             "If recipe card: give the recipe name, key ingredients, and cooking steps.\n"
-            "If store/restaurant: focus ONLY on the place itself — name, type of food/business, opening hours or price range if visible.\n"
+            "If store/restaurant: if it's a RECEIPT (has items, prices, total), extract those. Otherwise focus on the place itself — name, type, hours.\n"
             "If event/ticket: bullets must contain ONLY: event name, date & time, venue/location. Do NOT copy any promotional or descriptive text from the poster.\n"
             "If ad/billboard: state the brand, product name, and price/offer.\n"
             "If product: list EVERY product visible. Look at all price tags, shelf-edge labels, and packaging.\n"
             "If receipt: total and main items.\n"
+            "CRITICAL: If you see a transaction with items and a total (ANY restaurant, cafe, shop receipt), extract items as ITEM: lines, even if you classified it as 'store'.\n"
             "Start your reply with: TYPE: [your choice]\n"
             "If type is event/ticket — add these lines:\n"
             "  EVENT: [the event name only, e.g. 'Quiz Night' or 'Ed Sheeran Live' — NOT the venue]\n"
@@ -21935,11 +21936,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
         url_tag = ""
         qr_url_tag = ""
         product_items = []   # list of {name, brand, price} dicts
+        receipt_items = []   # list of receipt items from transactions
         shop_tag = ""
         _BLANK = {"", "n/a", "not visible", "unknown", "none", "-"}
         for _line in analysis.split("\n"):
             _up = _line.strip().upper()
-            if _up.startswith("EVENT:"):
+            if _up.startswith("ITEM:"):
+                # Receipt items extracted by Claude
+                _item = _line.split(":", 1)[1].strip()
+                if _item and _item.lower() not in _BLANK:
+                    receipt_items.append(_item)
+            elif _up.startswith("EVENT:"):
                 event_tag = _line.split(":", 1)[1].strip()
             elif _up.startswith("VENUE:"):
                 venue_tag = _line.split(":", 1)[1].strip()
