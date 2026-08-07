@@ -33199,7 +33199,7 @@ def api_wa_saves_add():
         # Save plain-text card (e.g. from AI image scan)
         try:
             from supabase import create_client
-            sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+            sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
             sb.table("wa_saves").insert({
                 "from_number": save_as,
                 "title":       title or text[:60],
@@ -33230,7 +33230,7 @@ def api_wa_saves_save_text():
     save_as = from_number or "web"
     try:
         from supabase import create_client
-        sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
         row = {
             "from_number": save_as,
             "url":         (data.get("url") or "").strip(),
@@ -33371,7 +33371,7 @@ def api_book_intel():
             )
             gr = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}", "Content-Type": "application/json"},
                 json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}],
                       "max_tokens": 400, "temperature": 0.2},
                 timeout=10,
@@ -35940,7 +35940,7 @@ def pm_home():
 
 def _sb_pm():
     from supabase import create_client
-    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+    return create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
 
 
 @app.route("/api/pm/projects", methods=["GET", "POST"])
