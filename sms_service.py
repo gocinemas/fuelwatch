@@ -21791,26 +21791,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             # Use Claude for book scanning instead of Groq
             analysis = ""
             try:
-                from anthropic import Anthropic
-                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-                app.logger.info(f"[vision-claude] book scan starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
-                if not api_key:
-                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
-                    raise ValueError("ANTHROPIC_API_KEY not configured")
-                claude_client = Anthropic(api_key=api_key)
-                msg = claude_client.messages.create(
-                    model="claude-opus-4-1-20250805",
-                    max_tokens=500,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
-                            {"type": "text", "text": prompt_text}
-                        ]
-                    }]
-                )
-                analysis = msg.content[0].text.strip() if msg.content else ""
-                app.logger.info(f"[vision-claude] book scan success, length={len(analysis)}")
+                    # Vision disabled - use PDF or /receipt command
+                    analysis = "TYPE: photo"
             except Exception as e:
                 app.logger.error(f"[vision-claude] book scan failed: {str(e)[:500]}", exc_info=True)
         else:
@@ -21855,26 +21837,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             # Use Claude for regular image analysis as well
             analysis = ""
             try:
-                from anthropic import Anthropic
-                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-                app.logger.info(f"[vision-claude] image analysis starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
-                if not api_key:
-                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
-                    raise ValueError("ANTHROPIC_API_KEY not configured")
-                claude_client = Anthropic(api_key=api_key)
-                msg = claude_client.messages.create(
-                    model="claude-opus-4-1-20250805",
-                    max_tokens=500,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
-                            {"type": "text", "text": prompt_text}
-                        ]
-                    }]
-                )
-                analysis = msg.content[0].text.strip() if msg.content else ""
-                app.logger.info(f"[vision-claude] image analysis success, length={len(analysis)}")
+                    # Vision disabled - use PDF or /receipt command
+                    analysis = "TYPE: photo"
             except Exception as e:
                 app.logger.error(f"[vision-claude] image analysis failed: {str(e)[:500]}", exc_info=True)
 
@@ -22114,276 +22078,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     "Only include what is clearly visible. Skip sections or details with no readable content."
                 )
                 try:
-                    from anthropic import Anthropic
-                    _menu_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-                    _menu_msg = _menu_client.messages.create(
-                        model="claude-opus-4-1-20250805",
-                        max_tokens=800,
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
-                                {"type": "text", "text": _menu_prompt}
-                            ]
-                        }]
-                    )
-                    _raw_menu = _menu_msg.content[0].text.strip() if _menu_msg.content else ""
-                except Exception as _menu_err:
-                    print(f"[vision] menu extraction error: {_menu_err}")
-                    _raw_menu = ""
-
-                if _raw_menu:
-                    # Parse out restaurant detail lines; remainder is the menu
-                    _menu_meta = {}
-                    _menu_lines = []
-                    for _ml in _raw_menu.split("\n"):
-                        _mu = _ml.strip().upper()
-                        if _mu.startswith("NAME:"):
-                            _menu_meta["name"] = _ml.split(":", 1)[1].strip()
-                        elif _mu.startswith("PHONE:"):
-                            _menu_meta["phone"] = _ml.split(":", 1)[1].strip()
-                        elif _mu.startswith("ADDRESS:"):
-                            _menu_meta["address"] = _ml.split(":", 1)[1].strip()
-                        elif _mu.startswith("HOURS:"):
-                            _menu_meta["hours"] = _ml.split(":", 1)[1].strip()
-                        else:
-                            _menu_lines.append(_ml)
-                    menu_text = "\n".join(_menu_lines).strip()
-                    # Always prefer the restaurant name extracted from the menu itself
-                    if _menu_meta.get("name"):
-                        venue_tag = _menu_meta["name"]
-                        _menu_loc = _menu_meta.get("address", "") or location_tag
-                        _menu_loc_short = _menu_loc.split(",")[0].strip() if _menu_loc else ""
-                        title = f"🍽️ {venue_tag} Menu" + (f", {_menu_loc_short}" if _menu_loc_short else "")
-                    if _menu_meta.get("name") and not location_tag:
-                        location_tag = _menu_meta.get("address", "")
-                    # Prepend restaurant info block to menu text
-                    _info_lines = []
-                    if _menu_meta.get("name"):    _info_lines.append(f"🍽️ {_menu_meta['name']}")
-                    if _menu_meta.get("address"): _info_lines.append(f"📍 {_menu_meta['address']}")
-                    if _menu_meta.get("phone"):   _info_lines.append(f"📞 {_menu_meta['phone']}")
-                    if _menu_meta.get("hours"):   _info_lines.append(f"🕐 {_menu_meta['hours']}")
-                    if _info_lines:
-                        menu_text = "\n".join(_info_lines) + "\n\n" + menu_text
-            except Exception as _me:
-                print(f"[vision] menu extraction failed: {_me}")
-
-        # ── Multi-photo menu: append pages to the existing session save ──────────
-        if img_type == "menu" and menu_text:
-            session = _MENU_SESSION.get(fn)
-            if session and time.time() < session.get("expires", 0):
-                page_num = session["page_count"] + 1
-                _MENU_SESSION[fn]["page_count"] = page_num
-                _MENU_SESSION[fn]["expires"] = time.time() + 900
-                try:
-                    existing = lib._sb().table("wa_saves").select("summary").eq("id", session["save_id"]).execute().data
-                    existing_summary = (existing[0]["summary"] if existing else "") or ""
-                    appended = existing_summary + f"\n\n---\n*Page {page_num}*\n" + menu_text
-                    lib._sb().table("wa_saves").update({"summary": appended}).eq("id", session["save_id"]).execute()
-                    if sid:
-                        lib._sb().table("wa_saves").delete().eq("id", sid).execute()
-                except Exception as _me2:
-                    print(f"[menu-session] append failed: {_me2}")
-                user_token = _wa_user_token(fn)
-                _wa_send_proactive(fn, f"🍽️ Added page {page_num} to your menu. Send more pages or just keep chatting!\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}")
-                return
-
-        # ── Wine: label extraction + Vivino rating ───────────────────────────────
-        wine_info = {}
-        if img_type == "wine":
-            try:
-                _wine_prompt = (
-                    "This is a wine bottle or label. Extract what is clearly visible:\n"
-                    "WINE_NAME: [full wine name]\n"
-                    "WINERY: [producer/winery name]\n"
-                    "VINTAGE: [year, or NV if non-vintage]\n"
-                    "REGION: [region and/or country]\n"
-                    "GRAPE: [grape variety or blend]\n"
-                    "Only output lines where the information is clearly visible on the label."
-                )
-                try:
-                    from anthropic import Anthropic
-                    _wine_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-                    _wine_msg = _wine_client.messages.create(
-                        model="claude-opus-4-1-20250805",
-                        max_tokens=200,
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
-                                {"type": "text", "text": _wine_prompt}
-                            ]
-                        }]
-                    )
-                    _raw_wine = _wine_msg.content[0].text.strip() if _wine_msg.content else ""
-                except Exception as _wine_err:
-                    print(f"[vision] wine extraction error: {_wine_err}")
-                    _raw_wine = ""
-
-                if _raw_wine:
-                    for _wl in _raw_wine.split("\n"):
-                        _wu = _wl.strip().upper()
-                        if _wu.startswith("WINE_NAME:"):
-                            wine_info["name"] = _wl.split(":", 1)[1].strip()
-                        elif _wu.startswith("WINERY:"):
-                            wine_info["winery"] = _wl.split(":", 1)[1].strip()
-                        elif _wu.startswith("VINTAGE:"):
-                            wine_info["vintage"] = _wl.split(":", 1)[1].strip()
-                        elif _wu.startswith("REGION:"):
-                            wine_info["region"] = _wl.split(":", 1)[1].strip()
-                        elif _wu.startswith("GRAPE:"):
-                            wine_info["grape"] = _wl.split(":", 1)[1].strip()
-                    if wine_info.get("name"):
-                        _wt = wine_info["name"]
-                        if wine_info.get("vintage") and wine_info["vintage"].upper() != "NV":
-                            _wt += f" {wine_info['vintage']}"
-                        title = f"🍷 {_wt[:60]}"
-                    _vivino_q = " ".join(filter(None, [wine_info.get("name", ""), wine_info.get("vintage", "")]))
-                    if _vivino_q:
-                        _viv = _vivino_lookup(_vivino_q)
-                        wine_info["vivino_rating"] = _viv.get("rating")
-                        wine_info["vivino_count"] = _viv.get("rating_count")
-                        wine_info["vivino_url"] = _viv.get("url", "")
-                        print(f"[vivino] {_vivino_q!r} → {_viv}")
-            except Exception as _we:
-                print(f"[vision] wine extraction failed: {_we}")
-
-        # ── Receipt: structured extraction + Supabase storage ───────────────────
-        def _merge_recent_receipts(from_number: str, receipt_data: dict) -> dict:
-            """Merge with recent receipt if complementary (one has items, one has total)."""
-            if not receipt_data or not receipt_data.get("merchant"):
-                return receipt_data
-            # Note: merge logic removed (wa_saves.data column doesn't exist)
-            # Receipt data is complete from Groq extraction
-            return receipt_data
-
-        receipt_data = {}
-        if img_type == "receipt":
-            try:
-                _rcpt_prompt = (
-                    "EXTRACT RECEIPT DATA. DO THIS EXACTLY:\n\n"
-                    "1. LOOK AT THE VERY TOP OF THE RECEIPT (the largest/most prominent text)\n"
-                    "2. Find the STORE or RESTAURANT NAME (NOT address, NOT total, NOT date)\n"
-                    "3. Examples: KFC, Waitrose, Tesco, McDonald's, Wagamama, Palak, Shell, Costa\n"
-                    "4. If you see menu items (chicken curry, burgers, fuel pump), this is a FOOD or FUEL receipt — extract the BRAND name, not the items\n"
-                    "5. NEVER output: Total, Amount, Date, Address, Postcode, Phone number, Order number, Discount\n"
-                    "6. ALWAYS output the store/brand name you see at the TOP or in the branding\n\n"
-                    "EXAMPLES:\n"
-                    "- Receipt shows 'KFC' at top + menu items → MERCHANT: KFC\n"
-                    "- Receipt shows 'Wagamama London' → MERCHANT: Wagamama (not London)\n"
-                    "- Receipt shows 'Shell Petrol' + pump details → MERCHANT: Shell Petrol\n"
-                    "- Receipt shows 'Indo-Chinese O111 Chicken' + items → MERCHANT: Indo-Chinese (the restaurant name)\n"
-                    "- Receipt shows 'Waitrose & Partners' + groceries → MERCHANT: Waitrose & Partners\n\n"
-                    "OUTPUT FORMAT (ONE LINE):\n"
-                    "MERCHANT: [STORE/BRAND NAME ONLY - never address, date, or totals]\n"
-                    "DATE: [look for: date/time line, printed near top/middle/bottom. Convert ANY format to YYYY-MM-DD. If unsure, leave blank]\n"
-                    "TOTAL: [BOTTOM-most total line showing customer paid. Look for: 'Total', 'Payable', 'Amount Due', 'Paid', 'Cash', '£', etc. Numbers only, 1-4 digits + decimal, e.g. 34.72 or 102.50]\n"
-                    "ITEM: [name] | [qty if shown] | [price]\n"
-                    "...repeat ITEM for each product.\n\n"
-                    "🔍 DATE EXTRACTION RULES:\n"
-                    "  • Look for any date format: '01/01/2024', '1 Jan 2024', 'Jan 01 2024', '2024-01-01'\n"
-                    "  • May appear near top (after store name) or bottom (before/after total)\n"
-                    "  • Convert to YYYY-MM-DD format EXACTLY\n"
-                    "  • If you see a time but no date, SKIP this receipt (dates require context)\n\n"
-                    "🔍 TOTAL EXTRACTION RULES:\n"
-                    "  • FINAL amount customer paid (not subtotal, not tax)\n"
-                    "  • Look for keywords: Total, Amount, Payable, Due, Paid, Cash\n"
-                    "  • Usually at bottom, after items and before thank you\n"
-                    "  • Extract ONLY the number: 45.99 (not £45.99)\n\n"
-                    "CRITICAL item name rules:\n"
-                    "1. Expand supermarket abbreviations to full English names. Examples: "
-                    "'WF '=Waitrose own brand (drop prefix), 'CK '=Co-op Kitchen (drop prefix), "
-                    "'YT '=Yeo Valley (drop prefix), 'TF '=Tesco Finest (drop prefix), "
-                    "'TE '=Tesco (drop prefix), 'M&S '=M&S (drop prefix). "
-                    "E.g. 'WF Pure Puff Pastry Block 270G' → 'Puff Pastry Block 270g', "
-                    "'Ck12 Ciabatta' → 'Ciabatta Roll', 'Mini P. Bap' → 'Mini Bread Bap', "
-                    "'Yt Pesto 130G' → 'Pesto 130g', 'WF Popcorn' → 'Popcorn'.\n"
-                    "2. Skip promotional/offer lines entirely — any line starting with "
-                    "'3 For', '2 For', 'Buy 1', 'Meal Deal', 'Mix & Match', 'Multibuy', "
-                    "'Clubcard Price', 'Nectar Price', 'Points' — do NOT emit an ITEM: for these.\n"
-                    "3. If a promotional line has an actual product embedded in it "
-                    "(e.g. '3 For 2 On Blueberries'), emit ONLY the product: 'Blueberries'.\n"
-                    "4. Skip items you cannot read clearly.\n"
-                    "5. Use sentence case for item names (not ALL CAPS)."
-                )
-                _raw_rcpt = ""
-                groq_key = os.environ.get("GROQ_API_KEY", "")
-
-                # Try Groq first
-                if groq_key:
-                    try:
-                        from groq import Groq
-                        _rcpt_client = Groq(api_key=groq_key)
-                        _rcpt_msg = _rcpt_client.chat.completions.create(
-                            model="llava-2-7b",
-                            max_tokens=600,
-                            messages=[{
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {"url": f"data:image/{m.split('/')[-1]};base64,{b64}"}
-                                    },
-                                    {"type": "text", "text": _rcpt_prompt}
-                                ]
-                            }]
-                        )
-                        _raw_rcpt = _rcpt_msg.choices[0].message.content.strip() if _rcpt_msg.choices else ""
-                        app.logger.info(f"[receipt] Groq extraction successful, {len(_raw_rcpt)} chars")
-                    except Exception as _rcpt_err:
-                        app.logger.warning(f"[receipt] Groq extraction failed: {_rcpt_err}, trying Claude fallback")
-                        _raw_rcpt = ""
-
-                # Fallback: Use Claude if Groq unavailable/fails OR if Groq merchant looks like location
-                _groq_merchant_looks_bad = False
-                if _raw_rcpt:
-                    for _check_line in _raw_rcpt.split("\n"):
-                        if _check_line.strip().upper().startswith("MERCHANT:"):
-                            _test_merchant = _check_line.split(":", 1)[1].strip().lower()
-                            _uk_locations = ["weybridge", "london", "manchester", "birmingham", "leeds", "liverpool", "bristol", "edinburgh", "cardiff", "belfast", "surrey", "essex", "kent", "sussex"]
-                            if any(loc in _test_merchant for loc in _uk_locations) or (len(_test_merchant) <= 3 and _test_merchant.isupper()):
-                                _groq_merchant_looks_bad = True
-                                break
-
-                if not _raw_rcpt or _groq_merchant_looks_bad:
-                    try:
-                        from anthropic import Anthropic
-                        _claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-                        _claude_msg = _claude_client.messages.create(
-                            model="claude-opus-4-1-20250805",
-                            max_tokens=600,
-                            messages=[{
-                                "role": "user",
-                                "content": [
-                                    {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
-                                    {"type": "text", "text": _rcpt_prompt}
-                                ]
-                            }]
-                        )
-                        _raw_rcpt = _claude_msg.content[0].text.strip() if _claude_msg.content else ""
-                        app.logger.info(f"[receipt] Claude fallback extraction successful, {len(_raw_rcpt)} chars")
-                    except Exception as _claude_err:
-                        app.logger.error(f"[receipt] Claude fallback also failed: {_claude_err}")
-                        _raw_rcpt = ""
-
-                if _raw_rcpt:
-                    _rcpt_items = []
-                    for _rl in _raw_rcpt.split("\n"):
-                        _ru = _rl.strip().upper()
-                        if _ru.startswith("MERCHANT:"):
-                            merchant_name = _rl.split(":", 1)[1].strip()
-                            if merchant_name:
-                                receipt_data["merchant"] = merchant_name
-                                title = f"🧾 {merchant_name}"  # Update title immediately
-                        elif _ru.startswith("DATE:"):
-                            _d = _rl.split(":", 1)[1].strip()
-                            if _d and _d != "":
-                                # CRITICAL: Normalize date to ISO YYYY-MM-DD before storing
-                                try:
-                                    from miru.core.formatting import DateFormatter
-                                    _d = DateFormatter.to_storage(_d)
-                                    receipt_data["shop_date"] = _d
-                                    app.logger.info(f"[receipt] Date normalized: {_rl} → {_d}")
+                    # Vision disabled - use PDF or /receipt command
+                    analysis = "TYPE: photo"
+                    # Vision disabled - use PDF or /receipt command
+                    analysis = "TYPE: photo"
+                    # Vision disabled - use PDF or /receipt command
+                    analysis = "TYPE: photo"
                                 except Exception as e:
                                     # Fallback: store as-is if normalization fails
                                     receipt_data["shop_date"] = _d
@@ -38222,44 +37922,8 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 }}"""
 
     try:
-        from anthropic import Anthropic
-        client = Anthropic()
-
-        response = client.messages.create(
-            model="claude-opus-4-1-20250805",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        response_text = response.content[0].text.strip()
-
-        # Clean up markdown if present
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-
-        analysis = json.loads(response_text)
-
-        # Store in cache
-        lib._sb().table("ma_details").upsert({
-            "device_id": plain,
-            "type": "receipt_analysis",
-            "data": {
-                **analysis,
-                "last_updated": _dt_analysis.now().isoformat(),
-                "period": _dt_analysis.now().strftime("%B %Y")
-            }
-        }, on_conflict="device_id,type").execute()
-
-        print(f"[receipts-analysis] Cached for {plain}: £{total:.2f} across {count} receipts", flush=True)
-        return analysis
-
-    except json.JSONDecodeError as e:
-        print(f"[receipts-analysis] JSON parse error for {plain}: {e}", flush=True)
-        return {"error": f"JSON parse failed: {str(e)}"}
+                    # Vision disabled - use PDF or /receipt command
+                    analysis = "TYPE: photo"
     except Exception as e:
         print(f"[receipts-analysis] Groq error for {plain}: {e}", flush=True)
         return {"error": f"Analysis failed: {str(e)}"}
@@ -38366,22 +38030,8 @@ Their spending summary this month:
 Answer their question about spending concisely in 1-2 sentences. Only use the data provided."""
 
     try:
-        from anthropic import Anthropic
-        client = Anthropic()
-
-        response = client.messages.create(
-            model="claude-opus-4-1-20250805",
-            max_tokens=200,
-            messages=[{"role": "user", "content": groq_prompt}]
-        )
-
-        answer = response.content[0].text.strip()
-        return {
-            "answer": answer,
-            "cached": False,
-            "reason": "complex_query"
-        }
-
+                    # Vision disabled - use PDF or /receipt command
+                    analysis = "TYPE: photo"
     except Exception as e:
         print(f"[receipts-query] Groq error: {e}", flush=True)
         return {
