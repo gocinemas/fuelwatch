@@ -1155,13 +1155,6 @@ def sms_reply():
 
         print(f"[pdf-receipt-debug] NumMedia={num_media}, MediaType={media_type}, URL={media_url[:50] if media_url else 'none'}")
 
-        # IMAGE receipt handler — temporarily disabled pending OCR setup
-        # Use /receipt command or send PDF instead for now
-        if ("image" in media_type or ".jpg" in media_url.lower() or ".jpeg" in media_url.lower() or ".png" in media_url.lower()) and media_url:
-            print(f"[image-receipt] Image detected but OCR unavailable — guiding to PDF")
-            resp.message("📸 Image receipts: please send as PDF or use the /receipt command instead for now. Working on image OCR!")
-            return str(resp)
-
         # PDF receipt handler (auto-detect receipts) - match application/pdf or variants
         if ("pdf" in media_type or "application/pdf" in media_type) and media_url:
             print(f"[pdf-receipt] Detected PDF file, downloading from {media_url[:80]}")
@@ -4431,7 +4424,7 @@ def _local_sb_get(postcode: str):
     """Read cached local data from Supabase (survives redeploys)."""
     try:
         from supabase import create_client as _sc
-        sb = _sc(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+        sb = _sc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
         row = sb.table("area_local_cache").select("data,cached_at").eq("postcode", postcode).maybe_single().execute()
         if row and row.data:
             import datetime as _dt
@@ -4448,7 +4441,7 @@ def _local_sb_set(postcode: str, data: dict):
     """Write local data to Supabase cache."""
     try:
         from supabase import create_client as _sc
-        sb = _sc(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+        sb = _sc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
         sb.table("area_local_cache").upsert({
             "postcode":  postcode,
             "data":      data,
@@ -21916,13 +21909,103 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
 
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
 
-        # Groq vision is decommissioned — skip vision analysis, use simple fallback
-        analysis = ""
+        # Book scan mode — extract essence and quotes using Groq
         if is_book_mode:
-            analysis = "📚 Book page — saved for library"
+            prompt_text = (
+                "You are analysing a photo of a book page for a reading app.\n"
+                "Extract the ESSENCE of this page:\n"
+                "1. Main idea or theme (1-2 sentences)\n"
+                "2. Key quotes or highlights (3-5 powerful sentences from the text)\n"
+                "3. Concepts or takeaways (3 bullet points)\n\n"
+                "Be concise, capture the soul of what this page is about."
+            )
+            analysis = ""
+            try:
+                from groq import Groq
+                groq_key = os.environ.get("GROQ_API_KEY", "")
+                app.logger.info(f"[vision-groq] book scan starting, API key present: {bool(groq_key)}, img_size={len(b64)} bytes")
+                if not groq_key:
+                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
+                    raise ValueError("GROQ_API_KEY not configured")
+                groq_client = Groq(api_key=groq_key)
+                msg = groq_client.chat.completions.create(
+                    model="llama-3.2-90b-vision-preview",
+                    max_tokens=500,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                            {"type": "text", "text": prompt_text}
+                        ]
+                    }]
+                )
+                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
+                app.logger.info(f"[vision-groq] book scan success, length={len(analysis)}")
+            except Exception as e:
+                app.logger.error(f"[vision-groq] book scan failed: {str(e)[:500]}", exc_info=True)
         else:
-            # Simple classification without vision API
-            analysis = "TYPE: photo"
+            prompt_text = (
+                "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
+                "Identify what this image is. Pick ONE type from: "
+                "event/ticket, store/restaurant, billboard/ad, receipt/bill, recipe card, menu, wine, sign, document, product, photo.\n"
+            "IMPORTANT type rules:\n"
+            "- Use 'recipe card' for any image showing a recipe with ingredients and/or cooking instructions — even if a restaurant name appears on the card.\n"
+            "- Use 'receipt/bill' if the image shows a bill, total amount due, or itemised charges — even if menu items are also visible.\n"
+            "- Use 'menu' ONLY for a standalone list of dishes with no total/payment amount visible.\n"
+            "- Use 'wine' for any photo of a wine bottle or wine label — even if on a table or shelf.\n"
+            "- Use 'product' for ANY photo showing physical products, items on shelves, products with price tags, "
+            "or a basket/trolley of items — even if taken inside a store or supermarket.\n"
+            "- Use 'billboard/ad' ONLY for printed posters, banners, or ads that are NOT showing products on shelves.\n"
+            "- Use 'store/restaurant' ONLY for the exterior or entrance of a shop/restaurant, NOT for shelf or product photos.\n"
+            "- Use 'event/ticket' for any poster, flyer, or ticket for an event (quiz night, gig, show, festival, class, etc.).\n"
+            "Then give 3 bullet points starting with • covering ONLY factual details — no marketing copy or promotional language from the image.\n"
+            "If recipe card: give the recipe name, key ingredients, and cooking steps.\n"
+            "If store/restaurant: focus ONLY on the place itself — name, type of food/business, opening hours or price range if visible.\n"
+            "If event/ticket: bullets must contain ONLY: event name, date & time, venue/location. Do NOT copy any promotional or descriptive text from the poster.\n"
+            "If ad/billboard: state the brand, product name, and price/offer.\n"
+            "If product: list EVERY product visible. Look at all price tags, shelf-edge labels, and packaging.\n"
+            "If receipt: total and main items.\n"
+            "Start your reply with: TYPE: [your choice]\n"
+            "If type is event/ticket — add these lines:\n"
+            "  EVENT: [the event name only, e.g. 'Quiz Night' or 'Ed Sheeran Live' — NOT the venue]\n"
+            "  VENUE: [the venue or location name, e.g. 'The Crown Pub' or 'O2 Arena']\n"
+            "If type is store/restaurant, ad/billboard, menu, or product — add: VENUE: [brand or business name only, e.g. 'Nando's']\n"
+            "If type is product OR ad/billboard — list every product on a separate PRODUCT: line:\n"
+            "  PRODUCT: [full product name incl. variant & size] | [brand] | [price or n/a]\n"
+            "  e.g. PRODUCT: Heinz Baked Beans 415g | Heinz | £0.89\n"
+            "  e.g. PRODUCT: Simple Moisturiser 125ml | Simple | n/a\n"
+            "Also add: SHOP: [retailer name if identifiable — e.g. 'Tesco' — or leave blank]\n"
+            "If you can identify a city or area from signage — add: LOCATION: [city or area name]\n"
+            "If a phone number is visible on the sign, van, or ad — add: PHONE: [number]\n"
+            "If a website URL is clearly printed in the image — add: URL: [the full URL, starting with http]\n"
+            "If there is a QR code visible in the image, decode it and add: QRCODE: [the decoded URL]\n"
+            "Always add: SEARCH: [2-5 word search term]"
+            + _loc_hint
+            )
+            analysis = ""
+            try:
+                from groq import Groq
+                groq_key = os.environ.get("GROQ_API_KEY", "")
+                app.logger.info(f"[vision-groq] image analysis starting, API key present: {bool(groq_key)}, img_size={len(b64)} bytes")
+                if not groq_key:
+                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
+                    raise ValueError("GROQ_API_KEY not configured")
+                groq_client = Groq(api_key=groq_key)
+                msg = groq_client.chat.completions.create(
+                    model="llama-3.2-90b-vision-preview",
+                    max_tokens=500,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                            {"type": "text", "text": prompt_text}
+                        ]
+                    }]
+                )
+                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
+                app.logger.info(f"[vision-groq] image analysis success, length={len(analysis)}")
+            except Exception as e:
+                app.logger.error(f"[vision-groq] image analysis failed: {str(e)[:500]}", exc_info=True)
 
         # ── Book scan: save essence to wa_saves ────────────────────────────────────
         if is_book_mode and analysis and sid:
@@ -33206,7 +33289,7 @@ def api_wa_saves_add():
         # Save plain-text card (e.g. from AI image scan)
         try:
             from supabase import create_client
-            sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+            sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
             sb.table("wa_saves").insert({
                 "from_number": save_as,
                 "title":       title or text[:60],
@@ -33237,7 +33320,7 @@ def api_wa_saves_save_text():
     save_as = from_number or "web"
     try:
         from supabase import create_client
-        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+        sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
         row = {
             "from_number": save_as,
             "url":         (data.get("url") or "").strip(),
@@ -33378,7 +33461,7 @@ def api_book_intel():
             )
             gr = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}", "Content-Type": "application/json"},
                 json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}],
                       "max_tokens": 400, "temperature": 0.2},
                 timeout=10,
@@ -35947,7 +36030,7 @@ def pm_home():
 
 def _sb_pm():
     from supabase import create_client
-    return create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"), os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
 
 
 @app.route("/api/pm/projects", methods=["GET", "POST"])
@@ -39307,146 +39390,6 @@ def api_company_report():
         import traceback
         app.logger.error(f"[company/report] Error: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e), "details": traceback.format_exc()}), 500
-
-
-# ── Company Saves (bookmarks) ─────────────────────────────────────────────
-
-@app.route("/api/company/save", methods=["POST"])
-def api_company_save():
-    """Save a company to user's bookmarks."""
-    try:
-        from company_saves_service import company_saves_service
-        from supabase import create_client
-
-        data = request.json or {}
-        company = data.get("company", "").strip()
-        user_id = data.get("user_id", "").strip()
-
-        if not company or not user_id:
-            return jsonify({"error": "company and user_id required"}), 400
-
-        # Initialize service
-        sb = create_client(
-            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
-            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
-        )
-        company_saves_service.set_db(sb)
-
-        # Save
-        result = company_saves_service.save_company(user_id, company)
-
-        return jsonify({"saved": result, "company": company})
-
-    except Exception as e:
-        app.logger.error(f"[company/save] Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/company/unsave", methods=["POST"])
-def api_company_unsave():
-    """Remove a company from user's bookmarks."""
-    try:
-        from company_saves_service import company_saves_service
-        from supabase import create_client
-
-        data = request.json or {}
-        company = data.get("company", "").strip()
-        user_id = data.get("user_id", "").strip()
-
-        if not company or not user_id:
-            return jsonify({"error": "company and user_id required"}), 400
-
-        sb = create_client(
-            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
-            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
-        )
-        company_saves_service.set_db(sb)
-
-        result = company_saves_service.unsave_company(user_id, company)
-
-        return jsonify({"unsaved": result, "company": company})
-
-    except Exception as e:
-        app.logger.error(f"[company/unsave] Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/company/saves", methods=["GET"])
-def api_company_saves():
-    """Get user's saved companies."""
-    try:
-        from company_saves_service import company_saves_service
-        from supabase import create_client
-
-        user_id = request.args.get("user_id", "").strip()
-        if not user_id:
-            return jsonify({"error": "user_id required"}), 400
-
-        sb = create_client(
-            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
-            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
-        )
-        company_saves_service.set_db(sb)
-
-        saves = company_saves_service.get_saves(user_id)
-
-        return jsonify({"saves": saves, "count": len(saves)})
-
-    except Exception as e:
-        app.logger.error(f"[company/saves] Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-# ── Company Comparison ──────────────────────────────────────────────────────
-
-@app.route("/api/company/compare", methods=["GET"])
-def api_company_compare():
-    """Compare 2-4 companies side-by-side."""
-    try:
-        from company_comparison_service import comparison_service
-        from supabase import create_client
-
-        # Get companies from query params
-        company1 = request.args.get("company1", "").strip()
-        company2 = request.args.get("company2", "").strip()
-        company3 = request.args.get("company3", "").strip()
-        company4 = request.args.get("company4", "").strip()
-
-        companies = [c for c in [company1, company2, company3, company4] if c]
-
-        if len(companies) < 2:
-            return jsonify({"error": "Provide at least 2 companies"}), 400
-
-        # Initialize DB for comparison service
-        sb = create_client(
-            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
-            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
-        )
-        comparison_service.set_db(sb)
-
-        comparison = comparison_service.compare(*companies)
-
-        return jsonify(comparison)
-
-    except Exception as e:
-        app.logger.error(f"[company/compare] Error: {e}")
-        import traceback
-        app.logger.error(traceback.format_exc())
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/company/compare")
-def company_comparison_page():
-    """Side-by-side company comparison page."""
-    company1 = request.args.get("c1", "").strip()
-    company2 = request.args.get("c2", "").strip()
-
-    if not company1 or not company2:
-        company1 = "Apple"
-        company2 = "Microsoft"
-
-    return render_template("company_compare.html", company1=company1, company2=company2)
-
 
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
 
