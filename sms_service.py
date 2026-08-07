@@ -16701,15 +16701,35 @@ def api_home_brief_narrative():
     )
     prompt = " ".join(prompt_parts)
 
-    # NIGHT-TIME: NO GOING OUT / BUYING — show only weather + tomorrow's info
+    # NIGHT-TIME: NO GOING OUT / BUYING — show only weather + tomorrow's info + saying
     if now.hour >= 21 or now.hour < 5:
-        app.logger.info(f"[brief/narrative] NIGHT MODE: weather + kids only, no fuel/places/spend")
+        app.logger.info(f"[brief/narrative] NIGHT MODE: weather + kids + saying, no fuel/places/spend")
         # Filter facts to ONLY weather + school/kids info
         night_facts = [f for f in facts if any(
             keyword in str(f).lower()
             for keyword in ["weather", "temperature", "clear sky", "rain", "wind", "school", "off school", "back at school", "birthday"]
         )]
-        safe_text = "; ".join(str(f) for f in night_facts[:3]) if night_facts else "Rest well."
+        # Bedtime sayings
+        night_sayings = [
+            "Rest well — tomorrow's a fresh start.",
+            "Sleep well. You've got this.",
+            "Take care of yourself tonight.",
+            "Sweet dreams. You're doing great.",
+            "Recharge tonight for tomorrow.",
+            "Be kind to yourself. Rest well.",
+            "Tomorrow's a new day. Sleep well.",
+            "You've earned your rest.",
+            "Let tomorrow worry about tomorrow.",
+            "Peace. Rest. Repeat.",
+        ]
+        import random
+        saying = random.choice(night_sayings)
+
+        fact_text = "; ".join(str(f) for f in night_facts[:2]) if night_facts else ""
+        if fact_text:
+            safe_text = f"{fact_text}. {saying}"
+        else:
+            safe_text = saying
         return jsonify({"text": safe_text})
 
     try:
