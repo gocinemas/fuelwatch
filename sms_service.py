@@ -1161,7 +1161,7 @@ def sms_reply():
                     img_b64 = base64.standard_b64encode(img_data).decode()
 
                     message = client.messages.create(
-                        model="claude-opus-4-1",
+                        model="claude-3-5-sonnet-20241022",
                         max_tokens=500,
                         messages=[{
                             "role": "user",
@@ -21788,35 +21788,31 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 "3. Concepts or takeaways (3 bullet points)\n\n"
                 "Be concise, capture the soul of what this page is about."
             )
-            # Use PaddleOCR for book scanning (free, local)
+            # Use Claude for book scanning instead of Groq
             analysis = ""
             try:
-                from easyocr import Reader
-                from PIL import Image as PILImage
-                import io
-                ocr = Reader(["en"], gpu=False)
-                img_data = base64.b64decode(b64)
-                img = PILImage.open(io.BytesIO(img_data))
-
-                result = ocr.readtext(img)
-                ocr_text = "\n".join([line[1] for line in result]) if result else ""
-
-                app.logger.info(f"[vision-easyocr] book scan OCR extracted: {len(ocr_text)} chars")
-
-                if ocr_text:
-                    # Use Groq to summarize the book page
-                    extracted = _groq_chat(
-                        "Summarize this book page.",
-                        [{"role": "user", "content": f"Extract main idea (1-2 sentences), key quotes (3-5), and takeaways (3 bullets):\n\n{ocr_text[:1000]}"}],
-                        max_tokens=300
-                    )
-                    analysis = extracted if extracted else "📚 Book page scanned"
-                else:
-                    analysis = "📚 Book page — couldn't extract text"
-
+                from anthropic import Anthropic
+                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+                app.logger.info(f"[vision-claude] book scan starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
+                if not api_key:
+                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
+                    raise ValueError("ANTHROPIC_API_KEY not configured")
+                claude_client = Anthropic(api_key=api_key)
+                msg = claude_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=500,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                            {"type": "text", "text": prompt_text}
+                        ]
+                    }]
+                )
+                analysis = msg.content[0].text.strip() if msg.content else ""
+                app.logger.info(f"[vision-claude] book scan success, length={len(analysis)}")
             except Exception as e:
-                app.logger.error(f"[vision-easyocr] book scan failed: {str(e)[:500]}", exc_info=True)
-                analysis = "📚 Book page — saved for library"
+                app.logger.error(f"[vision-claude] book scan failed: {str(e)[:500]}", exc_info=True)
         else:
             prompt_text = (
                 "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
@@ -21856,35 +21852,31 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
             )
-            # Use PaddleOCR for regular image analysis (free, local)
+            # Use Claude for regular image analysis as well
             analysis = ""
             try:
-                from easyocr import Reader
-                from PIL import Image as PILImage
-                import io
-                ocr = Reader(["en"], gpu=False)
-                img_data = base64.b64decode(b64)
-                img = PILImage.open(io.BytesIO(img_data))
-
-                result = ocr.readtext(img)
-                ocr_text = "\n".join([line[1] for line in result]) if result else ""
-
-                app.logger.info(f"[vision-easyocr] image OCR extracted: {len(ocr_text)} chars")
-
-                if ocr_text:
-                    # Use Groq to classify and extract structured data
-                    extracted = _groq_chat(
-                        "Classify this image and extract structured data.",
-                        [{"role": "user", "content": f"Classify this image. If receipt: extract STORE, DATE, TOTAL, items. If other: classify type.\n\n{ocr_text[:2000]}"}],
-                        max_tokens=300
-                    )
-                    analysis = extracted if extracted else "TYPE: photo"
-                else:
-                    analysis = "TYPE: photo"
-
+                from anthropic import Anthropic
+                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+                app.logger.info(f"[vision-claude] image analysis starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
+                if not api_key:
+                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
+                    raise ValueError("ANTHROPIC_API_KEY not configured")
+                claude_client = Anthropic(api_key=api_key)
+                msg = claude_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=500,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                            {"type": "text", "text": prompt_text}
+                        ]
+                    }]
+                )
+                analysis = msg.content[0].text.strip() if msg.content else ""
+                app.logger.info(f"[vision-claude] image analysis success, length={len(analysis)}")
             except Exception as e:
-                app.logger.error(f"[vision-easyocr] image analysis failed: {str(e)[:500]}", exc_info=True)
-                analysis = "TYPE: photo"
+                app.logger.error(f"[vision-claude] image analysis failed: {str(e)[:500]}", exc_info=True)
 
         # ── Book scan: save essence to wa_saves ────────────────────────────────────
         if is_book_mode and analysis and sid:
@@ -22125,7 +22117,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     from anthropic import Anthropic
                     _menu_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
                     _menu_msg = _menu_client.messages.create(
-                        model="claude-opus-4-8",
+                        model="claude-3-5-sonnet-20241022",
                         max_tokens=800,
                         messages=[{
                             "role": "user",
@@ -22213,7 +22205,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     from anthropic import Anthropic
                     _wine_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
                     _wine_msg = _wine_client.messages.create(
-                        model="claude-opus-4-8",
+                        model="claude-3-5-sonnet-20241022",
                         max_tokens=200,
                         messages=[{
                             "role": "user",
@@ -22358,7 +22350,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         from anthropic import Anthropic
                         _claude_client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
                         _claude_msg = _claude_client.messages.create(
-                            model="claude-opus-4-8",
+                            model="claude-3-5-sonnet-20241022",
                             max_tokens=600,
                             messages=[{
                                 "role": "user",
@@ -38234,7 +38226,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
         client = Anthropic()
 
         response = client.messages.create(
-            model="claude-opus-4-8",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -38378,7 +38370,7 @@ Answer their question about spending concisely in 1-2 sentences. Only use the da
         client = Anthropic()
 
         response = client.messages.create(
-            model="claude-opus-4-8",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=200,
             messages=[{"role": "user", "content": groq_prompt}]
         )
@@ -39269,60 +39261,6 @@ def api_company_report():
         import traceback
         app.logger.error(f"[company/report] Error: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e), "details": traceback.format_exc()}), 500
-
-
-# ── Company Comparison ──────────────────────────────────────────────────────
-
-@app.route("/api/company/compare", methods=["GET"])
-def api_company_compare():
-    """Compare 2-4 companies side-by-side."""
-    try:
-        from company_comparison_service import comparison_service
-        from supabase import create_client
-
-        # Get companies from query params
-        company1 = request.args.get("company1", "").strip()
-        company2 = request.args.get("company2", "").strip()
-        company3 = request.args.get("company3", "").strip()
-        company4 = request.args.get("company4", "").strip()
-
-        companies = [c for c in [company1, company2, company3, company4] if c]
-
-        if len(companies) < 2:
-            return jsonify({"error": "Provide at least 2 companies"}), 400
-
-        # Initialize DB for comparison service
-        sb = create_client(
-            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
-            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
-        )
-        comparison_service.set_db(sb)
-
-        comparison = comparison_service.compare(*companies)
-
-        if "error" in comparison:
-            return jsonify(comparison), 400
-
-        return jsonify(comparison)
-
-    except Exception as e:
-        app.logger.error(f"[company/compare] Error: {e}")
-        import traceback
-        app.logger.error(traceback.format_exc())
-        return jsonify({"error": f"Comparison failed: {str(e)[:100]}"}), 500
-
-
-@app.route("/company/compare")
-def company_comparison_page():
-    """Side-by-side company comparison page."""
-    company1 = request.args.get("c1", "").strip()
-    company2 = request.args.get("c2", "").strip()
-
-    if not company1 or not company2:
-        company1 = "Apple"
-        company2 = "Microsoft"
-
-    return render_template("company_compare.html", company1=company1, company2=company2)
 
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
 
