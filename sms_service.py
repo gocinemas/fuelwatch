@@ -39397,7 +39397,6 @@ def api_company_compare():
     """Compare two companies side-by-side."""
     try:
         from company_comparison_service import comparison_service
-        from company_history_service import history_tracker
         from supabase import create_client
 
         company1 = request.args.get("company1", "").strip()
@@ -39406,12 +39405,12 @@ def api_company_compare():
         if not company1 or not company2:
             return jsonify({"error": "company1 and company2 required"}), 400
 
-        # Initialize DB
+        # Initialize DB for comparison service
         sb = create_client(
             os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
             os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
         )
-        history_tracker.set_db(sb)
+        comparison_service.set_db(sb)
 
         comparison = comparison_service.compare(company1, company2)
 
@@ -39419,6 +39418,8 @@ def api_company_compare():
 
     except Exception as e:
         app.logger.error(f"[company/compare] Error: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 

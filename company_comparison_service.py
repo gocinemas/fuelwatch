@@ -4,8 +4,8 @@ Side-by-side comparison of two companies across key metrics.
 """
 
 import logging
+import os
 from company_intelligence_service import CompanyIntelligence
-from company_history_service import history_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -14,20 +14,15 @@ class CompanyComparisonService:
     """Compare two companies side-by-side."""
 
     def __init__(self):
-        pass
+        self.db = None
+
+    def set_db(self, supabase_client):
+        """Set Supabase client."""
+        self.db = supabase_client
 
     def compare(self, company1: str, company2: str) -> dict:
         """
         Compare two companies across financials, market position, and signals.
-        Returns: {
-            'company1': {...metrics},
-            'company2': {...metrics},
-            'comparison': {
-                'revenue_diff_pct': X,
-                'growth_diff_pct': Y,
-                ...
-            }
-        }
         """
         try:
             # Fetch both companies
@@ -69,17 +64,30 @@ class CompanyComparisonService:
             return {"error": str(e)}
 
     def _get_latest_financials(self, company_name: str) -> dict:
-        """Get latest financial data from history."""
+        """Get latest financial data from Supabase."""
         try:
-            if not history_tracker.db:
+            if not self.db:
+                logger.warning(f"[compare] DB not initialized")
                 return {}
 
-            history = history_tracker.get_financial_history(company_name, years=1)
-            if history and len(history) > 0:
-                return history[0]  # Latest year
+            # Query company_financials table
+            result = self.db.table("company_financials").select("*").eq(
+                "company_name", company_name.lower()
+            ).order("period", desc=True).limit(1).execute()
+
+            if result.data and len(result.data) > 0:
+                row = result.data[0]
+                return {
+                    "period": row.get("period"),
+                    "revenue_millions": row.get("revenue_millions"),
+                    "gross_margin_pct": row.get("gross_margin_pct"),
+                    "operating_margin_pct": row.get("operating_margin_pct"),
+                    "employees": row.get("employees"),
+                    "revenue_growth_pct": row.get("revenue_growth_pct"),
+                }
             return {}
         except Exception as e:
-            logger.warning(f"[compare] Financial history lookup failed for {company_name}: {e}")
+            logger.warning(f"[compare] Financial lookup failed for {company_name}: {e}")
             return {}
 
     def _calculate_diffs(self, fin1: dict, fin2: dict) -> dict:
