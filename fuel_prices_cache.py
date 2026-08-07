@@ -18,7 +18,7 @@ REFRESH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJraW5kIjoicHVibGljIiwiY2
 
 # Supabase
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://xyzabc.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
 
 
 def get_fresh_access_token() -> Optional[str]:
