@@ -415,7 +415,7 @@ SIGNALS_DATA = {
             "Retail": "52% revenue | 40% US ecommerce share | Margin pressure | Volume growth stable",
             "Advertising": "10% revenue | Growing 25%+ YoY | High margin (60%+) | Emerging TAM",
             "Other": "14% revenue | Whole Foods, logistics, cloud gaming | Diversified",
-            "AWS AI": Potential to add $30-50B annually within 5 years"
+            "AWS AI": "Potential to add $30-50B annually within 5 years"
         },
         "risks": [
             "Retail margin pressure (competition, logistics costs)",
@@ -447,7 +447,7 @@ SIGNALS_DATA = {
             "YouTube": "20% revenue | 2.5B users | Ad growth +15% YoY | Shorts competition",
             "Cloud": "6% revenue | Growing 26%+ YoY | Lower margins than AWS | AI services opportunity",
             "Other": "6% revenue | Waymo, DeepMind, Android revenue | Innovation focus",
-            "AI Search TAM": Potential $50B+ annually as search monetization expands"
+            "AI Search TAM": "Potential $50B+ annually as search monetization expands"
         },
         "risks": [
             "AI Overview adoption threatening search traffic (cannibalization risk)",

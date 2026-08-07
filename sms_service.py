@@ -21997,103 +21997,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
 
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
 
-        # Book scan mode — extract essence and quotes using Groq
+        # Groq vision is decommissioned — skip vision analysis, use simple fallback
+        analysis = ""
         if is_book_mode:
-            prompt_text = (
-                "You are analysing a photo of a book page for a reading app.\n"
-                "Extract the ESSENCE of this page:\n"
-                "1. Main idea or theme (1-2 sentences)\n"
-                "2. Key quotes or highlights (3-5 powerful sentences from the text)\n"
-                "3. Concepts or takeaways (3 bullet points)\n\n"
-                "Be concise, capture the soul of what this page is about."
-            )
-            analysis = ""
-            try:
-                from groq import Groq
-                groq_key = os.environ.get("GROQ_API_KEY", "")
-                app.logger.info(f"[vision-groq] book scan starting, API key present: {bool(groq_key)}, img_size={len(b64)} bytes")
-                if not groq_key:
-                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
-                    raise ValueError("GROQ_API_KEY not configured")
-                groq_client = Groq(api_key=groq_key)
-                msg = groq_client.chat.completions.create(
-                    model="llama-3.2-11b-vision-preview",
-                    max_tokens=500,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                            {"type": "text", "text": prompt_text}
-                        ]
-                    }]
-                )
-                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
-                app.logger.info(f"[vision-groq] book scan success, length={len(analysis)}")
-            except Exception as e:
-                app.logger.error(f"[vision-groq] book scan failed: {str(e)[:500]}", exc_info=True)
+            analysis = "📚 Book page — saved for library"
         else:
-            prompt_text = (
-                "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
-                "Identify what this image is. Pick ONE type from: "
-                "event/ticket, store/restaurant, billboard/ad, receipt/bill, recipe card, menu, wine, sign, document, product, photo.\n"
-            "IMPORTANT type rules:\n"
-            "- Use 'recipe card' for any image showing a recipe with ingredients and/or cooking instructions — even if a restaurant name appears on the card.\n"
-            "- Use 'receipt/bill' if the image shows a bill, total amount due, or itemised charges — even if menu items are also visible.\n"
-            "- Use 'menu' ONLY for a standalone list of dishes with no total/payment amount visible.\n"
-            "- Use 'wine' for any photo of a wine bottle or wine label — even if on a table or shelf.\n"
-            "- Use 'product' for ANY photo showing physical products, items on shelves, products with price tags, "
-            "or a basket/trolley of items — even if taken inside a store or supermarket.\n"
-            "- Use 'billboard/ad' ONLY for printed posters, banners, or ads that are NOT showing products on shelves.\n"
-            "- Use 'store/restaurant' ONLY for the exterior or entrance of a shop/restaurant, NOT for shelf or product photos.\n"
-            "- Use 'event/ticket' for any poster, flyer, or ticket for an event (quiz night, gig, show, festival, class, etc.).\n"
-            "Then give 3 bullet points starting with • covering ONLY factual details — no marketing copy or promotional language from the image.\n"
-            "If recipe card: give the recipe name, key ingredients, and cooking steps.\n"
-            "If store/restaurant: focus ONLY on the place itself — name, type of food/business, opening hours or price range if visible.\n"
-            "If event/ticket: bullets must contain ONLY: event name, date & time, venue/location. Do NOT copy any promotional or descriptive text from the poster.\n"
-            "If ad/billboard: state the brand, product name, and price/offer.\n"
-            "If product: list EVERY product visible. Look at all price tags, shelf-edge labels, and packaging.\n"
-            "If receipt: total and main items.\n"
-            "Start your reply with: TYPE: [your choice]\n"
-            "If type is event/ticket — add these lines:\n"
-            "  EVENT: [the event name only, e.g. 'Quiz Night' or 'Ed Sheeran Live' — NOT the venue]\n"
-            "  VENUE: [the venue or location name, e.g. 'The Crown Pub' or 'O2 Arena']\n"
-            "If type is store/restaurant, ad/billboard, menu, or product — add: VENUE: [brand or business name only, e.g. 'Nando's']\n"
-            "If type is product OR ad/billboard — list every product on a separate PRODUCT: line:\n"
-            "  PRODUCT: [full product name incl. variant & size] | [brand] | [price or n/a]\n"
-            "  e.g. PRODUCT: Heinz Baked Beans 415g | Heinz | £0.89\n"
-            "  e.g. PRODUCT: Simple Moisturiser 125ml | Simple | n/a\n"
-            "Also add: SHOP: [retailer name if identifiable — e.g. 'Tesco' — or leave blank]\n"
-            "If you can identify a city or area from signage — add: LOCATION: [city or area name]\n"
-            "If a phone number is visible on the sign, van, or ad — add: PHONE: [number]\n"
-            "If a website URL is clearly printed in the image — add: URL: [the full URL, starting with http]\n"
-            "If there is a QR code visible in the image, decode it and add: QRCODE: [the decoded URL]\n"
-            "Always add: SEARCH: [2-5 word search term]"
-            + _loc_hint
-            )
-            analysis = ""
-            try:
-                from groq import Groq
-                groq_key = os.environ.get("GROQ_API_KEY", "")
-                app.logger.info(f"[vision-groq] image analysis starting, API key present: {bool(groq_key)}, img_size={len(b64)} bytes")
-                if not groq_key:
-                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
-                    raise ValueError("GROQ_API_KEY not configured")
-                groq_client = Groq(api_key=groq_key)
-                msg = groq_client.chat.completions.create(
-                    model="llama-3.2-11b-vision-preview",
-                    max_tokens=500,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                            {"type": "text", "text": prompt_text}
-                        ]
-                    }]
-                )
-                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
-                app.logger.info(f"[vision-groq] image analysis success, length={len(analysis)}")
-            except Exception as e:
-                app.logger.error(f"[vision-groq] image analysis failed: {str(e)[:500]}", exc_info=True)
+            # Simple classification without vision API
+            analysis = "TYPE: photo"
 
         # ── Book scan: save essence to wa_saves ────────────────────────────────────
         if is_book_mode and analysis and sid:
