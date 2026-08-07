@@ -531,6 +531,12 @@
                 Add up to 3 more companies to compare side-by-side.
             </div>
 
+            <!-- Suggested Competitors -->
+            <div id="competitorChips" style="display: none; margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Suggested Competitors</div>
+                <div id="competitorChipsContainer" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            </div>
+
             <div id="compareInputs" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
                 <input type="text" class="compareInput" placeholder="Company 2" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" />
                 <input type="text" class="compareInput" placeholder="Company 3" style="padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" />
@@ -546,6 +552,7 @@
 
     <script>
         let currentCompany = null;
+        let currentCompetitors = [];
         let messages = [];
 
         async function searchCompany() {
@@ -823,6 +830,7 @@
                 const data = response.json ? await response.json() : JSON.parse(response);
 
                 if (data.competitors && data.competitors.length > 0) {
+                    currentCompetitors = data.competitors;
                     document.getElementById('competitorSection').style.display = 'block';
 
                     const compHTML = data.data.map(comp => {
@@ -925,7 +933,42 @@
                 return;
             }
             document.getElementById('compareBaseCompany').textContent = currentCompany;
+
+            // Populate competitor chips
+            if (currentCompetitors && currentCompetitors.length > 0) {
+                const chipsHtml = currentCompetitors.slice(0, 6).map(comp => `
+                    <button onclick="addCompetitorToCompare('${comp}')" style="
+                        padding: 8px 12px;
+                        background: #dbeafe;
+                        color: #0369a1;
+                        border: 1px solid #7dd3fc;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                    " onmouseover="this.style.background='#bfdbfe'" onmouseout="this.style.background='#dbeafe'">
+                        + ${comp}
+                    </button>
+                `).join('');
+                document.getElementById('competitorChipsContainer').innerHTML = chipsHtml;
+                document.getElementById('competitorChips').style.display = 'block';
+            } else {
+                document.getElementById('competitorChips').style.display = 'none';
+            }
+
             document.getElementById('compareModalOuter').style.display = 'flex';
+        }
+
+        function addCompetitorToCompare(company) {
+            const inputs = document.querySelectorAll('.compareInput');
+            for (let input of inputs) {
+                if (!input.value.trim()) {
+                    input.value = company;
+                    input.focus();
+                    break;
+                }
+            }
         }
 
         function closeCompareModal() {
