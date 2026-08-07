@@ -71,11 +71,15 @@ class CompanyComparisonService:
     def _get_latest_financials(self, company_name: str) -> dict:
         """Get latest financial data from history."""
         try:
+            if not history_tracker.db:
+                return {}
+
             history = history_tracker.get_financial_history(company_name, years=1)
-            if history:
+            if history and len(history) > 0:
                 return history[0]  # Latest year
             return {}
-        except:
+        except Exception as e:
+            logger.warning(f"[compare] Financial history lookup failed for {company_name}: {e}")
             return {}
 
     def _calculate_diffs(self, fin1: dict, fin2: dict) -> dict:
