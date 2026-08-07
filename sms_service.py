@@ -39262,6 +39262,40 @@ def api_company_report():
         app.logger.error(f"[company/report] Error: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e), "details": traceback.format_exc()}), 500
 
+
+@app.route("/api/company/compare", methods=["GET"])
+def api_company_compare():
+    """Compare 2-4 companies."""
+    try:
+        from company_comparison_service import comparison_service
+        from supabase import create_client
+
+        companies = [request.args.get(f"company{i}", "").strip() for i in range(1, 5)]
+        companies = [c for c in companies if c]
+
+        if len(companies) < 2:
+            return jsonify({"error": "Provide at least 2 companies"}), 400
+
+        sb = create_client(
+            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+        comparison_service.set_db(sb)
+        comparison = comparison_service.compare(*companies)
+
+        if "error" in comparison:
+            return jsonify(comparison), 400
+        return jsonify(comparison)
+    except Exception as e:
+        app.logger.error(f"[compare] Error: {e}")
+        return jsonify({"error": str(e)[:100]}), 500
+
+
+@app.route("/company/compare")
+def company_comparison_page():
+    """Comparison page."""
+    return render_template("company_compare.html")
+
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
 
 @app.route("/api/fuel/stations/list", methods=["GET"])
