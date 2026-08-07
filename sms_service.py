@@ -22577,7 +22577,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         app.logger.warning(f"[receipt] Category check failed: {cat_ex}, setting to {auto_category}")
                 elif img_type == "store":
                     # Derive category from venue name so the brief can filter it correctly
-                    update_data["category"] = _receipt_category(venue_tag or title.replace("🏪","").strip()) or "place"
+                    merchant_for_cat = venue_tag or title.replace("🏪","").strip() or summary.split()[0] if summary else ""
+                    auto_cat = _receipt_category(merchant_for_cat, summary) or "place"
+                    update_data["category"] = auto_cat
+                    app.logger.info(f"[store] Classified {merchant_for_cat} as {auto_cat}")
                 elif img_type == "menu":
                     update_data["category"] = "Dining"
                 elif img_type == "event":
