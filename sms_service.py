@@ -39262,6 +39262,60 @@ def api_company_report():
         app.logger.error(f"[company/report] Error: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e), "details": traceback.format_exc()}), 500
 
+
+# ── Company Comparison ──────────────────────────────────────────────────────
+
+@app.route("/api/company/compare", methods=["GET"])
+def api_company_compare():
+    """Compare 2-4 companies side-by-side."""
+    try:
+        from company_comparison_service import comparison_service
+        from supabase import create_client
+
+        # Get companies from query params
+        company1 = request.args.get("company1", "").strip()
+        company2 = request.args.get("company2", "").strip()
+        company3 = request.args.get("company3", "").strip()
+        company4 = request.args.get("company4", "").strip()
+
+        companies = [c for c in [company1, company2, company3, company4] if c]
+
+        if len(companies) < 2:
+            return jsonify({"error": "Provide at least 2 companies"}), 400
+
+        # Initialize DB for comparison service
+        sb = create_client(
+            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+        comparison_service.set_db(sb)
+
+        comparison = comparison_service.compare(*companies)
+
+        if "error" in comparison:
+            return jsonify(comparison), 400
+
+        return jsonify(comparison)
+
+    except Exception as e:
+        app.logger.error(f"[company/compare] Error: {e}")
+        import traceback
+        app.logger.error(traceback.format_exc())
+        return jsonify({"error": f"Comparison failed: {str(e)[:100]}"}), 500
+
+
+@app.route("/company/compare")
+def company_comparison_page():
+    """Side-by-side company comparison page."""
+    company1 = request.args.get("c1", "").strip()
+    company2 = request.args.get("c2", "").strip()
+
+    if not company1 or not company2:
+        company1 = "Apple"
+        company2 = "Microsoft"
+
+    return render_template("company_compare.html", company1=company1, company2=company2)
+
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
 
 @app.route("/api/fuel/stations/list", methods=["GET"])
