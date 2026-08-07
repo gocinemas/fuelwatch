@@ -21797,8 +21797,7 @@ ocr = Reader(["en"], gpu=False)
                 img = PILImage.open(io.BytesIO(img_data))
 
                 result = ocr.readtext(img)
-ocr_text = "
-".join([line[1] for line in result]) if result else ""
+                ocr_text = "\n".join([line[1] for line in result]) if result else ""
 
                 app.logger.info(f"[vision-easyocr] book scan OCR extracted: {len(ocr_text)} chars")
 
@@ -21864,8 +21863,7 @@ ocr = Reader(["en"], gpu=False)
                 img = PILImage.open(io.BytesIO(img_data))
 
                 result = ocr.readtext(img)
-ocr_text = "
-".join([line[1] for line in result]) if result else ""
+                ocr_text = "\n".join([line[1] for line in result]) if result else ""
 
                 app.logger.info(f"[vision-easyocr] image OCR extracted: {len(ocr_text)} chars")
 
