@@ -1149,7 +1149,7 @@ def sms_reply():
         print(f"[pdf-receipt-debug] NumMedia={num_media}, MediaType={media_type}, URL={media_url[:50] if media_url else 'none'}")
 
         # IMAGE receipt handler (auto-detect receipts from JPG/PNG) - match image/* or variants
-        if ("image" in media_type) and media_url:
+        if ("image" in media_type or ".jpg" in media_url.lower() or ".jpeg" in media_url.lower() or ".png" in media_url.lower()) and media_url:
             print(f"[image-receipt] Detected image file, downloading from {media_url[:80]}")
             try:
                 import pytesseract
@@ -22017,7 +22017,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     raise ValueError("GROQ_API_KEY not configured")
                 groq_client = Groq(api_key=groq_key)
                 msg = groq_client.chat.completions.create(
-                    model="llama-3.2-90b-vision-preview",
+                    model="llama-3.2-11b-vision-preview",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
@@ -22080,7 +22080,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     raise ValueError("GROQ_API_KEY not configured")
                 groq_client = Groq(api_key=groq_key)
                 msg = groq_client.chat.completions.create(
-                    model="llama-3.2-90b-vision-preview",
+                    model="llama-3.2-11b-vision-preview",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
