@@ -16497,6 +16497,7 @@ def api_home_brief():
                     _final_cal.append(normalized)
 
     result["today_events"] = _final_cal
+    result["response_time_hour"] = _response_time_hour  # Include server hour so frontend can use correct time
 
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
@@ -16657,8 +16658,15 @@ def api_home_brief_narrative():
         else:
             prompt_parts.append(f"Saved items (mention only if relevant): {'; '.join(saves_ctx)}. Do NOT invent additional saves.")
     prompt_parts.append(f"Facts: {facts_text}.")
+
+    # Add night-time constraint if it's after 9pm
+    night_constraint = ""
+    if now.hour >= 21 or now.hour < 5:
+        night_constraint = "- NIGHT-TIME RULE: It is NIGHT/BEDTIME. NEVER mention or suggest going out, buying, shopping, or any purchases. Only mention rest, sleep, or morning plans if in facts.\n"
+
     prompt_parts.append(
         "CRITICAL CONSTRAINTS (ZERO TOLERANCE FOR HALLUCINATIONS):\n"
+        + night_constraint +
         "- ONLY mention EXACT facts provided. Do NOT add ANY information from your training data.\n"
         "- Do NOT invent, infer, or extrapolate about ANY events, activities, or people's needs.\n"
         "- Do NOT use words like 'should', 'probably', 'still', 'maybe', 'might', 'could' — only state facts.\n"

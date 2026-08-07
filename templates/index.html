@@ -18310,7 +18310,7 @@ let _savesAll = [];
     var _wxWrapper = document.getElementById("brief-weather-wrapper");
     var _wxBar = document.getElementById("brief-weather-bar");
     if (_wxBar && _wx && _wx.temp !== undefined) {
-      var _wxH   = new Date().getHours();
+      var _wxH   = _briefData.response_time_hour || new Date().getHours();  // Use server time, fallback to browser
       var _wxNt  = _wxH >= 21 || _wxH < 6;
       var _wxIco = typeof _wCode === "function" ? _wCode(_wx.code || 0) : (_wxNt ? "🌙" : (_wx.sunny ? "☀️" : _wx.outdoor_ok ? "🌤️" : "🌧️"));
       var _wxDescParts = [];
