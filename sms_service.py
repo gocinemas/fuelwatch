@@ -21792,7 +21792,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             analysis = ""
             try:
                 from easyocr import Reader
-ocr = Reader(["en"], gpu=False)
+                ocr = Reader(["en"], gpu=False)
                 img_data = base64.b64decode(b64)
                 img = PILImage.open(io.BytesIO(img_data))
 
@@ -21858,7 +21858,7 @@ ocr = Reader(["en"], gpu=False)
             analysis = ""
             try:
                 from easyocr import Reader
-ocr = Reader(["en"], gpu=False)
+                ocr = Reader(["en"], gpu=False)
                 img_data = base64.b64decode(b64)
                 img = PILImage.open(io.BytesIO(img_data))
 
