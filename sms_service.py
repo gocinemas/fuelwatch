@@ -39301,6 +39301,131 @@ def api_company_report():
         app.logger.error(f"[company/report] Error: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e), "details": traceback.format_exc()}), 500
 
+
+# ── Company Saves (bookmarks) ─────────────────────────────────────────────
+
+@app.route("/api/company/save", methods=["POST"])
+def api_company_save():
+    """Save a company to user's bookmarks."""
+    try:
+        from company_saves_service import company_saves_service
+        from supabase import create_client
+
+        data = request.json or {}
+        company = data.get("company", "").strip()
+        user_id = data.get("user_id", "").strip()
+
+        if not company or not user_id:
+            return jsonify({"error": "company and user_id required"}), 400
+
+        # Initialize service
+        sb = create_client(
+            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+        company_saves_service.set_db(sb)
+
+        # Save
+        result = company_saves_service.save_company(user_id, company)
+
+        return jsonify({"saved": result, "company": company})
+
+    except Exception as e:
+        app.logger.error(f"[company/save] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/company/unsave", methods=["POST"])
+def api_company_unsave():
+    """Remove a company from user's bookmarks."""
+    try:
+        from company_saves_service import company_saves_service
+        from supabase import create_client
+
+        data = request.json or {}
+        company = data.get("company", "").strip()
+        user_id = data.get("user_id", "").strip()
+
+        if not company or not user_id:
+            return jsonify({"error": "company and user_id required"}), 400
+
+        sb = create_client(
+            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+        company_saves_service.set_db(sb)
+
+        result = company_saves_service.unsave_company(user_id, company)
+
+        return jsonify({"unsaved": result, "company": company})
+
+    except Exception as e:
+        app.logger.error(f"[company/unsave] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/company/saves", methods=["GET"])
+def api_company_saves():
+    """Get user's saved companies."""
+    try:
+        from company_saves_service import company_saves_service
+        from supabase import create_client
+
+        user_id = request.args.get("user_id", "").strip()
+        if not user_id:
+            return jsonify({"error": "user_id required"}), 400
+
+        sb = create_client(
+            os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+            os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+        )
+        company_saves_service.set_db(sb)
+
+        saves = company_saves_service.get_saves(user_id)
+
+        return jsonify({"saves": saves, "count": len(saves)})
+
+    except Exception as e:
+        app.logger.error(f"[company/saves] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Company Comparison ──────────────────────────────────────────────────────
+
+@app.route("/api/company/compare", methods=["GET"])
+def api_company_compare():
+    """Compare two companies side-by-side."""
+    try:
+        from company_comparison_service import comparison_service
+
+        company1 = request.args.get("company1", "").strip()
+        company2 = request.args.get("company2", "").strip()
+
+        if not company1 or not company2:
+            return jsonify({"error": "company1 and company2 required"}), 400
+
+        comparison = comparison_service.compare(company1, company2)
+
+        return jsonify(comparison)
+
+    except Exception as e:
+        app.logger.error(f"[company/compare] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/company/compare")
+def company_comparison_page():
+    """Side-by-side company comparison page."""
+    company1 = request.args.get("c1", "").strip()
+    company2 = request.args.get("c2", "").strip()
+
+    if not company1 or not company2:
+        company1 = "Apple"
+        company2 = "Microsoft"
+
+    return render_template("company_compare.html", company1=company1, company2=company2)
+
+
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
 
 @app.route("/api/fuel/stations/list", methods=["GET"])
