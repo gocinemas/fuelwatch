@@ -17922,10 +17922,15 @@ let _savesAll = [];
           if (shimmer) shimmer.style.display = "none";
 
           if (!d.has_prefs) {
-            if (briefText) { briefText.textContent = "Set up your brief below to get a personalised daily update."; briefText.style.display = "block"; }
-            if (setupCta)  setupCta.style.display = "block";
-            _briefRequestLocation();
-            return;
+            // At night, show brief even without prefs (we generate night-specific content)
+            var _isNight = d.hour >= 21 || d.hour < 5;
+            var _hasGeneratedBrief = d.brief && d.brief !== "Your brief is ready." && !d.brief.includes("Set up your brief");
+            if (!_isNight && !_hasGeneratedBrief) {
+              if (briefText) { briefText.textContent = "Set up your brief below to get a personalised daily update."; briefText.style.display = "block"; }
+              if (setupCta)  setupCta.style.display = "block";
+              _briefRequestLocation();
+              return;
+            }
           }
 
           // Narrative — show location area pill if server resolved it
