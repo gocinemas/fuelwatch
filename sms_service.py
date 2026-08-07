@@ -1161,7 +1161,7 @@ def sms_reply():
                     img_b64 = base64.standard_b64encode(img_data).decode()
 
                     message = client.messages.create(
-                        model="claude-opus-4-1-20250805",
+                        model="claude-opus-4-8",
                         max_tokens=500,
                         messages=[{
                             "role": "user",
@@ -32515,7 +32515,7 @@ def api_wa_saves_ad_intel():
                 import anthropic as _ant
                 _ac = _ant.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
                 _cr = _ac.messages.create(
-                    model="claude-haiku-4-5-20251001",
+                    model="claude-opus-4-8",
                     max_tokens=500,
                     messages=[{"role": "user", "content": [
                         {"type": "image", "source": {"type": "url", "url": image_url}},
@@ -33363,7 +33363,7 @@ Write it in second person ("You discovered…", "The book shifted your thinking 
         import anthropic as _ant
         client = _ant.Anthropic(api_key=api_key)
         resp = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-opus-4-8",
             max_tokens=512,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -33394,7 +33394,7 @@ def api_books_scan_note():
     try:
         client = _ant.Anthropic(api_key=api_key)
         resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-opus-4-8",
             max_tokens=1024,
             messages=[{
                 "role": "user",
