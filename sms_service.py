@@ -21788,31 +21788,36 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 "3. Concepts or takeaways (3 bullet points)\n\n"
                 "Be concise, capture the soul of what this page is about."
             )
-            # Use Groq for book scanning
+            # Use PaddleOCR for book scanning (free, local)
             analysis = ""
             try:
-                from groq import Groq
-                api_key = os.environ.get("GROQ_API_KEY", "")
-                app.logger.info(f"[vision-groq] book scan starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
-                if not api_key:
-                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
-                    raise ValueError("GROQ_API_KEY not configured")
-                groq_client = Groq(api_key=api_key)
-                msg = groq_client.chat.completions.create(
-                    model="llama-3.2-90b-vision-preview",
-                    max_tokens=500,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                            {"type": "text", "text": prompt_text}
-                        ]
-                    }]
-                )
-                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
-                app.logger.info(f"[vision-groq] book scan success, length={len(analysis)}")
+                from paddleocr import PaddleOCR
+                import io
+                from PIL import Image as PILImage
+
+                ocr = PaddleOCR(use_gpu=False, lang='en')
+                img_data = base64.b64decode(b64)
+                img = PILImage.open(io.BytesIO(img_data))
+
+                result = ocr.ocr(img)
+                ocr_text = "\n".join([line[0][1] for page in result for line in page]) if result else ""
+
+                app.logger.info(f"[vision-paddle] book scan OCR extracted: {len(ocr_text)} chars")
+
+                if ocr_text:
+                    # Use Groq to summarize the book page
+                    extracted = _groq_chat(
+                        "Summarize this book page.",
+                        [{"role": "user", "content": f"Extract main idea (1-2 sentences), key quotes (3-5), and takeaways (3 bullets):\n\n{ocr_text[:1000]}"}],
+                        max_tokens=300
+                    )
+                    analysis = extracted if extracted else "📚 Book page scanned"
+                else:
+                    analysis = "📚 Book page — couldn't extract text"
+
             except Exception as e:
-                app.logger.error(f"[vision-groq] book scan failed: {str(e)[:500]}", exc_info=True)
+                app.logger.error(f"[vision-paddle] book scan failed: {str(e)[:500]}", exc_info=True)
+                analysis = "📚 Book page — saved for library"
         else:
             prompt_text = (
                 "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
@@ -21852,31 +21857,36 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
             )
-            # Use Groq for regular image analysis
+            # Use PaddleOCR for regular image analysis (free, local)
             analysis = ""
             try:
-                from groq import Groq
-                api_key = os.environ.get("GROQ_API_KEY", "")
-                app.logger.info(f"[vision-groq] image analysis starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
-                if not api_key:
-                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
-                    raise ValueError("GROQ_API_KEY not configured")
-                groq_client = Groq(api_key=api_key)
-                msg = groq_client.chat.completions.create(
-                    model="llama-3.2-90b-vision-preview",
-                    max_tokens=500,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                            {"type": "text", "text": prompt_text}
-                        ]
-                    }]
-                )
-                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
-                app.logger.info(f"[vision-groq] image analysis success, length={len(analysis)}")
+                from paddleocr import PaddleOCR
+                import io
+                from PIL import Image as PILImage
+
+                ocr = PaddleOCR(use_gpu=False, lang='en')
+                img_data = base64.b64decode(b64)
+                img = PILImage.open(io.BytesIO(img_data))
+
+                result = ocr.ocr(img)
+                ocr_text = "\n".join([line[0][1] for page in result for line in page]) if result else ""
+
+                app.logger.info(f"[vision-paddle] image OCR extracted: {len(ocr_text)} chars")
+
+                if ocr_text:
+                    # Use Groq to classify and extract structured data
+                    extracted = _groq_chat(
+                        "Classify this image and extract structured data.",
+                        [{"role": "user", "content": f"Classify this image. If receipt: extract STORE, DATE, TOTAL, items. If other: classify type.\n\n{ocr_text[:2000]}"}],
+                        max_tokens=300
+                    )
+                    analysis = extracted if extracted else "TYPE: photo"
+                else:
+                    analysis = "TYPE: photo"
+
             except Exception as e:
-                app.logger.error(f"[vision-groq] image analysis failed: {str(e)[:500]}", exc_info=True)
+                app.logger.error(f"[vision-paddle] image analysis failed: {str(e)[:500]}", exc_info=True)
+                analysis = "TYPE: photo"
 
         # ── Book scan: save essence to wa_saves ────────────────────────────────────
         if is_book_mode and analysis and sid:
