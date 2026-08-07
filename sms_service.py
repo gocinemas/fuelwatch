@@ -16700,6 +16700,14 @@ def api_home_brief_narrative():
         "- REPEAT: If it's not in the facts above, DO NOT MENTION IT."
     )
     prompt = " ".join(prompt_parts)
+
+    # NIGHT-TIME: NO GROQ — return facts directly to prevent hallucinations
+    if now.hour >= 21 or now.hour < 5:
+        app.logger.info(f"[brief/narrative] NIGHT MODE: skipping Groq, returning facts only")
+        # Just return facts joined together, no creative writing
+        safe_text = "; ".join(str(f) for f in facts[:4]) if facts else "Rest well."
+        return jsonify({"text": safe_text})
+
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -16711,12 +16719,13 @@ def api_home_brief_narrative():
         )
         text = r.json()["choices"][0]["message"]["content"].strip()
 
-        # EMERGENCY VALIDATION: Block any remaining inferences
+        # EMERGENCY VALIDATION: Block any remaining inferences (daytime only, night skipped above)
         emergency_words = [
             "you've", "you got", "you might", "you could", "you should",
             "you want", "you need", "you think", "you could",
             "might want", "might want to", "could use", "should",
-            "unwind", "relax", "time to", "afternoon to", "rest of"
+            "unwind", "relax", "time to", "afternoon to", "rest of",
+            "find", "available", "currently", "at an", "can find"  # Added purchase language
         ]
         if any(word in text.lower() for word in emergency_words):
             app.logger.error(f"[brief/narrative] FALLBACK PIPELINE BLOCKED inference: {text[:60]}")
