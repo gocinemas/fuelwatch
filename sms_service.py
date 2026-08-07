@@ -21791,18 +21791,16 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             # Use PaddleOCR for book scanning (free, local)
             analysis = ""
             try:
-                from paddleocr import PaddleOCR
-                import io
-                from PIL import Image as PILImage
-
-                ocr = PaddleOCR(use_gpu=False, lang='en')
+                from easyocr import Reader
+ocr = Reader(["en"], gpu=False)
                 img_data = base64.b64decode(b64)
                 img = PILImage.open(io.BytesIO(img_data))
 
-                result = ocr.ocr(img)
-                ocr_text = "\n".join([line[0][1] for page in result for line in page]) if result else ""
+                result = ocr.readtext(img)
+ocr_text = "
+".join([line[1] for line in result]) if result else ""
 
-                app.logger.info(f"[vision-paddle] book scan OCR extracted: {len(ocr_text)} chars")
+                app.logger.info(f"[vision-easyocr] book scan OCR extracted: {len(ocr_text)} chars")
 
                 if ocr_text:
                     # Use Groq to summarize the book page
@@ -21816,7 +21814,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     analysis = "📚 Book page — couldn't extract text"
 
             except Exception as e:
-                app.logger.error(f"[vision-paddle] book scan failed: {str(e)[:500]}", exc_info=True)
+                app.logger.error(f"[vision-easyocr] book scan failed: {str(e)[:500]}", exc_info=True)
                 analysis = "📚 Book page — saved for library"
         else:
             prompt_text = (
@@ -21860,18 +21858,16 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             # Use PaddleOCR for regular image analysis (free, local)
             analysis = ""
             try:
-                from paddleocr import PaddleOCR
-                import io
-                from PIL import Image as PILImage
-
-                ocr = PaddleOCR(use_gpu=False, lang='en')
+                from easyocr import Reader
+ocr = Reader(["en"], gpu=False)
                 img_data = base64.b64decode(b64)
                 img = PILImage.open(io.BytesIO(img_data))
 
-                result = ocr.ocr(img)
-                ocr_text = "\n".join([line[0][1] for page in result for line in page]) if result else ""
+                result = ocr.readtext(img)
+ocr_text = "
+".join([line[1] for line in result]) if result else ""
 
-                app.logger.info(f"[vision-paddle] image OCR extracted: {len(ocr_text)} chars")
+                app.logger.info(f"[vision-easyocr] image OCR extracted: {len(ocr_text)} chars")
 
                 if ocr_text:
                     # Use Groq to classify and extract structured data
@@ -21885,7 +21881,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                     analysis = "TYPE: photo"
 
             except Exception as e:
-                app.logger.error(f"[vision-paddle] image analysis failed: {str(e)[:500]}", exc_info=True)
+                app.logger.error(f"[vision-easyocr] image analysis failed: {str(e)[:500]}", exc_info=True)
                 analysis = "TYPE: photo"
 
         # ── Book scan: save essence to wa_saves ────────────────────────────────────
