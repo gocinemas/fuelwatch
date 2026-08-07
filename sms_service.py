@@ -16701,11 +16701,15 @@ def api_home_brief_narrative():
     )
     prompt = " ".join(prompt_parts)
 
-    # NIGHT-TIME: NO GROQ — return facts directly to prevent hallucinations
+    # NIGHT-TIME: NO GOING OUT / BUYING — show only weather + tomorrow's info
     if now.hour >= 21 or now.hour < 5:
-        app.logger.info(f"[brief/narrative] NIGHT MODE: skipping Groq, returning facts only")
-        # Just return facts joined together, no creative writing
-        safe_text = "; ".join(str(f) for f in facts[:4]) if facts else "Rest well."
+        app.logger.info(f"[brief/narrative] NIGHT MODE: weather + kids only, no fuel/places/spend")
+        # Filter facts to ONLY weather + school/kids info
+        night_facts = [f for f in facts if any(
+            keyword in str(f).lower()
+            for keyword in ["weather", "temperature", "clear sky", "rain", "wind", "school", "off school", "back at school", "birthday"]
+        )]
+        safe_text = "; ".join(str(f) for f in night_facts[:3]) if night_facts else "Rest well."
         return jsonify({"text": safe_text})
 
     try:
