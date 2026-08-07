@@ -21902,7 +21902,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
 
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
 
-        # Book scan mode — extract essence and quotes using Claude
+        # Book scan mode — extract essence and quotes using Groq
         if is_book_mode:
             prompt_text = (
                 "You are analysing a photo of a book page for a reading app.\n"
@@ -21912,31 +21912,30 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 "3. Concepts or takeaways (3 bullet points)\n\n"
                 "Be concise, capture the soul of what this page is about."
             )
-            # Use Claude for book scanning instead of Groq
             analysis = ""
             try:
-                from anthropic import Anthropic
-                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-                app.logger.info(f"[vision-claude] book scan starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
-                if not api_key:
-                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
-                    raise ValueError("ANTHROPIC_API_KEY not configured")
-                claude_client = Anthropic(api_key=api_key)
-                msg = claude_client.messages.create(
-                    model="claude-opus-4-8",
+                from groq import Groq
+                groq_key = os.environ.get("GROQ_API_KEY", "")
+                app.logger.info(f"[vision-groq] book scan starting, API key present: {bool(groq_key)}, img_size={len(b64)} bytes")
+                if not groq_key:
+                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
+                    raise ValueError("GROQ_API_KEY not configured")
+                groq_client = Groq(api_key=groq_key)
+                msg = groq_client.chat.completions.create(
+                    model="llama-3.2-90b-vision-preview",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
                         "content": [
-                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
                             {"type": "text", "text": prompt_text}
                         ]
                     }]
                 )
-                analysis = msg.content[0].text.strip() if msg.content else ""
-                app.logger.info(f"[vision-claude] book scan success, length={len(analysis)}")
+                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
+                app.logger.info(f"[vision-groq] book scan success, length={len(analysis)}")
             except Exception as e:
-                app.logger.error(f"[vision-claude] book scan failed: {str(e)[:500]}", exc_info=True)
+                app.logger.error(f"[vision-groq] book scan failed: {str(e)[:500]}", exc_info=True)
         else:
             prompt_text = (
                 "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
@@ -21976,31 +21975,30 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
             )
-            # Use Claude for regular image analysis as well
             analysis = ""
             try:
-                from anthropic import Anthropic
-                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-                app.logger.info(f"[vision-claude] image analysis starting, API key present: {bool(api_key)}, img_size={len(b64)} bytes")
-                if not api_key:
-                    app.logger.error("[vision-claude] ANTHROPIC_API_KEY not set!")
-                    raise ValueError("ANTHROPIC_API_KEY not configured")
-                claude_client = Anthropic(api_key=api_key)
-                msg = claude_client.messages.create(
-                    model="claude-opus-4-8",
+                from groq import Groq
+                groq_key = os.environ.get("GROQ_API_KEY", "")
+                app.logger.info(f"[vision-groq] image analysis starting, API key present: {bool(groq_key)}, img_size={len(b64)} bytes")
+                if not groq_key:
+                    app.logger.error("[vision-groq] GROQ_API_KEY not set!")
+                    raise ValueError("GROQ_API_KEY not configured")
+                groq_client = Groq(api_key=groq_key)
+                msg = groq_client.chat.completions.create(
+                    model="llama-3.2-90b-vision-preview",
                     max_tokens=500,
                     messages=[{
                         "role": "user",
                         "content": [
-                            {"type": "image", "source": {"type": "base64", "media_type": m, "data": b64}},
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
                             {"type": "text", "text": prompt_text}
                         ]
                     }]
                 )
-                analysis = msg.content[0].text.strip() if msg.content else ""
-                app.logger.info(f"[vision-claude] image analysis success, length={len(analysis)}")
+                analysis = msg.choices[0].message.content.strip() if msg.choices else ""
+                app.logger.info(f"[vision-groq] image analysis success, length={len(analysis)}")
             except Exception as e:
-                app.logger.error(f"[vision-claude] image analysis failed: {str(e)[:500]}", exc_info=True)
+                app.logger.error(f"[vision-groq] image analysis failed: {str(e)[:500]}", exc_info=True)
 
         # ── Book scan: save essence to wa_saves ────────────────────────────────────
         if is_book_mode and analysis and sid:
