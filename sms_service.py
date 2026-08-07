@@ -1127,6 +1127,13 @@ def _refresh_all_ask_miru_contexts() -> dict:
 
 # ── Webhook ───────────────────────────────────────────────────────────────────
 
+@app.errorhandler(Exception)
+def handle_error(e):
+    app.logger.error(f"UNHANDLED EXCEPTION: {e}", exc_info=True)
+    resp = MessagingResponse()
+    resp.message("⚠️ Service error — please try again in a moment.")
+    return str(resp)
+
 @app.route("/sms", methods=["POST"])
 def sms_reply():
     body = request.form.get("Body", "").strip()
