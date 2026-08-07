@@ -39401,16 +39401,21 @@ def api_company_saves():
 
 @app.route("/api/company/compare", methods=["GET"])
 def api_company_compare():
-    """Compare two companies side-by-side."""
+    """Compare 2-4 companies side-by-side."""
     try:
         from company_comparison_service import comparison_service
         from supabase import create_client
 
+        # Get companies from query params
         company1 = request.args.get("company1", "").strip()
         company2 = request.args.get("company2", "").strip()
+        company3 = request.args.get("company3", "").strip()
+        company4 = request.args.get("company4", "").strip()
 
-        if not company1 or not company2:
-            return jsonify({"error": "company1 and company2 required"}), 400
+        companies = [c for c in [company1, company2, company3, company4] if c]
+
+        if len(companies) < 2:
+            return jsonify({"error": "Provide at least 2 companies"}), 400
 
         # Initialize DB for comparison service
         sb = create_client(
@@ -39419,7 +39424,7 @@ def api_company_compare():
         )
         comparison_service.set_db(sb)
 
-        comparison = comparison_service.compare(company1, company2)
+        comparison = comparison_service.compare(*companies)
 
         return jsonify(comparison)
 

@@ -20,44 +20,38 @@ class CompanyComparisonService:
         """Set Supabase client."""
         self.db = supabase_client
 
-    def compare(self, company1: str, company2: str) -> dict:
+    def compare(self, *companies) -> dict:
         """
-        Compare two companies across financials, market position, and signals.
+        Compare 2-4 companies across financials, market position, and signals.
         """
         try:
-            # Fetch both companies
-            intel1 = CompanyIntelligence(company1)
-            intel2 = CompanyIntelligence(company2)
+            if len(companies) < 2 or len(companies) > 4:
+                return {"error": "Provide 2-4 companies to compare"}
 
-            data1 = intel1.fetch_all()
-            data2 = intel2.fetch_all()
+            # Fetch all companies
+            company_data = {}
+            for company_name in companies:
+                intel = CompanyIntelligence(company_name)
+                data = intel.fetch_all()
+                financials = self._get_latest_financials(company_name)
 
-            # Fetch financial history
-            financials1 = self._get_latest_financials(company1)
-            financials2 = self._get_latest_financials(company2)
+                company_data[company_name.lower()] = {
+                    "name": company_name,
+                    "description": data.get("description"),
+                    "sector": data.get("sector"),
+                    "headquarters": data.get("headquarters"),
+                    "brands": data.get("brands", [])[:5],
+                    "stock": data.get("stock", {}),
+                    "financials": financials,
+                }
 
-            # Build comparison
-            return {
-                "company1": {
-                    "name": company1,
-                    "description": data1.get("description"),
-                    "sector": data1.get("sector"),
-                    "headquarters": data1.get("headquarters"),
-                    "brands": data1.get("brands", [])[:5],
-                    "stock": data1.get("stock", {}),
-                    "financials": financials1,
-                },
-                "company2": {
-                    "name": company2,
-                    "description": data2.get("description"),
-                    "sector": data2.get("sector"),
-                    "headquarters": data2.get("headquarters"),
-                    "brands": data2.get("brands", [])[:5],
-                    "stock": data2.get("stock", {}),
-                    "financials": financials2,
-                },
-                "comparison": self._calculate_diffs(financials1, financials2),
+            # Build response
+            result = {
+                "companies": company_data,
+                "comparison": self._calculate_multi_diffs(company_data),
             }
+
+            return result
 
         except Exception as e:
             logger.error(f"[compare] Error: {e}")
@@ -114,6 +108,37 @@ class CompanyComparisonService:
             "faster_growth": "company1" if growth1 > growth2 else "company2",
             "higher_margin": "company1" if margin1 > margin2 else "company2",
         }
+
+    def _calculate_multi_diffs(self, company_data: dict) -> dict:
+        """Calculate rankings for 2-4 companies."""
+        companies = list(company_data.items())
+        metrics = {}
+
+        # Extract metrics for ranking
+        fin_data = [comp[1].get("financials", {}) for comp in companies]
+
+        # Revenue ranking
+        revenues = [(i, comp[1].get("financials", {}).get("revenue_millions", 0)) for i, comp in enumerate(companies)]
+        revenues.sort(key=lambda x: x[1], reverse=True)
+        metrics["largest_by_revenue"] = companies[revenues[0][0]][1]["name"]
+        metrics["revenues"] = {companies[i][1]["name"]: rev for i, rev in revenues}
+
+        # Growth ranking
+        growths = [(i, comp[1].get("financials", {}).get("revenue_growth_pct", 0)) for i, comp in enumerate(companies)]
+        growths.sort(key=lambda x: x[1], reverse=True)
+        metrics["fastest_growth"] = companies[growths[0][0]][1]["name"]
+
+        # Margin ranking
+        margins = [(i, comp[1].get("financials", {}).get("operating_margin_pct", 0)) for i, comp in enumerate(companies)]
+        margins.sort(key=lambda x: x[1], reverse=True)
+        metrics["highest_margin"] = companies[margins[0][0]][1]["name"]
+
+        # Employees ranking
+        emps = [(i, comp[1].get("financials", {}).get("employees", 0)) for i, comp in enumerate(companies)]
+        emps.sort(key=lambda x: x[1], reverse=True)
+        metrics["largest_by_employees"] = companies[emps[0][0]][1]["name"]
+
+        return metrics
 
 
 # Global instance
