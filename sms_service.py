@@ -1430,7 +1430,7 @@ def brand_search():
         return render_template("intel_directory_professional.html")
 
     # Miru subdomain - show brand page
-    return render_template("intel_brand.html")
+    return render_template("intel_brand_full.html")
 
 
 @app.route("/company")
