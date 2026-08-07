@@ -1148,100 +1148,12 @@ def sms_reply():
 
         print(f"[pdf-receipt-debug] NumMedia={num_media}, MediaType={media_type}, URL={media_url[:50] if media_url else 'none'}")
 
-        # IMAGE receipt handler (auto-detect receipts from JPG/PNG) - match image/* or variants
+        # IMAGE receipt handler — temporarily disabled pending OCR setup
+        # Use /receipt command or send PDF instead for now
         if ("image" in media_type or ".jpg" in media_url.lower() or ".jpeg" in media_url.lower() or ".png" in media_url.lower()) and media_url:
-            print(f"[image-receipt] Detected image file, downloading from {media_url[:80]}")
-            try:
-                import pytesseract
-                from PIL import Image as PILImage
-                import io
-                print(f"[image-receipt] Downloading image...")
-                img_response = requests.get(media_url, timeout=30)
-                img_data = img_response.content
-                print(f"[image-receipt] Downloaded {len(img_data)} bytes")
-
-                # Extract text from image using OCR
-                print(f"[image-receipt] Extracting text from image via OCR...")
-                try:
-                    pil_img = PILImage.open(io.BytesIO(img_data))
-                    ocr_text = pytesseract.image_to_string(pil_img)
-                    print(f"[image-receipt] OCR extracted: {len(ocr_text)} chars")
-                except Exception as ocr_err:
-                    print(f"[image-receipt] OCR failed: {ocr_err}, trying fallback...")
-                    ocr_text = ""
-
-                if not ocr_text or len(ocr_text.strip()) < 10:
-                    resp.message("⚠️ Image text not readable. Try a clearer photo or send a PDF.")
-                    return str(resp)
-
-                # Use Groq to extract receipt data from OCR text
-                print(f"[image-receipt] Calling Groq to extract receipt data...")
-                extracted = _groq_chat(
-                    "You are a receipt data extractor. Extract data CLEANLY from receipt text.",
-                    [{"role": "user", "content": f"Extract receipt data CLEANLY from this text. Format exactly:\n\nSTORE: [store]\nDATE: [YYYY-MM-DD]\nTOTAL: [£amount]\nMain items include: [item1, item2, ...]\nLOCATION: [address]\n\n{ocr_text[:2000]}"}],
-                    max_tokens=250
-                )
-                print(f"[image-receipt] Groq response: {extracted[:200]}")
-
-                # Parse extracted data
-                merchant = None
-                total = 0.0
-                shop_date = datetime.now().date().isoformat()
-                items = []
-                location = ""
-                for line in extracted.split("\n"):
-                    line = line.strip()
-                    if line.startswith("STORE:"):
-                        merchant = line.split(":", 1)[1].strip()
-                    elif line.startswith("DATE:"):
-                        try:
-                            shop_date = line.split(":", 1)[1].strip()
-                        except:
-                            pass
-                    elif line.startswith("TOTAL:"):
-                        try:
-                            total_str = line.split(":", 1)[1].strip().replace("£", "").strip()
-                            total = float(total_str)
-                        except:
-                            pass
-                    elif line.startswith("Main items include:"):
-                        items_str = line.split(":", 1)[1].strip()
-                        items = [i.strip() for i in items_str.split(",") if i.strip()]
-                    elif line.startswith("LOCATION:"):
-                        location = line.split(":", 1)[1].strip()
-
-                if not merchant:
-                    resp.message("⚠️ Couldn't identify the store. Try another photo.")
-                    return str(resp)
-
-                print(f"[image-receipt] Parsed: merchant={merchant}, total={total}, items={len(items)}")
-
-                # Save to receipts table
-                try:
-                    lib._sb().table("receipts").insert({
-                        "from_number": from_number,
-                        "merchant": merchant,
-                        "total": total,
-                        "shop_date": shop_date,
-                        "items": items,
-                        "raw_summary": ocr_text[:500],
-                        "source": "image"
-                    }).execute()
-                    print(f"[image-receipt] Saved receipt: merchant={merchant}, total=£{total}")
-                except Exception as save_err:
-                    print(f"[image-receipt] Failed to save receipt: {save_err}")
-
-                msg = f"🧾 **{merchant}** | £{total:.2f}\n"
-                if items:
-                    msg += f"Items: {', '.join(items[:5])}"
-                    if len(items) > 5:
-                        msg += f" +{len(items)-5} more"
-                resp.message(msg)
-                return str(resp)
-            except Exception as e:
-                print(f"[image-receipt] Error processing image: {e}", exc_info=True)
-                resp.message("⚠️ Couldn't process the image. Saved for manual review.")
-                return str(resp)
+            print(f"[image-receipt] Image detected but OCR unavailable — guiding to PDF")
+            resp.message("📸 Image receipts: please send as PDF or use the /receipt command instead for now. Working on image OCR!")
+            return str(resp)
 
         # PDF receipt handler (auto-detect receipts) - match application/pdf or variants
         if ("pdf" in media_type or "application/pdf" in media_type) and media_url:
