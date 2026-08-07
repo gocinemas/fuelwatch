@@ -147,47 +147,61 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
+            overflow-x: auto;
             margin-bottom: 20px;
         }
 
-        .comparison-header {
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        .metrics-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 12px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            border: 1px solid #e5e7eb;
+        }
+
+        .metrics-table td {
+            padding: 14px 12px;
+            border: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+
+        .metrics-table tr:nth-child(even) {
             background: #f9fafb;
-            padding: 15px 20px;
-            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .metrics-table tr:hover {
+            background: #f0f4ff;
+        }
+
+        .metric-name {
             font-weight: 600;
             color: #1f2937;
+            min-width: 140px;
         }
 
-        .comparison-row {
-            display: grid;
-            grid-template-columns: 200px 1fr 1fr;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .comparison-row:last-child {
-            border-bottom: none;
-        }
-
-        .comparison-cell {
-            padding: 12px 20px;
-        }
-
-        .comparison-metric {
-            font-size: 13px;
-            color: #6b7280;
-            font-weight: 500;
-        }
-
-        .comparison-value {
-            font-size: 15px;
+        .metric-value {
             font-weight: 600;
             color: #1f2937;
+            text-align: right;
         }
 
-        .winner {
+        .metric-value.winner {
             background: #ecfdf5;
             color: #059669;
+            padding: 6px 8px;
+            border-radius: 4px;
+        }
+
+        .metric-value.na {
+            color: #9ca3af;
         }
 
         .loading {
@@ -395,10 +409,16 @@
         }
 
         function renderComparisonGrid(companies, cmp) {
-            let html = `
-                <div class="comparison-grid">
-                    <div class="comparison-header">Key Metrics Comparison</div>
-            `;
+            let html = `<div class="comparison-grid">
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>`;
+
+            companies.forEach(c => {
+                html += `<th>${c.name}</th>`;
+            });
+            html += `</tr></thead><tbody>`;
 
             const metrics = ['revenue_millions', 'revenue_growth_pct', 'operating_margin_pct', 'employees'];
             const labels = ['Revenue (Latest)', 'Revenue Growth', 'Operating Margin', 'Employees'];
@@ -413,22 +433,23 @@
                 const hasData = companies.some(c => c.financials && c.financials[metric] !== undefined);
                 if (!hasData) return;
 
+                html += `<tr><td class="metric-name">${labels[idx]}</td>`;
+
                 const values = companies.map(c => c.financials ? c.financials[metric] : null);
                 const maxVal = Math.max(...values.filter(v => v !== null));
 
-                html += `<div class="comparison-row">
-                    <div class="comparison-cell"><span class="comparison-metric">${labels[idx]}</span></div>`;
-
                 values.forEach(val => {
-                    const isWinner = val === maxVal && val !== null ? 'winner' : '';
                     const formatted = formatters[idx](val);
-                    html += `<div class="comparison-cell ${isWinner}"><span class="comparison-value">${formatted}</span></div>`;
+                    const isWinner = val === maxVal && val !== null;
+                    const isNA = val === null;
+                    const className = isWinner ? 'metric-value winner' : isNA ? 'metric-value na' : 'metric-value';
+                    html += `<td><span class="${className}">${formatted}</span></td>`;
                 });
 
-                html += `</div>`;
+                html += `</tr>`;
             });
 
-            html += '</div>';
+            html += `</tbody></table></div>`;
             return html;
         }
 
