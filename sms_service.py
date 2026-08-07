@@ -16146,100 +16146,131 @@ def api_home_brief():
         )
         prompt = " ".join(prompt_parts)
         brief_text = ""
-        try:
-            # NEW: Add constraint encoding to prevent hallucinations
+
+        # NIGHT-TIME: NO GOING OUT / BUYING — show only weather + tomorrow's info + saying
+        if hour >= 21 or hour < 5:
+            app.logger.info(f"[brief] NIGHT MODE: weather + kids + saying, no fuel/places/spend")
+            # Filter facts to ONLY weather + school/kids info
+            night_facts = [f for f in facts if any(
+                keyword in str(f).lower()
+                for keyword in ["weather", "temperature", "clear sky", "rain", "wind", "school", "off school", "back at school", "birthday"]
+            )]
+            # Bedtime sayings
+            night_sayings = [
+                "Rest well — tomorrow's a fresh start.",
+                "Sleep well. You've got this.",
+                "Take care of yourself tonight.",
+                "Sweet dreams. You're doing great.",
+                "Recharge tonight for tomorrow.",
+                "Be kind to yourself. Rest well.",
+                "Tomorrow's a new day. Sleep well.",
+                "You've earned your rest.",
+                "Let tomorrow worry about tomorrow.",
+                "Peace. Rest. Repeat.",
+            ]
+            import random as _night_random
+            saying = _night_random.choice(night_sayings)
+            fact_text = "; ".join(str(f) for f in night_facts[:2]) if night_facts else ""
+            if fact_text:
+                brief_text = f"{fact_text}. {saying}"
+            else:
+                brief_text = saying
+            app.logger.info(f"[brief] Night brief: {brief_text[:80]}")
+        else:
             try:
-                from miru.brief.fact_schema import FactWithSource
-                from miru.brief.constraint_encoder import ConstraintEncoder
+                # NEW: Add constraint encoding to prevent hallucinations
+                try:
+                    from miru.brief.fact_schema import FactWithSource
+                    from miru.brief.constraint_encoder import ConstraintEncoder
 
-                # Convert facts to FactWithSource (with source data from ctx)
-                facts_with_source = []
+                    # Convert facts to FactWithSource (with source data from ctx)
+                    facts_with_source = []
 
-                # Map facts to sources
-                if ctx.get("fuel"):
-                    fuel = ctx["fuel"]
-                    merchant_clean = _clean_merchant_name(fuel.get('merchant', 'N/A'))
-                    facts_with_source.append(FactWithSource(
-                        text=f"Fuel: {merchant_clean} {fuel.get('price', 'N/A')}p",
-                        source_type="fuel",
-                        source_data=fuel,
-                        is_inferred=False,
-                        confidence=1.0
-                    ))
-
-                if ctx.get("trains", {}).get("departures"):
-                    trains = ctx["trains"]
-                    facts_with_source.append(FactWithSource(
-                        text=f"Trains: {trains.get('destination', 'N/A')}",
-                        source_type="trains",
-                        source_data=trains,
-                        is_inferred=False,
-                        confidence=1.0
-                    ))
-
-                if ctx.get("school", {}).get("events"):
-                    school = ctx["school"]
-                    for ev in school.get("events", [])[:2]:
+                    # Map facts to sources
+                    if ctx.get("fuel"):
+                        fuel = ctx["fuel"]
+                        merchant_clean = _clean_merchant_name(fuel.get('merchant', 'N/A'))
                         facts_with_source.append(FactWithSource(
-                            text=f"School: {ev.get('child_name', '')} — {ev.get('event_title', '')}",
-                            source_type="school",
-                            source_data=ev,
+                            text=f"Fuel: {merchant_clean} {fuel.get('price', 'N/A')}p",
+                            source_type="fuel",
+                            source_data=fuel,
                             is_inferred=False,
                             confidence=1.0
                         ))
 
-                if ctx.get("weather"):
-                    weather = ctx["weather"]
-                    facts_with_source.append(FactWithSource(
-                        text=f"Weather: {weather.get('desc', 'N/A')} {weather.get('temp', '')}°C",
-                        source_type="weather",
-                        source_data=weather,
-                        is_inferred=False,
-                        confidence=1.0
-                    ))
+                    if ctx.get("trains", {}).get("departures"):
+                        trains = ctx["trains"]
+                        facts_with_source.append(FactWithSource(
+                            text=f"Trains: {trains.get('destination', 'N/A')}",
+                            source_type="trains",
+                            source_data=trains,
+                            is_inferred=False,
+                            confidence=1.0
+                        ))
 
-                # Add constraint rules to prompt
-                if facts_with_source:
-                    constraint_rules = ConstraintEncoder.encode(facts_with_source)
-                    # Inject constraints into prompt before facts
-                    prompt = constraint_rules + " " + prompt
-                    app.logger.debug(f"[brief] Constraints: {constraint_rules[:100]}")
+                    if ctx.get("school", {}).get("events"):
+                        school = ctx["school"]
+                        for ev in school.get("events", [])[:2]:
+                            facts_with_source.append(FactWithSource(
+                                text=f"School: {ev.get('child_name', '')} — {ev.get('event_title', '')}",
+                                source_type="school",
+                                source_data=ev,
+                                is_inferred=False,
+                                confidence=1.0
+                            ))
 
-            except Exception as constraint_err:
-                app.logger.debug(f"[brief] Constraint encoding (non-critical): {constraint_err}")
-                facts_with_source = []
+                    if ctx.get("weather"):
+                        weather = ctx["weather"]
+                        facts_with_source.append(FactWithSource(
+                            text=f"Weather: {weather.get('desc', 'N/A')} {weather.get('temp', '')}°C",
+                            source_type="weather",
+                            source_data=weather,
+                            is_inferred=False,
+                            confidence=1.0
+                        ))
 
-            # Call Groq
-            r = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-                         "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
-                      "temperature": 0.3,
-                      "messages": [{"role": "user", "content": prompt}]},
-                timeout=10,
-            )
-            brief_text = r.json()["choices"][0]["message"]["content"].strip()
+                    # Add constraint rules to prompt
+                    if facts_with_source:
+                        constraint_rules = ConstraintEncoder.encode(facts_with_source)
+                        # Inject constraints into prompt before facts
+                        prompt = constraint_rules + " " + prompt
+                        app.logger.debug(f"[brief] Constraints: {constraint_rules[:100]}")
 
-            # Output validation disabled — broken dependency (DateFormatter import error)
-            # Brief text is good as-is from Groq
+                except Exception as constraint_err:
+                    app.logger.debug(f"[brief] Constraint encoding (non-critical): {constraint_err}")
+                    facts_with_source = []
 
-            # FALLBACK: Always apply old validation as final safety net
-            brief_text = _validate_brief_text(brief_text) if brief_text else ""
+                # Call Groq
+                r = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                             "Content-Type": "application/json"},
+                    json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
+                          "temperature": 0.3,
+                          "messages": [{"role": "user", "content": prompt}]},
+                    timeout=10,
+                )
+                brief_text = r.json()["choices"][0]["message"]["content"].strip()
 
-            # If validation removed everything, show raw facts as fallback
-            if not brief_text:
-                if facts:
-                    brief_text = ". ".join(facts[:3])
-                    if brief_text and not brief_text.endswith("."):
-                        brief_text += "."
-                    app.logger.info(f"[brief] Fallback to facts: {len(facts)} available")
-                else:
-                    # No facts - user is out and about, keep it simple
-                    brief_text = "Enjoy your time out!"
-        except Exception as be:
-            app.logger.warning(f"[brief] groq: {be}")
-            brief_text = " ".join(facts[:2]) if facts else ""
+                # Output validation disabled — broken dependency (DateFormatter import error)
+                # Brief text is good as-is from Groq
+
+                # FALLBACK: Always apply old validation as final safety net
+                brief_text = _validate_brief_text(brief_text) if brief_text else ""
+
+                # If validation removed everything, show raw facts as fallback
+                if not brief_text:
+                    if facts:
+                        brief_text = ". ".join(facts[:3])
+                        if brief_text and not brief_text.endswith("."):
+                            brief_text += "."
+                        app.logger.info(f"[brief] Fallback to facts: {len(facts)} available")
+                    else:
+                        # No facts - user is out and about, keep it simple
+                        brief_text = "Enjoy your time out!"
+            except Exception as be:
+                app.logger.warning(f"[brief] groq: {be}")
+                brief_text = " ".join(facts[:2]) if facts else ""
 
     # Evening saves for client-side chips — unvisited places + events, max 4
     # Always included so night/goodnight chips can surface them even when Groq gets no saves
