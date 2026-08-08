@@ -164,6 +164,8 @@ class MiruRAG:
         """Query wa_saves table (🧾 receipts)"""
         try:
             # Try to find data with either phone format (with/without +)
+            print(f"[RAG DEBUG] Querying wa_saves for phone: {self.phone}, {self.phone_with_plus}, {self.phone_raw}")
+
             rows = self.sb.table("wa_saves").select("title,summary,created_at").in_(
                 "from_number", [self.phone, self.phone_with_plus, self.phone_raw]
             ).ilike("title", "%🧾%")
@@ -172,6 +174,7 @@ class MiruRAG:
 
             # Filter by merchant if specified
             if merchant:
+                print(f"[RAG DEBUG] Filtering by merchant: {merchant}")
                 query = query.ilike("title", f"%{merchant}%")
 
             # Filter by time
@@ -184,7 +187,13 @@ class MiruRAG:
 
             rows = query.order("created_at", desc=True).limit(5).execute().data or []
 
+            print(f"[RAG DEBUG] Found {len(rows)} rows in wa_saves")
+            if rows:
+                for i, r in enumerate(rows[:3]):
+                    print(f"  Row {i}: title={r.get('title')}, created_at={r.get('created_at')}")
+
             if not rows:
+                print(f"[RAG DEBUG] No rows found, returning not found")
                 return {"found": False, "data": None}
 
             # Process results
