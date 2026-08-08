@@ -119,6 +119,29 @@ class AskMiruUnified:
                     .eq("from_number", self.phone).ilike("title", "%🧾%") \
                     .order("created_at", desc=True).limit(50).execute().data or []
 
+                # Check if user mentioned a merchant name (keywords like "at", "in", "from")
+                q_lower = question.lower()
+                merchant_search = None
+                for m in ["tesco", "sainsbury", "waitrose", "asda", "costa", "pret", "indian cart",
+                          "kokoro", "chaiiwala", "greggs", "mcdonald", "subway", "pizza"]:
+                    if m in q_lower:
+                        merchant_search = m
+                        break
+
+                # Search strategy 1: If merchant mentioned, find MOST RECENT receipt from that merchant
+                if merchant_search:
+                    for r in wa_receipts:
+                        merchant = r.get("title", "").replace("🧾", "").strip().lower()
+                        if merchant_search.lower() in merchant:
+                            date_str = r.get("created_at", "")[:10]
+                            # Extract items from summary
+                            summary = r.get("summary", "")
+                            items = summary.split('\n')[0] if summary else ""  # First line usually has items
+                            amt_match = _re.search(r'£([\d,]+\.?\d*)', summary)
+                            amt = f" (£{amt_match.group(1)})" if amt_match else ""
+                            return f"You bought {items} from {r.get('title', '').replace('🧾', '').strip()} on {date_str}{amt}"
+
+                # Search strategy 2: Look for item in summary (generic search)
                 for r in wa_receipts:
                     summary = r.get("summary", "").lower()
                     if search_item.lower() in summary:
