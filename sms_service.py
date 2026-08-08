@@ -22459,6 +22459,26 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         app.logger.error(f"[receipt] Claude fallback also failed: {_claude_err}")
                         _raw_rcpt = ""
 
+                # FALLBACK: If Claude extraction empty/failed, extract basics from analysis text
+                if not _raw_rcpt and analysis:
+                    app.logger.warning(f"[receipt] Claude extraction empty, using analysis fallback")
+                    # Try to extract merchant from analysis
+                    for line in analysis.split("\n"):
+                        line_lower = line.lower()
+                        if any(m in line_lower for m in ["wagamama", "nando", "restaurant", "cafe", "tesco", "waitrose"]):
+                            for word in line.split():
+                                if word.lower() in ["wagamama", "nandos", "tesco", "waitrose", "sainsbury's", "asda"]:
+                                    _raw_rcpt = f"MERCHANT: {word}\n"
+                                    break
+                            if _raw_rcpt:
+                                break
+                    # Try to extract total (look for £ symbol)
+                    import re as _re_fallback
+                    total_match = _re_fallback.search(r'total[:\s]+£?([\d,]+\.?\d{0,2})', analysis, _re_fallback.IGNORECASE)
+                    if total_match:
+                        _raw_rcpt += f"TOTAL: {total_match.group(1)}\n"
+                    app.logger.info(f"[receipt] Fallback extraction: {_raw_rcpt[:100]}")
+
                 if _raw_rcpt:
                     _rcpt_items = []
                     for _rl in _raw_rcpt.split("\n"):
