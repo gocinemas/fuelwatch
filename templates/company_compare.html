@@ -600,10 +600,10 @@
             document.getElementById('content').innerHTML = html;
             document.getElementById('exportSection').style.display = 'flex';
 
-            // Render charts after DOM update
+            // Render charts with animations
             setTimeout(() => {
-                drawGrowthChart(companyList);
-                drawMarginChart(companyList);
+                animateChart('growth', () => drawGrowthChart(companyList));
+                animateChart('margin', () => drawMarginChart(companyList));
                 renderDealsTimeline(companyList);
             }, 100);
         }
@@ -812,7 +812,9 @@
                 html += `
                     <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px;">
                         <h3 style="margin-bottom: 15px; color: #1f2937; font-size: 18px;">📈 Growth Trajectory</h3>
-                        <canvas id="growthChart" width="600" height="300" style="max-width: 100%; border-radius: 8px;"></canvas>
+                        <div style="overflow-x: auto; border-radius: 8px;">
+                            <canvas id="growthChart" width="1200" height="400" style="display: block; border-radius: 8px;"></canvas>
+                        </div>
                     </div>
                 `;
             }
@@ -822,7 +824,9 @@
                 html += `
                     <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px;">
                         <h3 style="margin-bottom: 15px; color: #1f2937; font-size: 18px;">📊 Operating Margin Trend</h3>
-                        <canvas id="marginChart" width="600" height="300" style="max-width: 100%; border-radius: 8px;"></canvas>
+                        <div style="overflow-x: auto; border-radius: 8px;">
+                            <canvas id="marginChart" width="1200" height="400" style="display: block; border-radius: 8px;"></canvas>
+                        </div>
                     </div>
                 `;
             }
@@ -930,32 +934,64 @@
                     }
                 });
 
-                // Draw smooth line with gradient
+                // Animation progress
+                const visiblePts = Math.ceil(points.length * chartState.growth.animationProgress);
+                const disPts = points.slice(0, visiblePts);
+
+                // Gradient fill
+                const grad = ctx.createLinearGradient(0, padding, 0, padding + height);
+                grad.addColorStop(0, colors[idx] + '35');
+                grad.addColorStop(1, colors[idx] + '00');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                if (disPts.length > 0) {
+                    ctx.moveTo(disPts[0].x, padding + height);
+                    ctx.lineTo(disPts[0].x, disPts[0].y);
+                    for (let i = 1; i < disPts.length; i++) {
+                        const xc = (disPts[i - 1].x + disPts[i].x) / 2;
+                        const yc = (disPts[i - 1].y + disPts[i].y) / 2;
+                        ctx.quadraticCurveTo(disPts[i - 1].x, disPts[i - 1].y, xc, yc);
+                    }
+                    ctx.quadraticCurveTo(disPts[disPts.length - 1].x, disPts[disPts.length - 1].y, disPts[disPts.length - 1].x, disPts[disPts.length - 1].y);
+                    ctx.lineTo(disPts[disPts.length - 1].x, padding + height);
+                }
+                ctx.fill();
+
+                // Line with shadow
+                ctx.shadowColor = colors[idx] + '40';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 3;
                 ctx.strokeStyle = colors[idx];
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.beginPath();
 
-                if (points.length > 0) {
-                    ctx.moveTo(points[0].x, points[0].y);
-                    for (let i = 1; i < points.length; i++) {
-                        const xc = (points[i - 1].x + points[i].x) / 2;
-                        const yc = (points[i - 1].y + points[i].y) / 2;
-                        ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
+                if (disPts.length > 0) {
+                    ctx.moveTo(disPts[0].x, disPts[0].y);
+                    for (let i = 1; i < disPts.length; i++) {
+                        const xc = (disPts[i - 1].x + disPts[i].x) / 2;
+                        const yc = (disPts[i - 1].y + disPts[i].y) / 2;
+                        ctx.quadraticCurveTo(disPts[i - 1].x, disPts[i - 1].y, xc, yc);
                     }
-                    ctx.quadraticCurveTo(points[points.length - 1].x, points[points.length - 1].y, points[points.length - 1].x, points[points.length - 1].y);
+                    ctx.quadraticCurveTo(disPts[disPts.length - 1].x, disPts[disPts.length - 1].y, disPts[disPts.length - 1].x, disPts[disPts.length - 1].y);
                 }
                 ctx.stroke();
+                ctx.shadowColor = 'transparent';
 
-                // Draw points
-                points.forEach(p => {
+                // Points with glow
+                disPts.forEach(p => {
+                    ctx.shadowColor = colors[idx] + '50';
+                    ctx.shadowBlur = 8;
                     ctx.fillStyle = 'white';
-                    ctx.strokeStyle = colors[idx];
-                    ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
                     ctx.fill();
+
+                    ctx.shadowColor = 'transparent';
+                    ctx.strokeStyle = colors[idx];
+                    ctx.lineWidth = 3;
                     ctx.stroke();
                 });
             });
