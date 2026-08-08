@@ -98,11 +98,10 @@ class AskMiruUnified:
             return f"Couldn't check patterns: {e}"
     
     def query_receipts(self, question: str) -> str:
-        """Query recent receipts and purchases"""
+        """Query recent receipts and purchases (from wa_saves 🧾 receipts first, then receipts table)"""
         try:
             import json as _json
-            rows = self.sb.table("receipts").select("merchant,items,shop_date,total") \
-                .eq("phone", self.phone).order("shop_date", desc=True).limit(50).execute().data or []
+            import re as _re
 
             # Search for specific item if mentioned (any word except stop words)
             stop_words = {"when", "did", "i", "have", "had", "a", "the", "at", "in", "on", "is", "was", "were", "be", "been", "with", "from", "to", "and", "or", "not", "no", "yes", "do", "you", "me", "my", "this", "that", "what", "where", "how", "why", "receipt", "shop", "visit", "bought"}
@@ -115,7 +114,25 @@ class AskMiruUnified:
                     break
 
             if search_item:
-                # Find MOST RECENT receipt with this item (rows already sorted DESC by date)
+                # FIRST: Search wa_saves 🧾 receipts (newest first)
+                wa_receipts = self.sb.table("wa_saves").select("title,summary,created_at") \
+                    .eq("from_number", self.phone).ilike("title", "%🧾%") \
+                    .order("created_at", desc=True).limit(50).execute().data or []
+
+                for r in wa_receipts:
+                    summary = r.get("summary", "").lower()
+                    if search_item.lower() in summary:
+                        merchant = r.get("title", "").replace("🧾", "").strip()
+                        date_str = r.get("created_at", "")[:10]
+                        # Extract amount if present
+                        amt_match = _re.search(r'£([\d,]+\.?\d*)', r.get("summary", ""))
+                        amt = f" (£{amt_match.group(1)})" if amt_match else ""
+                        return f"You had {search_item} at {merchant} on {date_str}{amt}"
+
+                # FALLBACK: Search receipts table if wa_saves had nothing
+                rows = self.sb.table("receipts").select("merchant,items,shop_date,total") \
+                    .eq("phone", self.phone).order("shop_date", desc=True).limit(50).execute().data or []
+
                 for r in rows:
                     items_json = r.get("items", "[]")
                     try:
@@ -137,7 +154,21 @@ class AskMiruUnified:
 
                 return f"I didn't find {search_item} in your recent receipts."
             else:
-                # Just show last receipt
+                # Just show last receipt from wa_saves
+                wa_receipts = self.sb.table("wa_saves").select("title,summary,created_at") \
+                    .eq("from_number", self.phone).ilike("title", "%🧾%") \
+                    .order("created_at", desc=True).limit(1).execute().data or []
+
+                if wa_receipts:
+                    r = wa_receipts[0]
+                    merchant = r.get("title", "").replace("🧾", "").strip()
+                    date_str = r.get("created_at", "")[:10]
+                    return f"Last receipt: {merchant} on {date_str}"
+
+                # Fallback to receipts table
+                rows = self.sb.table("receipts").select("merchant,shop_date") \
+                    .eq("phone", self.phone).order("shop_date", desc=True).limit(1).execute().data or []
+
                 if rows:
                     r = rows[0]
                     merchant = r.get("merchant", "")
