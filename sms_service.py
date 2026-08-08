@@ -17252,7 +17252,25 @@ def api_home_ask():
                                 pass
 
                         result_lines = []
-                        for (merchant, date_str), items in sorted(grouped.items(), reverse=True):
+                        # Sort by DATE descending (newest first), not alphabetically
+                        # Parse DD/MM/YY back to sortable format
+                        def _parse_date_key(item):
+                            (merchant, date_str), items_list = item
+                            try:
+                                # Parse "21/06/26" → (2026, 6, 21) for proper sorting
+                                parts = date_str.split('/')
+                                if len(parts) == 3:
+                                    day, month, year = int(parts[0]), int(parts[1]), int(parts[2])
+                                    # Handle 2-digit year: 26 → 2026, 05 → 2005
+                                    if year < 100:
+                                        year += 2000
+                                    return (year, month, day)
+                            except:
+                                pass
+                            return (0, 0, 0)  # Fallback for unparseable dates
+
+                        sorted_items = sorted(grouped.items(), key=_parse_date_key, reverse=True)
+                        for (merchant, date_str), items in sorted_items:
                             unique_items = list(dict.fromkeys(items))[:12]
                             if unique_items:
                                 result_lines.append(f"You bought {', '.join(unique_items)} from {merchant} on {date_str}.")
