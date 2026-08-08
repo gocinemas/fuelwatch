@@ -17098,23 +17098,32 @@ def api_home_ask():
                 if not any(w in item_q for w in ["at ", "from ", "in ", " at", " from", " in"]):
                     try:
                         plain = from_number.replace("whatsapp:", "").strip()
-                        # Search all receipts (wa_saves) for this item in summaries
-                        all_receipts = lib._sb().table("wa_saves").select("title,summary,created_at") \
-                            .eq("from_number", plain).ilike("title", "%🧾%").order("created_at", desc=True).limit(50).execute().data or []
+                        # Search receipts table for items (structured data)
+                        import json as _item_json
+                        all_receipts = lib._sb().table("receipts").select("merchant,items,shop_date,created_at") \
+                            .eq("phone", plain).order("shop_date", desc=True).limit(100).execute().data or []
 
                         matching_receipts = []
                         for r in all_receipts:
-                            summary = (r.get("summary", "") or "").lower()
-                            # Search for item keyword in summary
-                            if item_q.lower() in summary:
-                                merchant = (r.get("title", "").replace("🧾", "").strip())
-                                date_str = r.get("created_at", "")[:10]
-                                matching_receipts.append((merchant, date_str, summary[:100]))
+                            items_json = r.get("items", "[]")
+                            try:
+                                items_list = _item_json.loads(items_json) if isinstance(items_json, str) else (items_json or [])
+                            except:
+                                items_list = []
+
+                            # Search for item in items array
+                            for item in items_list:
+                                item_name = item.get("name", "") if isinstance(item, dict) else str(item)
+                                if item_q.lower() in item_name.lower():
+                                    merchant = r.get("merchant", "")
+                                    date_str = r.get("shop_date", "") or r.get("created_at", "")[:10]
+                                    matching_receipts.append((merchant, date_str, item_name))
+                                    break  # Found in this receipt, move to next
 
                         if matching_receipts:
                             result_lines = []
-                            for merchant, date_str, summary_snippet in matching_receipts[:3]:
-                                result_lines.append(f"✓ Yes, you bought {item_q} at {merchant} on {date_str}")
+                            for merchant, date_str, item_name in matching_receipts[:3]:
+                                result_lines.append(f"✓ Yes, you bought {item_name} at {merchant} on {date_str}")
                             answer = "\n".join(result_lines)
                             app.logger.info(f"[ask] Item found in receipts: {item_q}")
                             return jsonify({"answer": answer})
