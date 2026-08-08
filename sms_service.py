@@ -39575,6 +39575,125 @@ def api_generate_pdf():
         logging.error(f"[pdf-generate] {e}")
         return jsonify({"error": str(e)[:100]}), 500
 
+# ── Company Watch List / Change Tracking ─────────────────────────
+@app.route("/api/company/watchlist/add", methods=["POST"])
+def api_watchlist_add():
+    """Add company to watch list."""
+    try:
+        data = request.json or {}
+        email = data.get("email", "").strip().lower()
+        company_name = data.get("company_name", "").strip()
+
+        if not email or not company_name:
+            return jsonify({"error": "email and company_name required"}), 400
+
+        from company_intelligence_service import CompanyIntelligence
+        intel = CompanyIntelligence(company_name)
+        company_data = intel.fetch_all()
+
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                          os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+
+        # Get financials
+        from company_comparison_service import comparison_service
+        comparison_service.set_db(sb)
+        financials = comparison_service._get_latest_financials(company_name)
+
+        # Upsert to watchlist
+        result = sb.table("company_watchlist").upsert({
+            "email": email,
+            "company_name": company_name.lower(),
+            "baseline_revenue_millions": financials.get("revenue_millions"),
+            "baseline_margin_pct": financials.get("operating_margin_pct"),
+            "baseline_stock_price": company_data.get("stock", {}).get("price"),
+            "baseline_pe_ratio": company_data.get("stock", {}).get("pe_ratio"),
+            "current_revenue_millions": financials.get("revenue_millions"),
+            "current_margin_pct": financials.get("operating_margin_pct"),
+            "current_stock_price": company_data.get("stock", {}).get("price"),
+            "current_pe_ratio": company_data.get("stock", {}).get("pe_ratio"),
+            "notify_enabled": True,
+        }).execute()
+
+        return jsonify({
+            "status": "added",
+            "company": company_name,
+            "message": f"Now tracking {company_name}. You'll get notified of changes."
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"[watchlist-add] {e}")
+        return jsonify({"error": str(e)[:100]}), 500
+
+
+@app.route("/api/company/watchlist", methods=["GET"])
+def api_watchlist_get():
+    """Get user's watch list."""
+    try:
+        email = request.args.get("email", "").strip().lower()
+        if not email:
+            return jsonify({"error": "email param required"}), 400
+
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                          os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+
+        result = sb.table("company_watchlist").select("*").eq("email", email).order("added_at", desc=True).execute()
+
+        watchlist = result.data or []
+
+        # Mark changes
+        for item in watchlist:
+            changes = []
+
+            if item.get("baseline_revenue_millions") and item.get("current_revenue_millions"):
+                rev_change = ((item["current_revenue_millions"] - item["baseline_revenue_millions"]) / item["baseline_revenue_millions"]) * 100
+                if abs(rev_change) > 1:  # >1% change
+                    direction = "↑" if rev_change > 0 else "↓"
+                    changes.append(f"Revenue {direction} {abs(rev_change):.1f}%")
+
+            if item.get("baseline_margin_pct") and item.get("current_margin_pct"):
+                margin_change = item["current_margin_pct"] - item["baseline_margin_pct"]
+                if abs(margin_change) > 0.5:  # >0.5% change
+                    direction = "↑" if margin_change > 0 else "↓"
+                    changes.append(f"Margin {direction} {abs(margin_change):.1f}pp")
+
+            if item.get("baseline_stock_price") and item.get("current_stock_price"):
+                stock_change = ((item["current_stock_price"] - item["baseline_stock_price"]) / item["baseline_stock_price"]) * 100
+                if abs(stock_change) > 2:  # >2% change
+                    direction = "↑" if stock_change > 0 else "↓"
+                    changes.append(f"Stock {direction} {abs(stock_change):.1f}%")
+
+            item["changes"] = changes
+            item["has_changes"] = len(changes) > 0
+
+        return jsonify({
+            "watchlist": watchlist,
+            "count": len(watchlist)
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"[watchlist-get] {e}")
+        return jsonify({"error": str(e)[:100]}), 500
+
+
+@app.route("/api/company/watchlist/<company>", methods=["DELETE"])
+def api_watchlist_remove(company):
+    """Remove company from watch list."""
+    try:
+        email = request.args.get("email", "").strip().lower()
+        if not email:
+            return jsonify({"error": "email param required"}), 400
+
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                          os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+
+        sb.table("company_watchlist").delete().eq("email", email).eq("company_name", company.lower()).execute()
+
+        return jsonify({"status": "removed", "company": company})
+    except Exception as e:
+        import logging
+        logging.error(f"[watchlist-remove] {e}")
+        return jsonify({"error": str(e)[:100]}), 500
+
 # ── Company Knowledge Base / Documents ─────────────────────────
 @app.route("/api/company/documents", methods=["GET"])
 def api_company_documents_get():

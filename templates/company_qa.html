@@ -561,6 +561,37 @@
         </div>
     </div>
 
+    <!-- Track Company Modal -->
+    <div id="trackModalOuter" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1003; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">👀 Track <span id="trackCompanyName">This Company</span>?</div>
+            <div style="font-size: 13px; color: #6b7280; margin-bottom: 20px;">Get notified when key metrics change (revenue, stock price, margins).</div>
+
+            <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; line-height: 1.6; color: #4b5563;">
+                <div style="font-weight: 600; margin-bottom: 8px;">📊 We'll track:</div>
+                • Revenue changes<br>
+                • Operating margin shifts<br>
+                • Stock price moves<br>
+                • P/E ratio changes<br>
+                <br>
+                <div style="font-weight: 600; margin-bottom: 8px;">📧 You'll get:</div>
+                • Email when metrics change<br>
+                • New changes badge in watch list<br>
+                • Period comparisons (baseline vs current)
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Your Email</label>
+                <input type="email" id="trackEmailInput" placeholder="your@email.com" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;" />
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="confirmTrackCompany()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">✅ Track This Company</button>
+                <button onclick="closeTrackModal()" style="flex: 1; padding: 12px; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Not Now</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Document Modal -->
     <div id="documentModalOuter" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1002; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto;">
@@ -679,6 +710,11 @@
 
                 // Load documents for this company
                 loadDocuments();
+
+                // Show track company prompt (delayed so user sees data first)
+                setTimeout(() => {
+                    openTrackModal();
+                }, 2000);
 
                 // News Feed
                 const news = data.news || [];
@@ -1054,6 +1090,63 @@
             if (companies[3]) url += `&c4=${encodeURIComponent(companies[3])}`;
 
             window.location.href = url;
+        }
+
+        // ── Company Tracking / Watch List Functions ──
+        function openTrackModal() {
+            if (!currentCompany) return;
+            document.getElementById('trackCompanyName').textContent = currentCompany;
+            document.getElementById('trackEmailInput').value = '';
+            document.getElementById('trackModalOuter').style.display = 'flex';
+            document.getElementById('trackEmailInput').focus();
+        }
+
+        function closeTrackModal() {
+            document.getElementById('trackModalOuter').style.display = 'none';
+        }
+
+        async function confirmTrackCompany() {
+            const email = document.getElementById('trackEmailInput').value.trim();
+
+            if (!email || !email.includes('@')) {
+                alert('Please enter a valid email');
+                return;
+            }
+
+            if (!currentCompany) {
+                alert('No company selected');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/company/watchlist/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        company_name: currentCompany
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                // Show success message
+                alert('✅ ' + data.message);
+                closeTrackModal();
+
+                // Add badge to floating compare button
+                const btn = document.getElementById('floatingCompareBtn');
+                if (btn && !btn.innerHTML.includes('👀')) {
+                    btn.innerHTML = '⚖️👀';
+                }
+            } catch (error) {
+                console.error('Failed to track company:', error);
+                alert('Failed to track company. Try again.');
+            }
         }
 
         // ── Knowledge Base / Document Functions ──
