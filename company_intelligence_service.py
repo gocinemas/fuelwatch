@@ -220,7 +220,7 @@ class CompanyIntelligence:
             self.basics["description"] = f"Company: {self.company_name}"
 
     def _fetch_stock_data(self):
-        """Fetch stock data from yfinance."""
+        """Fetch stock data from yfinance including valuation metrics."""
         try:
             import yfinance as yf
 
@@ -245,6 +245,7 @@ class CompanyIntelligence:
                 "moderna": "MRNA",
                 "johnson & johnson": "JNJ",
                 "johnson and johnson": "JNJ",
+                "s.c. johnson": "SC",
             }
 
             ticker = ticker_map.get(self.company_name.lower())
@@ -252,11 +253,22 @@ class CompanyIntelligence:
                 stock = yf.Ticker(ticker)
                 info = stock.info
 
+                market_cap = info.get("marketCap")
+                pe_ratio = info.get("trailingPE")
+                dividend_yield = info.get("dividendYield")
+                week_52_high = info.get("fiftyTwoWeekHigh")
+                week_52_low = info.get("fiftyTwoWeekLow")
+
                 self.basics["stock"] = {
                     "ticker": ticker,
                     "price": info.get("currentPrice", info.get("regularMarketPrice")),
                     "change": info.get("regularMarketChangePercent", 0),
-                    "market_cap": info.get("marketCap"),
+                    "market_cap": market_cap,
+                    "market_cap_billions": round(market_cap / 1e9, 1) if market_cap else None,
+                    "pe_ratio": round(pe_ratio, 1) if pe_ratio else None,
+                    "dividend_yield": round(dividend_yield * 100, 2) if dividend_yield else None,
+                    "week_52_high": round(week_52_high, 2) if week_52_high else None,
+                    "week_52_low": round(week_52_low, 2) if week_52_low else None,
                     "employees": info.get("fullTimeEmployees"),
                 }
             else:

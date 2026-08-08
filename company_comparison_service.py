@@ -34,6 +34,8 @@ class CompanyComparisonService:
                 intel = CompanyIntelligence(company_name)
                 data = intel.fetch_all()
                 financials = self._get_latest_financials(company_name)
+                trends = self._get_historical_trends(company_name)
+                deals = self._get_company_deals(company_name)
 
                 company_data[company_name.lower()] = {
                     "name": company_name,
@@ -43,6 +45,8 @@ class CompanyComparisonService:
                     "brands": data.get("brands", [])[:5],
                     "stock": data.get("stock", {}),
                     "financials": financials,
+                    "trends": trends,
+                    "deals": deals,
                 }
 
             # Build response
@@ -108,6 +112,70 @@ class CompanyComparisonService:
             "faster_growth": "company1" if growth1 > growth2 else "company2",
             "higher_margin": "company1" if margin1 > margin2 else "company2",
         }
+
+    def _get_historical_trends(self, company_name: str) -> dict:
+        """Get historical financial trends (4 years of data)."""
+        try:
+            if not self.db:
+                return {}
+
+            result = self.db.table("company_financials").select("*").eq(
+                "company_name", company_name.lower()
+            ).order("period", desc=False).execute()
+
+            if not result.data:
+                return {}
+
+            trends = {
+                "revenue": {},
+                "margin": {},
+                "employees": {},
+                "growth": {},
+            }
+
+            for row in result.data:
+                period = row.get("period")
+                if row.get("revenue_millions"):
+                    trends["revenue"][period] = row["revenue_millions"]
+                if row.get("operating_margin_pct") is not None:
+                    trends["margin"][period] = row["operating_margin_pct"]
+                if row.get("employees"):
+                    trends["employees"][period] = row["employees"]
+                if row.get("revenue_growth_pct") is not None:
+                    trends["growth"][period] = row["revenue_growth_pct"]
+
+            return trends
+        except Exception as e:
+            logger.warning(f"[trends] Historical trends failed for {company_name}: {e}")
+            return {}
+
+    def _get_company_deals(self, company_name: str) -> list:
+        """Get M&A deals/acquisitions for a company."""
+        try:
+            if not self.db:
+                return []
+
+            result = self.db.table("company_deals").select("*").eq(
+                "company_name", company_name.lower()
+            ).order("announcement_date", desc=True).limit(10).execute()
+
+            if not result.data:
+                return []
+
+            deals = []
+            for row in result.data:
+                deals.append({
+                    "date": row.get("announcement_date"),
+                    "type": row.get("deal_type"),
+                    "target": row.get("target_company"),
+                    "amount": row.get("amount_millions"),
+                    "description": row.get("description"),
+                })
+
+            return deals
+        except Exception as e:
+            logger.warning(f"[deals] Deals fetch failed for {company_name}: {e}")
+            return []
 
     def _calculate_multi_diffs(self, company_data: dict) -> dict:
         """Calculate rankings for 2-4 companies."""

@@ -559,9 +559,17 @@
             // Comparison grid (only if 2+ companies with financials)
             if (companyList.length >= 2 && companyList[0].financials && companyList[1].financials) {
                 html += renderComparisonGrid(companyList, cmp);
+                html += renderTrendCharts(companyList);
             }
 
             document.getElementById('content').innerHTML = html;
+
+            // Render charts after DOM update
+            setTimeout(() => {
+                drawGrowthChart(companyList);
+                drawMarginChart(companyList);
+                renderDealsTimeline(companyList);
+            }, 100);
         }
 
         function renderMetrics(company) {
@@ -572,9 +580,47 @@
                     <div class="metric-row">
                         <div class="metric-label">Stock Ticker</div>
                         <div class="metric-value">${company.stock.ticker}</div>
-                        <div class="metric-meta">Price: $${company.stock.price ? company.stock.price.toFixed(2) : 'N/A'}</div>
+                        <div class="metric-meta">Price: $${company.stock.price ? company.stock.price.toFixed(2) : 'N/A'} · Change: ${company.stock.change ? company.stock.change.toFixed(2) : 'N/A'}%</div>
                     </div>
                 `;
+
+                // Valuation metrics
+                if (company.stock.market_cap_billions) {
+                    html += `
+                        <div class="metric-row">
+                            <div class="metric-label">Market Cap</div>
+                            <div class="metric-value">$${company.stock.market_cap_billions}B</div>
+                        </div>
+                    `;
+                }
+
+                if (company.stock.pe_ratio) {
+                    html += `
+                        <div class="metric-row">
+                            <div class="metric-label">P/E Ratio</div>
+                            <div class="metric-value">${company.stock.pe_ratio}</div>
+                            <div class="metric-meta">Valuation metric</div>
+                        </div>
+                    `;
+                }
+
+                if (company.stock.dividend_yield) {
+                    html += `
+                        <div class="metric-row">
+                            <div class="metric-label">Dividend Yield</div>
+                            <div class="metric-value">${company.stock.dividend_yield}%</div>
+                        </div>
+                    `;
+                }
+
+                if (company.stock.week_52_high && company.stock.week_52_low) {
+                    html += `
+                        <div class="metric-row">
+                            <div class="metric-label">52-Week Range</div>
+                            <div class="metric-value">$${company.stock.week_52_low} - $${company.stock.week_52_high}</div>
+                        </div>
+                    `;
+                }
             }
 
             if (company.financials) {
@@ -720,6 +766,301 @@
 
             html += `</tbody></table></div>`;
             return html;
+        }
+
+        function renderTrendCharts(companies) {
+            let html = `<div style="margin-top: 40px;">`;
+
+            // Growth Trajectory Chart
+            if (companies.some(c => c.trends && c.trends.revenue && Object.keys(c.trends.revenue).length > 0)) {
+                html += `
+                    <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 15px; color: #1f2937; font-size: 18px;">📈 Growth Trajectory</h3>
+                        <canvas id="growthChart" width="600" height="300" style="max-width: 100%; border-radius: 8px;"></canvas>
+                    </div>
+                `;
+            }
+
+            // Profitability Trend Chart
+            if (companies.some(c => c.trends && c.trends.margin && Object.keys(c.trends.margin).length > 0)) {
+                html += `
+                    <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 15px; color: #1f2937; font-size: 18px;">📊 Operating Margin Trend</h3>
+                        <canvas id="marginChart" width="600" height="300" style="max-width: 100%; border-radius: 8px;"></canvas>
+                    </div>
+                `;
+            }
+
+            // M&A Timeline
+            if (companies.some(c => c.deals && c.deals.length > 0)) {
+                html += `
+                    <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 15px; color: #1f2937; font-size: 18px;">🤝 M&A Activity</h3>
+                        <div id="dealsTimeline" style="max-height: 400px; overflow-y: auto;"></div>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        function drawGrowthChart(companies) {
+            const canvas = document.getElementById('growthChart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const padding = 40;
+            const width = canvas.width - padding * 2;
+            const height = canvas.height - padding * 2;
+
+            // Get all periods
+            const allPeriods = new Set();
+            companies.forEach(c => {
+                if (c.trends && c.trends.revenue) {
+                    Object.keys(c.trends.revenue).forEach(p => allPeriods.add(p));
+                }
+            });
+            const periods = Array.from(allPeriods).sort();
+
+            if (periods.length === 0) return;
+
+            const colors = ['#667eea', '#f093fb', '#4facfe', '#fa709a'];
+            const maxRevenue = Math.max(...companies.flatMap(c =>
+                c.trends && c.trends.revenue ? Object.values(c.trends.revenue) : []
+            ));
+
+            // Draw axes
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, height + padding);
+            ctx.lineTo(width + padding, height + padding);
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, height + padding);
+            ctx.stroke();
+
+            // Draw grid
+            ctx.strokeStyle = '#f3f4f6';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (height / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width + padding, y);
+                ctx.stroke();
+            }
+
+            // Draw data lines
+            companies.forEach((company, idx) => {
+                if (!company.trends || !company.trends.revenue) return;
+
+                ctx.strokeStyle = colors[idx];
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+
+                let first = true;
+                periods.forEach((period, pIdx) => {
+                    const value = company.trends.revenue[period];
+                    if (value === undefined) return;
+
+                    const x = padding + (width / (periods.length - 1)) * pIdx;
+                    const y = padding + height - (height * value / maxRevenue);
+
+                    if (first) {
+                        ctx.moveTo(x, y);
+                        first = false;
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+
+                // Draw points
+                ctx.fillStyle = colors[idx];
+                periods.forEach((period, pIdx) => {
+                    const value = company.trends.revenue[period];
+                    if (value === undefined) return;
+                    const x = padding + (width / (periods.length - 1)) * pIdx;
+                    const y = padding + height - (height * value / maxRevenue);
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+
+            // Draw legend
+            companies.forEach((company, idx) => {
+                if (!company.trends || !company.trends.revenue) return;
+                ctx.fillStyle = colors[idx];
+                ctx.fillRect(width + padding - 150, padding + idx * 25, 15, 15);
+                ctx.fillStyle = '#1f2937';
+                ctx.font = '12px sans-serif';
+                ctx.fillText(company.name, width + padding - 130, padding + idx * 25 + 12);
+            });
+
+            // X-axis labels
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            periods.forEach((period, pIdx) => {
+                const x = padding + (width / (periods.length - 1)) * pIdx;
+                ctx.fillText(period, x, height + padding + 20);
+            });
+
+            // Y-axis label
+            ctx.save();
+            ctx.translate(15, padding + height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText('Revenue ($B)', 0, 0);
+            ctx.restore();
+        }
+
+        function drawMarginChart(companies) {
+            const canvas = document.getElementById('marginChart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const padding = 40;
+            const width = canvas.width - padding * 2;
+            const height = canvas.height - padding * 2;
+
+            // Get all periods
+            const allPeriods = new Set();
+            companies.forEach(c => {
+                if (c.trends && c.trends.margin) {
+                    Object.keys(c.trends.margin).forEach(p => allPeriods.add(p));
+                }
+            });
+            const periods = Array.from(allPeriods).sort();
+
+            if (periods.length === 0) return;
+
+            const colors = ['#667eea', '#f093fb', '#4facfe', '#fa709a'];
+
+            // Draw axes
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, height + padding);
+            ctx.lineTo(width + padding, height + padding);
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, height + padding);
+            ctx.stroke();
+
+            // Draw grid
+            ctx.strokeStyle = '#f3f4f6';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (height / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width + padding, y);
+                ctx.stroke();
+            }
+
+            // Draw data lines
+            companies.forEach((company, idx) => {
+                if (!company.trends || !company.trends.margin) return;
+
+                ctx.strokeStyle = colors[idx];
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+
+                let first = true;
+                periods.forEach((period, pIdx) => {
+                    const value = company.trends.margin[period];
+                    if (value === undefined) return;
+
+                    const x = padding + (width / (periods.length - 1)) * pIdx;
+                    const y = padding + height - (height * value / 40);
+
+                    if (first) {
+                        ctx.moveTo(x, y);
+                        first = false;
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+
+                // Draw points
+                ctx.fillStyle = colors[idx];
+                periods.forEach((period, pIdx) => {
+                    const value = company.trends.margin[period];
+                    if (value === undefined) return;
+                    const x = padding + (width / (periods.length - 1)) * pIdx;
+                    const y = padding + height - (height * value / 40);
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+
+            // Draw legend
+            companies.forEach((company, idx) => {
+                if (!company.trends || !company.trends.margin) return;
+                ctx.fillStyle = colors[idx];
+                ctx.fillRect(width + padding - 150, padding + idx * 25, 15, 15);
+                ctx.fillStyle = '#1f2937';
+                ctx.font = '12px sans-serif';
+                ctx.fillText(company.name, width + padding - 130, padding + idx * 25 + 12);
+            });
+
+            // X-axis labels
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            periods.forEach((period, pIdx) => {
+                const x = padding + (width / (periods.length - 1)) * pIdx;
+                ctx.fillText(period, x, height + padding + 20);
+            });
+
+            // Y-axis label
+            ctx.save();
+            ctx.translate(15, padding + height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText('Operating Margin (%)', 0, 0);
+            ctx.restore();
+        }
+
+        function renderDealsTimeline(companies) {
+            const container = document.getElementById('dealsTimeline');
+            if (!container) return;
+
+            let html = '';
+            companies.forEach((company, idx) => {
+                if (!company.deals || company.deals.length === 0) return;
+
+                html += `<div style="margin-bottom: 20px;">
+                    <h4 style="color: #1f2937; font-weight: 600; margin-bottom: 10px;">${company.name}</h4>`;
+
+                company.deals.forEach((deal, dIdx) => {
+                    const dateObj = new Date(deal.date);
+                    const dateStr = dateObj.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+
+                    html += `
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+                            <div style="min-width: 80px; color: #667eea; font-weight: 600; font-size: 12px;">${dateStr}</div>
+                            <div>
+                                <div style="font-weight: 600; color: #1f2937; font-size: 14px;">${deal.target || 'N/A'}</div>
+                                <div style="color: #6b7280; font-size: 12px;">${deal.type} ${deal.amount ? '· $' + deal.amount + 'M' : ''}</div>
+                                <div style="color: #9ca3af; font-size: 11px; margin-top: 2px;">${deal.description || ''}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+            });
+
+            if (html === '') {
+                html = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No M&A activity data</div>';
+            }
+
+            container.innerHTML = html;
         }
 
         // Load on page load
