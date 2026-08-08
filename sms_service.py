@@ -22492,6 +22492,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                         elif _ru.startswith("ITEM:"):
                             _parts = [p.strip() for p in _rl.split(":", 1)[1].split("|")]
                             _item = {"name": _parts[0] if _parts else ""}
+                            # BLOCK: Reject items that look like phone numbers
+                            if _item["name"] and re.match(r'^\(?[\d\s\-\+\.]+\)?$', _item["name"]):
+                                app.logger.warning(f"[receipt] Rejecting phone-like item: {_item['name']}")
+                                continue
                             if len(_parts) > 1: _item["qty"] = _parts[1]
                             if len(_parts) > 2:
                                 try: _item["price"] = float(_parts[2].replace("£","").replace(",",""))
