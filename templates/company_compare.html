@@ -41,34 +41,129 @@
             margin-bottom: 15px;
         }
 
-        .compare-controls {
+        .company-chips {
             display: flex;
-            gap: 10px;
-            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
             margin-bottom: 15px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+            align-items: center;
         }
 
-        .compare-controls input {
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            flex: 1;
-        }
-
-        .compare-controls button {
-            padding: 10px 16px;
-            background: #667eea;
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .chip-remove {
+            background: rgba(255,255,255,0.3);
             border: none;
-            border-radius: 6px;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .chip-remove:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        .chip-add {
+            padding: 8px 16px;
+            background: #e5e7eb;
+            color: #1f2937;
+            border: 2px dashed #9ca3af;
+            border-radius: 20px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
         }
 
-        .compare-controls button:hover {
-            background: #5568d3;
+        .chip-add:hover {
+            background: #d1d5db;
+            border-color: #6b7280;
+        }
+
+        .add-company-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-company-modal.active {
+            display: flex;
+        }
+
+        .add-company-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .add-company-content input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .add-company-content input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .add-company-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .add-company-buttons button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .add-company-buttons .btn-add {
+            background: #667eea;
+            color: white;
+        }
+
+        .add-company-buttons .btn-cancel {
+            background: #e5e7eb;
+            color: #1f2937;
         }
 
         .comparison {
@@ -249,12 +344,22 @@
     <div class="container">
         <div class="header">
             <h1>⚖️ Compare Companies</h1>
-            <p>Side-by-side comparison of key metrics</p>
+            <p>Click companies to remove · Click + to add up to 4 total</p>
 
-            <div class="compare-controls">
-                <input type="text" id="company1Input" placeholder="Company 1 (e.g., Apple)" value="{{ company1 }}">
-                <input type="text" id="company2Input" placeholder="Company 2 (e.g., Microsoft)" value="{{ company2 }}">
-                <button onclick="updateComparison()">Compare</button>
+            <div class="company-chips" id="chipsContainer">
+                <!-- Chips will be rendered here -->
+            </div>
+        </div>
+
+        <!-- Add Company Modal -->
+        <div class="add-company-modal" id="addCompanyModal">
+            <div class="add-company-content">
+                <h2 style="margin-bottom: 15px; font-size: 18px;">Add Company</h2>
+                <input type="text" id="addCompanyInput" placeholder="e.g., Google, Samsung, Amazon" />
+                <div class="add-company-buttons">
+                    <button class="btn-add" onclick="addCompanyFromModal()">Add</button>
+                    <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+                </div>
             </div>
         </div>
 
@@ -267,30 +372,72 @@
     </div>
 
     <script>
-        function updateComparison() {
-            const c1 = document.getElementById('company1Input').value.trim();
-            const c2 = document.getElementById('company2Input').value.trim();
+        let currentCompanies = [];
 
-            if (!c1 || !c2) {
-                alert('Enter at least 2 company names');
-                return;
+        function renderChips() {
+            const container = document.getElementById('chipsContainer');
+            let html = '';
+
+            currentCompanies.forEach((company, idx) => {
+                html += `
+                    <div class="chip">
+                        ${company}
+                        <button class="chip-remove" onclick="removeCompany(${idx})">✕</button>
+                    </div>
+                `;
+            });
+
+            if (currentCompanies.length < 4) {
+                html += `<button class="chip-add" onclick="openAddModal()">+ Add Company</button>`;
             }
 
-            let url = `/company/compare?c1=${encodeURIComponent(c1)}&c2=${encodeURIComponent(c2)}`;
-            window.location.href = url;
+            container.innerHTML = html;
+        }
+
+        function removeCompany(idx) {
+            currentCompanies.splice(idx, 1);
+            updateURL();
+        }
+
+        function openAddModal() {
+            document.getElementById('addCompanyModal').classList.add('active');
+            document.getElementById('addCompanyInput').focus();
+        }
+
+        function closeAddModal() {
+            document.getElementById('addCompanyModal').classList.remove('active');
+            document.getElementById('addCompanyInput').value = '';
+        }
+
+        function addCompanyFromModal() {
+            const company = document.getElementById('addCompanyInput').value.trim();
+            if (company && !currentCompanies.includes(company) && currentCompanies.length < 4) {
+                currentCompanies.push(company);
+                updateURL();
+                closeAddModal();
+            }
+        }
+
+        function updateURL() {
+            renderChips();
+            if (currentCompanies.length >= 2) {
+                let url = `/company/compare`;
+                currentCompanies.forEach((c, i) => {
+                    url += `${i === 0 ? '?' : '&'}c${i + 1}=${encodeURIComponent(c)}`;
+                });
+                window.history.replaceState({}, '', url);
+                loadComparison();
+            }
         }
 
         async function loadComparison() {
-            const params = new URLSearchParams(window.location.search);
-            const c1 = params.get('c1') || 'Apple';
-            const c2 = params.get('c2') || 'Microsoft';
-            const c3 = params.get('c3');
-            const c4 = params.get('c4');
+            if (currentCompanies.length < 2) return;
 
             try {
-                let url = `/api/company/compare?company1=${encodeURIComponent(c1)}&company2=${encodeURIComponent(c2)}`;
-                if (c3) url += `&company3=${encodeURIComponent(c3)}`;
-                if (c4) url += `&company4=${encodeURIComponent(c4)}`;
+                let url = `/api/company/compare`;
+                currentCompanies.forEach((c, i) => {
+                    url += `${i === 0 ? '?' : '&'}company${i + 1}=${encodeURIComponent(c)}`;
+                });
 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -454,11 +601,22 @@
         }
 
         // Load on page load
-        document.addEventListener('DOMContentLoaded', loadComparison);
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            for (let i = 1; i <= 4; i++) {
+                const c = params.get(`c${i}`);
+                if (c) currentCompanies.push(c);
+            }
+            if (currentCompanies.length === 0) {
+                currentCompanies = ['Apple', 'Microsoft'];
+            }
+            renderChips();
+            loadComparison();
+        });
 
-        // Allow Enter key to trigger search
-        document.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') updateComparison();
+        // Allow Enter key in add modal
+        document.getElementById('addCompanyInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addCompanyFromModal();
         });
     </script>
 </body>
