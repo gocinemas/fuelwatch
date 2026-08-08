@@ -16147,9 +16147,33 @@ def api_home_brief():
         prompt = " ".join(prompt_parts)
         brief_text = ""
 
-        # BRIEF: Facts only. NO creative writing, NO Groq, NO hallucinations.
-        brief_text = "; ".join(str(f) for f in facts[:4]) if facts else "No updates today."
-        app.logger.info(f"[brief] FACTS ONLY: {brief_text[:100]}")
+        # BRIEF: Facts + Location context. NO creative writing, NO Groq, NO hallucinations.
+        brief_lines = []
+
+        # Add top facts
+        brief_lines.extend([str(f) for f in facts[:3]])
+
+        # Add location context if available
+        if loc_str:
+            day_name = now.strftime("%A")
+            brief_lines.append(f"📍 {loc_str} today")
+
+            # Add day-specific context
+            if day_name in ("Saturday", "Sunday"):
+                brief_lines.append("(Weekend)")
+            elif day_name == "Monday":
+                brief_lines.append("(School week starts)")
+
+        # Add nearby places context if available
+        rated_places = ctx.get("rated_places", [])
+        if rated_places and len(brief_lines) < 5:
+            top_place = rated_places[0]
+            place_name = top_place.get("name", "")
+            if place_name:
+                brief_lines.append(f"Nearby: {place_name}")
+
+        brief_text = "; ".join(brief_lines[:5]) if brief_lines else "No updates today."
+        app.logger.info(f"[brief] LOCATION-AWARE: {brief_text[:100]}")
 
         # NIGHT-TIME: override with weather + saying
         if hour >= 21 or hour < 5:
