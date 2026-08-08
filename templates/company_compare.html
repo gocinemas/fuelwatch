@@ -842,9 +842,23 @@
         }
 
         let chartState = {
-            growth: { hiddenCompanies: new Set() },
-            margin: { hiddenCompanies: new Set() }
+            growth: { hiddenCompanies: new Set(), animationProgress: 1 },
+            margin: { hiddenCompanies: new Set(), animationProgress: 1 }
         };
+
+        function animateChart(chartType, callback) {
+            const state = chartType === 'growth' ? chartState.growth : chartState.margin;
+            state.animationProgress = 0;
+
+            const animate = () => {
+                state.animationProgress = Math.min(1, state.animationProgress + 0.08);
+                callback();
+                if (state.animationProgress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            };
+            animate();
+        }
 
         function drawGrowthChart(companies) {
             const canvas = document.getElementById('growthChart');

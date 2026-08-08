@@ -130,13 +130,46 @@ Run through this before considering Miru production-ready for a user.
 
 ---
 
+## Mobile Responsiveness (Critical) 📱
+
+### All Screens
+- [ ] Layout adapts properly on iPhone (375px width)
+- [ ] Layout adapts properly on iPad (768px width)
+- [ ] Touch targets are large enough (44px minimum)
+- [ ] No horizontal scrolling on portrait mode
+- [ ] Modals/popups close properly on mobile
+
+### Ask Miru Mobile
+- [ ] Question input fits without scrolling
+- [ ] Response text wraps properly
+- [ ] Items list readable on small screen
+- [ ] Emoji render correctly
+
+### Brief Card Mobile
+- [ ] All sections visible in viewport
+- [ ] Weather icons display correctly
+- [ ] No overflow on small screens
+
+### Receipts Mobile
+- [ ] Upload button accessible
+- [ ] Receipt list scrolls smoothly
+- [ ] Item details readable
+
+### School Events Mobile
+- [ ] Event list scrolls
+- [ ] Add event button accessible
+- [ ] Event details readable
+
 ## Post-Testing Checklist
 
 - [ ] No console errors in browser (F12 → Console)
 - [ ] No Railway errors in logs
 - [ ] Response times reasonable (<3s for most queries)
-- [ ] Tested from mobile browser
+- [ ] Tested from mobile browser (iOS Safari + Chrome)
 - [ ] Tested on different network (not just WiFi)
+- [ ] Tested on both portrait AND landscape
+- [ ] Tested on 5+ inch phone
+- [ ] Tested on small phone (iPhone SE 375px)
 
 ---
 
