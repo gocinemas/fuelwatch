@@ -16147,7 +16147,11 @@ def api_home_brief():
         prompt = " ".join(prompt_parts)
         brief_text = ""
 
-        # NIGHT-TIME: NO GOING OUT / BUYING — show only weather + tomorrow's info + saying
+        # DISABLE CREATIVE WRITING — just show facts. Groq/Claude hallucinate suggestions.
+        brief_text = "; ".join(str(f) for f in facts[:4]) if facts else "No updates today."
+        app.logger.info(f"[brief] FACTS ONLY MODE: {brief_text[:80]}")
+
+        # NIGHT-TIME: add saying instead of Groq creative text
         if hour >= 21 or hour < 5:
             app.logger.info(f"[brief] NIGHT MODE: weather + kids + saying, no fuel/places/spend")
             # Filter facts to ONLY weather + school/kids info
