@@ -35,6 +35,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 from datetime import datetime
 from flask import Flask, request, send_file, render_template, jsonify, Response, redirect, make_response, after_this_request
 from twilio.twiml.messaging_response import MessagingResponse
+from supabase import create_client
 from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
                     fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
