@@ -22462,6 +22462,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 # FALLBACK: If Claude extraction empty/failed, extract basics from analysis text
                 if not _raw_rcpt and analysis:
                     app.logger.warning(f"[receipt] Claude extraction empty, using analysis fallback")
+                    import re as _re_fallback
+
                     # Try to extract merchant from analysis
                     for line in analysis.split("\n"):
                         line_lower = line.lower()
@@ -22472,12 +22474,28 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                                     break
                             if _raw_rcpt:
                                 break
-                    # Try to extract total (look for £ symbol)
-                    import re as _re_fallback
+
+                    # Try to extract total (look for £ symbol + total keyword)
                     total_match = _re_fallback.search(r'total[:\s]+£?([\d,]+\.?\d{0,2})', analysis, _re_fallback.IGNORECASE)
                     if total_match:
                         _raw_rcpt += f"TOTAL: {total_match.group(1)}\n"
-                    app.logger.info(f"[receipt] Fallback extraction: {_raw_rcpt[:100]}")
+
+                    # For restaurant receipts: extract food items (lines with prices)
+                    if "wagamama" in _raw_rcpt.lower() or "nando" in analysis.lower():
+                        for line in analysis.split("\n"):
+                            line = line.strip()
+                            # Look for lines that have food items (contain text + £ price)
+                            if re.search(r'£[\d,]+\.?\d{0,2}', line) and any(word in line.lower() for word in ["chicken", "bento", "udon", "katsu", "rice", "sauce", "gyoza", "noodle", "pret", "coffee"]):
+                                # Extract item name (text before £)
+                                item_match = re.search(r'^(.+?)\s+£', line)
+                                if item_match:
+                                    item_name = item_match.group(1).strip()
+                                    price_match = re.search(r'£([\d,]+\.?\d{0,2})', line)
+                                    price = price_match.group(1) if price_match else ""
+                                    if item_name and len(item_name) > 2:
+                                        _raw_rcpt += f"ITEM: {item_name} | | {price}\n"
+
+                    app.logger.info(f"[receipt] Fallback extraction: {_raw_rcpt[:200]}")
 
                 if _raw_rcpt:
                     _rcpt_items = []

@@ -19550,16 +19550,29 @@ let _savesAll = [];
                   var categoryIcon = '🛒';
                   var itemsLabel = 'Bought:';
                   var mLower = (merchant || '').toLowerCase();
+                  var summaryText = (d.summary || '').toLowerCase();
                   var itemsText = (d.items || []).map(i => typeof i === 'string' ? i.toLowerCase() : (i.name || '').toLowerCase()).join(' ');
+
+                  // Detect dine-in vs takeaway
+                  var isDineIn = summaryText.includes('dine-in') || summaryText.includes('dine in');
+                  var isTakeaway = summaryText.includes('takeaway') || summaryText.includes('delivery') || mLower.includes('takeaway');
 
                   // Check for dining indicators
                   if (mLower.includes('nando') || mLower.includes('wagamama') || mLower.includes('restaurant') || mLower.includes('pub') ||
                       itemsText.includes('pasta') || itemsText.includes('penne') || itemsText.includes('wine') || itemsText.includes('cocktail') ||
-                      itemsText.includes('tiramisu') || itemsText.includes('moretti') || itemsText.includes('pizza')) {
-                    categoryLabel = 'Last dined at';
-                    categoryIcon = '🍽️';
+                      itemsText.includes('tiramisu') || itemsText.includes('moretti') || itemsText.includes('pizza') || itemsText.includes('bento') || itemsText.includes('katsu')) {
+                    if (isDineIn) {
+                      categoryLabel = 'Last dined in';
+                      categoryIcon = '🍽️';
+                    } else if (isTakeaway) {
+                      categoryLabel = 'Last ordered from';
+                      categoryIcon = '🥡';
+                    } else {
+                      categoryLabel = 'Last dined at';
+                      categoryIcon = '🍽️';
+                    }
                     itemsLabel = 'Items Ordered:';
-                  } else if (mLower.includes('takeaway') || mLower.includes('curry') || mLower.includes('indian') || mLower.includes('chinese')) {
+                  } else if (isTakeaway || mLower.includes('curry') || mLower.includes('indian') || mLower.includes('chinese')) {
                     categoryLabel = 'Last ordered at';
                     categoryIcon = '🥡';
                     itemsLabel = 'Items Ordered:';
