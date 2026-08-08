@@ -39436,6 +39436,92 @@ def api_company_compare():
 def company_comparison_page():
     return render_template("company_compare.html")
 
+
+# ── Company Knowledge Base / Documents ─────────────────────────
+@app.route("/api/company/documents", methods=["GET"])
+def api_company_documents_get():
+    """Fetch all documents for a company."""
+    try:
+        company = request.args.get("company", "").strip().lower()
+        if not company:
+            return jsonify({"error": "company param required"}), 400
+
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                          os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+
+        result = sb.table("company_documents").select("*").eq(
+            "company_name", company
+        ).order("created_at", desc=True).execute()
+
+        return jsonify({
+            "documents": result.data or [],
+            "count": len(result.data or [])
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"[company-docs-get] {e}")
+        return jsonify({"error": str(e)[:100]}), 500
+
+
+@app.route("/api/company/documents", methods=["POST"])
+def api_company_documents_post():
+    """Upload/save a document for a company."""
+    try:
+        data = request.json or {}
+        company = data.get("company", "").strip().lower()
+        doc_type = data.get("doc_type", "note")  # link, note, pdf, analysis
+        title = data.get("title", "").strip()
+        content = data.get("content", "").strip()
+        url = data.get("url", "").strip()
+
+        if not company or not title:
+            return jsonify({"error": "company and title required"}), 400
+
+        if doc_type not in ["link", "note", "pdf", "analysis"]:
+            return jsonify({"error": "doc_type must be: link, note, pdf, or analysis"}), 400
+
+        if doc_type == "link" and not url:
+            return jsonify({"error": "url required for link type"}), 400
+
+        if doc_type in ["note", "pdf", "analysis"] and not content:
+            return jsonify({"error": f"content required for {doc_type} type"}), 400
+
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                          os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+
+        result = sb.table("company_documents").insert({
+            "company_name": company,
+            "doc_type": doc_type,
+            "title": title,
+            "content": content if doc_type in ["note", "pdf", "analysis"] else None,
+            "url": url if doc_type == "link" else None,
+        }).execute()
+
+        return jsonify({
+            "status": "saved",
+            "document": result.data[0] if result.data else {}
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"[company-docs-post] {e}")
+        return jsonify({"error": str(e)[:100]}), 500
+
+
+@app.route("/api/company/documents/<doc_id>", methods=["DELETE"])
+def api_company_documents_delete(doc_id):
+    """Delete a document."""
+    try:
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                          os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+
+        sb.table("company_documents").delete().eq("id", doc_id).execute()
+
+        return jsonify({"status": "deleted"})
+    except Exception as e:
+        import logging
+        logging.error(f"[company-docs-delete] {e}")
+        return jsonify({"error": str(e)[:100]}), 500
+
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
 
 @app.route("/api/fuel/stations/list", methods=["GET"])

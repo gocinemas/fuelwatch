@@ -460,6 +460,17 @@
             </div>
         </div>
 
+        <!-- Knowledge Base / Documents -->
+        <div id="knowledgeBaseSection" style="display: none; margin-top: 20px;">
+            <div style="background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+                    <span>📚 Knowledge Base</span>
+                    <button onclick="openDocumentModal()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">+ Add Document</button>
+                </div>
+                <div id="documentsList" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+        </div>
+
         <!-- Competitor Comparison -->
         <div id="competitorSection" style="display: none; margin-top: 20px;">
             <div style="background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden;">
@@ -550,6 +561,44 @@
         </div>
     </div>
 
+    <!-- Add Document Modal -->
+    <div id="documentModalOuter" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1002; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto;">
+            <div style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">📚 Add Document</div>
+            <div style="font-size: 13px; color: #6b7280; margin-bottom: 20px;">Upload links, notes, PDFs, or analysis documents for this company.</div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Document Type</label>
+                <select id="docType" onchange="updateDocumentForm()" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+                    <option value="link">🔗 Link</option>
+                    <option value="note">📝 Note</option>
+                    <option value="analysis">📊 Analysis</option>
+                    <option value="pdf">📄 PDF</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Title</label>
+                <input type="text" id="docTitle" placeholder="e.g., Q3 Financial Report, Competitive Analysis" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;" />
+            </div>
+
+            <div id="urlField" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">URL</label>
+                <input type="url" id="docUrl" placeholder="https://example.com/article" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;" />
+            </div>
+
+            <div id="contentField" style="display: none; margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Content</label>
+                <textarea id="docContent" placeholder="Paste your text, notes, or analysis here..." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; min-height: 120px; font-family: inherit; box-sizing: border-box;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="saveDocument()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Save Document</button>
+                <button onclick="closeDocumentModal()" style="flex: 1; padding: 12px; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentCompany = null;
         let currentCompetitors = [];
@@ -627,6 +676,9 @@
                 } else {
                     document.getElementById('basicBrands').innerHTML = '<span style="background: #e5e7eb; color: #6b7280; padding: 6px 12px; border-radius: 6px; font-size: 12px;">No brands data</span>';
                 }
+
+                // Load documents for this company
+                loadDocuments();
 
                 // News Feed
                 const news = data.news || [];
@@ -1002,6 +1054,151 @@
             if (companies[3]) url += `&c4=${encodeURIComponent(companies[3])}`;
 
             window.location.href = url;
+        }
+
+        // ── Knowledge Base / Document Functions ──
+        async function loadDocuments() {
+            if (!currentCompany) return;
+
+            try {
+                const response = await fetch(`/api/company/documents?company=${encodeURIComponent(currentCompany)}`);
+                const data = await response.json();
+                const documents = data.documents || [];
+
+                const container = document.getElementById('documentsList');
+                if (documents.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No documents uploaded yet. Click "+ Add Document" to get started!</div>';
+                    document.getElementById('knowledgeBaseSection').style.display = 'block';
+                    return;
+                }
+
+                let html = '';
+                documents.forEach(doc => {
+                    const date = new Date(doc.created_at).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+                    const icon = {
+                        'link': '🔗',
+                        'note': '📝',
+                        'analysis': '📊',
+                        'pdf': '📄'
+                    }[doc.doc_type] || '📄';
+
+                    html += `
+                        <div style="background: #f9fafb; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: start; gap: 12px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">${icon} ${doc.title}</div>
+                                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">${doc.doc_type === 'link' ? `<a href="${doc.url}" target="_blank" style="color: #667eea; text-decoration: underline;">${doc.url}</a>` : doc.content ? doc.content.substring(0, 80) + '...' : ''}</div>
+                                <div style="font-size: 11px; color: #9ca3af;">${date}</div>
+                            </div>
+                            <button onclick="deleteDocument('${doc.id}')" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Delete</button>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+                document.getElementById('knowledgeBaseSection').style.display = 'block';
+            } catch (error) {
+                console.error('Failed to load documents:', error);
+                document.getElementById('documentsList').innerHTML = '<div style="color: #dc2626; padding: 20px;">Failed to load documents</div>';
+            }
+        }
+
+        function openDocumentModal() {
+            document.getElementById('docType').value = 'link';
+            updateDocumentForm();
+            document.getElementById('docTitle').value = '';
+            document.getElementById('docUrl').value = '';
+            document.getElementById('docContent').value = '';
+            document.getElementById('documentModalOuter').style.display = 'flex';
+            document.getElementById('docTitle').focus();
+        }
+
+        function closeDocumentModal() {
+            document.getElementById('documentModalOuter').style.display = 'none';
+        }
+
+        function updateDocumentForm() {
+            const docType = document.getElementById('docType').value;
+            const urlField = document.getElementById('urlField');
+            const contentField = document.getElementById('contentField');
+
+            if (docType === 'link') {
+                urlField.style.display = 'block';
+                contentField.style.display = 'none';
+            } else {
+                urlField.style.display = 'none';
+                contentField.style.display = 'block';
+            }
+        }
+
+        async function saveDocument() {
+            if (!currentCompany) {
+                alert('Please search for a company first');
+                return;
+            }
+
+            const docType = document.getElementById('docType').value;
+            const title = document.getElementById('docTitle').value.trim();
+            const url = document.getElementById('docUrl').value.trim();
+            const content = document.getElementById('docContent').value.trim();
+
+            if (!title) {
+                alert('Please enter a title');
+                return;
+            }
+
+            if (docType === 'link' && !url) {
+                alert('Please enter a URL');
+                return;
+            }
+
+            if (docType !== 'link' && !content) {
+                alert('Please enter content');
+                return;
+            }
+
+            try {
+                const payload = {
+                    company: currentCompany,
+                    doc_type: docType,
+                    title: title,
+                    ...(docType === 'link' ? { url: url } : { content: content })
+                };
+
+                const response = await fetch('/api/company/documents', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                closeDocumentModal();
+                await loadDocuments();
+            } catch (error) {
+                console.error('Failed to save document:', error);
+                alert('Failed to save document. Try again.');
+            }
+        }
+
+        async function deleteDocument(docId) {
+            if (!confirm('Delete this document?')) return;
+
+            try {
+                const response = await fetch(`/api/company/documents/${docId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                await loadDocuments();
+            } catch (error) {
+                console.error('Failed to delete document:', error);
+                alert('Failed to delete document. Try again.');
+            }
         }
 
         // Show floating button when company is loaded
