@@ -387,6 +387,13 @@
             <div class="company-chips" id="chipsContainer">
                 <!-- Chips will be rendered here -->
             </div>
+
+            <!-- Export Options -->
+            <div id="exportSection" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="downloadCSV()" style="padding: 10px 16px; background: #f3f4f6; color: #1f2937; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s;">📥 Download CSV</button>
+                <button onclick="downloadPDF()" style="padding: 10px 16px; background: #f3f4f6; color: #1f2937; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s;">📄 Download PDF</button>
+                <button onclick="openEmailModal()" style="padding: 10px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s;">✉️ Email Comparison</button>
+            </div>
         </div>
 
         <!-- Add Company Modal -->
@@ -399,6 +406,31 @@
                 </div>
                 <div class="add-company-buttons">
                     <button class="btn-cancel" onclick="closeAddModal()" style="flex: 1;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Comparison Modal -->
+        <div id="emailModalOuter" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                <div style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">✉️ Email Comparison</div>
+                <div style="font-size: 13px; color: #6b7280; margin-bottom: 20px;">Send this comparison to your email</div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Your Email</label>
+                    <input type="email" id="emailInput" placeholder="your@email.com" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;" />
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; cursor: pointer;">
+                        <input type="checkbox" id="includeCharts" checked style="width: 16px; height: 16px; cursor: pointer;" />
+                        Include charts & trends
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="sendEmail()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Send Email</button>
+                    <button onclick="closeEmailModal()" style="flex: 1; padding: 12px; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Cancel</button>
                 </div>
             </div>
         </div>
@@ -526,6 +558,9 @@
         }
 
         function renderComparison(data) {
+            // Store data for export
+            lastComparisonData = data;
+
             const companies = data.companies || {};
             const cmp = data.comparison || {};
             const companyList = Object.values(companies);
@@ -563,6 +598,7 @@
             }
 
             document.getElementById('content').innerHTML = html;
+            document.getElementById('exportSection').style.display = 'flex';
 
             // Render charts after DOM update
             setTimeout(() => {
@@ -1061,6 +1097,227 @@
             }
 
             container.innerHTML = html;
+        }
+
+        // ── Export Functions ──
+        let lastComparisonData = null;
+
+        function downloadCSV() {
+            if (!lastComparisonData) {
+                alert('Please load a comparison first');
+                return;
+            }
+
+            const companies = Object.values(lastComparisonData.companies || {});
+            if (companies.length === 0) return;
+
+            // Build CSV
+            let csv = 'Metric,' + companies.map(c => c.name).join(',') + '\n';
+
+            // Revenue
+            csv += 'Revenue (Latest),' + companies.map(c => {
+                const rev = c.financials?.revenue_millions;
+                return rev ? `$${(rev/1000).toFixed(1)}B` : 'N/A';
+            }).join(',') + '\n';
+
+            // Revenue Growth
+            csv += 'Revenue Growth,' + companies.map(c => {
+                const growth = c.financials?.revenue_growth_pct;
+                return growth !== undefined ? `${growth.toFixed(1)}%` : 'N/A';
+            }).join(',') + '\n';
+
+            // Operating Margin
+            csv += 'Operating Margin,' + companies.map(c => {
+                const margin = c.financials?.operating_margin_pct;
+                return margin ? `${margin.toFixed(1)}%` : 'N/A';
+            }).join(',') + '\n';
+
+            // Employees
+            csv += 'Employees,' + companies.map(c => {
+                const emp = c.financials?.employees;
+                return emp ? `${(emp/1000).toFixed(0)}K` : 'N/A';
+            }).join(',') + '\n';
+
+            // Revenue per Employee
+            csv += 'Revenue per Employee,' + companies.map(c => {
+                if (c.financials?.revenue_millions && c.financials?.employees) {
+                    const rpe = c.financials.revenue_millions / c.financials.employees;
+                    return `$${rpe.toFixed(2)}M`;
+                }
+                return 'N/A';
+            }).join(',') + '\n';
+
+            // Market Cap
+            csv += 'Market Cap,' + companies.map(c => {
+                const mc = c.stock?.market_cap_billions;
+                return mc ? `$${mc}B` : 'N/A';
+            }).join(',') + '\n';
+
+            // P/E Ratio
+            csv += 'P/E Ratio,' + companies.map(c => {
+                const pe = c.stock?.pe_ratio;
+                return pe ? pe : 'N/A';
+            }).join(',') + '\n';
+
+            // Dividend Yield
+            csv += 'Dividend Yield,' + companies.map(c => {
+                const dy = c.stock?.dividend_yield;
+                return dy ? `${dy}%` : 'N/A';
+            }).join(',') + '\n';
+
+            // Download
+            const filename = `company-comparison-${companies.map(c => c.name).join('-vs-')}-${new Date().toISOString().split('T')[0]}.csv`;
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function downloadPDF() {
+            if (!lastComparisonData) {
+                alert('Please load a comparison first');
+                return;
+            }
+
+            const companies = Object.values(lastComparisonData.companies || {});
+            if (companies.length === 0) return;
+
+            // Generate HTML for PDF
+            let html = `
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1 { color: #667eea; margin-bottom: 10px; }
+                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                        th { background: #f3f4f6; font-weight: bold; }
+                        .company-info { margin: 20px 0; padding: 15px; background: #f9fafb; border-radius: 8px; }
+                        .company-name { font-size: 18px; font-weight: bold; color: #667eea; margin-bottom: 5px; }
+                        .company-detail { font-size: 13px; color: #6b7280; line-height: 1.6; }
+                    </style>
+                </head>
+                <body>
+                    <h1>⚖️ Company Comparison Report</h1>
+                    <p>Generated on ${new Date().toLocaleDateString('en-GB')}</p>
+            `;
+
+            // Company details
+            companies.forEach(company => {
+                html += `
+                    <div class="company-info">
+                        <div class="company-name">${company.name}</div>
+                        <div class="company-detail">
+                            <strong>Sector:</strong> ${company.sector || 'N/A'}<br>
+                            <strong>Headquarters:</strong> ${company.headquarters || 'N/A'}<br>
+                            <strong>Stock:</strong> ${company.stock?.ticker || 'N/A'} (Price: $${company.stock?.price ? company.stock.price.toFixed(2) : 'N/A'})
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Comparison table
+            html += `<h2>Financial Metrics Comparison</h2><table>
+                <tr>
+                    <th>Metric</th>
+                    ${companies.map(c => `<th>${c.name}</th>`).join('')}
+                </tr>
+            `;
+
+            // Rows
+            const metrics = [
+                { label: 'Revenue (Latest)', format: (c) => c.financials?.revenue_millions ? `$${(c.financials.revenue_millions/1000).toFixed(1)}B` : 'N/A' },
+                { label: 'Revenue Growth', format: (c) => c.financials?.revenue_growth_pct !== undefined ? `${c.financials.revenue_growth_pct.toFixed(1)}%` : 'N/A' },
+                { label: 'Operating Margin', format: (c) => c.financials?.operating_margin_pct ? `${c.financials.operating_margin_pct.toFixed(1)}%` : 'N/A' },
+                { label: 'Employees', format: (c) => c.financials?.employees ? `${(c.financials.employees/1000).toFixed(0)}K` : 'N/A' },
+                { label: 'Market Cap', format: (c) => c.stock?.market_cap_billions ? `$${c.stock.market_cap_billions}B` : 'N/A' },
+                { label: 'P/E Ratio', format: (c) => c.stock?.pe_ratio || 'N/A' },
+            ];
+
+            metrics.forEach(metric => {
+                html += `<tr><th>${metric.label}</th>`;
+                companies.forEach(c => {
+                    html += `<td>${metric.format(c)}</td>`;
+                });
+                html += `</tr>`;
+            });
+
+            html += `</table></body></html>`;
+
+            // Send to server for PDF conversion
+            fetch('/api/company/generate-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html: html, filename: `company-comparison-${companies.map(c => c.name).join('-vs-')}-${new Date().toISOString().split('T')[0]}` })
+            }).then(response => response.blob()).then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `company-comparison-${companies.map(c => c.name).join('-vs-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }).catch(error => {
+                console.error('PDF generation failed:', error);
+                alert('PDF download not available. Use CSV instead.');
+            });
+        }
+
+        function openEmailModal() {
+            if (!lastComparisonData) {
+                alert('Please load a comparison first');
+                return;
+            }
+            document.getElementById('emailInput').value = '';
+            document.getElementById('emailModalOuter').style.display = 'flex';
+            document.getElementById('emailInput').focus();
+        }
+
+        function closeEmailModal() {
+            document.getElementById('emailModalOuter').style.display = 'none';
+        }
+
+        async function sendEmail() {
+            const email = document.getElementById('emailInput').value.trim();
+            const includeCharts = document.getElementById('includeCharts').checked;
+
+            if (!email || !email.includes('@')) {
+                alert('Please enter a valid email');
+                return;
+            }
+
+            if (!lastComparisonData) {
+                alert('No comparison data to send');
+                return;
+            }
+
+            try {
+                const companies = Object.values(lastComparisonData.companies || {});
+                const response = await fetch('/api/company/send-comparison-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        companies: companies,
+                        includeCharts: includeCharts
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                alert('✅ Comparison sent to ' + email);
+                closeEmailModal();
+            } catch (error) {
+                console.error('Email send failed:', error);
+                alert('Failed to send email. Try again.');
+            }
         }
 
         // Load on page load
