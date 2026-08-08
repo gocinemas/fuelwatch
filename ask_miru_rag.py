@@ -89,7 +89,10 @@ class MiruRAG:
     """Unified RAG system for personal data retrieval"""
 
     def __init__(self, phone: str, sb):
-        self.phone = phone.replace("whatsapp:", "").strip()
+        # Normalize phone: remove "whatsapp:" prefix, handle +/no-+ formats
+        self.phone_raw = phone.replace("whatsapp:", "").strip()
+        self.phone = self.phone_raw.lstrip("+")  # Remove leading + if present
+        self.phone_with_plus = f"+{self.phone}" if not self.phone.startswith("+") else self.phone
         self.sb = sb
         self.context_history: List[Dict] = []  # Track query context for follow-ups
 
@@ -160,9 +163,12 @@ class MiruRAG:
     def _query_wa_saves(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str]) -> Dict:
         """Query wa_saves table (🧾 receipts)"""
         try:
-            query = self.sb.table("wa_saves").select("title,summary,created_at").eq("from_number", self.phone).ilike(
-                "title", "%🧾%"
-            )
+            # Try to find data with either phone format (with/without +)
+            rows = self.sb.table("wa_saves").select("title,summary,created_at").in_(
+                "from_number", [self.phone, self.phone_with_plus, self.phone_raw]
+            ).ilike("title", "%🧾%")
+
+            query = rows
 
             # Filter by merchant if specified
             if merchant:
@@ -220,7 +226,10 @@ class MiruRAG:
     def _query_receipts_table(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str]) -> Dict:
         """Query receipts table (PDF imports, structured data)"""
         try:
-            query = self.sb.table("receipts").select("merchant,items,shop_date,total,created_at").eq("phone", self.phone)
+            # Try both phone formats
+            query = self.sb.table("receipts").select("merchant,items,shop_date,total,created_at").in_(
+                "phone", [self.phone, self.phone_with_plus, self.phone_raw]
+            )
 
             if merchant:
                 query = query.ilike("merchant", f"%{merchant}%")
@@ -283,9 +292,9 @@ class MiruRAG:
         """Query spending by merchant or time period"""
         try:
             # Get recent purchases and sum by merchant
-            rows = self.sb.table("wa_saves").select("title,summary,created_at").eq("from_number", self.phone).ilike(
-                "title", "%🧾%"
-            ).order("created_at", desc=True).limit(50).execute().data or []
+            rows = self.sb.table("wa_saves").select("title,summary,created_at").in_(
+                "from_number", [self.phone, self.phone_with_plus, self.phone_raw]
+            ).ilike("title", "%🧾%").order("created_at", desc=True).limit(50).execute().data or []
 
             if not rows:
                 return {"answer": "No spending data found.", "source": "database", "confidence": 1.0}
