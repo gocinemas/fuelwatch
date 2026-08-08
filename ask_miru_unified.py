@@ -104,10 +104,13 @@ class AskMiruUnified:
             rows = self.sb.table("receipts").select("merchant,items,shop_date,total") \
                 .eq("phone", self.phone).order("shop_date", desc=True).limit(50).execute().data or []
 
-            # Search for specific item if mentioned
+            # Search for specific item if mentioned (any word except stop words)
+            stop_words = {"when", "did", "i", "have", "had", "a", "the", "at", "in", "on", "is", "was", "were", "be", "been", "with", "from", "to", "and", "or", "not", "no", "yes", "do", "you", "me", "my", "this", "that", "what", "where", "how", "why", "receipt", "shop", "visit", "bought"}
             search_item = None
             for word in question.lower().split():
-                if word in ["croissant", "chocolate", "pain", "almond", "coffee", "tea", "bento", "udon"]:
+                # Clean punctuation
+                word = word.strip('?,.:;!"\'-')
+                if word and len(word) > 2 and word not in stop_words:
                     search_item = word
                     break
 
