@@ -17125,6 +17125,69 @@ def api_home_ask():
                     except Exception as e:
                         app.logger.debug(f"[ask] Item search error: {e}")
 
+        # ── FOLLOW-UP: "What items did I order?" — return actual receipt items, not Groq hallucination ──
+        if any(w in q_lower for w in ["what items", "what did i order", "what did i get", "what did i buy", "show me the items"]):
+            if "at " not in q_lower and "in " not in q_lower and "from " not in q_lower:
+                # Follow-up question without merchant name — get most recent receipt
+                try:
+                    import json as _fuj
+                    plain = from_number.replace("whatsapp:", "").strip()
+
+                    # Check time qualifier first
+                    time_qual = None
+                    if any(w in q_lower for w in ["today", "this morning", "this afternoon", "this evening"]):
+                        time_qual = "today"
+                    elif "yesterday" in q_lower:
+                        time_qual = "yesterday"
+
+                    # Query for recent receipts (wa_saves first, then receipts table)
+                    wa_items = lib._sb().table("wa_saves").select("title,summary,created_at") \
+                        .eq("from_number", plain).ilike("title", "%🧾%").order("created_at", desc=True).limit(1).execute().data or []
+
+                    if wa_items:
+                        r = wa_items[0]
+                        merchant = r.get("title", "").replace("🧾", "").strip()
+                        summary = r.get("summary", "")
+                        date_str = r.get("created_at", "")[:10]
+
+                        # Extract items from summary (usually first line or all lines)
+                        if summary:
+                            # Try to extract just the items part (before price/total)
+                            lines = summary.split('\n')
+                            items_lines = [l.strip() for l in lines if l.strip() and '£' not in l[:50]]  # Skip lines with price info at start
+                            if items_lines:
+                                items_text = '\n'.join(items_lines[:10])  # First 10 lines
+                                return jsonify({"answer": f"You ordered from {merchant} on {date_str}:\n\n{items_text}"})
+
+                    # Fallback: check receipts table
+                    rcpt_rows = lib._sb().table("receipts").select("merchant,items,shop_date,created_at") \
+                        .eq("phone", plain).order("shop_date", desc=True).limit(1).execute().data or []
+
+                    if rcpt_rows:
+                        r = rcpt_rows[0]
+                        merchant = r.get("merchant", "")
+                        date_str = r.get("shop_date", "")[:10]
+                        try:
+                            items_json = r.get("items", "[]")
+                            items_list = _fuj.loads(items_json) if isinstance(items_json, str) else (items_json or [])
+                            item_names = []
+                            for item in items_list:
+                                if isinstance(item, dict):
+                                    name = item.get("name", "").strip()
+                                else:
+                                    name = str(item).strip()
+                                if name:
+                                    item_names.append(name)
+
+                            if item_names:
+                                items_text = '\n'.join(item_names[:15])
+                                return jsonify({"answer": f"You ordered from {merchant} on {date_str}:\n\n{items_text}"})
+                        except:
+                            pass
+
+                except Exception as e:
+                    app.logger.debug(f"[ask] Follow-up items query failed: {e}")
+
         # Check for time qualifiers (today, this morning, yesterday)
         time_qualifier = None
         if any(w in q_lower for w in ["this morning", "today", "this afternoon", "this evening"]):
