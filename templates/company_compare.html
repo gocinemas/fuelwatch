@@ -126,7 +126,8 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
 
-        .add-company-content input {
+        .add-company-content input,
+        .add-company-content select {
             width: 100%;
             padding: 12px;
             border: 2px solid #e5e7eb;
@@ -134,11 +135,47 @@
             font-size: 14px;
             margin-bottom: 15px;
             box-sizing: border-box;
+            font-family: inherit;
         }
 
-        .add-company-content input:focus {
+        .add-company-content input:focus,
+        .add-company-content select:focus {
             outline: none;
             border-color: #667eea;
+        }
+
+        .company-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .company-option {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+            transition: all 0.3s;
+        }
+
+        .company-option:last-child {
+            border-bottom: none;
+        }
+
+        .company-option:hover {
+            background: #f0f4ff;
+        }
+
+        .company-option-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .company-option-sector {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
         }
 
         .add-company-buttons {
@@ -355,10 +392,12 @@
         <div class="add-company-modal" id="addCompanyModal">
             <div class="add-company-content">
                 <h2 style="margin-bottom: 15px; font-size: 18px;">Add Company</h2>
-                <input type="text" id="addCompanyInput" placeholder="e.g., Google, Samsung, Amazon" />
+                <input type="text" id="addCompanySearch" placeholder="Search companies..." onkeyup="filterCompanies()" />
+                <div class="company-list" id="companyListContainer">
+                    <!-- Companies will be rendered here -->
+                </div>
                 <div class="add-company-buttons">
-                    <button class="btn-add" onclick="addCompanyFromModal()">Add</button>
-                    <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+                    <button class="btn-cancel" onclick="closeAddModal()" style="flex: 1;">Close</button>
                 </div>
             </div>
         </div>
@@ -372,6 +411,12 @@
     </div>
 
     <script>
+        const AVAILABLE_COMPANIES = [
+            'Apple', 'Microsoft', 'Google', 'Amazon', 'Netflix',
+            'Reckitt', 'Henkel', 'Unilever', 'Nestlé', 'Procter & Gamble',
+            'Pfizer', 'Moderna', 'Johnson & Johnson'
+        ];
+
         let currentCompanies = [];
 
         function renderChips() {
@@ -401,17 +446,43 @@
 
         function openAddModal() {
             document.getElementById('addCompanyModal').classList.add('active');
-            document.getElementById('addCompanyInput').focus();
+            document.getElementById('addCompanySearch').value = '';
+            renderCompanyList();
+            document.getElementById('addCompanySearch').focus();
         }
 
         function closeAddModal() {
             document.getElementById('addCompanyModal').classList.remove('active');
-            document.getElementById('addCompanyInput').value = '';
         }
 
-        function addCompanyFromModal() {
-            const company = document.getElementById('addCompanyInput').value.trim();
-            if (company && !currentCompanies.includes(company) && currentCompanies.length < 4) {
+        function renderCompanyList(filter = '') {
+            const list = document.getElementById('companyListContainer');
+            const filtered = AVAILABLE_COMPANIES.filter(c =>
+                !currentCompanies.includes(c) &&
+                c.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: #6b7280;">No companies available</div>';
+                return;
+            }
+
+            let html = filtered.map(company => `
+                <div class="company-option" onclick="selectCompany('${company}')">
+                    <div class="company-option-name">${company}</div>
+                </div>
+            `).join('');
+
+            list.innerHTML = html;
+        }
+
+        function filterCompanies() {
+            const search = document.getElementById('addCompanySearch').value;
+            renderCompanyList(search);
+        }
+
+        function selectCompany(company) {
+            if (!currentCompanies.includes(company) && currentCompanies.length < 4) {
                 currentCompanies.push(company);
                 updateURL();
                 closeAddModal();
