@@ -89,16 +89,49 @@ class MiruRAG:
     """Unified RAG system for personal data retrieval"""
 
     def __init__(self, phone: str, sb):
-        # Keep original for exact matching (database stores "whatsapp:+44..." format)
+        """
+        Initialize RAG with phone number in any format:
+        - "whatsapp:+447595075735"
+        - "whatsapp:447595075735"
+        - "+447595075735"
+        - "447595075735"
+
+        Generates all variants for flexible database queries (different users
+        may have phone stored in different formats).
+        """
         self.phone_original = phone
-
-        # Also normalize: remove "whatsapp:" prefix, handle +/no-+ formats
-        self.phone_raw = phone.replace("whatsapp:", "").strip()
-        self.phone = self.phone_raw.lstrip("+")  # Remove leading + if present
-        self.phone_with_plus = f"+{self.phone}" if not self.phone.startswith("+") else self.phone
-
         self.sb = sb
-        self.context_history: List[Dict] = []  # Track query context for follow-ups
+        self.context_history: List[Dict] = []
+
+        # Generate all possible phone format variants for database queries
+        self._generate_phone_variants()
+
+    def _generate_phone_variants(self):
+        """Generate all possible phone number formats for flexible database matching"""
+        variants = set()
+
+        # Start with original
+        variants.add(self.phone_original)
+
+        # Remove whatsapp prefix
+        no_wa = self.phone_original.replace("whatsapp:", "").strip()
+        variants.add(no_wa)
+
+        # Handle + prefix variations
+        if no_wa.startswith("+"):
+            variants.add(no_wa)  # With +
+            variants.add(no_wa[1:])  # Without +
+        else:
+            variants.add(no_wa)  # Without +
+            variants.add(f"+{no_wa}")  # With +
+
+        # Also try with whatsapp: prefix + variations
+        no_plus = no_wa.lstrip("+")
+        variants.add(f"whatsapp:{no_plus}")
+        variants.add(f"whatsapp:+{no_plus}")
+
+        # Remove any empty strings
+        self.phone_variants = [v for v in variants if v and v.strip()]
 
     def query(self, question: str) -> Dict[str, Any]:
         """
@@ -165,26 +198,16 @@ class MiruRAG:
             return {"answer": f"Error querying receipts: {e}", "source": "error", "confidence": 0.0}
 
     def _query_wa_saves(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str]) -> Dict:
-        """Query wa_saves table (🧾 receipts)"""
+        """Query wa_saves table (🧾 receipts) — works with all phone formats"""
         try:
-            # Try multiple phone formats (database stores "whatsapp:+44..." format)
-            phone_formats = [
-                self.phone_original,  # Original: "whatsapp:+447595075735"
-                self.phone,  # Plain: "447595075735"
-                self.phone_with_plus,  # With +: "+447595075735"
-                self.phone_raw,  # Raw: "+447595075735" or "whatsapp:+447595075735"
-            ]
-            print(f"[RAG DEBUG] Querying wa_saves for phone formats: {phone_formats}")
-
             rows = self.sb.table("wa_saves").select("title,summary,created_at").in_(
-                "from_number", phone_formats
+                "from_number", self.phone_variants
             ).ilike("title", "%🧾%")
 
             query = rows
 
             # Filter by merchant if specified
             if merchant:
-                print(f"[RAG DEBUG] Filtering by merchant: {merchant}")
                 query = query.ilike("title", f"%{merchant}%")
 
             # Filter by time
@@ -197,13 +220,7 @@ class MiruRAG:
 
             rows = query.order("created_at", desc=True).limit(5).execute().data or []
 
-            print(f"[RAG DEBUG] Found {len(rows)} rows in wa_saves")
-            if rows:
-                for i, r in enumerate(rows[:3]):
-                    print(f"  Row {i}: title={r.get('title')}, created_at={r.get('created_at')}")
-
             if not rows:
-                print(f"[RAG DEBUG] No rows found, returning not found")
                 return {"found": False, "data": None}
 
             # Process results
@@ -243,17 +260,14 @@ class MiruRAG:
             return {"found": False, "error": str(e)}
 
     def _query_receipts_table(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str]) -> Dict:
-        """Query receipts table (PDF imports, structured data)"""
+        """Query receipts table (PDF imports, structured data) — works with all phone formats"""
         try:
-            # Try multiple phone formats
-            phone_formats = [
-                self.phone_original.replace("whatsapp:", "").strip(),  # Remove whatsapp prefix
-                self.phone,
-                self.phone_with_plus,
-                self.phone_raw,
-            ]
+            # Remove whatsapp: prefix for receipts table (uses plain phone only)
+            phone_variants_plain = [v.replace("whatsapp:", "").strip() for v in self.phone_variants]
+            phone_variants_plain = [v for v in phone_variants_plain if v]  # Remove empty
+
             query = self.sb.table("receipts").select("merchant,items,shop_date,total,created_at").in_(
-                "phone", phone_formats
+                "phone", phone_variants_plain
             )
 
             if merchant:
@@ -314,17 +328,11 @@ class MiruRAG:
             return {"found": False, "error": str(e)}
 
     def _query_spending(self, merchant: Optional[str], time_qual: Optional[str], question: str) -> Dict:
-        """Query spending by merchant or time period"""
+        """Query spending by merchant or time period — works with all phone formats"""
         try:
             # Get recent purchases and sum by merchant
-            phone_formats = [
-                self.phone_original,  # Original format from database
-                self.phone,
-                self.phone_with_plus,
-                self.phone_raw,
-            ]
             rows = self.sb.table("wa_saves").select("title,summary,created_at").in_(
-                "from_number", phone_formats
+                "from_number", self.phone_variants
             ).ilike("title", "%🧾%").order("created_at", desc=True).limit(50).execute().data or []
 
             if not rows:

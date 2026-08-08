@@ -16831,17 +16831,12 @@ def api_home_ask():
     # ── NEW: Try RAG-based Ask Miru (data-first retrieval, no hallucination) ──
     try:
         from ask_miru_rag import MiruRAG
-        print(f"[RAG] from_number={from_number}")
         rag = MiruRAG(from_number, lib._sb())
         result = rag.query(question)
-        print(f"[RAG] result={result}")
         if result.get("answer") and result.get("source") != "system":
             app.logger.info(f"[ask] RAG answered ({result.get('source')}): {question[:50]}")
             return jsonify({"answer": result.get("answer")})
     except Exception as e:
-        print(f"[RAG ERROR] {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
         app.logger.error(f"[ask] RAG query failed: {e}")
 
     # ── LOCATION EXTRACTION — learn where user is from conversation ──
