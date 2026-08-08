@@ -59,7 +59,7 @@ class AskMiruUnified:
             
             rows = self.sb.table("school_events").select("event_title,event_date,child_name") \
                 .gte("event_date", today.isoformat()) \
-                .order("event_date", asc=True).limit(10).execute().data or []
+                .order("event_date", desc=False).limit(10).execute().data or []
             
             if rows:
                 next_event = rows[0]
@@ -95,15 +95,42 @@ class AskMiruUnified:
     def query_receipts(self, question: str) -> str:
         """Query recent receipts and purchases"""
         try:
+            import json as _json
             rows = self.sb.table("receipts").select("merchant,items,shop_date,total") \
-                .eq("phone", self.phone).order("shop_date", desc=True).limit(5).execute().data or []
-            
-            if rows:
-                r = rows[0]
-                merchant = r.get("merchant", "")
-                date_str = r.get("shop_date", "")
-                return f"Last visit: {merchant} on {date_str}"
+                .eq("phone", self.phone).order("shop_date", desc=True).limit(50).execute().data or []
+
+            # Search for specific item if mentioned
+            search_item = None
+            for word in question.lower().split():
+                if word in ["croissant", "chocolate", "pain", "almond", "coffee", "tea", "bento", "udon"]:
+                    search_item = word
+                    break
+
+            if search_item:
+                # Find receipt with this item
+                for r in rows:
+                    items_json = r.get("items", "[]")
+                    try:
+                        items_list = _json.loads(items_json) if isinstance(items_json, str) else (items_json or [])
+                    except:
+                        items_list = []
+
+                    for item in items_list:
+                        item_name = item.get("name", "") if isinstance(item, dict) else str(item)
+                        if search_item.lower() in item_name.lower():
+                            merchant = r.get("merchant", "")
+                            date_str = r.get("shop_date", "")
+                            return f"You had {item_name} at {merchant} on {date_str}"
+
+                return f"I didn't find {search_item} in your recent receipts."
             else:
-                return "No recent receipts."
+                # Just show last receipt
+                if rows:
+                    r = rows[0]
+                    merchant = r.get("merchant", "")
+                    date_str = r.get("shop_date", "")
+                    return f"Last visit: {merchant} on {date_str}"
+                else:
+                    return "No recent receipts."
         except Exception as e:
             return f"Couldn't check receipts: {e}"
