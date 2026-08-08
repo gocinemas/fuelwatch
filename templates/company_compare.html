@@ -316,7 +316,8 @@
         .metric-name {
             font-weight: 600;
             color: #1f2937;
-            min-width: 140px;
+            min-width: 200px;
+            vertical-align: top;
         }
 
         .metric-value {
@@ -638,26 +639,76 @@
             });
             html += `</tr></thead><tbody>`;
 
-            const metrics = ['revenue_millions', 'revenue_growth_pct', 'operating_margin_pct', 'employees'];
-            const labels = ['Revenue (Latest)', 'Revenue Growth', 'Operating Margin', 'Employees'];
-            const formatters = [
-                (v) => v ? `$${(v/1000).toFixed(1)}B` : 'N/A',
-                (v) => v !== undefined ? `${v.toFixed(1)}%` : 'N/A',
-                (v) => v ? `${v.toFixed(1)}%` : 'N/A',
-                (v) => v ? `${(v/1000).toFixed(0)}K` : 'N/A'
+            // Build enhanced metrics with calculated fields
+            const metricsConfig = [
+                {
+                    key: 'revenue_millions',
+                    label: 'Annual Revenue',
+                    help: 'Total revenue per year in billions USD',
+                    formatter: (v) => v ? `$${(v/1000).toFixed(1)}B` : 'N/A'
+                },
+                {
+                    key: 'revenue_growth_pct',
+                    label: 'Revenue Growth',
+                    help: 'Year-over-year revenue growth percentage',
+                    formatter: (v) => v !== undefined ? `${v.toFixed(1)}%` : 'N/A'
+                },
+                {
+                    key: 'operating_margin_pct',
+                    label: 'Operating Margin',
+                    help: 'Operating profit as percentage of revenue',
+                    formatter: (v) => v ? `${v.toFixed(1)}%` : 'N/A'
+                },
+                {
+                    key: 'employees',
+                    label: 'Employees',
+                    help: 'Total workforce headcount in thousands',
+                    formatter: (v) => v ? `${(v/1000).toFixed(0)}K` : 'N/A'
+                },
+                {
+                    key: 'revenue_per_employee',
+                    label: 'Revenue per Employee',
+                    help: 'Annual revenue generated per employee (millions USD)',
+                    isCalculated: true,
+                    formatter: (v) => v ? `$${v.toFixed(2)}M` : 'N/A',
+                    calculator: (company) => {
+                        if (company.financials && company.financials.revenue_millions && company.financials.employees) {
+                            return company.financials.revenue_millions / company.financials.employees;
+                        }
+                        return null;
+                    }
+                }
             ];
 
-            metrics.forEach((metric, idx) => {
-                const hasData = companies.some(c => c.financials && c.financials[metric] !== undefined);
+            metricsConfig.forEach((metricConfig) => {
+                let hasData;
+
+                if (metricConfig.isCalculated) {
+                    hasData = companies.some(c => metricConfig.calculator(c) !== null);
+                } else {
+                    hasData = companies.some(c => c.financials && c.financials[metricConfig.key] !== undefined);
+                }
+
                 if (!hasData) return;
 
-                html += `<tr><td class="metric-name">${labels[idx]}</td>`;
+                html += `<tr><td class="metric-name" title="${metricConfig.help}">
+                    ${metricConfig.label}
+                    <div style="font-size: 11px; color: #9ca3af; font-weight: 400; margin-top: 3px;">
+                        ${metricConfig.help}
+                    </div>
+                </td>`;
 
-                const values = companies.map(c => c.financials ? c.financials[metric] : null);
+                let values;
+                if (metricConfig.isCalculated) {
+                    values = companies.map(c => metricConfig.calculator(c));
+                } else {
+                    values = companies.map(c => c.financials ? c.financials[metricConfig.key] : null);
+                }
+
                 const maxVal = Math.max(...values.filter(v => v !== null));
 
                 values.forEach(val => {
-                    const formatted = formatters[idx](val);
+                    const formatted = metricConfig.formatter(val);
                     const isWinner = val === maxVal && val !== null;
                     const isNA = val === null;
                     const className = isWinner ? 'metric-value winner' : isNA ? 'metric-value na' : 'metric-value';
