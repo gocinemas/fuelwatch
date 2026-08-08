@@ -112,7 +112,7 @@ class AskMiruUnified:
                     break
 
             if search_item:
-                # Find receipt with this item
+                # Find MOST RECENT receipt with this item (rows already sorted DESC by date)
                 for r in rows:
                     items_json = r.get("items", "[]")
                     try:
@@ -121,8 +121,13 @@ class AskMiruUnified:
                         items_list = []
 
                     for item in items_list:
-                        item_name = item.get("name", "") if isinstance(item, dict) else str(item)
-                        if search_item.lower() in item_name.lower():
+                        # Handle both dict format {"name": "..."} and string format "..."
+                        if isinstance(item, dict):
+                            item_name = item.get("name", "")
+                        else:
+                            item_name = str(item).strip()
+
+                        if item_name and search_item.lower() in item_name.lower():
                             merchant = r.get("merchant", "")
                             date_str = r.get("shop_date", "")
                             return f"You had {item_name} at {merchant} on {date_str}"
