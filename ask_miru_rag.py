@@ -236,11 +236,13 @@ class MiruRAG:
             amount_match = re.search(r"£([\d,]+\.?\d{0,2})", summary)
             amount = f"£{amount_match.group(1)}" if amount_match else None
 
-            answer = f"You ordered from {merchant_name} on {created_at}"
-            if items:
-                answer += f":\n\n" + "\n".join(items[:12])
+            # Format cleanly: merchant + date, then items
+            items_text = "\n".join([f"  • {item}" for item in items[:12]]) if items else ""
+            answer = f"🧾 {merchant_name} on {created_at}"
+            if items_text:
+                answer += f"\n{items_text}"
             if amount:
-                answer += f"\n\nTotal: {amount}"
+                answer += f"\n💰 {amount}"
 
             return {
                 "answer": answer,
@@ -305,11 +307,13 @@ class MiruRAG:
             amount = receipt.get("total")
             amount_str = f"£{amount:.2f}" if amount else None
 
-            answer = f"You ordered from {merchant_name} on {shop_date}"
-            if items:
-                answer += ":\n\n" + "\n".join(items[:12])
+            # Format cleanly: merchant + date, then items
+            items_text = "\n".join([f"  • {item}" for item in items[:12]]) if items else ""
+            answer = f"🧾 {merchant_name} on {shop_date}"
+            if items_text:
+                answer += f"\n{items_text}"
             if amount_str:
-                answer += f"\n\nTotal: {amount_str}"
+                answer += f"\n💰 {amount_str}"
 
             return {
                 "answer": answer,
