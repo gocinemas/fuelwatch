@@ -957,6 +957,9 @@
                 document.getElementById('competitorChips').style.display = 'none';
             }
 
+            // Clear comparison inputs for fresh start
+            document.querySelectorAll('.compareInput').forEach(input => input.value = '');
+
             document.getElementById('compareModalOuter').style.display = 'flex';
         }
 
