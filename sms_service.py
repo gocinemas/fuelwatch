@@ -16827,16 +16827,16 @@ def api_home_ask():
 
     q_lower = question.strip().lower()
 
-    # Try unified Ask Miru (queries all Miru data)
+    # ── NEW: Try RAG-based Ask Miru (data-first retrieval, no hallucination) ──
     try:
-        from ask_miru_unified import AskMiruUnified
-        unified = AskMiruUnified(from_number, lib._sb())
-        answer = unified.query(question)
-        if answer and "help with:" not in answer.lower():
-            app.logger.info(f"[ask] Unified query answered: {question[:50]}")
-            return jsonify({"answer": answer})
+        from ask_miru_rag import MiruRAG
+        rag = MiruRAG(from_number, lib._sb())
+        result = rag.query(question)
+        if result.get("answer") and result.get("source") != "system":
+            app.logger.info(f"[ask] RAG answered ({result.get('source')}): {question[:50]}")
+            return jsonify({"answer": result.get("answer")})
     except Exception as e:
-        app.logger.debug(f"[ask] Unified query failed: {e}")
+        app.logger.debug(f"[ask] RAG query failed: {e}")
 
     # ── LOCATION EXTRACTION — learn where user is from conversation ──
     # Extract "at Costa", "in Tesco", etc. and store for next 30 mins

@@ -393,9 +393,14 @@
                 <button onclick="searchCompany()">Search</button>
             </div>
             <div id="companyInfo" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <div class="company-title" id="companyName">—</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="company-title" id="companyName">—</div>
+                            <button id="trackButton" onclick="toggleTrackCompany()" title="Track this company for changes" style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 0; transition: transform 0.2s; opacity: 0.6; hover-opacity: 1;">
+                                ☆
+                            </button>
+                        </div>
                         <div class="company-meta" id="companyMeta">Loading...</div>
                     </div>
                     <button class="download-button" id="downloadBtn" onclick="downloadReport()">
@@ -711,10 +716,9 @@
                 // Load documents for this company
                 loadDocuments();
 
-                // Show track company prompt (delayed so user sees data first)
-                setTimeout(() => {
-                    openTrackModal();
-                }, 2000);
+                // Update track button
+                document.getElementById('trackButton').style.display = 'block';
+                updateTrackButton();
 
                 // News Feed
                 const news = data.news || [];
@@ -1093,59 +1097,84 @@
         }
 
         // ── Company Tracking / Watch List Functions ──
-        function openTrackModal() {
+        let watchedCompanies = new Set();
+        let userEmail = localStorage.getItem('intel_user_email') || '';
+
+        async function toggleTrackCompany() {
             if (!currentCompany) return;
-            document.getElementById('trackCompanyName').textContent = currentCompany;
-            document.getElementById('trackEmailInput').value = '';
-            document.getElementById('trackModalOuter').style.display = 'flex';
-            document.getElementById('trackEmailInput').focus();
-        }
 
-        function closeTrackModal() {
-            document.getElementById('trackModalOuter').style.display = 'none';
-        }
-
-        async function confirmTrackCompany() {
-            const email = document.getElementById('trackEmailInput').value.trim();
-
-            if (!email || !email.includes('@')) {
-                alert('Please enter a valid email');
-                return;
-            }
-
-            if (!currentCompany) {
-                alert('No company selected');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/company/watchlist/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: email,
-                        company_name: currentCompany
-                    })
-                });
-
-                const data = await response.json();
-                if (data.error) {
-                    alert('Error: ' + data.error);
+            // If user email not set, ask for it
+            if (!userEmail) {
+                userEmail = prompt(`Enter your email to track ${currentCompany}:`, '');
+                if (!userEmail || !userEmail.includes('@')) {
+                    alert('Please enter a valid email');
                     return;
                 }
+                localStorage.setItem('intel_user_email', userEmail);
+            }
 
-                // Show success message
-                alert('✅ ' + data.message);
-                closeTrackModal();
+            // Add to watch list
+            if (!watchedCompanies.has(currentCompany.toLowerCase())) {
+                try {
+                    const response = await fetch('/api/company/watchlist/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: userEmail,
+                            company_name: currentCompany
+                        })
+                    });
 
-                // Add badge to floating compare button
-                const btn = document.getElementById('floatingCompareBtn');
-                if (btn && !btn.innerHTML.includes('👀')) {
-                    btn.innerHTML = '⚖️👀';
+                    const data = await response.json();
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+
+                    watchedCompanies.add(currentCompany.toLowerCase());
+                    updateTrackButton();
+                    alert('✅ Now tracking ' + currentCompany);
+                } catch (error) {
+                    console.error('Failed to track company:', error);
+                    alert('Failed to track company. Try again.');
                 }
-            } catch (error) {
-                console.error('Failed to track company:', error);
-                alert('Failed to track company. Try again.');
+            } else {
+                // Remove from watch list
+                try {
+                    const response = await fetch(`/api/company/watchlist/${currentCompany}?email=${encodeURIComponent(userEmail)}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await response.json();
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+
+                    watchedCompanies.delete(currentCompany.toLowerCase());
+                    updateTrackButton();
+                    alert('✅ Stopped tracking ' + currentCompany);
+                } catch (error) {
+                    console.error('Failed to untrack company:', error);
+                    alert('Failed to untrack company. Try again.');
+                }
+            }
+        }
+
+        function updateTrackButton() {
+            const btn = document.getElementById('trackButton');
+            if (!btn) return;
+
+            if (watchedCompanies.has(currentCompany.toLowerCase())) {
+                btn.textContent = '★'; // Filled star
+                btn.style.opacity = '1';
+                btn.style.color = '#667eea';
+                btn.title = 'Stop tracking this company';
+            } else {
+                btn.textContent = '☆'; // Empty star
+                btn.style.opacity = '0.6';
+                btn.style.color = '#1f2937';
+                btn.title = 'Track this company for changes';
             }
         }
 
