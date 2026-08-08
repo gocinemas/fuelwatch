@@ -89,10 +89,14 @@ class MiruRAG:
     """Unified RAG system for personal data retrieval"""
 
     def __init__(self, phone: str, sb):
-        # Normalize phone: remove "whatsapp:" prefix, handle +/no-+ formats
+        # Keep original for exact matching (database stores "whatsapp:+44..." format)
+        self.phone_original = phone
+
+        # Also normalize: remove "whatsapp:" prefix, handle +/no-+ formats
         self.phone_raw = phone.replace("whatsapp:", "").strip()
         self.phone = self.phone_raw.lstrip("+")  # Remove leading + if present
         self.phone_with_plus = f"+{self.phone}" if not self.phone.startswith("+") else self.phone
+
         self.sb = sb
         self.context_history: List[Dict] = []  # Track query context for follow-ups
 
@@ -163,11 +167,17 @@ class MiruRAG:
     def _query_wa_saves(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str]) -> Dict:
         """Query wa_saves table (🧾 receipts)"""
         try:
-            # Try to find data with either phone format (with/without +)
-            print(f"[RAG DEBUG] Querying wa_saves for phone: {self.phone}, {self.phone_with_plus}, {self.phone_raw}")
+            # Try multiple phone formats (database stores "whatsapp:+44..." format)
+            phone_formats = [
+                self.phone_original,  # Original: "whatsapp:+447595075735"
+                self.phone,  # Plain: "447595075735"
+                self.phone_with_plus,  # With +: "+447595075735"
+                self.phone_raw,  # Raw: "+447595075735" or "whatsapp:+447595075735"
+            ]
+            print(f"[RAG DEBUG] Querying wa_saves for phone formats: {phone_formats}")
 
             rows = self.sb.table("wa_saves").select("title,summary,created_at").in_(
-                "from_number", [self.phone, self.phone_with_plus, self.phone_raw]
+                "from_number", phone_formats
             ).ilike("title", "%🧾%")
 
             query = rows
@@ -235,9 +245,15 @@ class MiruRAG:
     def _query_receipts_table(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str]) -> Dict:
         """Query receipts table (PDF imports, structured data)"""
         try:
-            # Try both phone formats
+            # Try multiple phone formats
+            phone_formats = [
+                self.phone_original.replace("whatsapp:", "").strip(),  # Remove whatsapp prefix
+                self.phone,
+                self.phone_with_plus,
+                self.phone_raw,
+            ]
             query = self.sb.table("receipts").select("merchant,items,shop_date,total,created_at").in_(
-                "phone", [self.phone, self.phone_with_plus, self.phone_raw]
+                "phone", phone_formats
             )
 
             if merchant:
@@ -301,8 +317,14 @@ class MiruRAG:
         """Query spending by merchant or time period"""
         try:
             # Get recent purchases and sum by merchant
+            phone_formats = [
+                self.phone_original,  # Original format from database
+                self.phone,
+                self.phone_with_plus,
+                self.phone_raw,
+            ]
             rows = self.sb.table("wa_saves").select("title,summary,created_at").in_(
-                "from_number", [self.phone, self.phone_with_plus, self.phone_raw]
+                "from_number", phone_formats
             ).ilike("title", "%🧾%").order("created_at", desc=True).limit(50).execute().data or []
 
             if not rows:
