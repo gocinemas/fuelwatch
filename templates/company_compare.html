@@ -841,16 +841,22 @@
             return html;
         }
 
+        let chartState = {
+            growth: { hiddenCompanies: new Set() },
+            margin: { hiddenCompanies: new Set() }
+        };
+
         function drawGrowthChart(companies) {
             const canvas = document.getElementById('growthChart');
             if (!canvas) return;
 
             const ctx = canvas.getContext('2d');
-            const padding = 40;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const padding = 60;
             const width = canvas.width - padding * 2;
             const height = canvas.height - padding * 2;
 
-            // Get all periods
             const allPeriods = new Set();
             companies.forEach(c => {
                 if (c.trends && c.trends.revenue) {
@@ -858,7 +864,6 @@
                 }
             });
             const periods = Array.from(allPeriods).sort();
-
             if (periods.length === 0) return;
 
             const colors = ['#667eea', '#f093fb', '#4facfe', '#fa709a'];
@@ -866,18 +871,12 @@
                 c.trends && c.trends.revenue ? Object.values(c.trends.revenue) : []
             ));
 
-            // Draw axes
-            ctx.strokeStyle = '#e5e7eb';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(padding, height + padding);
-            ctx.lineTo(width + padding, height + padding);
-            ctx.moveTo(padding, padding);
-            ctx.lineTo(padding, height + padding);
-            ctx.stroke();
+            // Professional styling
+            ctx.fillStyle = '#f9fafb';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw grid
-            ctx.strokeStyle = '#f3f4f6';
+            // Grid
+            ctx.strokeStyle = '#e5e7eb';
             ctx.lineWidth = 1;
             for (let i = 0; i <= 4; i++) {
                 const y = padding + (height / 4) * i;
@@ -885,59 +884,71 @@
                 ctx.moveTo(padding, y);
                 ctx.lineTo(width + padding, y);
                 ctx.stroke();
+
+                // Y-axis labels
+                const val = Math.round((maxRevenue / 4) * (4 - i));
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(`$${val}B`, padding - 10, y + 4);
             }
 
-            // Draw data lines
+            // Axes
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, height + padding);
+            ctx.lineTo(width + padding, height + padding);
+            ctx.stroke();
+
+            // Draw smooth curves
             companies.forEach((company, idx) => {
-                if (!company.trends || !company.trends.revenue) return;
+                if (!company.trends || !company.trends.revenue || chartState.growth.hiddenCompanies.has(company.name)) return;
 
-                ctx.strokeStyle = colors[idx];
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-
-                let first = true;
+                const points = [];
                 periods.forEach((period, pIdx) => {
                     const value = company.trends.revenue[period];
-                    if (value === undefined) return;
-
-                    const x = padding + (width / (periods.length - 1)) * pIdx;
-                    const y = padding + height - (height * value / maxRevenue);
-
-                    if (first) {
-                        ctx.moveTo(x, y);
-                        first = false;
-                    } else {
-                        ctx.lineTo(x, y);
+                    if (value !== undefined) {
+                        const x = padding + (width / (periods.length - 1)) * pIdx;
+                        const y = padding + height - (height * value / maxRevenue);
+                        points.push({ x, y, period, value });
                     }
                 });
+
+                // Draw smooth line with gradient
+                ctx.strokeStyle = colors[idx];
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+
+                if (points.length > 0) {
+                    ctx.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) {
+                        const xc = (points[i - 1].x + points[i].x) / 2;
+                        const yc = (points[i - 1].y + points[i].y) / 2;
+                        ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
+                    }
+                    ctx.quadraticCurveTo(points[points.length - 1].x, points[points.length - 1].y, points[points.length - 1].x, points[points.length - 1].y);
+                }
                 ctx.stroke();
 
                 // Draw points
-                ctx.fillStyle = colors[idx];
-                periods.forEach((period, pIdx) => {
-                    const value = company.trends.revenue[period];
-                    if (value === undefined) return;
-                    const x = padding + (width / (periods.length - 1)) * pIdx;
-                    const y = padding + height - (height * value / maxRevenue);
+                points.forEach(p => {
+                    ctx.fillStyle = 'white';
+                    ctx.strokeStyle = colors[idx];
+                    ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
                     ctx.fill();
+                    ctx.stroke();
                 });
             });
 
-            // Draw legend
-            companies.forEach((company, idx) => {
-                if (!company.trends || !company.trends.revenue) return;
-                ctx.fillStyle = colors[idx];
-                ctx.fillRect(width + padding - 150, padding + idx * 25, 15, 15);
-                ctx.fillStyle = '#1f2937';
-                ctx.font = '12px sans-serif';
-                ctx.fillText(company.name, width + padding - 130, padding + idx * 25 + 12);
-            });
-
             // X-axis labels
-            ctx.fillStyle = '#6b7280';
-            ctx.font = '12px sans-serif';
+            ctx.fillStyle = '#374151';
+            ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
             periods.forEach((period, pIdx) => {
                 const x = padding + (width / (periods.length - 1)) * pIdx;
@@ -946,11 +957,39 @@
 
             // Y-axis label
             ctx.save();
+            ctx.fillStyle = '#6b7280';
+            ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
             ctx.translate(15, padding + height / 2);
             ctx.rotate(-Math.PI / 2);
             ctx.textAlign = 'center';
-            ctx.fillText('Revenue ($B)', 0, 0);
+            ctx.fillText('Annual Revenue ($B)', 0, 0);
             ctx.restore();
+
+            // Interactive legend
+            drawLegend(ctx, companies, colors, padding + width - 200, padding, 'growth');
+
+            // Hover detection
+            canvas.onmousemove = (e) => drawTooltip(e, canvas, ctx, companies, periods, colors, padding, width, height, maxRevenue, 'growth', 'revenue');
+
+            // Legend click to toggle
+            canvas.onclick = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const legendX = padding + width - 200;
+                companies.forEach((company, idx) => {
+                    const lY = padding + idx * 28;
+                    if (x >= legendX && x <= legendX + 150 && y >= lY && y <= lY + 15) {
+                        if (chartState.growth.hiddenCompanies.has(company.name)) {
+                            chartState.growth.hiddenCompanies.delete(company.name);
+                        } else {
+                            chartState.growth.hiddenCompanies.add(company.name);
+                        }
+                        drawGrowthChart(companies);
+                    }
+                });
+            };
         }
 
         function drawMarginChart(companies) {
@@ -958,11 +997,12 @@
             if (!canvas) return;
 
             const ctx = canvas.getContext('2d');
-            const padding = 40;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const padding = 60;
             const width = canvas.width - padding * 2;
             const height = canvas.height - padding * 2;
 
-            // Get all periods
             const allPeriods = new Set();
             companies.forEach(c => {
                 if (c.trends && c.trends.margin) {
@@ -970,23 +1010,16 @@
                 }
             });
             const periods = Array.from(allPeriods).sort();
-
             if (periods.length === 0) return;
 
             const colors = ['#667eea', '#f093fb', '#4facfe', '#fa709a'];
 
-            // Draw axes
-            ctx.strokeStyle = '#e5e7eb';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(padding, height + padding);
-            ctx.lineTo(width + padding, height + padding);
-            ctx.moveTo(padding, padding);
-            ctx.lineTo(padding, height + padding);
-            ctx.stroke();
+            // Background
+            ctx.fillStyle = '#f9fafb';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw grid
-            ctx.strokeStyle = '#f3f4f6';
+            // Grid
+            ctx.strokeStyle = '#e5e7eb';
             ctx.lineWidth = 1;
             for (let i = 0; i <= 4; i++) {
                 const y = padding + (height / 4) * i;
@@ -994,59 +1027,70 @@
                 ctx.moveTo(padding, y);
                 ctx.lineTo(width + padding, y);
                 ctx.stroke();
+
+                // Y-axis labels
+                const val = Math.round(40 - (40 / 4) * i);
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${val}%`, padding - 10, y + 4);
             }
 
-            // Draw data lines
+            // Axes
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, height + padding);
+            ctx.lineTo(width + padding, height + padding);
+            ctx.stroke();
+
+            // Draw smooth curves
             companies.forEach((company, idx) => {
-                if (!company.trends || !company.trends.margin) return;
+                if (!company.trends || !company.trends.margin || chartState.margin.hiddenCompanies.has(company.name)) return;
+
+                const points = [];
+                periods.forEach((period, pIdx) => {
+                    const value = company.trends.margin[period];
+                    if (value !== undefined) {
+                        const x = padding + (width / (periods.length - 1)) * pIdx;
+                        const y = padding + height - (height * value / 40);
+                        points.push({ x, y, period, value });
+                    }
+                });
 
                 ctx.strokeStyle = colors[idx];
                 ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
                 ctx.beginPath();
 
-                let first = true;
-                periods.forEach((period, pIdx) => {
-                    const value = company.trends.margin[period];
-                    if (value === undefined) return;
-
-                    const x = padding + (width / (periods.length - 1)) * pIdx;
-                    const y = padding + height - (height * value / 40);
-
-                    if (first) {
-                        ctx.moveTo(x, y);
-                        first = false;
-                    } else {
-                        ctx.lineTo(x, y);
+                if (points.length > 0) {
+                    ctx.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) {
+                        const xc = (points[i - 1].x + points[i].x) / 2;
+                        const yc = (points[i - 1].y + points[i].y) / 2;
+                        ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
                     }
-                });
+                    ctx.quadraticCurveTo(points[points.length - 1].x, points[points.length - 1].y, points[points.length - 1].x, points[points.length - 1].y);
+                }
                 ctx.stroke();
 
                 // Draw points
-                ctx.fillStyle = colors[idx];
-                periods.forEach((period, pIdx) => {
-                    const value = company.trends.margin[period];
-                    if (value === undefined) return;
-                    const x = padding + (width / (periods.length - 1)) * pIdx;
-                    const y = padding + height - (height * value / 40);
+                points.forEach(p => {
+                    ctx.fillStyle = 'white';
+                    ctx.strokeStyle = colors[idx];
+                    ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
                     ctx.fill();
+                    ctx.stroke();
                 });
             });
 
-            // Draw legend
-            companies.forEach((company, idx) => {
-                if (!company.trends || !company.trends.margin) return;
-                ctx.fillStyle = colors[idx];
-                ctx.fillRect(width + padding - 150, padding + idx * 25, 15, 15);
-                ctx.fillStyle = '#1f2937';
-                ctx.font = '12px sans-serif';
-                ctx.fillText(company.name, width + padding - 130, padding + idx * 25 + 12);
-            });
-
             // X-axis labels
-            ctx.fillStyle = '#6b7280';
-            ctx.font = '12px sans-serif';
+            ctx.fillStyle = '#374151';
+            ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
             periods.forEach((period, pIdx) => {
                 const x = padding + (width / (periods.length - 1)) * pIdx;
@@ -1055,11 +1099,110 @@
 
             // Y-axis label
             ctx.save();
+            ctx.fillStyle = '#6b7280';
+            ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
             ctx.translate(15, padding + height / 2);
             ctx.rotate(-Math.PI / 2);
             ctx.textAlign = 'center';
             ctx.fillText('Operating Margin (%)', 0, 0);
             ctx.restore();
+
+            // Interactive legend
+            drawLegend(ctx, companies, colors, padding + width - 200, padding, 'margin');
+
+            // Hover detection
+            canvas.onmousemove = (e) => drawTooltip(e, canvas, ctx, companies, periods, colors, padding, width, height, 40, 'margin', 'margin');
+
+            // Legend click to toggle
+            canvas.onclick = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const legendX = padding + width - 200;
+                companies.forEach((company, idx) => {
+                    const lY = padding + idx * 28;
+                    if (x >= legendX && x <= legendX + 150 && y >= lY && y <= lY + 15) {
+                        if (chartState.margin.hiddenCompanies.has(company.name)) {
+                            chartState.margin.hiddenCompanies.delete(company.name);
+                        } else {
+                            chartState.margin.hiddenCompanies.add(company.name);
+                        }
+                        drawMarginChart(companies);
+                    }
+                });
+            };
+        }
+
+        function drawLegend(ctx, companies, colors, x, y, chartType) {
+            companies.forEach((company, idx) => {
+                const isHidden = chartType === 'growth' ? chartState.growth.hiddenCompanies.has(company.name) : chartState.margin.hiddenCompanies.has(company.name);
+                const alpha = isHidden ? 0.3 : 1;
+
+                // Color box
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = colors[idx];
+                ctx.fillRect(x, y + idx * 28, 12, 12);
+                ctx.globalAlpha = 1;
+
+                // Company name
+                ctx.fillStyle = isHidden ? '#d1d5db' : '#1f2937';
+                ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(company.name, x + 18, y + idx * 28 + 9);
+            });
+        }
+
+        function drawTooltip(e, canvas, ctx, companies, periods, colors, padding, width, height, maxVal, chartType, dataKey) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Find closest data point
+            let closestPoint = null;
+            let closestDist = Infinity;
+
+            companies.forEach((company, idx) => {
+                if (!company.trends) return;
+                const trendData = dataKey === 'revenue' ? company.trends.revenue : company.trends.margin;
+                if (!trendData) return;
+
+                periods.forEach((period, pIdx) => {
+                    const value = trendData[period];
+                    if (value === undefined) return;
+
+                    const x = padding + (width / (periods.length - 1)) * pIdx;
+                    const y = padding + height - (height * value / maxVal);
+
+                    const dist = Math.hypot(mouseX - x, mouseY - y);
+                    if (dist < 20 && dist < closestDist) {
+                        closestDist = dist;
+                        closestPoint = { x, y, company: company.name, period, value, color: colors[idx] };
+                    }
+                });
+            });
+
+            if (closestPoint) {
+                // Draw tooltip
+                const text = `${closestPoint.company} • ${closestPoint.period}: ${dataKey === 'revenue' ? '$' + closestPoint.value.toFixed(1) + 'B' : closestPoint.value.toFixed(1) + '%'}`;
+                const textWidth = ctx.measureText ? ctx.measureText(text).width : 200;
+
+                ctx.fillStyle = 'rgba(31, 41, 55, 0.95)';
+                ctx.fillRect(closestPoint.x - textWidth / 2 - 8, closestPoint.y - 35, textWidth + 16, 24);
+
+                ctx.fillStyle = 'white';
+                ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(text, closestPoint.x, closestPoint.y - 16);
+
+                // Highlight point
+                ctx.fillStyle = closestPoint.color;
+                ctx.globalAlpha = 0.2;
+                ctx.beginPath();
+                ctx.arc(closestPoint.x, closestPoint.y, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
         }
 
         function renderDealsTimeline(companies) {
