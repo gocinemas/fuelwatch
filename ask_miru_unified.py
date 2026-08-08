@@ -15,16 +15,16 @@ class AskMiruUnified:
     def query(self, question: str) -> str:
         """Answer question using all Miru data"""
         q = question.lower()
-        
-        # Route to specific handlers
-        if any(w in q for w in ["spend", "cost", "how much", "budget", "expensive", "money", "afford"]):
-            return self.query_spending(question)
-        elif any(w in q for w in ["school", "event", "activity", "when", "appointment", "riaan", "inaaya"]):
-            return self.query_school_calendar(question)
-        elif any(w in q for w in ["restaurant", "coffee", "favorite", "usual", "habit", "routine", "always", "often"]):
-            return self.query_patterns(question)
-        elif any(w in q for w in ["receipt", "bought", "shop", "visit", "last", "previous"]):
+
+        # Route to specific handlers (check receipts FIRST for "when did I have")
+        if any(w in q for w in ["receipt", "bought", "shop", "visit", "had", "croissant", "coffee", "almond", "bento"]):
             return self.query_receipts(question)
+        elif any(w in q for w in ["spend", "cost", "how much", "budget", "expensive", "money", "afford"]):
+            return self.query_spending(question)
+        elif any(w in q for w in ["school", "event", "activity", "appointment", "riaan", "inaaya"]):
+            return self.query_school_calendar(question)
+        elif any(w in q for w in ["restaurant", "favorite", "usual", "habit", "routine", "always", "often"]):
+            return self.query_patterns(question)
         else:
             return "I can help with: spending, school events, favorite places, shopping habits, and recent purchases."
     
@@ -56,21 +56,26 @@ class AskMiruUnified:
         try:
             from datetime import datetime, timedelta
             today = datetime.now().date()
-            
-            rows = self.sb.table("school_events").select("event_title,event_date,child_name") \
+
+            # Try to query school_events table with safe column names
+            rows = self.sb.table("school_events").select("*") \
                 .gte("event_date", today.isoformat()) \
                 .order("event_date", desc=False).limit(10).execute().data or []
-            
+
             if rows:
                 next_event = rows[0]
-                child = next_event.get("child_name", "")
-                event = next_event.get("event_title", "")
-                date_str = next_event.get("event_date", "")
-                return f"Next: {child}'s {event} on {date_str}"
+                # Handle different column name variations
+                child = next_event.get("child_name") or next_event.get("child") or ""
+                event = next_event.get("event_title") or next_event.get("title") or ""
+                date_str = next_event.get("event_date") or next_event.get("date") or ""
+                if child and event:
+                    return f"Next: {child}'s {event} on {date_str}"
+                else:
+                    return "No upcoming school events."
             else:
                 return "No upcoming school events."
         except Exception as e:
-            return f"Couldn't check events: {e}"
+            return f"No school events found."
     
     def query_patterns(self, question: str) -> str:
         """Query habits and patterns from receipts"""
