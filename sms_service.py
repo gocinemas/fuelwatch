@@ -16767,33 +16767,10 @@ def api_home_brief_narrative():
             safe_text = saying
         return jsonify({"text": safe_text})
 
-    try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-                     "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 80,
-                  "messages": [{"role": "user", "content": prompt}]},
-            timeout=8,
-        )
-        text = r.json()["choices"][0]["message"]["content"].strip()
-
-        # EMERGENCY VALIDATION: Block any remaining inferences (daytime only, night skipped above)
-        emergency_words = [
-            "you've", "you got", "you might", "you could", "you should",
-            "you want", "you need", "you think", "you could",
-            "might want", "might want to", "could use", "should",
-            "unwind", "relax", "time to", "afternoon to", "rest of",
-            "find", "available", "currently", "at an", "can find"  # Added purchase language
-        ]
-        if any(word in text.lower() for word in emergency_words):
-            app.logger.error(f"[brief/narrative] FALLBACK PIPELINE BLOCKED inference: {text[:60]}")
-            return jsonify({"text": ""})
-
-        return jsonify({"text": text})
-    except Exception as e:
-        app.logger.warning(f"[brief/narrative] {e}")
-        return jsonify({"text": ""})
+    # DAYTIME: Facts only, no Groq creative writing
+    fact_text = "; ".join(str(f) for f in facts[:4]) if facts else "No updates today."
+    app.logger.info(f"[brief/narrative] FACTS ONLY (daytime): {fact_text[:80]}")
+    return jsonify({"text": fact_text})
 
 
 @app.route("/api/recipe", methods=["POST"])
