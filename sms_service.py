@@ -16147,11 +16147,32 @@ def api_home_brief():
         prompt = " ".join(prompt_parts)
         brief_text = ""
 
-        # DISABLE CREATIVE WRITING — just show facts. Groq/Claude hallucinate suggestions.
-        brief_text = "; ".join(str(f) for f in facts[:4]) if facts else "No updates today."
-        app.logger.info(f"[brief] FACTS ONLY MODE: {brief_text[:80]}")
+        # BRIEF INTEL: Facts + Intelligence, zero suggestions
+        # Build brief from facts + intelligence insights (spend trends, patterns)
+        brief_lines = []
 
-        # NIGHT-TIME: add saying instead of Groq creative text
+        # Add key facts
+        for f in facts[:3]:
+            brief_lines.append(str(f))
+
+        # Add intelligence insights (if available)
+        if insights and isinstance(insights, dict):
+            spend_trend = insights.get("spend_trend")
+            if spend_trend and isinstance(spend_trend, dict):
+                trend_text = spend_trend.get("description", "")
+                if trend_text and "should" not in trend_text.lower() and "suggest" not in trend_text.lower():
+                    brief_lines.append(f"Spend: {trend_text}")
+
+            merchant_pattern = insights.get("merchant_pattern")
+            if merchant_pattern and isinstance(merchant_pattern, dict):
+                pattern_text = merchant_pattern.get("description", "")
+                if pattern_text and "suggest" not in pattern_text.lower() and "visit" not in pattern_text.lower():
+                    brief_lines.append(f"Pattern: {pattern_text}")
+
+        brief_text = "; ".join(brief_lines) if brief_lines else "No updates today."
+        app.logger.info(f"[brief] INTEL MODE: {brief_text[:100]}")
+
+        # NIGHT-TIME: override with weather + saying
         if hour >= 21 or hour < 5:
             app.logger.info(f"[brief] NIGHT MODE: weather + kids + saying, no fuel/places/spend")
             # Filter facts to ONLY weather + school/kids info
