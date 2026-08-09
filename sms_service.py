@@ -16487,6 +16487,24 @@ def api_home_brief():
             brief_text = smart_brief
         app.logger.info(f"[brief] Using smart fallback: {brief_text[:60]}...")
 
+    # Social Reads: Add Feedbin links + tweets to brief (if available)
+    try:
+        from feedbin_sync import get_feedbin
+        from social_reads import get_social_reads
+
+        feedbin = get_feedbin()
+        social = get_social_reads(feedbin=feedbin)
+
+        snippet = social.get_morning_snippet(count_links=2, count_tweets=3)
+
+        if snippet:
+            brief_text += f"\n\n{snippet}"
+            ctx["social_reads"] = {"snippet": snippet}
+            app.logger.info("[brief] Added Feedbin + tweets to morning brief")
+
+    except Exception as _sr_e:
+        app.logger.debug(f"[social-reads] Integration skipped: {_sr_e}")
+
     # Add lat/lng for frontend places suggestions (from location classification or postcode)
     _brief_lat, _brief_lng = None, None
     if _loc_classification.get("lat") and _loc_classification.get("lng"):
