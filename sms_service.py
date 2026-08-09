@@ -16430,15 +16430,43 @@ def api_home_brief():
                 except Exception:
                     pass  # Use default if postcode conversion fails
 
+            # Try Smart Places first (real data), fallback to mock if API unavailable
+            _weekend_places = []
+            try:
+                from smart_places import get_smart_places
+                sp = get_smart_places()
+
+                # Get real venues from Google Places API
+                venues = sp.get_weekend_places(postcode or "KT16 0DA")
+
+                for v in venues:
+                    emoji = "🍽️"  # Default to restaurant
+                    if "cafe" in v.get("types", []):
+                        emoji = "☕"
+                    elif "bar" in v.get("types", []) or "pub" in v.get("types", []):
+                        emoji = "🍺"
+                    elif "park" in v.get("types", []):
+                        emoji = "🌳"
+
+                    _weekend_places.append({
+                        "name": v.get("name", ""),
+                        "rating": v.get("rating", 0),
+                        "distance_km": v.get("distance_km", 0),
+                        "emoji": emoji,
+                        "lat": v.get("lat", _lat),
+                        "lon": v.get("lng", _lon),
+                    })
+
+                app.logger.info(f"[brief] Smart Places loaded {len(_weekend_places)} venues for {postcode}")
+
+            except Exception as _sp_err:
+                app.logger.debug(f"[brief] Smart Places unavailable ({_sp_err}), using fallback")
+                # Fallback to empty (will use hardcoded if needed)
+                pass
+
+            # Use Smart Places results if available, otherwise empty (no mock data)
             _weekend_snippet = {
-                "places": [
-                    {"name": "The Coffee House", "rating": 4.8, "distance_km": 0.8, "emoji": "🍽️", "lat": _lat, "lon": _lon},
-                    {"name": "The Red Lion Pub", "rating": 4.6, "distance_km": 0.5, "emoji": "🍺", "lat": _lat, "lon": _lon},
-                    {"name": "Thai Palace", "rating": 4.2, "distance_km": 1.2, "emoji": "🍽️", "lat": _lat, "lon": _lon},
-                    {"name": "Bella Pasta", "rating": 4.5, "distance_km": 1.5, "emoji": "🍽️", "lat": _lat, "lon": _lon},
-                    {"name": "Central Park", "rating": 4.3, "distance_km": 2.1, "emoji": "🌳", "lat": _lat, "lon": _lon},
-                    {"name": "Borough Market", "rating": 4.7, "distance_km": 1.8, "emoji": "🍽️", "lat": _lat, "lon": _lon},
-                ]
+                "places": _weekend_places if _weekend_places else []
             }
     except Exception as _e:
         print(f"🎯 SNIPPET ERROR: {_e}")
