@@ -60,18 +60,23 @@ class FeedbinSync:
             entry_ids = response.json()
             print(f"[Feedbin] Fetched {len(entry_ids)} starred entry IDs (page {page})")
 
-            # Feedbin returns just IDs — fetch full entry details
+            # Feedbin returns just IDs — fetch full entry details in batches (100 per request)
             if not entry_ids:
                 return []
 
-            # Fetch full entries
-            entries_url = f"{self.API_BASE}/entries.json"
-            entries_params = {"ids": ",".join(str(id) for id in entry_ids)}
-            entries_response = requests.get(entries_url, headers=headers, params=entries_params, timeout=10)
-            entries_response.raise_for_status()
+            entries = []
+            batch_size = 100
+            for i in range(0, len(entry_ids), batch_size):
+                batch_ids = entry_ids[i:i+batch_size]
+                entries_url = f"{self.API_BASE}/entries.json"
+                entries_params = {"ids": ",".join(str(id) for id in batch_ids)}
+                entries_response = requests.get(entries_url, headers=headers, params=entries_params, timeout=10)
+                entries_response.raise_for_status()
+                batch_entries = entries_response.json()
+                entries.extend(batch_entries)
+                print(f"[Feedbin] Batch {i//batch_size + 1}: got {len(batch_entries)} entries")
 
-            entries = entries_response.json()
-            print(f"[Feedbin] Got {len(entries)} full entry details")
+            print(f"[Feedbin] Got {len(entries)} total full entry details")
             return entries
 
         except Exception as e:
