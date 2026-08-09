@@ -40055,3 +40055,84 @@ def api_intelligence_receipts():
         return jsonify(hub.get_receipts_insights())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/feedbin", methods=["GET"])
+def feedbin_dashboard():
+    """Serve Feedbin links dashboard."""
+    return render_template("feedbin.html")
+
+
+@app.route("/api/feedbin/links", methods=["GET"])
+def api_feedbin_links():
+    """Get Feedbin starred links as JSON."""
+    try:
+        from feedbin_sync import get_feedbin
+        from datetime import datetime, timedelta
+
+        fb = get_feedbin()
+        if not fb:
+            return jsonify({"error": "Feedbin not configured", "links": []}), 200
+
+        # Fetch all starred entries
+        entries = fb.sync_all_starred()
+        if not entries:
+            return jsonify({
+                "links": [],
+                "total_count": 0,
+                "today_count": 0,
+                "week_count": 0,
+                "category_count": 0
+            }), 200
+
+        # Categorize all entries
+        now = datetime.utcnow()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = now - timedelta(days=7)
+
+        categorized = fb.categorize_all(entries)
+        categories = set()
+
+        # Flatten and add metadata
+        links = []
+        for entry in entries:
+            category = fb.categorize_entry(entry)
+            categories.add(category)
+
+            published_str = entry.get("published", "")
+            try:
+                if published_str:
+                    published = datetime.fromisoformat(published_str.replace("Z", "+00:00"))
+                else:
+                    published = datetime.utcnow()
+            except:
+                published = datetime.utcnow()
+
+            links.append({
+                "id": entry.get("id"),
+                "title": entry.get("title", "Untitled"),
+                "url": entry.get("url", ""),
+                "summary": entry.get("summary", "")[:200],
+                "author": entry.get("author", ""),
+                "published": published.isoformat(),
+                "category": category,
+            })
+
+        # Calculate stats
+        today_count = sum(1 for l in links if datetime.fromisoformat(l["published"].replace("Z", "+00:00")) >= today_start)
+        week_count = sum(1 for l in links if datetime.fromisoformat(l["published"].replace("Z", "+00:00")) >= week_start)
+
+        # Sort by published date (newest first)
+        links.sort(key=lambda x: x["published"], reverse=True)
+
+        return jsonify({
+            "links": links,
+            "total_count": len(links),
+            "today_count": today_count,
+            "week_count": week_count,
+            "category_count": len(categories)
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"[feedbin-api] Error: {e}")
+        return jsonify({"error": str(e), "links": []}), 200
