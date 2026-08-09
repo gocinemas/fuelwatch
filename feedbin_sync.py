@@ -57,9 +57,21 @@ class FeedbinSync:
             response = requests.get(url, headers=headers, params=params, timeout=10)
             response.raise_for_status()
 
-            entries = response.json()
-            print(f"[Feedbin] Fetched {len(entries)} starred entries (page {page})")
+            entry_ids = response.json()
+            print(f"[Feedbin] Fetched {len(entry_ids)} starred entry IDs (page {page})")
 
+            # Feedbin returns just IDs — fetch full entry details
+            if not entry_ids:
+                return []
+
+            # Fetch full entries
+            entries_url = f"{self.API_BASE}/entries.json"
+            entries_params = {"ids": ",".join(str(id) for id in entry_ids)}
+            entries_response = requests.get(entries_url, headers=headers, params=entries_params, timeout=10)
+            entries_response.raise_for_status()
+
+            entries = entries_response.json()
+            print(f"[Feedbin] Got {len(entries)} full entry details")
             return entries
 
         except Exception as e:
