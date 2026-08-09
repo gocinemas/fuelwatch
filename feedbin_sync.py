@@ -32,7 +32,7 @@ class FeedbinSync:
         self.email = feedbin_email
         self.password = feedbin_password
 
-        if not (token or (email and password)):
+        if not (feedbin_token or (feedbin_email and feedbin_password)):
             raise ValueError("Need either Feedbin API token or email+password")
 
         self.cache = {}  # postcode → {entries, cached_at}
