@@ -197,11 +197,20 @@ def get_feedbin(feedbin_token: str = None) -> Optional[FeedbinSync]:
 
     if not _feedbin:
         token = feedbin_token or os.getenv("FEEDBIN_API_TOKEN")
+        email = os.getenv("FEEDBIN_EMAIL")
+        password = os.getenv("FEEDBIN_PASSWORD")
+
         if token:
             try:
                 _feedbin = FeedbinSync(feedbin_token=token)
             except Exception as e:
-                print(f"[Feedbin] Failed to initialize: {e}")
+                print(f"[Feedbin] Failed to initialize with token: {e}")
+                return None
+        elif email and password:
+            try:
+                _feedbin = FeedbinSync(feedbin_email=email, feedbin_password=password)
+            except Exception as e:
+                print(f"[Feedbin] Failed to initialize with email/password: {e}")
                 return None
 
     return _feedbin
