@@ -759,6 +759,46 @@
                         }
                         return null;
                     }
+                },
+                {
+                    key: 'stock_momentum',
+                    label: 'Stock Momentum',
+                    help: '52-week performance: how far from low to high (100% = at 52-week high)',
+                    isCalculated: true,
+                    formatter: (v) => v !== null ? `${v.toFixed(0)}%` : 'N/A',
+                    calculator: (company) => {
+                        const stock = company.stock || {};
+                        if (stock.week_52_high && stock.week_52_low && stock.price) {
+                            const range = stock.week_52_high - stock.week_52_low;
+                            if (range === 0) return null;
+                            const position = ((stock.price - stock.week_52_low) / range) * 100;
+                            return Math.max(0, Math.min(100, position));
+                        }
+                        return null;
+                    }
+                },
+                {
+                    key: 'employee_growth',
+                    label: 'Employee Growth',
+                    help: 'Hiring rate: how many more/fewer employees since 2021',
+                    isCalculated: true,
+                    formatter: (v) => v !== null ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%` : 'N/A',
+                    calculator: (company) => {
+                        if (company.trends && company.trends.employees) {
+                            const emp = company.trends.employees;
+                            const years = Object.keys(emp).sort();
+                            if (years.length >= 2) {
+                                const firstYear = years[0];
+                                const lastYear = years[years.length - 1];
+                                const firstVal = emp[firstYear];
+                                const lastVal = emp[lastYear];
+                                if (firstVal && lastVal) {
+                                    return ((lastVal - firstVal) / firstVal) * 100;
+                                }
+                            }
+                        }
+                        return null;
+                    }
                 }
             ];
 
