@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import hashlib
 import random
+import os
+import pickle
 
 
 class FeedbinSync:
@@ -22,6 +24,7 @@ class FeedbinSync:
 
     API_BASE = "https://api.feedbin.com/v2"
     CACHE_TTL = 3600  # Cache for 1 hour
+    CACHE_FILE = "/tmp/feedbin_cache.pkl"
 
     def __init__(self, feedbin_token: str = None, feedbin_email: str = None, feedbin_password: str = None):
         """
@@ -91,10 +94,80 @@ class FeedbinSync:
             return []
 
     def sync_all_starred(self) -> List[Dict]:
-        """Fetch last 100 starred entries"""
-        entries = self.fetch_starred_entries()
-        print(f"[Feedbin] Synced {len(entries)} starred entries")
+        """Fetch all starred entries — use cache if available (faster)"""
+        # Check cache first
+        if os.path.exists(self.CACHE_FILE):
+            try:
+                with open(self.CACHE_FILE, 'rb') as f:
+                    cache_data = pickle.load(f)
+                    if cache_data.get('cached_at'):
+                        age = (datetime.now() - cache_data['cached_at']).total_seconds()
+                        if age < self.CACHE_TTL:
+                            entries = cache_data.get('entries', [])
+                            print(f"[Feedbin] Using cache ({len(entries)} entries, {int(age)}s old)")
+                            return entries
+            except Exception as e:
+                print(f"[Feedbin] Cache read error: {e}")
+
+        # No valid cache — fetch ALL starred entries
+        print("[Feedbin] Fetching all starred entries...")
+        entries = self._fetch_all_entries_batched()
+
+        # Save to cache
+        try:
+            with open(self.CACHE_FILE, 'wb') as f:
+                pickle.dump({
+                    'entries': entries,
+                    'cached_at': datetime.now()
+                }, f)
+            print(f"[Feedbin] Cached {len(entries)} entries")
+        except Exception as e:
+            print(f"[Feedbin] Cache write error: {e}")
+
         return entries
+
+    def _fetch_all_entries_batched(self) -> List[Dict]:
+        """Fetch ALL starred entries in batches"""
+        try:
+            url = f"{self.API_BASE}/starred_entries.json"
+            headers = self._get_auth_header()
+
+            # Get all pages
+            all_ids = []
+            page = 1
+            while True:
+                response = requests.get(url, headers=headers, params={"page": page}, timeout=10)
+                response.raise_for_status()
+                page_ids = response.json()
+                if not page_ids:
+                    break
+                all_ids.extend(page_ids)
+                print(f"[Feedbin] Fetched page {page} ({len(page_ids)} IDs, total {len(all_ids)})")
+                page += 1
+                if page > 50:  # Safety limit
+                    break
+
+            print(f"[Feedbin] Total starred IDs: {len(all_ids)}")
+
+            # Fetch full entries in batches of 50
+            entries = []
+            batch_size = 50
+            for i in range(0, len(all_ids), batch_size):
+                batch_ids = all_ids[i:i+batch_size]
+                entries_url = f"{self.API_BASE}/entries.json"
+                entries_params = {"ids": ",".join(str(id) for id in batch_ids)}
+                entries_response = requests.get(entries_url, headers=headers, params=entries_params, timeout=10)
+                entries_response.raise_for_status()
+                batch_entries = entries_response.json()
+                entries.extend(batch_entries)
+                print(f"[Feedbin] Batch {i//batch_size + 1}: got {len(batch_entries)} entries")
+
+            print(f"[Feedbin] Total entries fetched: {len(entries)}")
+            return entries
+
+        except Exception as e:
+            print(f"[Feedbin] Error fetching all entries: {e}")
+            return []
 
     def categorize_entry(self, entry: Dict) -> str:
         """Auto-categorize entry by URL/content"""
