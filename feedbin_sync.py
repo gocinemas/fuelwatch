@@ -84,23 +84,18 @@ class FeedbinSync:
             return []
 
     def sync_all_starred(self) -> List[Dict]:
-        """Fetch ALL starred entries (handles pagination)"""
+        """Fetch recent starred entries (first few pages only for performance)"""
         all_entries = []
-        page = 1
 
-        while True:
+        # Only fetch first 3 pages (~300 entries) to avoid timeout
+        # User gets most recent/relevant starred items
+        for page in range(1, 4):
             entries = self.fetch_starred_entries(page=page)
             if not entries:
                 break
-
             all_entries.extend(entries)
-            page += 1
 
-            # Safety: stop after 100 pages (unlikely to need more)
-            if page > 100:
-                break
-
-        print(f"[Feedbin] Synced {len(all_entries)} total starred entries")
+        print(f"[Feedbin] Synced {len(all_entries)} recent starred entries")
         return all_entries
 
     def categorize_entry(self, entry: Dict) -> str:
