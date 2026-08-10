@@ -48,7 +48,7 @@ class FeedbinSync:
             return {"Authorization": f"Basic {creds}"}
 
     def fetch_starred_entries(self) -> List[Dict]:
-        """Fetch last 100 starred entries from Feedbin"""
+        """Fetch last 50 starred entries from Feedbin"""
         try:
             url = f"{self.API_BASE}/starred_entries.json"
             headers = self._get_auth_header()
@@ -58,7 +58,10 @@ class FeedbinSync:
             response.raise_for_status()
 
             entry_ids = response.json()
-            print(f"[Feedbin] Fetched {len(entry_ids)} starred entry IDs")
+            print(f"[Feedbin] Fetched {len(entry_ids)} starred entry IDs, taking first 50")
+
+            # Only use first 50 to avoid URL length issues
+            entry_ids = entry_ids[:50]
 
             if not entry_ids:
                 return []
