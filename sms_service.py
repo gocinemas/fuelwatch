@@ -40069,13 +40069,20 @@ def api_feedbin_links():
     try:
         from feedbin_sync import get_feedbin
         from datetime import datetime, timedelta
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
         fb = get_feedbin()
         if not fb:
             return jsonify({"error": "Feedbin not configured", "links": []}), 200
 
-        # Fetch all starred entries
-        entries = fb.sync_all_starred()
+        # Fetch all starred entries with 15 second timeout
+        try:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(fb.sync_all_starred)
+                entries = future.result(timeout=15)
+        except FuturesTimeoutError:
+            app.logger.warning("[feedbin-api] Sync timeout")
+            return jsonify({"error": "Feedbin sync timeout", "links": []}), 200
         if not entries:
             return jsonify({
                 "links": [],
