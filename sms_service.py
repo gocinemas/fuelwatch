@@ -3767,6 +3767,10 @@ def school_root():
 
 @app.route("/<company_slug>")
 def company_page(company_slug):
+    # Skip reserved paths
+    if company_slug in ["add-receipt", "feedbin", "api", "sms", "call"]:
+        return "", 404
+
     brand_name = company_slug.replace("-", " ").title()
     # Quick cache lookup for richer meta tags — don't block if slow
     brand_meta = {"name": brand_name, "description": None, "logo": None}
