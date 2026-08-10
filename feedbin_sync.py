@@ -48,32 +48,42 @@ class FeedbinSync:
             return {"Authorization": f"Basic {creds}"}
 
     def fetch_starred_entries(self) -> List[Dict]:
-        """Fetch last 50 starred entries from Feedbin"""
+        """Fetch last 200 starred entries from Feedbin"""
         try:
             url = f"{self.API_BASE}/starred_entries.json"
             headers = self._get_auth_header()
 
-            # Get first page of starred IDs (~100)
-            response = requests.get(url, headers=headers, params={"page": 1}, timeout=10)
-            response.raise_for_status()
+            # Get first 2 pages of starred IDs (~200)
+            all_ids = []
+            for page in [1, 2]:
+                response = requests.get(url, headers=headers, params={"page": page}, timeout=10)
+                response.raise_for_status()
+                page_ids = response.json()
+                all_ids.extend(page_ids)
+                if not page_ids:
+                    break
 
-            entry_ids = response.json()
-            print(f"[Feedbin] Fetched {len(entry_ids)} starred entry IDs, taking first 50")
+            print(f"[Feedbin] Fetched {len(all_ids)} starred entry IDs")
 
-            # Only use first 50 to avoid URL length issues
-            entry_ids = entry_ids[:50]
+            # Take first 200 and batch fetch them
+            entry_ids = all_ids[:200]
 
             if not entry_ids:
                 return []
 
-            # Fetch full entry details for all IDs in one request
-            entries_url = f"{self.API_BASE}/entries.json"
-            entries_params = {"ids": ",".join(str(id) for id in entry_ids)}
-            entries_response = requests.get(entries_url, headers=headers, params=entries_params, timeout=10)
-            entries_response.raise_for_status()
+            # Fetch full entry details in batches of 50 (avoid URL length issues)
+            entries = []
+            batch_size = 50
+            for i in range(0, len(entry_ids), batch_size):
+                batch_ids = entry_ids[i:i+batch_size]
+                entries_url = f"{self.API_BASE}/entries.json"
+                entries_params = {"ids": ",".join(str(id) for id in batch_ids)}
+                entries_response = requests.get(entries_url, headers=headers, params=entries_params, timeout=10)
+                entries_response.raise_for_status()
+                batch_entries = entries_response.json()
+                entries.extend(batch_entries)
 
-            entries = entries_response.json()
-            print(f"[Feedbin] Got {len(entries)} full entry details")
+            print(f"[Feedbin] Got {len(entries)} full entry details in {(len(entry_ids) + batch_size - 1) // batch_size} batches")
             return entries
 
         except Exception as e:
