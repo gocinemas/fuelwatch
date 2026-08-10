@@ -40083,6 +40083,7 @@ def api_add_receipt():
         # Save to Supabase using correct schema
         try:
             import json
+            from datetime import timezone
             receipt_data = {
                 "phone": "+447595075735",  # Your number
                 "merchant": merchant,
