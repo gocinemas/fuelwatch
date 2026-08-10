@@ -47,36 +47,30 @@ class FeedbinSync:
             creds = base64.b64encode(f"{self.email}:{self.password}".encode()).decode()
             return {"Authorization": f"Basic {creds}"}
 
-    def fetch_starred_entries(self, page: int = 1) -> List[Dict]:
-        """Fetch starred entries from Feedbin"""
+    def fetch_starred_entries(self) -> List[Dict]:
+        """Fetch last 100 starred entries from Feedbin"""
         try:
             url = f"{self.API_BASE}/starred_entries.json"
-            params = {"page": page}
             headers = self._get_auth_header()
 
-            response = requests.get(url, headers=headers, params=params, timeout=10)
+            # Get first page of starred IDs (~100)
+            response = requests.get(url, headers=headers, params={"page": 1}, timeout=10)
             response.raise_for_status()
 
             entry_ids = response.json()
-            print(f"[Feedbin] Fetched {len(entry_ids)} starred entry IDs (page {page})")
+            print(f"[Feedbin] Fetched {len(entry_ids)} starred entry IDs")
 
-            # Feedbin returns just IDs — fetch full entry details in batches (100 per request)
             if not entry_ids:
                 return []
 
-            entries = []
-            batch_size = 100
-            for i in range(0, len(entry_ids), batch_size):
-                batch_ids = entry_ids[i:i+batch_size]
-                entries_url = f"{self.API_BASE}/entries.json"
-                entries_params = {"ids": ",".join(str(id) for id in batch_ids)}
-                entries_response = requests.get(entries_url, headers=headers, params=entries_params, timeout=10)
-                entries_response.raise_for_status()
-                batch_entries = entries_response.json()
-                entries.extend(batch_entries)
-                print(f"[Feedbin] Batch {i//batch_size + 1}: got {len(batch_entries)} entries")
+            # Fetch full entry details for all IDs in one request
+            entries_url = f"{self.API_BASE}/entries.json"
+            entries_params = {"ids": ",".join(str(id) for id in entry_ids)}
+            entries_response = requests.get(entries_url, headers=headers, params=entries_params, timeout=10)
+            entries_response.raise_for_status()
 
-            print(f"[Feedbin] Got {len(entries)} total full entry details")
+            entries = entries_response.json()
+            print(f"[Feedbin] Got {len(entries)} full entry details")
             return entries
 
         except Exception as e:
@@ -84,10 +78,9 @@ class FeedbinSync:
             return []
 
     def sync_all_starred(self) -> List[Dict]:
-        """Fetch recent starred entries (first page only for speed)"""
-        # Just fetch first page (~100 entries) — fast & good enough
-        entries = self.fetch_starred_entries(page=1)
-        print(f"[Feedbin] Synced {len(entries)} recent starred entries")
+        """Fetch last 100 starred entries"""
+        entries = self.fetch_starred_entries()
+        print(f"[Feedbin] Synced {len(entries)} starred entries")
         return entries
 
     def categorize_entry(self, entry: Dict) -> str:
