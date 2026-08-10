@@ -51,14 +51,14 @@ class FeedbinSync:
             return {"Authorization": f"Basic {creds}"}
 
     def fetch_starred_entries(self) -> List[Dict]:
-        """Fetch last 200 starred entries from Feedbin"""
+        """Fetch last 500 starred entries from Feedbin"""
         try:
             url = f"{self.API_BASE}/starred_entries.json"
             headers = self._get_auth_header()
 
-            # Get first 2 pages of starred IDs (~200)
+            # Get first 5 pages of starred IDs (~500)
             all_ids = []
-            for page in [1, 2]:
+            for page in range(1, 6):
                 response = requests.get(url, headers=headers, params={"page": page}, timeout=10)
                 response.raise_for_status()
                 page_ids = response.json()
@@ -68,8 +68,8 @@ class FeedbinSync:
 
             print(f"[Feedbin] Fetched {len(all_ids)} starred entry IDs")
 
-            # Take first 200 and batch fetch them
-            entry_ids = all_ids[:200]
+            # Take first 500
+            entry_ids = all_ids[:500]
 
             if not entry_ids:
                 return []
