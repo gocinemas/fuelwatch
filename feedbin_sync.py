@@ -84,19 +84,11 @@ class FeedbinSync:
             return []
 
     def sync_all_starred(self) -> List[Dict]:
-        """Fetch recent starred entries (first few pages only for performance)"""
-        all_entries = []
-
-        # Only fetch first 3 pages (~300 entries) to avoid timeout
-        # User gets most recent/relevant starred items
-        for page in range(1, 4):
-            entries = self.fetch_starred_entries(page=page)
-            if not entries:
-                break
-            all_entries.extend(entries)
-
-        print(f"[Feedbin] Synced {len(all_entries)} recent starred entries")
-        return all_entries
+        """Fetch recent starred entries (first page only for speed)"""
+        # Just fetch first page (~100 entries) — fast & good enough
+        entries = self.fetch_starred_entries(page=1)
+        print(f"[Feedbin] Synced {len(entries)} recent starred entries")
+        return entries
 
     def categorize_entry(self, entry: Dict) -> str:
         """Auto-categorize entry by URL/content"""
