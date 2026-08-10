@@ -438,6 +438,21 @@
                     <div class="basic-label">📈 Stock Change</div>
                     <div class="basic-value" id="basicChange" style="font-size: 13px;">—</div>
                 </div>
+                <div class="basic-item">
+                    <div class="basic-label">🔥 Stock Momentum</div>
+                    <div class="basic-value" id="basicMomentum" style="font-size: 13px;">—</div>
+                    <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">52-week position</div>
+                </div>
+                <div class="basic-item">
+                    <div class="basic-label">👥 Hiring Rate</div>
+                    <div class="basic-value" id="basicHiringRate" style="font-size: 13px;">—</div>
+                    <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">4-year trend</div>
+                </div>
+                <div class="basic-item">
+                    <div class="basic-label">💼 Revenue/Emp</div>
+                    <div class="basic-value" id="basicRevPerEmp" style="font-size: 13px;">—</div>
+                    <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">Efficiency</div>
+                </div>
             </div>
 
             <!-- Request Research Button (shows when data is minimal) -->
@@ -656,6 +671,22 @@
                     document.getElementById('basicChange').textContent = 'N/A';
                 }
 
+                // Stock momentum (52-week position)
+                if (stock.week_52_high && stock.week_52_low && stock.price) {
+                    const range = stock.week_52_high - stock.week_52_low;
+                    if (range > 0) {
+                        const momentum = Math.max(0, Math.min(100, ((stock.price - stock.week_52_low) / range) * 100));
+                        const momentumText = `${momentum.toFixed(0)}%`;
+                        const momentumColor = momentum > 75 ? '#16a34a' : momentum > 50 ? '#f59e0b' : '#dc3545';
+                        document.getElementById('basicMomentum').textContent = momentumText;
+                        document.getElementById('basicMomentum').style.color = momentumColor;
+                    } else {
+                        document.getElementById('basicMomentum').textContent = 'N/A';
+                    }
+                } else {
+                    document.getElementById('basicMomentum').textContent = 'N/A';
+                }
+
                 // Description
                 document.getElementById('basicDesc').textContent = data.description || data.extract || `Leading company in its sector`;
 
@@ -680,6 +711,35 @@
                     ).join('');
                 } else {
                     document.getElementById('basicBrands').innerHTML = '<span style="background: #e5e7eb; color: #6b7280; padding: 6px 12px; border-radius: 6px; font-size: 12px;">No brands data</span>';
+                }
+
+                // Calculate and display smart metrics
+                if (data.trends) {
+                    const trends = data.trends;
+
+                    // Employee growth rate (4-year)
+                    if (trends.employees) {
+                        const empYears = Object.keys(trends.employees).sort();
+                        if (empYears.length >= 2) {
+                            const firstYear = empYears[0];
+                            const lastYear = empYears[empYears.length - 1];
+                            const firstEmp = trends.employees[firstYear];
+                            const lastEmp = trends.employees[lastYear];
+                            if (firstEmp && lastEmp) {
+                                const hiringRate = ((lastEmp - firstEmp) / firstEmp) * 100;
+                                const hiringText = `${hiringRate > 0 ? '+' : ''}${hiringRate.toFixed(1)}%`;
+                                const hiringColor = hiringRate > 10 ? '#16a34a' : hiringRate > 0 ? '#f59e0b' : '#dc3545';
+                                document.getElementById('basicHiringRate').textContent = hiringText;
+                                document.getElementById('basicHiringRate').style.color = hiringColor;
+                            }
+                        }
+                    }
+
+                    // Revenue per employee
+                    if (data.financials && data.financials.revenue_millions && data.financials.employees) {
+                        const revPerEmp = data.financials.revenue_millions / data.financials.employees;
+                        document.getElementById('basicRevPerEmp').textContent = `$${revPerEmp.toFixed(2)}M`;
+                    }
                 }
 
                 // Load documents for this company
