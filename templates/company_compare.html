@@ -276,6 +276,81 @@
             color: #fee2e2;
         }
 
+        .legend-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .legend-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .legend-icon {
+            font-size: 18px;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .legend-content {
+            flex: 1;
+        }
+
+        .legend-label {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 13px;
+        }
+
+        .legend-desc {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
+            line-height: 1.4;
+        }
+
+        .metric-heat {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .heat-sample {
+            width: 20px;
+            height: 16px;
+            border-radius: 3px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .heat-red { background: #fee2e2; color: #7f1d1d; }
+        .heat-yellow { background: #fef3c7; color: #92400e; }
+        .heat-green { background: #dcfce7; color: #166534; }
+
         .company-body {
             padding: 20px;
         }
@@ -670,6 +745,9 @@
 
             html += `</div>`;
 
+            // Add legend
+            html += renderLegend();
+
             // Comparison grid (only if 2+ companies with financials)
             if (companyList.length >= 2 && companyList[0].financials && companyList[1].financials) {
                 html += renderComparisonGrid(companyList, cmp);
@@ -786,6 +864,90 @@
             }
 
             return html;
+        }
+
+        function renderLegend() {
+            return `
+                <div class="legend-section">
+                    <div class="legend-title">📚 How to Read Intel</div>
+                    <div class="legend-grid">
+                        <div class="legend-item">
+                            <div class="legend-icon">🔥</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Stock Momentum (Hot)</div>
+                                <div class="legend-desc">Stock price near 52-week high (>75% range). Company is exciting investors.</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">🟡</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Stock Momentum (Warm)</div>
+                                <div class="legend-desc">Stock in middle of 52-week range (50-75%). Steady, not exciting.</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">❄️</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Stock Momentum (Cold)</div>
+                                <div class="legend-desc">Stock near 52-week low (<50% range). Market is skeptical.</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">📈</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Hiring Growth</div>
+                                <div class="legend-desc">Headcount growing (2021→2025). Company is expanding workforce aggressively.</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">📉</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Hiring Decline</div>
+                                <div class="legend-desc">Headcount shrinking. Company is optimizing/downsizing.</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-content" style="padding-top: 4px;">
+                                <div class="legend-label">Metrics Heat Map (Comparison Table)</div>
+                                <div class="legend-desc">Each metric is color-coded across companies:</div>
+                                <div class="metric-heat" style="margin-top: 6px;">
+                                    <div class="heat-sample heat-red">Low</div>
+                                    <div class="heat-sample heat-yellow">Med</div>
+                                    <div class="heat-sample heat-green">High</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">🟢</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Acquisition Deal</div>
+                                <div class="legend-desc">Company bought another company. Strategic expansion.</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">🔴</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Divestiture Deal</div>
+                                <div class="legend-desc">Company sold off a business. Narrowing focus or raising cash.</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">🔵</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Investment Deal</div>
+                                <div class="legend-desc">Company invested in/partnered with another. Testing new area or funding startup.</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon">🩷</div>
+                            <div class="legend-content">
+                                <div class="legend-label">Partnership Deal</div>
+                                <div class="legend-desc">Strategic partnership or collaboration. Shared opportunity exploration.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function renderComparisonGrid(companies, cmp) {

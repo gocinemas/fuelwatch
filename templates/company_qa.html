@@ -116,6 +116,34 @@
             color: #1c1917;
         }
 
+        .momentum-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(102, 126, 234, 0.15);
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #667eea;
+            margin-top: 8px;
+        }
+
+        .momentum-badge.hot {
+            background: rgba(34, 197, 94, 0.15);
+            color: #16a34a;
+        }
+
+        .momentum-badge.warm {
+            background: rgba(234, 179, 8, 0.15);
+            color: #ca8a04;
+        }
+
+        .momentum-badge.cold {
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+        }
+
         .qa-section {
             background: white;
             border-radius: 16px;
@@ -678,7 +706,23 @@
                         const momentum = Math.max(0, Math.min(100, ((stock.price - stock.week_52_low) / range) * 100));
                         const momentumText = `${momentum.toFixed(0)}%`;
                         const momentumColor = momentum > 75 ? '#16a34a' : momentum > 50 ? '#f59e0b' : '#dc3545';
-                        document.getElementById('basicMomentum').textContent = momentumText;
+
+                        // Add badge display
+                        let badgeEmoji = '❄️', badgeClass = 'cold', badgeLabel = 'Cold';
+                        if (momentum > 75) {
+                            badgeEmoji = '🔥';
+                            badgeClass = 'hot';
+                            badgeLabel = 'Hot';
+                        } else if (momentum > 50) {
+                            badgeEmoji = '🟡';
+                            badgeClass = 'warm';
+                            badgeLabel = 'Warm';
+                        }
+
+                        document.getElementById('basicMomentum').innerHTML = `
+                            <div>${momentumText}</div>
+                            <div class="momentum-badge ${badgeClass}" style="margin-top: 8px;">${badgeEmoji} ${badgeLabel}</div>
+                        `;
                         document.getElementById('basicMomentum').style.color = momentumColor;
                     } else {
                         document.getElementById('basicMomentum').textContent = 'N/A';
@@ -729,7 +773,21 @@
                                 const hiringRate = ((lastEmp - firstEmp) / firstEmp) * 100;
                                 const hiringText = `${hiringRate > 0 ? '+' : ''}${hiringRate.toFixed(1)}%`;
                                 const hiringColor = hiringRate > 10 ? '#16a34a' : hiringRate > 0 ? '#f59e0b' : '#dc3545';
-                                document.getElementById('basicHiringRate').textContent = hiringText;
+
+                                // Add badge display
+                                let badgeEmoji = '📉', badgeClass = 'cold';
+                                if (hiringRate > 10) {
+                                    badgeEmoji = '📈';
+                                    badgeClass = 'hot';
+                                } else if (hiringRate > 0) {
+                                    badgeEmoji = '📈';
+                                    badgeClass = 'warm';
+                                }
+
+                                document.getElementById('basicHiringRate').innerHTML = `
+                                    <div>${hiringText}</div>
+                                    <div class="momentum-badge ${badgeClass}" style="margin-top: 8px;">${badgeEmoji} ${hiringRate > 0 ? 'Growing' : 'Declining'}</div>
+                                `;
                                 document.getElementById('basicHiringRate').style.color = hiringColor;
                             }
                         }
