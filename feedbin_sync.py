@@ -93,51 +93,11 @@ class FeedbinSync:
             print(f"[Feedbin] Error fetching entries: {e}")
             return []
 
-    def sync_all_starred(self, background=False) -> List[Dict]:
-        """Fetch all starred entries — use cache if available (faster)"""
-        # Check cache first
-        if os.path.exists(self.CACHE_FILE):
-            try:
-                with open(self.CACHE_FILE, 'rb') as f:
-                    cache_data = pickle.load(f)
-                    if cache_data.get('cached_at'):
-                        age = (datetime.now() - cache_data['cached_at']).total_seconds()
-                        if age < self.CACHE_TTL:
-                            entries = cache_data.get('entries', [])
-                            print(f"[Feedbin] Using cache ({len(entries)} entries, {int(age)}s old)")
-                            return entries
-            except Exception as e:
-                print(f"[Feedbin] Cache read error: {e}")
-
-        # If called from API (not background), return empty and start background fetch
-        if not background:
-            print("[Feedbin] Cache expired — starting background fetch")
-            self._start_background_fetch()
-            return []  # Return empty immediately
-
-        # Background task: fetch ALL starred entries
-        print("[Feedbin] [BG] Fetching all starred entries...")
-        entries = self._fetch_all_entries_batched()
-
-        # Save to cache
-        try:
-            with open(self.CACHE_FILE, 'wb') as f:
-                pickle.dump({
-                    'entries': entries,
-                    'cached_at': datetime.now()
-                }, f)
-            print(f"[Feedbin] [BG] Cached {len(entries)} entries")
-        except Exception as e:
-            print(f"[Feedbin] Cache write error: {e}")
-
+    def sync_all_starred(self) -> List[Dict]:
+        """Fetch first 50 starred entries (fast & simple)"""
+        entries = self.fetch_starred_entries()
+        print(f"[Feedbin] Synced {len(entries)} starred entries")
         return entries
-
-    def _start_background_fetch(self):
-        """Start background thread to fetch all entries"""
-        from threading import Thread
-        thread = Thread(target=self.sync_all_starred, kwargs={"background": True}, daemon=True)
-        thread.start()
-        print("[Feedbin] Background fetch thread started")
 
     def _fetch_all_entries_batched(self) -> List[Dict]:
         """Fetch ALL starred entries in batches"""
