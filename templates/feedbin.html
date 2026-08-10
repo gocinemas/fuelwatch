@@ -243,6 +243,9 @@
 
             <div class="controls">
                 <input type="text" id="searchInput" placeholder="Search links...">
+                <select id="sourceFilter">
+                    <option value="">All Sources</option>
+                </select>
                 <select id="categoryFilter">
                     <option value="">All Categories</option>
                     <option value="🔬 Science">🔬 Science</option>
@@ -373,6 +376,19 @@
             document.getElementById('todayCount').textContent = data.today_count || 0;
             document.getElementById('weekCount').textContent = data.week_count || 0;
             document.getElementById('categoryCount').textContent = data.category_count || 0;
+
+            // Populate source filter
+            if (data.sources) {
+                const sourceSelect = document.getElementById('sourceFilter');
+                data.sources.forEach(source => {
+                    if (!Array.from(sourceSelect.options).find(o => o.value === source)) {
+                        const option = document.createElement('option');
+                        option.value = source;
+                        option.textContent = source;
+                        sourceSelect.appendChild(option);
+                    }
+                });
+            }
         }
 
         function openLink(url) {
@@ -385,9 +401,10 @@
         }
 
         // Search and filter
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
+        function applyFilters() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
             const category = document.getElementById('categoryFilter').value;
+            const source = document.getElementById('sourceFilter').value;
 
             filteredLinks = allLinks.filter(link => {
                 const matchesSearch = !query ||
@@ -396,29 +413,17 @@
                     link.url.toLowerCase().includes(query);
 
                 const matchesCategory = !category || link.category === category;
+                const matchesSource = !source || link.source === source;
 
-                return matchesSearch && matchesCategory;
+                return matchesSearch && matchesCategory && matchesSource;
             });
 
             renderLinks(filteredLinks);
-        });
+        }
 
-        document.getElementById('categoryFilter').addEventListener('change', (e) => {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const category = e.target.value;
-
-            filteredLinks = allLinks.filter(link => {
-                const matchesSearch = !query ||
-                    link.title.toLowerCase().includes(query) ||
-                    link.summary.toLowerCase().includes(query);
-
-                const matchesCategory = !category || link.category === category;
-
-                return matchesSearch && matchesCategory;
-            });
-
-            renderLinks(filteredLinks);
-        });
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+        document.getElementById('sourceFilter').addEventListener('change', applyFilters);
 
         document.getElementById('sortBy').addEventListener('change', (e) => {
             const sortType = e.target.value;

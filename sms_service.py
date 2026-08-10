@@ -40087,9 +40087,12 @@ def api_feedbin_links():
 
         # Flatten and add metadata
         links = []
+        sources = set()
         for entry in entries:
             category = fb.categorize_entry(entry)
             categories.add(category)
+            source = fb.extract_source(entry)
+            sources.add(source)
 
             published_str = entry.get("published", "")
             try:
@@ -40108,6 +40111,7 @@ def api_feedbin_links():
                 "author": entry.get("author", ""),
                 "published": published.isoformat(),
                 "category": category,
+                "source": source,
             })
 
         # Calculate stats
@@ -40122,7 +40126,8 @@ def api_feedbin_links():
             "total_count": len(links),
             "today_count": today_count,
             "week_count": week_count,
-            "category_count": len(categories)
+            "category_count": len(categories),
+            "sources": sorted(list(sources))
         }), 200
 
     except Exception as e:

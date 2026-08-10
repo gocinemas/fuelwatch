@@ -114,6 +114,32 @@ class FeedbinSync:
 
         return "📌 Saved"  # Default
 
+    def extract_source(self, entry: Dict) -> str:
+        """Extract newsletter/source name from entry"""
+        url = entry.get("url", "").lower()
+        feed_title = entry.get("feed_title", "").lower()
+        author = entry.get("author", "").lower()
+
+        # Try to extract from feed title first
+        if feed_title:
+            return feed_title.split(" - ")[0].strip()[:30]
+
+        # Extract domain from URL
+        if url:
+            import re
+            match = re.search(r'https?://(?:www\.)?([^/]+)', url)
+            if match:
+                domain = match.group(1)
+                # Clean up domain
+                domain = domain.replace("www.", "").split(".")[0]
+                return domain.capitalize()
+
+        # Fallback to author
+        if author:
+            return author[:30]
+
+        return "Unknown"
+
     def categorize_all(self, entries: List[Dict]) -> Dict[str, List[Dict]]:
         """Group entries by category"""
         categorized = {}
@@ -131,6 +157,7 @@ class FeedbinSync:
                 "author": entry.get("author", ""),
                 "published": entry.get("published", ""),
                 "category": category,
+                "source": self.extract_source(entry),
             })
 
         return categorized
