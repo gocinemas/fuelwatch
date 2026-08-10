@@ -40077,7 +40077,8 @@ def api_feedbin_links():
             }), 200
 
         # Categorize all entries
-        now = datetime.utcnow()
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = now - timedelta(days=7)
 
