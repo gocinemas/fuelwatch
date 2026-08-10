@@ -40064,11 +40064,11 @@ def api_add_receipt():
         data = request.get_json()
         merchant = data.get("merchant", "").strip()
         location = data.get("location", "").strip()
-        amount = float(data.get("amount", 0))
+        total = float(data.get("amount", 0))
         items = data.get("items", [])
         date_str = data.get("date", "")
 
-        if not merchant or not location or amount <= 0:
+        if not merchant or not location or total <= 0:
             return jsonify({"error": "Merchant, location, and amount are required"}), 400
 
         from datetime import date as date_type
@@ -40080,18 +40080,18 @@ def api_add_receipt():
         else:
             receipt_date = date_type.today()
 
-        # Save to Supabase
+        # Save to Supabase using correct schema
         try:
+            import json
             receipt_data = {
-                "from_number": "manual",  # Indicates manual entry
+                "phone": "+447595075735",  # Your number
                 "merchant": merchant,
-                "location": location,
-                "amount": amount,
-                "currency": "GBP",
-                "items": items if items else [],
-                "date": receipt_date.isoformat(),
-                "category": "Other",
-                "raw_text": f"{merchant} {location} - £{amount}"
+                "total": total,
+                "shop_date": receipt_date.isoformat(),
+                "items": json.dumps([{"name": item, "qty": 1, "price": total/len(items) if items else total} for item in items]) if items else json.dumps([]),
+                "raw_summary": f"Manual: {merchant} {location}",
+                "restaurant_type": "other",
+                "created_at": datetime.now(timezone.utc).isoformat()
             }
 
             result = lib._sb().table("receipts").insert(receipt_data).execute()
@@ -40099,7 +40099,7 @@ def api_add_receipt():
             if result.data:
                 return jsonify({
                     "success": True,
-                    "message": f"Receipt added: {merchant} - £{amount}"
+                    "message": f"Receipt added: {merchant} - £{total}"
                 }), 200
             else:
                 return jsonify({"error": "Failed to save receipt"}), 500
