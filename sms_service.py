@@ -40041,10 +40041,71 @@ def api_intelligence_receipts():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/add-receipt", methods=["GET"])
+def add_receipt_page():
+    """Serve manual receipt entry form."""
+    return render_template("add_receipt.html")
+
+
 @app.route("/feedbin", methods=["GET"])
 def feedbin_dashboard():
     """Serve Feedbin links dashboard."""
     return render_template("feedbin.html")
+
+
+@app.route("/api/receipts/add", methods=["POST"])
+def api_add_receipt():
+    """Add manual receipt entry."""
+    try:
+        data = request.get_json()
+        merchant = data.get("merchant", "").strip()
+        location = data.get("location", "").strip()
+        amount = float(data.get("amount", 0))
+        items = data.get("items", [])
+        date_str = data.get("date", "")
+
+        if not merchant or not location or amount <= 0:
+            return jsonify({"error": "Merchant, location, and amount are required"}), 400
+
+        from datetime import date as date_type
+        if date_str:
+            try:
+                receipt_date = date_type.fromisoformat(date_str)
+            except:
+                receipt_date = date_type.today()
+        else:
+            receipt_date = date_type.today()
+
+        # Save to Supabase
+        try:
+            receipt_data = {
+                "from_number": "manual",  # Indicates manual entry
+                "merchant": merchant,
+                "location": location,
+                "amount": amount,
+                "currency": "GBP",
+                "items": items if items else [],
+                "date": receipt_date.isoformat(),
+                "category": "Other",
+                "raw_text": f"{merchant} {location} - £{amount}"
+            }
+
+            result = lib._sb().table("receipts").insert(receipt_data).execute()
+
+            if result.data:
+                return jsonify({
+                    "success": True,
+                    "message": f"Receipt added: {merchant} - £{amount}"
+                }), 200
+            else:
+                return jsonify({"error": "Failed to save receipt"}), 500
+
+        except Exception as db_error:
+            app.logger.error(f"[receipts-api] DB error: {db_error}")
+            return jsonify({"error": "Database error: " + str(db_error)}), 500
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 
 @app.route("/api/feedbin/links", methods=["GET"])
