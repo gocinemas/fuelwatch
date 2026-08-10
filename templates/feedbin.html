@@ -112,6 +112,19 @@
             margin-top: 30px;
         }
 
+        .links-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .links-list .link-card {
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+        }
+
         .link-card {
             background: white;
             padding: 20px;
@@ -246,6 +259,7 @@
                     <option value="random">Random</option>
                 </select>
                 <button onclick="loadLinks()">🔄 Refresh</button>
+                <button id="viewToggle" class="secondary" onclick="toggleView()">📋 List</button>
             </div>
 
             <div class="stats">
@@ -279,6 +293,23 @@
     <script>
         let allLinks = [];
         let filteredLinks = [];
+        let isListView = false;
+
+        function toggleView() {
+            isListView = !isListView;
+            const container = document.getElementById('linksContainer');
+            const toggle = document.getElementById('viewToggle');
+
+            if (isListView) {
+                container.className = 'links-list';
+                toggle.textContent = '📊 Grid';
+            } else {
+                container.className = 'links-grid';
+                toggle.textContent = '📋 List';
+            }
+
+            renderLinks(filteredLinks || allLinks);
+        }
 
         async function loadLinks() {
             const container = document.getElementById('linksContainer');
@@ -308,6 +339,7 @@
                 return;
             }
 
+            container.className = isListView ? 'links-list' : 'links-grid';
             container.innerHTML = links.map(link => `
                 <div class="link-card">
                     <div class="link-category">${link.category}</div>
