@@ -40083,7 +40083,6 @@ def api_add_receipt():
         # Save to Supabase using correct schema
         try:
             import json
-            from datetime import timezone
             receipt_data = {
                 "phone": "+447595075735",  # Your number
                 "merchant": merchant,
@@ -40092,7 +40091,7 @@ def api_add_receipt():
                 "items": json.dumps([{"name": item, "qty": 1, "price": total/len(items) if items else total} for item in items]) if items else json.dumps([]),
                 "raw_summary": f"Manual: {merchant} {location}",
                 "restaurant_type": "other",
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now().isoformat()
             }
 
             result = lib._sb().table("receipts").insert(receipt_data).execute()
