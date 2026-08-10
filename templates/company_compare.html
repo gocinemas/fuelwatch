@@ -242,6 +242,40 @@
             font-size: 12px;
         }
 
+        .badge-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge.hot {
+            background: rgba(34, 197, 94, 0.3);
+            color: #dcfce7;
+        }
+
+        .badge.warm {
+            background: rgba(234, 179, 8, 0.3);
+            color: #fef3c7;
+        }
+
+        .badge.cold {
+            background: rgba(239, 68, 68, 0.3);
+            color: #fee2e2;
+        }
+
         .company-body {
             padding: 20px;
         }
@@ -575,12 +609,57 @@
             let html = `<div class="comparison">`;
 
             companyList.forEach((company, idx) => {
+                // Calculate momentum and hiring badges
+                let badgesHtml = '';
+
+                // Stock momentum badge
+                if (company.stock && company.stock.price !== undefined && company.stock.week_52_high && company.stock.week_52_low) {
+                    const range = company.stock.week_52_high - company.stock.week_52_low;
+                    if (range > 0) {
+                        const momentum = ((company.stock.price - company.stock.week_52_low) / range) * 100;
+                        let emoji = '❄️', class_name = 'cold';
+                        if (momentum > 75) {
+                            emoji = '🔥';
+                            class_name = 'hot';
+                        } else if (momentum > 50) {
+                            emoji = '🟡';
+                            class_name = 'warm';
+                        }
+                        badgesHtml += `<div class="badge ${class_name}">${emoji} ${momentum.toFixed(0)}%</div>`;
+                    }
+                }
+
+                // Hiring badge
+                if (company.trends && company.trends.employees) {
+                    const emp = company.trends.employees;
+                    const years = Object.keys(emp).sort();
+                    if (years.length >= 2) {
+                        const firstYear = years[0];
+                        const lastYear = years[years.length - 1];
+                        if (emp[firstYear] && emp[lastYear]) {
+                            const growth = ((emp[lastYear] - emp[firstYear]) / emp[firstYear]) * 100;
+                            let emoji = '📉', class_name = 'cold';
+                            if (growth > 10) {
+                                emoji = '📈';
+                                class_name = 'hot';
+                            } else if (growth > 0) {
+                                emoji = '📈';
+                                class_name = 'warm';
+                            }
+                            badgesHtml += `<div class="badge ${class_name}">${emoji} ${growth > 0 ? '+' : ''}${growth.toFixed(0)}%</div>`;
+                        }
+                    }
+                }
+
                 html += `
                     <div class="company-card">
                         <div class="company-header" style="background: ${gradients[idx] || gradients[0]};">
                             <h2>${company.name}</h2>
                             <p>${company.description || 'No description'}</p>
-                            <span class="company-sector">${company.sector || 'Unknown'}</span>
+                            <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap;">
+                                <span class="company-sector">${company.sector || 'Unknown'}</span>
+                                ${badgesHtml}
+                            </div>
                         </div>
                         <div class="company-body">
                             ${renderMetrics(company)}
@@ -828,13 +907,40 @@
                 }
 
                 const maxVal = Math.max(...values.filter(v => v !== null));
+                const minVal = Math.min(...values.filter(v => v !== null));
 
                 values.forEach(val => {
                     const formatted = metricConfig.formatter(val);
-                    const isWinner = val === maxVal && val !== null;
                     const isNA = val === null;
-                    const className = isWinner ? 'metric-value winner' : isNA ? 'metric-value na' : 'metric-value';
-                    html += `<td><span class="${className}">${formatted}</span></td>`;
+                    let bgColor = '#ffffff';
+                    let textColor = '#1f2937';
+
+                    if (!isNA) {
+                        // Heat mapping: red (low) → yellow (medium) → green (high)
+                        const isGrowthMetric = ['revenue_growth_pct', 'employee_growth'].includes(metricConfig.key);
+                        const range = maxVal - minVal;
+
+                        if (range === 0) {
+                            bgColor = '#fef3c7'; // Yellow for all equal
+                            textColor = '#92400e';
+                        } else {
+                            const position = (val - minVal) / range; // 0 to 1
+
+                            if (position < 0.33) {
+                                bgColor = '#fee2e2';
+                                textColor = '#7f1d1d';
+                            } else if (position < 0.67) {
+                                bgColor = '#fef3c7';
+                                textColor = '#92400e';
+                            } else {
+                                bgColor = '#dcfce7';
+                                textColor = '#166534';
+                            }
+                        }
+                    }
+
+                    const className = isNA ? 'metric-value na' : 'metric-value';
+                    html += `<td><span class="${className}" style="background: ${bgColor}; color: ${textColor}; padding: 8px 12px; border-radius: 6px; display: inline-block; font-weight: 600;">${formatted}</span></td>`;
                 });
 
                 html += `</tr>`;
@@ -1299,35 +1405,153 @@
             const container = document.getElementById('dealsTimeline');
             if (!container) return;
 
-            let html = '';
+            // Get all deals across all companies, sorted by date descending
+            let allDeals = [];
             companies.forEach((company, idx) => {
                 if (!company.deals || company.deals.length === 0) return;
-
-                html += `<div style="margin-bottom: 20px;">
-                    <h4 style="color: #1f2937; font-weight: 600; margin-bottom: 10px;">${company.name}</h4>`;
-
-                company.deals.forEach((deal, dIdx) => {
-                    const dateObj = new Date(deal.date);
-                    const dateStr = dateObj.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
-
-                    html += `
-                        <div style="display: flex; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
-                            <div style="min-width: 80px; color: #667eea; font-weight: 600; font-size: 12px;">${dateStr}</div>
-                            <div>
-                                <div style="font-weight: 600; color: #1f2937; font-size: 14px;">${deal.target || 'N/A'}</div>
-                                <div style="color: #6b7280; font-size: 12px;">${deal.type} ${deal.amount ? '· $' + deal.amount + 'M' : ''}</div>
-                                <div style="color: #9ca3af; font-size: 11px; margin-top: 2px;">${deal.description || ''}</div>
-                            </div>
-                        </div>
-                    `;
+                company.deals.forEach((deal) => {
+                    allDeals.push({
+                        ...deal,
+                        company: company.name,
+                        companyIdx: idx
+                    });
                 });
-
-                html += `</div>`;
             });
 
-            if (html === '') {
-                html = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No M&A activity data</div>';
+            // Sort by date descending (most recent first)
+            allDeals.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (allDeals.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No M&A activity data</div>';
+                return;
             }
+
+            // Color map for deal types
+            const dealColors = {
+                'acquisition': { bg: '#d1fae5', border: '#10b981', icon: '🛍️', label: 'Acquisition' },
+                'divestiture': { bg: '#fee2e2', border: '#ef4444', icon: '📤', label: 'Divestiture' },
+                'investment': { bg: '#dbeafe', border: '#3b82f6', icon: '💰', label: 'Investment' },
+                'partnership': { bg: '#fce7f3', border: '#ec4899', icon: '🤝', label: 'Partnership' }
+            };
+
+            let html = `<style>
+                .timeline-item {
+                    display: flex;
+                    gap: 16px;
+                    margin-bottom: 20px;
+                    animation: slideInLeft 0.5s ease forwards;
+                    opacity: 0;
+                }
+                @keyframes slideInLeft {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+                .timeline-dot {
+                    min-width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 18px;
+                    font-weight: 600;
+                    margin-top: 2px;
+                    position: relative;
+                    z-index: 2;
+                }
+                .timeline-dot::after {
+                    content: '';
+                    position: absolute;
+                    width: 2px;
+                    height: 60px;
+                    background: #e5e7eb;
+                    left: 50%;
+                    top: 40px;
+                    transform: translateX(-50%);
+                    z-index: 1;
+                }
+                .timeline-item:last-child .timeline-dot::after {
+                    display: none;
+                }
+                .timeline-content {
+                    flex: 1;
+                    padding: 14px 16px;
+                    border-radius: 8px;
+                    border-left: 3px solid;
+                }
+                .timeline-content.acquisition { background: #d1fae5; border-left-color: #10b981; }
+                .timeline-content.divestiture { background: #fee2e2; border-left-color: #ef4444; }
+                .timeline-content.investment { background: #dbeafe; border-left-color: #3b82f6; }
+                .timeline-content.partnership { background: #fce7f3; border-left-color: #ec4899; }
+                .timeline-date {
+                    font-size: 12px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 4px;
+                }
+                .timeline-acquisition .timeline-date { color: #10b981; }
+                .timeline-divestiture .timeline-date { color: #ef4444; }
+                .timeline-investment .timeline-date { color: #3b82f6; }
+                .timeline-partnership .timeline-date { color: #ec4899; }
+                .timeline-target {
+                    font-weight: 700;
+                    color: #1f2937;
+                    font-size: 15px;
+                    margin-bottom: 4px;
+                }
+                .timeline-meta {
+                    font-size: 13px;
+                    color: #6b7280;
+                    margin-bottom: 6px;
+                }
+                .timeline-desc {
+                    font-size: 12px;
+                    color: #4b5563;
+                    line-height: 1.4;
+                    font-style: italic;
+                }
+                .timeline-company {
+                    display: inline-block;
+                    font-size: 10px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    font-weight: 700;
+                    color: #667eea;
+                    margin-top: 8px;
+                    padding-top: 8px;
+                    border-top: 1px solid rgba(0,0,0,0.1);
+                }
+            </style>`;
+
+            allDeals.forEach((deal, idx) => {
+                const dateObj = new Date(deal.date);
+                const dateStr = dateObj.toLocaleDateString('en-GB', { year: 'numeric', month: 'short' });
+                const dealType = deal.type || 'partnership';
+                const colors = dealColors[dealType] || dealColors['partnership'];
+
+                html += `<div class="timeline-item" style="animation-delay: ${idx * 60}ms;">
+                    <div class="timeline-dot" style="background: ${colors.bg}; color: ${colors.border}; box-shadow: 0 0 0 2px white, 0 0 0 4px ${colors.border}; border: 2px solid white;">
+                        ${colors.icon}
+                    </div>
+                    <div class="timeline-content ${dealType}">
+                        <div class="timeline-date">${dateStr}</div>
+                        <div class="timeline-target">${deal.target || 'N/A'}</div>
+                        <div class="timeline-meta">
+                            <span style="font-weight: 600; color: ${colors.border};">${dealType.charAt(0).toUpperCase() + dealType.slice(1)}</span>
+                            ${deal.amount ? `<span> · $${deal.amount}M</span>` : ''}
+                        </div>
+                        ${deal.description ? `<div class="timeline-desc">"${deal.description}"</div>` : ''}
+                        <div class="timeline-company">📍 ${deal.company}</div>
+                    </div>
+                </div>`;
+            });
 
             container.innerHTML = html;
         }
