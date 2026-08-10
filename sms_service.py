@@ -16487,27 +16487,7 @@ def api_home_brief():
             brief_text = smart_brief
         app.logger.info(f"[brief] Using smart fallback: {brief_text[:60]}...")
 
-    # Social Reads: Add Feedbin links + tweets to brief (if available)
-    try:
-        from feedbin_sync import get_feedbin
-        from social_reads import get_social_reads
-        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
-
-        # Fetch with 5 second timeout so brief doesn't hang
-        try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(lambda: (get_feedbin(), get_social_reads(feedbin=get_feedbin())))
-                feedbin, social = future.result(timeout=5)
-                snippet = social.get_morning_snippet(count_links=2, count_tweets=3)
-                if snippet:
-                    brief_text += f"\n\n{snippet}"
-                    ctx["social_reads"] = {"snippet": snippet}
-                    app.logger.info("[brief] Added Feedbin + tweets to morning brief")
-        except FuturesTimeoutError:
-            app.logger.debug("[social-reads] Feedbin sync timeout (>5s)")
-
-    except Exception as _sr_e:
-        app.logger.debug(f"[social-reads] Integration skipped: {_sr_e}")
+    # Feedbin is web-dashboard only (not in brief)
 
     # Add lat/lng for frontend places suggestions (from location classification or postcode)
     _brief_lat, _brief_lng = None, None
