@@ -428,6 +428,51 @@ class CompanyIntelligence:
                 else:
                     return f"Brand information for {company_name} not available. Try: 'Tell me about {company_name}'"
 
+            # Check for strategy/acquisition questions (use database first, then Groq)
+            if any(word in q_lower for word in ["strategy", "acquisition", "acquire", "growth", "focus"]):
+                try:
+                    from .sms_service import get_supabase
+                    supabase = get_supabase()
+
+                    # Get M&A deals to infer strategy
+                    deals_response = supabase.table("company_deals").select("*").eq("company_name", company_name).order("year", desc=True).limit(5).execute()
+                    deals = deals_response.data if deals_response.data else []
+
+                    # Get financials to infer growth strategy
+                    financials_response = supabase.table("company_financials").select("*").eq("company_name", company_name).order("year", desc=True).limit(5).execute()
+                    financials = financials_response.data if financials_response.data else []
+
+                    if deals or financials:
+                        # Build strategy insight from M&A and financials
+                        strategy_parts = []
+
+                        # M&A pattern analysis
+                        if deals:
+                            deal_types = {}
+                            for deal in deals:
+                                dtype = deal.get("deal_type", "").title()
+                                deal_types[dtype] = deal_types.get(dtype, 0) + 1
+                            deal_summary = ", ".join([f"{count} {dtype}s" for dtype, count in deal_types.items()])
+                            strategy_parts.append(f"Recent M&A: {deal_summary}")
+
+                        # Growth pattern
+                        if financials and len(financials) >= 2:
+                            latest = financials[0]
+                            prev = financials[1]
+                            revenue_latest = latest.get("revenue", 0)
+                            revenue_prev = prev.get("revenue", 0)
+                            if revenue_latest and revenue_prev and revenue_prev > 0:
+                                growth = ((revenue_latest - revenue_prev) / revenue_prev) * 100
+                                if growth > 5:
+                                    strategy_parts.append(f"Strong organic growth ({growth:.1f}% YoY)")
+                                elif growth < -2:
+                                    strategy_parts.append(f"Restructuring phase ({growth:.1f}% YoY)")
+
+                        if strategy_parts:
+                            return f"{company_name} strategy: {' | '.join(strategy_parts)}"
+                except Exception as db_err:
+                    logger.warning(f"[Q&A] Strategy database fallback failed: {db_err}")
+
             groq_api_key = os.environ.get("GROQ_API_KEY")
             if not groq_api_key:
                 logger.error("[Q&A] GROQ_API_KEY not set")

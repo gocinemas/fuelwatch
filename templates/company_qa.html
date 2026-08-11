@@ -874,6 +874,9 @@
             }
 
             document.getElementById('questionInput').value = '';
+            // Change placeholder after first question
+            document.getElementById('questionInput').placeholder = 'Ask a follow-up question...';
+
             addMessage('user', question);
 
             // Show loading
@@ -896,7 +899,7 @@
                 document.getElementById('messagesContainer').lastChild.remove();
 
                 if (data.answer) {
-                    addMessage('assistant', data.answer, true);
+                    addMessage('assistant', data.answer);
                 } else {
                     addMessage('assistant', 'Unable to answer. Try another question.');
                 }
