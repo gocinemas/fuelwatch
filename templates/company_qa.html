@@ -158,9 +158,11 @@
         .qa-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 16px 20px;
-            font-size: 14px;
+            padding: 20px;
+            font-size: 15px;
             font-weight: 700;
+            letter-spacing: 0.3px;
+            border-bottom: 3px solid rgba(255,255,255,0.1);
         }
 
         .messages {
@@ -212,6 +214,24 @@
             color: #1c1917;
             border-bottom-left-radius: 2px;
             position: relative;
+            line-height: 1.6;
+            padding: 14px 16px;
+        }
+
+        .assistant .message-content strong {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .assistant .message-content ul,
+        .assistant .message-content ol {
+            margin: 8px 0 8px 20px;
+            padding: 0;
+        }
+
+        .assistant .message-content li {
+            margin: 4px 0;
+            color: #374151;
         }
 
         .message-actions {
@@ -253,7 +273,7 @@
         }
 
         .qa-input-area button {
-            padding: 14px 28px;
+            padding: 14px 32px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
@@ -261,12 +281,19 @@
             font-weight: 700;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            min-width: 100px;
+            letter-spacing: 0.3px;
         }
 
         .qa-input-area button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
+        }
+
+        .qa-input-area button:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
         }
 
         .loading {
@@ -500,11 +527,11 @@
 
         <!-- Q&A Section -->
         <div class="qa-section" id="qaSection" style="display: none;">
-            <div class="qa-header">Ask about this company — AI will answer based on public information</div>
+            <div class="qa-header">🤖 AI Strategy Analyst — Ask about competitive strategy, M&A, hiring, and market position</div>
             <div class="messages" id="messagesContainer"></div>
             <div class="qa-input-area">
-                <input type="text" id="questionInput" placeholder="e.g., What's their AI strategy?" onkeypress="handleQuestionKeypress(event)" />
-                <button onclick="askQuestion()">Ask</button>
+                <input type="text" id="questionInput" placeholder="E.g., What's their acquisition strategy? Who are their main competitors? How is their hiring trending?" onkeypress="handleQuestionKeypress(event)" />
+                <button onclick="askQuestion()">Ask 🔍</button>
             </div>
         </div>
 
@@ -833,7 +860,7 @@
                 document.getElementById('companyMeta').textContent = `${data.name} • Updated ${data.timestamp.split('T')[0]}`;
 
                 // Add welcome message
-                addMessage('assistant', `I've loaded basics for ${company}. Ask me anything about their strategy, AI focus, competitors, or market position.`);
+                addMessage('assistant', `📊 **${company} Intelligence Ready**\n\nI have 4+ years of financial data, 10 years of M&A history, and real-time stock data loaded.\n\n**Try asking:**\n• "What's their acquisition strategy?"\n• "Who are their main competitors?"\n• "How is their hiring trending vs competitors?"\n• "What are their key brands and products?"\n• "What's their market position in their sector?"`);
 
             } catch (error) {
                 document.getElementById('companyMeta').innerHTML = `<div class="error">Error loading company data. Try again.</div>`;
