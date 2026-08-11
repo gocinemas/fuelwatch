@@ -1226,6 +1226,21 @@ def sms_reply():
 
     resp = MessagingResponse()
 
+    # DEBUG: /decide command directly tests orchestrator
+    if body.lower().startswith("/decide "):
+        query = body[8:].strip()
+        print(f"[DEBUG] /decide command: {query}")
+        try:
+            from query_orchestrator import get_orchestrator
+            orchestrator = get_orchestrator()
+            result = orchestrator.route(query, from_number, [], [], request.form)
+            if result and result.get("handled"):
+                resp.message(result.get("text", ""))
+                return str(resp)
+        except Exception as e:
+            resp.message(f"Error: {e}")
+            return str(resp)
+
     # ORCHESTRATION LAYER \u2014 Route to appropriate handler
     print("TEST1: About to enter orchestrator block")
     sys.stdout.flush()
