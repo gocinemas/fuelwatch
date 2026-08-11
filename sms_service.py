@@ -1228,71 +1228,44 @@ def sms_reply():
     sys.stdout.flush()
 
     resp = MessagingResponse()
-
-    # DEBUG: /decide command directly tests orchestrator
-    if body.lower().startswith("/decide "):
-        query = body[8:].strip()
-        print(f"[DEBUG] /decide command: {query}")
+    # LIFE ADVICE & SHOPPING — Simple direct handlers (no complex routing)
+    body_lower = body.lower()
+    
+    # Life advice
+    if any(x in body_lower for x in ["help me", "help with", "frustrated", "stressed", "worried", "anxious"]):
         try:
-            from query_orchestrator import get_orchestrator
-            orchestrator = get_orchestrator()
-            result = orchestrator.route(query, from_number, [], [], request.form)
-            if result and result.get("handled"):
-                resp.message(result.get("text", ""))
+            from miru_assistant import get_miru_assistant
+            assistant = get_miru_assistant(phone=from_number)
+            result = assistant.process_query(body)
+
+            if result.get("type") == "life_advice":
+                text = "💭 I hear you.\n\n"
+                text += result['analysis'].get('recommendation') + "\n\n"
+                text += "🤔 Let's think through:\n"
+                for q in result['analysis'].get('questions_to_ask', [])[:3]:
+                    text += f"• {q}\n"
+                resp.message(text)
                 return str(resp)
         except Exception as e:
-            resp.message(f"Error: {e}")
-            return str(resp)
+            app.logger.error(f"Life advice error: {e}")
 
-    # ORCHESTRATION LAYER \u2014 Route to appropriate handler
-    print("TEST1: About to enter orchestrator block")
-    sys.stdout.flush()
-    try:
-        print("TEST2: Inside try block")
-        sys.stdout.flush()
-        from query_orchestrator import get_orchestrator
-        import re
+    # Shopping/Should I buy
+    if any(x in body_lower for x in ["should i buy", "is this worth", "good price", "should i get"]):
+        try:
+            from miru_assistant import get_miru_assistant
+            assistant = get_miru_assistant(phone=from_number)
+            result = assistant.process_query(body)
 
-        print("TEST3: Import successful")
-        sys.stdout.flush()
-        orchestrator = get_orchestrator()
-        print(f"[ROUTE] START message='{body[:40]}'")
-        sys.stdout.flush()
-
-        # Extract media URLs
-        media_urls = []
-        num_media = int(request.form.get("NumMedia", 0))
-        for i in range(num_media):
-            media_url = request.form.get(f"MediaUrl{i}", "")
-            if media_url:
-                media_urls.append(media_url)
-
-        # Extract URLs from message
-        urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', body)
-
-        # Route through orchestrator
-        result = orchestrator.route(
-            message=body,
-            from_number=from_number,
-            media_urls=media_urls,
-            urls=urls,
-            request_form=request.form
-        )
-
-        print(f"[orchestrator] Route result: {result}")
-        app.logger.info(f"[orchestrator] Route result: {result}")
-
-        # If orchestrator handled it, return response
-        if result and result.get("handled"):
-            print(f"[orchestrator] ✓ Handled by orchestrator, sending response")
-            resp.message(result.get("text", ""))
-            return str(resp)
-
-    except Exception as e:
-        print(f"[orchestrator] Exception: {e}")
-        import traceback
-        traceback.print_exc()
-        app.logger.error(f"[orchestrator] Failed to route: {e}")
+            if result.get("type") == "shopping":
+                text = f"🛍️ {result.get('product')}\n\n"
+                text += f"Score: {result['analysis'].get('value_score')}/10\n"
+                text += f"💡 {result['analysis'].get('recommendation')}\n\n"
+                for step in result.get('next_steps', [])[:2]:
+                    text += f"• {step}\n"
+                resp.message(text)
+                return str(resp)
+        except Exception as e:
+            app.logger.error(f"Shopping error: {e}")
 
     # Handle "event" command with poster image
     if body.lower().startswith("event") and request.form.get("NumMedia", "0") != "0":
