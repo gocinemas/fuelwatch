@@ -787,6 +787,7 @@
                 animateChart('growth', () => drawGrowthChart(companyList));
                 animateChart('margin', () => drawMarginChart(companyList));
                 renderDealsTimeline(companyList);
+                renderHiringTrends(companyList);
             }, 100);
         }
 
@@ -1173,6 +1174,14 @@
                     </div>
                 `;
             }
+
+            // Hiring Trends
+            html += `
+                <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #1f2937; font-size: 18px;">📈 Hiring Trends & Strategic Focus</h3>
+                    <div id="hiringTrendsContainer" style="overflow-x: auto;"></div>
+                </div>
+            `;
 
             html += `</div>`;
             return html;
@@ -1782,6 +1791,101 @@
 
                 html += '</div>';
             });
+
+            container.innerHTML = html;
+        }
+
+        async function renderHiringTrends(companies) {
+            const container = document.getElementById('hiringTrendsContainer');
+            if (!container) return;
+
+            let html = `<style>
+                .hiring-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 13px;
+                }
+                .hiring-table th {
+                    background: #f3f4f6;
+                    padding: 12px;
+                    text-align: left;
+                    font-weight: 600;
+                    border-bottom: 2px solid #e5e7eb;
+                    color: #1f2937;
+                }
+                .hiring-table td {
+                    padding: 12px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .hiring-table tr:hover {
+                    background: #f9fafb;
+                }
+                .growth-positive { color: #22c55e; font-weight: 600; }
+                .growth-negative { color: #ef4444; font-weight: 600; }
+                .ai-stars { font-size: 14px; }
+            </style>
+
+            <table class="hiring-table">
+                <thead>
+                    <tr>
+                        <th>Company</th>
+                        <th>Hiring Growth 2025</th>
+                        <th>Strategic Focus</th>
+                        <th>AI Investment</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            // Fetch hiring data for all companies
+            for (const company of companies) {
+                try {
+                    const response = await fetch(`/api/company/hiring-focus?company=${encodeURIComponent(company.name)}`);
+                    if (response.ok) {
+                        const hiringData = await response.json();
+                        const growth = hiringData.hiring_growth_2025 || 0;
+                        const growthClass = growth > 0 ? 'growth-positive' : 'growth-negative';
+                        const growthText = growth > 0 ? `+${growth}%` : `${growth}%`;
+
+                        const focusAreas = hiringData.focus_areas || [];
+                        const focusPreview = focusAreas.slice(0, 2).map(a => a.area).join(', ');
+
+                        const aiScore = hiringData.ai_investment_score || 0;
+                        const aiStars = aiScore > 0 ? '⭐'.repeat(aiScore) + '☆'.repeat(5 - aiScore) : '—';
+
+                        html += `
+                            <tr>
+                                <td style="font-weight: 600;">${company.name}</td>
+                                <td><span class="${growthClass}">${growthText}</span></td>
+                                <td style="font-size: 12px; color: #6b7280;">${focusPreview || '—'}</td>
+                                <td class="ai-stars">${aiStars}</td>
+                            </tr>
+                        `;
+                    } else {
+                        html += `
+                            <tr>
+                                <td style="font-weight: 600;">${company.name}</td>
+                                <td colspan="3" style="color: #9ca3af;">—</td>
+                            </tr>
+                        `;
+                    }
+                } catch (e) {
+                    html += `
+                        <tr>
+                            <td style="font-weight: 600;">${company.name}</td>
+                            <td colspan="3" style="color: #9ca3af;">—</td>
+                        </tr>
+                    `;
+                }
+            }
+
+            html += `
+                </tbody>
+            </table>
+
+            <div style="margin-top: 12px; font-size: 12px; color: #6b7280;">
+                <strong>⭐ Rating:</strong> 5/5 = Aggressive AI investment | 1/5 = Minimal AI focus
+            </div>
+            `;
 
             container.innerHTML = html;
         }

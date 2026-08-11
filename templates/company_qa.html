@@ -525,6 +525,27 @@
             </div>
         </div>
 
+        <!-- Hiring Focus Card -->
+        <div class="hiring-focus-card" id="hiringFocusCard" style="display: none; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 13px; color: #166534; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">📈 Hiring Trends & Strategic Focus</div>
+                <div id="hiringGrowth" style="font-size: 20px; font-weight: 700; color: #166534; margin-bottom: 4px;">—</div>
+                <div id="hiringDirection" style="font-size: 13px; color: #4b5563; line-height: 1.5;">—</div>
+            </div>
+
+            <div id="focusAreasContainer" style="margin-top: 16px; display: none;">
+                <div style="font-size: 12px; color: #166534; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Where They're Investing</div>
+                <div id="focusAreas" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
+                    <!-- Will be filled by JavaScript -->
+                </div>
+            </div>
+
+            <div id="aiScoreContainer" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #86efac; display: none;">
+                <div style="font-size: 12px; color: #166534; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">AI Investment</div>
+                <div id="aiScore" style="font-size: 14px; color: #1b7d3a; font-weight: 600;">—</div>
+            </div>
+        </div>
+
         <!-- Q&A Section -->
         <div class="qa-section" id="qaSection" style="display: none;">
             <div class="qa-header">🤖 AI Strategy Analyst — Ask about competitive strategy, M&A, hiring, and market position</div>
@@ -859,11 +880,67 @@
 
                 document.getElementById('companyMeta').textContent = `${data.name} • Updated ${data.timestamp.split('T')[0]}`;
 
+                // Fetch hiring focus data
+                try {
+                    const hiringResponse = await fetch(`/api/company/hiring-focus?company=${encodeURIComponent(company)}`);
+                    if (hiringResponse.ok) {
+                        const hiringData = await hiringResponse.json();
+                        displayHiringFocus(hiringData);
+                    }
+                } catch (e) {
+                    // Hiring focus is optional
+                }
+
                 // Add welcome message
                 addMessage('assistant', `📊 **${company} Intelligence Ready**\n\nI have 4+ years of financial data, 10 years of M&A history, and real-time stock data loaded.\n\n**Try asking:**\n• "What's their acquisition strategy?"\n• "Who are their main competitors?"\n• "How is their hiring trending vs competitors?"\n• "What are their key brands and products?"\n• "What's their market position in their sector?"`);
 
             } catch (error) {
                 document.getElementById('companyMeta').innerHTML = `<div class="error">Error loading company data. Try again.</div>`;
+            }
+        }
+
+        function displayHiringFocus(data) {
+            if (!data || data.error) {
+                document.getElementById('hiringFocusCard').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('hiringFocusCard').style.display = 'block';
+
+            // Hiring growth
+            const growth = data.hiring_growth_2025;
+            const growthText = growth >= 0 ? `+${growth}%` : `${growth}%`;
+            const growthColor = growth > 8 ? '#22c55e' : growth > 3 ? '#eab308' : '#ef4444';
+            document.getElementById('hiringGrowth').textContent = `📈 ${growthText} YoY Hiring Growth`;
+            document.getElementById('hiringGrowth').style.color = growthColor;
+
+            // Strategic direction
+            document.getElementById('hiringDirection').textContent = data.strategic_direction || '—';
+
+            // Focus areas
+            const focusAreas = data.focus_areas || [];
+            if (focusAreas.length > 0) {
+                document.getElementById('focusAreasContainer').style.display = 'block';
+                const areasHTML = focusAreas.map(area => `
+                    <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #86efac;">
+                        <div style="font-weight: 600; color: #166534; margin-bottom: 4px;">${area.area}</div>
+                        <div style="font-size: 12px; color: #4b5563; margin-bottom: 4px;">+${area.growth}% YoY • ${area.roles} roles</div>
+                        <div style="font-size: 11px; color: #6b7280; font-style: italic;">${area.reason}</div>
+                    </div>
+                `).join('');
+                document.getElementById('focusAreas').innerHTML = areasHTML;
+            }
+
+            // AI score
+            const aiScore = data.ai_investment_score || 0;
+            if (aiScore > 0) {
+                document.getElementById('aiScoreContainer').style.display = 'block';
+                const stars = '⭐'.repeat(aiScore) + '☆'.repeat(5 - aiScore);
+                const aiLabel = aiScore >= 5 ? 'Aggressive AI investment' :
+                               aiScore >= 4 ? 'Heavy AI investment' :
+                               aiScore >= 3 ? 'Moderate AI investment' :
+                               aiScore >= 2 ? 'Limited AI focus' : 'Minimal AI investment';
+                document.getElementById('aiScore').innerHTML = `${stars}<br><span style="font-size: 12px; color: #6b7280;">${aiLabel}</span>`;
             }
         }
 
