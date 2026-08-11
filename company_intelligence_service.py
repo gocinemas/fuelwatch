@@ -327,15 +327,36 @@ class CompanyIntelligence:
     def answer_question(company_name: str, question: str) -> str:
         """
         Answer a question about a company using Groq API (fast + cheap).
+        Falls back to local database for direct questions.
         """
         try:
             import os
             import requests
 
+            # Check for direct competitor question
+            q_lower = question.lower()
+            if any(word in q_lower for word in ["competitor", "rivals", "competition", "competitors"]):
+                competitors = get_competitor_list(company_name)
+                if competitors:
+                    comp_str = ", ".join(competitors)
+                    return f"Main competitors for {company_name}: {comp_str}. These companies compete directly in the same market segments."
+                else:
+                    return f"Competitors for {company_name} not yet mapped. Try asking about their brands or strategy instead."
+
+            # Check for brand question
+            if any(word in q_lower for word in ["brand", "products", "product line"]):
+                intel = CompanyIntelligence(company_name)
+                intel.fetch_all()
+                if intel.basics.get("brands"):
+                    brands = ", ".join(intel.basics["brands"])
+                    return f"{company_name}'s main brands: {brands}"
+                else:
+                    return f"Brand information for {company_name} not available. Try: 'Tell me about {company_name}'"
+
             groq_api_key = os.environ.get("GROQ_API_KEY")
             if not groq_api_key:
                 logger.error("[Q&A] GROQ_API_KEY not set")
-                return "System error: API key missing. Try: 'What are Reckitt's brands?'"
+                return "System error: API key missing. Try: 'What are their brands?' or 'Who are their competitors?'"
 
             # System prompt for company Q&A
             system_prompt = f"""You are a company intelligence expert. Answer questions about {company_name}.
@@ -366,12 +387,12 @@ IMPORTANT: If asked about brands or market share, provide specific numbers and p
                 data = response.json()
                 if data.get("choices") and len(data["choices"]) > 0:
                     answer = data["choices"][0].get("message", {}).get("content", "")
-                    if answer:
+                    if answer and answer.strip():
                         logger.info(f"[Q&A] Groq response for {company_name}: {answer[:100]}...")
                         return answer.strip()
 
             logger.warning(f"[Q&A] Groq returned empty or error: {response.status_code}")
-            return "I found information but couldn't format it. Try: 'What are Reckitt's main brands?' or 'List brand market share'"
+            return "Try asking: 'Who are their competitors?', 'What are their brands?', or 'Tell me about their strategy'"
 
         except Exception as e:
             error_msg = str(e).lower()
@@ -379,13 +400,13 @@ IMPORTANT: If asked about brands or market share, provide specific numbers and p
 
             # Suggest rephrasing based on error type
             if "rate" in error_msg or "quota" in error_msg:
-                return "System busy. Please try again in a moment."
+                return "System busy. Try: 'Who are their competitors?' or 'What brands do they have?'"
             elif "timeout" in error_msg:
-                return "Request timed out. Try: 'What brands does Reckitt have?'"
+                return "Request timed out. Try: 'Tell me about their brands' or 'Who is their competition?'"
             elif any(word in error_msg for word in ["invalid", "token", "auth", "api"]):
-                return "System error. Try: 'Tell me about Reckitt' or 'What is Reckitt?'"
+                return "System error. Try asking about competitors or brands."
             else:
-                return "Having trouble with that question. Try: 'What are Reckitt's brands?' or 'List Reckitt brands and market share'"
+                return "Having trouble with that question. Try: 'Who are their competitors?' or 'What brands do they have?'"
 
 
 def get_company_intelligence(company_name: str) -> dict:
