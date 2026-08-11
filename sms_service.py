@@ -1204,6 +1204,7 @@ def sms_reply():
         import re
 
         orchestrator = get_orchestrator()
+        print(f"[orchestrator] Retrieved instance with {len(orchestrator.handlers)} handlers: {list(orchestrator.handlers.keys())}")
 
         # Extract media URLs
         media_urls = []
