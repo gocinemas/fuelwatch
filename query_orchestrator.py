@@ -36,10 +36,7 @@ class QueryOrchestrator:
         media_urls = media_urls or []
         urls = urls or []
 
-        print(f"\n[orchestrator.route] ═══ ROUTING START ═══", flush=True)
-        sys.stdout.flush()
-        print(f"[orchestrator.route] Message: {message[:60]}", flush=True)
-        print(f"[orchestrator.route] Media: {len(media_urls)}, URLs: {len(urls)}", flush=True)
+        print(f"[ROUTE] START message='{message[:40]}'")
         sys.stdout.flush()
 
         # PRIORITY ORDER (most critical first)

@@ -76,12 +76,14 @@ def _init_orchestrator():
 
     # Handler: Miru Assistant (Shopping, Life Advice, Research)
     def handle_assistant(message: str, from_number: str, media_urls=None, urls=None, **kwargs) -> Dict:
+        print(f"[HANDLER] handle_assistant called with: {message[:50]}")
         from miru_assistant import get_miru_assistant
         assistant = get_miru_assistant(phone=from_number)
         media_urls = media_urls or []
         urls = urls or []
 
         result = assistant.process_query(message, media_urls=media_urls, urls=urls)
+        print(f"[HANDLER] Assistant returned type={result.get('type')}")
         app.logger.info(f"[orchestrator] Assistant result: type={result.get('type')}, message={message[:50]}")
 
         if result.get("type") == "shopping":
