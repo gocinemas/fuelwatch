@@ -76,7 +76,7 @@ class MiruAssistant:
             print(f"[miru_assistant] Classified as COMPARISON")
             return QueryType.COMPARISON
 
-        if any(x in q for x in ["how do i", "what should i", "help with", "advice", "should i do", "how should i", "frustrated", "upset", "worried", "stressed", "anxious"]):
+        if any(x in q for x in ["how do i", "what should i", "help me", "help with", "advice", "should i do", "how should i", "frustrated", "upset", "worried", "stressed", "anxious"]):
             print(f"[miru_assistant] Classified as LIFE_ADVICE")
             return QueryType.LIFE_ADVICE
 
