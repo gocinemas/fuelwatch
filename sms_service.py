@@ -1228,9 +1228,43 @@ def sms_reply():
     sys.stdout.flush()
 
     resp = MessagingResponse()
+
+    # SHOPPING — /buy command with recommendations and URLs
+    if body.lower().startswith("/buy "):
+        product = body[5:].strip()
+        if product:
+            try:
+                from anthropic import Anthropic
+                client = Anthropic()
+
+                msg = client.messages.create(
+                    model="claude-opus-4-1",
+                    max_tokens=300,
+                    messages=[{
+                        "role": "user",
+                        "content": f"For '{product}', suggest 3-4 options with brief reasons to buy (1 line each). Format: 1. Name (Reason). Return ONLY the list, no intro."
+                    }]
+                )
+
+                recs_text = msg.content[0].text.strip()
+
+                response = f"🛍️ {product.title()}\n\n{recs_text}\n\n"
+                response += "🔗 Where to buy:\n"
+                response += "• Amazon: amazon.co.uk/s?k=" + product.replace(" ", "+") + "\n"
+                response += "• Currys: currys.co.uk/search?term=" + product.replace(" ", "+") + "\n"
+                response += "• John Lewis: johnlewis.com/search?q=" + product.replace(" ", "+") + "\n\n"
+                response += "💡 Compare prices and read reviews before buying"
+
+                resp.message(response)
+                return str(resp)
+            except Exception as e:
+                app.logger.error(f"Shopping error: {e}")
+                resp.message(f"Sorry, couldn't get recommendations for '{product}'")
+                return str(resp)
+
     # LIFE ADVICE & SHOPPING — Simple direct handlers (no complex routing)
     body_lower = body.lower()
-    
+
     # Life advice
     if any(x in body_lower for x in ["help me", "help with", "frustrated", "stressed", "worried", "anxious"]):
         try:
