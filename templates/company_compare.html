@@ -1592,24 +1592,8 @@
             const container = document.getElementById('dealsTimeline');
             if (!container) return;
 
-            // Get all deals across all companies, sorted by date descending
-            let allDeals = [];
-            companies.forEach((company, idx) => {
-                if (!company.deals || company.deals.length === 0) return;
-                company.deals.forEach((deal) => {
-                    allDeals.push({
-                        ...deal,
-                        company: company.name,
-                        companyIdx: idx
-                    });
-                });
-            });
-
-            // Sort by date descending (most recent first)
-            allDeals.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            if (allDeals.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No M&A activity data</div>';
+            if (companies.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No companies selected</div>';
                 return;
             }
 
@@ -1622,6 +1606,47 @@
             };
 
             let html = `<style>
+                .ma-tabs {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 20px;
+                    border-bottom: 2px solid #e5e7eb;
+                    overflow-x: auto;
+                    padding-bottom: 12px;
+                }
+                .ma-tab {
+                    padding: 8px 16px;
+                    border: none;
+                    background: transparent;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #6b7280;
+                    white-space: nowrap;
+                    position: relative;
+                    transition: color 0.3s;
+                }
+                .ma-tab:hover {
+                    color: #1f2937;
+                }
+                .ma-tab.active {
+                    color: #667eea;
+                }
+                .ma-tab.active::after {
+                    content: '';
+                    position: absolute;
+                    bottom: -14px;
+                    left: 0;
+                    right: 0;
+                    height: 2px;
+                    background: #667eea;
+                }
+                .timeline-container {
+                    display: none;
+                }
+                .timeline-container.active {
+                    display: block;
+                }
                 .timeline-item {
                     display: flex;
                     gap: 16px;
@@ -1704,43 +1729,76 @@
                     line-height: 1.4;
                     font-style: italic;
                 }
-                .timeline-company {
-                    display: inline-block;
-                    font-size: 10px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    font-weight: 700;
-                    color: #667eea;
-                    margin-top: 8px;
-                    padding-top: 8px;
-                    border-top: 1px solid rgba(0,0,0,0.1);
+                .empty-state {
+                    text-align: center;
+                    color: #9ca3af;
+                    padding: 40px 20px;
+                    font-style: italic;
                 }
             </style>`;
 
-            allDeals.forEach((deal, idx) => {
-                const dateObj = new Date(deal.date);
-                const dateStr = dateObj.toLocaleDateString('en-GB', { year: 'numeric', month: 'short' });
-                const dealType = deal.type || 'partnership';
-                const colors = dealColors[dealType] || dealColors['partnership'];
+            // Create tabs
+            html += '<div class="ma-tabs">';
+            companies.forEach((company, idx) => {
+                const dealCount = company.deals ? company.deals.length : 0;
+                const activeClass = idx === 0 ? 'active' : '';
+                html += `<button class="ma-tab ${activeClass}" onclick="switchMATab(${idx}, this)">${company.name} <span style="color: #9ca3af; font-size: 12px;">(${dealCount})</span></button>`;
+            });
+            html += '</div>';
 
-                html += `<div class="timeline-item" style="animation-delay: ${idx * 60}ms;">
-                    <div class="timeline-dot" style="background: ${colors.bg}; color: ${colors.border}; box-shadow: 0 0 0 2px white, 0 0 0 4px ${colors.border}; border: 2px solid white;">
-                        ${colors.icon}
-                    </div>
-                    <div class="timeline-content ${dealType}">
-                        <div class="timeline-date">${dateStr}</div>
-                        <div class="timeline-target">${deal.target || 'N/A'}</div>
-                        <div class="timeline-meta">
-                            <span style="font-weight: 600; color: ${colors.border};">${dealType.charAt(0).toUpperCase() + dealType.slice(1)}</span>
-                            ${deal.amount ? `<span> · $${deal.amount}M</span>` : ''}
-                        </div>
-                        ${deal.description ? `<div class="timeline-desc">"${deal.description}"</div>` : ''}
-                        <div class="timeline-company">📍 ${deal.company}</div>
-                    </div>
-                </div>`;
+            // Create timeline containers for each company
+            companies.forEach((company, idx) => {
+                const activeClass = idx === 0 ? 'active' : '';
+                html += `<div class="timeline-container ${activeClass}" id="ma-tab-${idx}">`;
+
+                if (!company.deals || company.deals.length === 0) {
+                    html += '<div class="empty-state">No M&A deals recorded</div>';
+                } else {
+                    // Sort deals by date descending
+                    const deals = [...company.deals].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    deals.forEach((deal, dealIdx) => {
+                        const dateObj = new Date(deal.date);
+                        const dateStr = dateObj.toLocaleDateString('en-GB', { year: 'numeric', month: 'short' });
+                        const dealType = deal.type || 'partnership';
+                        const colors = dealColors[dealType] || dealColors['partnership'];
+
+                        html += `<div class="timeline-item" style="animation-delay: ${dealIdx * 60}ms;">
+                            <div class="timeline-dot" style="background: ${colors.bg}; color: ${colors.border}; box-shadow: 0 0 0 2px white, 0 0 0 4px ${colors.border}; border: 2px solid white;">
+                                ${colors.icon}
+                            </div>
+                            <div class="timeline-content ${dealType}">
+                                <div class="timeline-date">${dateStr}</div>
+                                <div class="timeline-target">${deal.target || 'N/A'}</div>
+                                <div class="timeline-meta">
+                                    <span style="font-weight: 600; color: ${colors.border};">${dealType.charAt(0).toUpperCase() + dealType.slice(1)}</span>
+                                    ${deal.amount ? `<span> · $${deal.amount}M</span>` : ''}
+                                </div>
+                                ${deal.description ? `<div class="timeline-desc">"${deal.description}"</div>` : ''}
+                            </div>
+                        </div>`;
+                    });
+                }
+
+                html += '</div>';
             });
 
             container.innerHTML = html;
+        }
+
+        function switchMATab(tabIdx, tabElement) {
+            // Hide all containers
+            document.querySelectorAll('.timeline-container').forEach(el => {
+                el.classList.remove('active');
+            });
+            // Remove active class from all tabs
+            document.querySelectorAll('.ma-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            // Show selected container
+            document.getElementById(`ma-tab-${tabIdx}`).classList.add('active');
+            // Mark tab as active
+            tabElement.classList.add('active');
         }
 
         // ── Export Functions ──
