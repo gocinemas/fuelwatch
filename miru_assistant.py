@@ -53,19 +53,26 @@ class MiruAssistant:
             return {"error": "I didn't understand. Try: 'should I buy...', 'compare...', 'how do I...', or 'tell me about...'"}
 
     def _classify_query(self, query: str) -> QueryType:
-        """Classify query type"""
-        q = query.lower()
+        """Classify query type (context-aware)"""
+        q = query.lower().strip()
 
-        if any(x in q for x in ["should i buy", "is this worth", "worth buying", "good price", "good deal"]):
+        # Single word? Probably not a shopping query — needs full context
+        if len(q.split()) <= 2 and not any(x in q for x in ["should", "compare", "vs", "worth", "price"]):
+            # Could be life advice follow-up or research
+            if any(x in q for x in ["help", "advice", "frustrated", "upset", "worried", "stressed"]):
+                return QueryType.LIFE_ADVICE
+            return QueryType.RESEARCH
+
+        if any(x in q for x in ["should i buy", "is this worth", "worth buying", "good price", "good deal", "should i get"]):
             return QueryType.SHOPPING
 
         if any(x in q for x in ["compare", "vs", "versus", "which is better", "better", "best"]):
             return QueryType.COMPARISON
 
-        if any(x in q for x in ["how do i", "what should i", "help with", "advice", "should i do", "how should i"]):
+        if any(x in q for x in ["how do i", "what should i", "help with", "advice", "should i do", "how should i", "frustrated", "upset", "worried", "stressed", "anxious"]):
             return QueryType.LIFE_ADVICE
 
-        if any(x in q for x in ["tell me", "about", "explain", "what is", "who is"]):
+        if any(x in q for x in ["tell me", "about", "explain", "what is", "who is", "why"]):
             return QueryType.RESEARCH
 
         return QueryType.UNKNOWN
