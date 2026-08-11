@@ -35,30 +35,37 @@ class QueryOrchestrator:
         media_urls = media_urls or []
         urls = urls or []
 
+        print(f"\n[orchestrator.route] ═══ ROUTING START ═══")
+        print(f"[orchestrator.route] Message: {message[:60]}")
+        print(f"[orchestrator.route] Media: {len(media_urls)}, URLs: {len(urls)}")
+
         # PRIORITY ORDER (most critical first)
         # 1. Receipts (scanning photos/parsing)
         if media_urls and request_form:
             # Try receipt handler first if media present
             query_type = self._classify_as_receipt(message, media_urls)
             if query_type == QueryType.RECEIPT:
-                print(f"[orchestrator.route] Classified as RECEIPT")
+                print(f"[orchestrator.route] → Classified as RECEIPT")
                 return self._call_handler(QueryType.RECEIPT, message, from_number, media_urls, urls, request_form)
 
         # 2. Shopping/Life Advice/Research (Miru Assistant)
         query_type = self._classify_query(message, media_urls, urls)
-        print(f"[orchestrator.route] Classified '{message[:50]}' as {query_type}")
+        print(f"[orchestrator.route] → Classified as: {query_type}")
 
         if query_type in [QueryType.SHOPPING, QueryType.LIFE_ADVICE, QueryType.RESEARCH]:
-            print(f"[orchestrator.route] Routing to assistant handler for {query_type}")
-            return self._call_handler(query_type, message, from_number, media_urls, urls, request_form)
+            print(f"[orchestrator.route] → Has handler, calling...")
+            result = self._call_handler(query_type, message, from_number, media_urls, urls, request_form)
+            print(f"[orchestrator.route] → Handler returned: {result is not None}")
+            return result
 
         # 3. Commute/Fuel/Events (existing handlers)
         if query_type in [QueryType.COMMUTE, QueryType.FUEL, QueryType.EVENT]:
-            print(f"[orchestrator.route] Routing to handler for {query_type}")
+            print(f"[orchestrator.route] → Has handler for {query_type}")
             return self._call_handler(query_type, message, from_number, media_urls, urls, request_form)
 
         # No handler matched
-        print(f"[orchestrator.route] No handler matched for {query_type}")
+        print(f"[orchestrator.route] → No matching handler")
+        print(f"[orchestrator.route] ═══ ROUTING END (NONE) ═══\n")
         return None
 
     def _classify_as_receipt(self, message: str, media_urls: List[str]) -> QueryType:
@@ -73,29 +80,48 @@ class QueryOrchestrator:
         m = message.lower()
 
         # LIFE ADVICE (check first — most important)
-        if any(x in m for x in ["frustrated", "help me", "help with", "how do i", "what should i", "advice", "worried", "stressed", "upset", "anxious", "depressed", "job", "work", "relationship", "family"]):
+        life_advice_keywords = ["frustrated", "help me", "help with", "how do i", "what should i", "advice", "worried", "stressed", "upset", "anxious", "depressed", "job", "work", "relationship", "family"]
+        if any(x in m for x in life_advice_keywords):
+            matched = [x for x in life_advice_keywords if x in m]
+            print(f"[orchestrator._classify] LIFE_ADVICE (matched: {matched})")
             return QueryType.LIFE_ADVICE
 
         # Shopping queries
-        if any(x in m for x in ["should i buy", "is this worth", "good price", "good deal", "compare", "vs "]):
+        shopping_keywords = ["should i buy", "is this worth", "good price", "good deal", "compare", "vs "]
+        if any(x in m for x in shopping_keywords):
+            matched = [x for x in shopping_keywords if x in m]
+            print(f"[orchestrator._classify] SHOPPING (matched: {matched})")
             return QueryType.SHOPPING
 
         # Research queries
-        if any(x in m for x in ["tell me about", "explain", "what is", "who is"]):
+        research_keywords = ["tell me about", "explain", "what is", "who is"]
+        if any(x in m for x in research_keywords):
+            matched = [x for x in research_keywords if x in m]
+            print(f"[orchestrator._classify] RESEARCH (matched: {matched})")
             return QueryType.RESEARCH
 
         # Commute queries
-        if any(x in m for x in ["train", "commute", "transport", "next", "waterloo"]):
+        commute_keywords = ["train", "commute", "transport", "next", "waterloo"]
+        if any(x in m for x in commute_keywords):
+            matched = [x for x in commute_keywords if x in m]
+            print(f"[orchestrator._classify] COMMUTE (matched: {matched})")
             return QueryType.COMMUTE
 
         # Fuel queries
-        if any(x in m for x in ["fuel", "petrol", "diesel", "price"]):
+        fuel_keywords = ["fuel", "petrol", "diesel", "price"]
+        if any(x in m for x in fuel_keywords):
+            matched = [x for x in fuel_keywords if x in m]
+            print(f"[orchestrator._classify] FUEL (matched: {matched})")
             return QueryType.FUEL
 
         # Event queries
-        if any(x in m for x in ["event", "calendar", "upcoming"]):
+        event_keywords = ["event", "calendar", "upcoming"]
+        if any(x in m for x in event_keywords):
+            matched = [x for x in event_keywords if x in m]
+            print(f"[orchestrator._classify] EVENT (matched: {matched})")
             return QueryType.EVENT
 
+        print(f"[orchestrator._classify] UNKNOWN: '{message[:50]}'")
         return QueryType.UNKNOWN
 
     def _call_handler(self, query_type: QueryType, message: str, from_number: str, media_urls: List[str], urls: List[str], request_form=None) -> Optional[Dict]:
