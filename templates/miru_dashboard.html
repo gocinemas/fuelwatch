@@ -185,76 +185,124 @@
     </div>
 
     <script>
-        // Mock data - in production, fetch from API
-        const data = {
-            currentSpend: 240,
-            budget: 620,
-            averageMonthly: 620,
-            projectedTotal: 750,
-            daysIntoMonth: 11,
-            daysInMonth: 30,
-            dailyBreakdown: [
-                { day: 'Mon', amount: 45 },
-                { day: 'Tue', amount: 38 },
-                { day: 'Wed', amount: 52 },
-                { day: 'Thu', amount: 35 },
-                { day: 'Fri', amount: 70 }
-            ],
-            categories: {
-                'Groceries': 120,
-                'Coffee': 45,
-                'Transport': 75
+        // Fetch real data from API
+        async function loadData() {
+            try {
+                // Get phone from URL param or localStorage
+                const phone = new URLSearchParams(window.location.search).get('phone') || localStorage.getItem('miru_phone') || 'default';
+
+                // Fetch budget and weekly data from API
+                const [budgetRes, weeklyRes] = await Promise.all([
+                    fetch(`/api/budget/${encodeURIComponent(phone)}`),
+                    fetch(`/api/weekly/${encodeURIComponent(phone)}`)
+                ]);
+
+                if (!budgetRes.ok || !weeklyRes.ok) {
+                    console.error('API error:', budgetRes.status, weeklyRes.status);
+                    loadMockData();
+                    return;
+                }
+
+                const budget = await budgetRes.json();
+                const weekly = await weeklyRes.json();
+
+                // Merge real data
+                const data = {
+                    currentSpend: budget.current_spend || 240,
+                    budget: budget.average_monthly || 620,
+                    averageMonthly: budget.average_monthly || 620,
+                    projectedTotal: budget.projected_total || 750,
+                    daysIntoMonth: budget.days_into_month || 11,
+                    daysInMonth: 30,
+                    dailyBreakdown: weekly.daily_breakdown || [],
+                    categories: weekly.category_breakdown || {}
+                };
+
+                renderDashboard(data);
+            } catch (e) {
+                console.error('Failed to fetch data:', e);
+                loadMockData();
             }
-        };
-
-        // Update main cards
-        document.getElementById('currentSpend').textContent = data.currentSpend;
-        document.getElementById('projectedSpend').textContent = Math.round(data.projectedTotal);
-        document.getElementById('daysRemaining').textContent = data.daysInMonth - data.daysIntoMonth;
-        document.getElementById('dailyPace').textContent = (data.currentSpend / data.daysIntoMonth).toFixed(2);
-
-        const progress = (data.currentSpend / data.budget * 100);
-        document.getElementById('progressFill').style.width = progress + '%';
-        document.getElementById('progressText').textContent = `£${data.currentSpend} of £${data.budget} budget (${Math.round(progress)}%)`;
-
-        const overage = data.projectedTotal - data.averageMonthly;
-        const statusEl = document.getElementById('statusBadge');
-        if (overage > 50) {
-            statusEl.textContent = '⚠️ Overspending';
-            statusEl.className = 'status-badge status-warning';
-        } else if (overage > 0) {
-            statusEl.textContent = '⚠️ Slight overspend';
-            statusEl.className = 'status-badge status-warning';
-        } else {
-            statusEl.textContent = '✅ On pace';
-            statusEl.className = 'status-badge status-on-pace';
         }
 
-        document.getElementById('projectedDetail').textContent = (overage > 0 ? '+' : '') + '£' + Math.abs(overage).toFixed(0) + (overage > 0 ? ' over' : ' under') + ' average';
+        function loadMockData() {
+            console.warn('Using mock data');
+            const data = {
+                currentSpend: 240,
+                budget: 620,
+                averageMonthly: 620,
+                projectedTotal: 750,
+                daysIntoMonth: 11,
+                daysInMonth: 30,
+                dailyBreakdown: [
+                    { day: 'Mon', amount: 45 },
+                    { day: 'Tue', amount: 38 },
+                    { day: 'Wed', amount: 52 },
+                    { day: 'Thu', amount: 35 },
+                    { day: 'Fri', amount: 70 }
+                ],
+                categories: {
+                    'Groceries': 120,
+                    'Fuel': 45,
+                    'Coffee': 30,
+                    'Transport': 45
+                }
+            };
+            renderDashboard(data);
+        }
 
-        // Daily chart
-        const maxDaily = Math.max(...data.dailyBreakdown.map(d => d.amount));
-        const chartHTML = data.dailyBreakdown.map(d => `
-            <div class="day-bar" style="height: ${(d.amount / maxDaily * 100)}%;">
-                <div class="day-label">${d.day}<br>£${d.amount}</div>
-            </div>
-        `).join('');
-        document.getElementById('dailyChart').innerHTML = chartHTML;
+        function renderDashboard(data) {
+            document.getElementById('currentSpend').textContent = data.currentSpend;
+            document.getElementById('projectedSpend').textContent = Math.round(data.projectedTotal);
+            document.getElementById('daysRemaining').textContent = data.daysInMonth - data.daysIntoMonth;
+            document.getElementById('dailyPace').textContent = (data.currentSpend / data.daysIntoMonth).toFixed(2);
 
-        // Categories
-        const totalSpent = Object.values(data.categories).reduce((a, b) => a + b, 0);
-        const categoryHTML = Object.entries(data.categories)
-            .sort((a, b) => b[1] - a[1])
-            .map(([name, amount]) => `
-                <div class="category-item">
-                    <div class="category-name">${name}</div>
-                    <div class="category-bar">
-                        <div class="category-fill" style="width: ${(amount / totalSpent * 100)}%;"></div>
-                    </div>
-                    <div class="category-amount">£${amount}</div>
+            const progress = (data.currentSpend / data.budget * 100);
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressText').textContent = `£${data.currentSpend} of £${data.budget} budget (${Math.round(progress)}%)`;
+
+            const overage = data.projectedTotal - data.averageMonthly;
+            const statusEl = document.getElementById('statusBadge');
+            if (overage > 50) {
+                statusEl.textContent = '⚠️ Overspending';
+                statusEl.className = 'status-badge status-warning';
+            } else if (overage > 0) {
+                statusEl.textContent = '⚠️ Slight overspend';
+                statusEl.className = 'status-badge status-warning';
+            } else {
+                statusEl.textContent = '✅ On pace';
+                statusEl.className = 'status-badge status-on-pace';
+            }
+
+            document.getElementById('projectedDetail').textContent = (overage > 0 ? '+' : '') + '£' + Math.abs(overage).toFixed(0) + (overage > 0 ? ' over' : ' under') + ' average';
+
+            // Daily chart
+            const maxDaily = Math.max(...data.dailyBreakdown.map(d => d.amount)) || 1;
+            const chartHTML = data.dailyBreakdown.map(d => `
+                <div class="day-bar" style="height: ${(d.amount / maxDaily * 100)}%;">
+                    <div class="day-label">${d.day}<br>£${d.amount}</div>
                 </div>
             `).join('');
-        document.getElementById('categoryList').innerHTML = categoryHTML;
+            document.getElementById('dailyChart').innerHTML = chartHTML;
+
+            // Categories
+            const totalSpent = Object.values(data.categories).reduce((a, b) => a + b, 0);
+            const categoryHTML = Object.entries(data.categories)
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, amount]) => `
+                    <div class="category-item">
+                        <div class="category-name">${name}</div>
+                        <div class="category-bar">
+                            <div class="category-fill" style="width: ${(amount / totalSpent * 100)}%;"></div>
+                        </div>
+                        <div class="category-amount">£${amount}</div>
+                    </div>
+                `).join('');
+            document.getElementById('categoryList').innerHTML = categoryHTML;
+        }
+
+        // Load real data on page load
+        loadData();
     </script>
 </body>
 </html>
