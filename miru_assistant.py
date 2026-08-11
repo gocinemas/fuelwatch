@@ -163,46 +163,13 @@ class MiruAssistant:
         return query.replace("tell me about", "").replace("what is", "").strip()
 
     def _analyze_images(self, media_urls: List[str]) -> str:
-        """Analyze images using Claude vision to extract product info"""
-        try:
-            from anthropic import Anthropic
-            client = Anthropic()
+        """Analyze images asynchronously — return placeholder for now"""
+        if not media_urls:
+            return ""
 
-            analysis = []
-            for url in media_urls:
-                # Download image
-                img_response = requests.get(url)
-                img_data = img_response.content
-                import base64
-                b64_image = base64.standard_b64encode(img_data).decode('utf-8')
-
-                # Analyze with Claude
-                response = client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=300,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": "image/jpeg",
-                                    "data": b64_image
-                                }
-                            },
-                            {
-                                "type": "text",
-                                "text": "Analyze this image. If it's a product, extract: name, price (if visible), specs, brand, condition. If it's a receipt, extract merchant, items, amount. If it's a screenshot, extract key info. Be concise."
-                            }
-                        ]
-                    }]
-                )
-                analysis.append(response.content[0].text)
-
-            return " | ".join(analysis)
-        except Exception as e:
-            return f"Could not analyze image: {str(e)}"
+        # TODO: Implement Claude vision analysis in background
+        # For now, just indicate image was received
+        return f"[{len(media_urls)} image(s) attached for analysis]"
 
     def _extract_url_info(self, urls: List[str]) -> str:
         """Extract product info from URLs"""
