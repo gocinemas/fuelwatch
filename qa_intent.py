@@ -9,14 +9,19 @@ logger = logging.getLogger(__name__)
 
 # Define question types and their identifying patterns
 INTENT_PATTERNS = {
+    "comparison": {
+        "required": ["vs", "versus", "compare", "better", "trending vs", "vs compet"],
+        "excluded": [],
+        "priority": 12,  # Higher priority to catch "vs competitors" questions
+    },
     "market_share": {
         "required": ["market", "share", "rank", "size", "largest", "position"],
         "excluded": ["growth", "hiring", "employee", "margin"],
         "priority": 10,
     },
     "competitor": {
-        "required": ["compet", "rival", "vs", "versus", "who compete"],
-        "excluded": [],
+        "required": ["compet", "rival", "who compete"],
+        "excluded": ["vs", "versus", "compare", "trending"],  # Exclude if it's actually a comparison
         "priority": 9,
     },
     "brands": {
@@ -35,14 +40,9 @@ INTENT_PATTERNS = {
         "priority": 6,
     },
     "hiring": {
-        "required": ["hiring", "employ", "headcount", "workforce", "staff", "team"],
+        "required": ["hiring", "employ", "headcount", "workforce", "staff", "team", "trending"],
         "excluded": [],
         "priority": 5,
-    },
-    "comparison": {
-        "required": ["vs", "versus", "compare", "better", "vs "],
-        "excluded": [],
-        "priority": 4,
     },
     "general": {
         "required": ["tell", "about", "what", "who", "how"],
@@ -95,12 +95,16 @@ def detect_intent(question: str) -> str:
     return "general"
 
 
-def get_answer_strategy(intent: str) -> list:
+def get_answer_strategy(intent: str, question: str = "") -> list:
     """
     Get the fallback strategy for this intent type.
     Returns list of (source, handler) tuples to try in order.
     """
     strategies = {
+        "comparison": [
+            ("database", "compare_companies"),
+            ("groq", "ask_groq"),
+        ],
         "competitor": [
             ("database", "query_competitors"),
             ("groq", "ask_groq"),
@@ -124,10 +128,6 @@ def get_answer_strategy(intent: str) -> list:
         ],
         "hiring": [
             ("database", "calculate_hiring_growth"),
-            ("groq", "ask_groq"),
-        ],
-        "comparison": [
-            ("database", "compare_companies"),
             ("groq", "ask_groq"),
         ],
         "general": [

@@ -299,6 +299,108 @@ class DatabaseHandlers:
             return None
 
     @staticmethod
+    def compare_companies(company_name: str, supabase, comparison_metric: str = "hiring") -> Optional[str]:
+        """Compare company vs sector peers on a specific metric."""
+        try:
+            # Get company data
+            company_data_response = supabase.table("company_financials").select(
+                "*"
+            ).eq("company_name", company_name).order("year", desc=True).limit(
+                2
+            ).execute()
+
+            company_data = (
+                company_data_response.data if company_data_response.data else []
+            )
+
+            if len(company_data) < 2:
+                return None
+
+            company_latest = company_data[0]
+            company_prev = company_data[1]
+            sector = company_latest.get("sector")
+
+            if not sector:
+                return None
+
+            # Calculate company's metric trend
+            if comparison_metric == "hiring":
+                company_emp_latest = company_latest.get("employees", 0)
+                company_emp_prev = company_prev.get("employees", 0)
+                if company_emp_latest and company_emp_prev:
+                    company_trend = (
+                        (company_emp_latest - company_emp_prev) / company_emp_prev
+                        * 100
+                    )
+                else:
+                    return None
+            else:
+                return None
+
+            # Get sector peers
+            peers_response = supabase.table("company_financials").select(
+                "company_name, employees, year"
+            ).eq("sector", sector).eq("year", company_latest.get("year")).execute()
+
+            peers_data = peers_response.data if peers_response.data else []
+
+            if not peers_data:
+                return None
+
+            # Calculate sector average
+            peer_trends = []
+            for peer in peers_data:
+                if peer["company_name"] == company_name:
+                    continue
+
+                peer_latest_response = (
+                    supabase.table("company_financials")
+                    .select("*")
+                    .eq("company_name", peer["company_name"])
+                    .order("year", desc=True)
+                    .limit(2)
+                    .execute()
+                )
+
+                peer_years = (
+                    peer_latest_response.data
+                    if peer_latest_response.data
+                    else []
+                )
+
+                if len(peer_years) >= 2:
+                    peer_emp_latest = peer_years[0].get("employees", 0)
+                    peer_emp_prev = peer_years[1].get("employees", 0)
+                    if peer_emp_latest and peer_emp_prev:
+                        peer_trend = (
+                            (peer_emp_latest - peer_emp_prev) / peer_emp_prev * 100
+                        )
+                        peer_trends.append(
+                            (peer["company_name"], peer_trend)
+                        )
+
+            if not peer_trends:
+                return None
+
+            # Compare
+            avg_trend = sum(t[1] for t in peer_trends) / len(peer_trends)
+            sector_status = (
+                "slower"
+                if company_trend < avg_trend
+                else ("faster" if company_trend > avg_trend else "same")
+            )
+
+            peer_str = ", ".join(
+                [f"{p[0]} ({p[1]:.1f}%)" for p in peer_trends[:3]]
+            )
+
+            return f"{company_name} is hiring {sector_status} than sector ({company_trend:.1f}% vs {avg_trend:.1f}% sector average). Peers: {peer_str}"
+
+        except Exception as e:
+            logger.error(f"[Handler] compare_companies failed: {e}")
+            return None
+
+    @staticmethod
     def fetch_company_overview(company_name: str, supabase) -> Optional[str]:
         """General company overview."""
         try:
