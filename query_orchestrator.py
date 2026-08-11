@@ -32,12 +32,15 @@ class QueryOrchestrator:
         Route message to appropriate handler
         Returns: (handled: bool, response: str) or None if no handler matched
         """
+        import sys
         media_urls = media_urls or []
         urls = urls or []
 
-        print(f"\n[orchestrator.route] ═══ ROUTING START ═══")
-        print(f"[orchestrator.route] Message: {message[:60]}")
-        print(f"[orchestrator.route] Media: {len(media_urls)}, URLs: {len(urls)}")
+        print(f"\n[orchestrator.route] ═══ ROUTING START ═══", flush=True)
+        sys.stdout.flush()
+        print(f"[orchestrator.route] Message: {message[:60]}", flush=True)
+        print(f"[orchestrator.route] Media: {len(media_urls)}, URLs: {len(urls)}", flush=True)
+        sys.stdout.flush()
 
         # PRIORITY ORDER (most critical first)
         # 1. Receipts (scanning photos/parsing)
@@ -50,12 +53,15 @@ class QueryOrchestrator:
 
         # 2. Shopping/Life Advice/Research (Miru Assistant)
         query_type = self._classify_query(message, media_urls, urls)
-        print(f"[orchestrator.route] → Classified as: {query_type}")
+        print(f"[orchestrator.route] → Classified as: {query_type}", flush=True)
+        sys.stdout.flush()
 
         if query_type in [QueryType.SHOPPING, QueryType.LIFE_ADVICE, QueryType.RESEARCH]:
-            print(f"[orchestrator.route] → Has handler, calling...")
+            print(f"[orchestrator.route] → Has handler, calling...", flush=True)
+            sys.stdout.flush()
             result = self._call_handler(query_type, message, from_number, media_urls, urls, request_form)
-            print(f"[orchestrator.route] → Handler returned: {result is not None}")
+            print(f"[orchestrator.route] → Handler returned: {result is not None}", flush=True)
+            sys.stdout.flush()
             return result
 
         # 3. Commute/Fuel/Events (existing handlers)

@@ -1212,16 +1212,20 @@ def debug_orchestrator():
 
 @app.route("/sms", methods=["POST"])
 def sms_reply():
+    import sys
     body = request.form.get("Body", "").strip()
     # Normalise smart/curly quotes to ASCII so regex matching works on mobile input
     body = body.replace("\u2018", "'").replace("\u2019", "'").replace("\u201c", '"').replace("\u201d", '"')
     from_number = request.form.get("From", "unknown")
 
-    print(f"SMS from {from_number}: {body}")
+    print(f"SMS from {from_number}: {body}", flush=True)
+    sys.stdout.flush()
 
     resp = MessagingResponse()
 
     # ORCHESTRATION LAYER \u2014 Route to appropriate handler
+    print(f"[sms_reply] About to enter orchestrator block", flush=True)
+    sys.stdout.flush()
     try:
         from query_orchestrator import get_orchestrator
         import re
