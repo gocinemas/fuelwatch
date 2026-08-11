@@ -1139,6 +1139,41 @@ def sms_reply():
 
     resp = MessagingResponse()
 
+    # MIRU ASSISTANT: Shopping, Life Advice, Research
+    try:
+        from miru_assistant import get_miru_assistant
+        assistant = get_miru_assistant(phone=from_number)
+
+        # Check if query matches assistant patterns
+        if any(x in body.lower() for x in ["should i buy", "compare", "how do i", "tell me about", "is this worth", "vs "]):
+            result = assistant.process_query(body)
+
+            if result.get("type") == "shopping":
+                response_text = f"🛍️ Shopping Analysis: {result.get('product')}\n\n"
+                response_text += f"Score: {result['analysis'].get('value_score', 'N/A')}/10\n"
+                response_text += f"📋 Recommendation: {result['analysis'].get('recommendation')}\n\n"
+                response_text += "💡 Next steps:\n"
+                for step in result.get('next_steps', []):
+                    response_text += f"• {step}\n"
+                resp.message(response_text)
+                return str(resp)
+
+            elif result.get("type") == "life_advice":
+                response_text = f"💭 Life Advice\n\n"
+                response_text += f"Your situation: {result['analysis'].get('recommendation')}\n\n"
+                response_text += "🤔 Questions to consider:\n"
+                for q in result['analysis'].get('questions_to_ask', []):
+                    response_text += f"• {q}\n"
+                resp.message(response_text)
+                return str(resp)
+
+            elif result.get("type") in ["comparison", "research"]:
+                response_text = f"📊 Analysis coming up...\n{result.get('analysis', {})}"
+                resp.message(response_text)
+                return str(resp)
+    except Exception as e:
+        app.logger.debug(f"[assistant] Not an assistant query: {e}")
+
     # Handle "event" command with poster image
     if body.lower().startswith("event") and request.form.get("NumMedia", "0") != "0":
         try:
