@@ -66,13 +66,13 @@ class QueryOrchestrator:
         """Classify query type"""
         m = message.lower()
 
+        # LIFE ADVICE (check first — most important)
+        if any(x in m for x in ["frustrated", "help me", "help with", "how do i", "what should i", "advice", "worried", "stressed", "upset", "anxious", "depressed", "job", "work", "relationship", "family"]):
+            return QueryType.LIFE_ADVICE
+
         # Shopping queries
         if any(x in m for x in ["should i buy", "is this worth", "good price", "good deal", "compare", "vs "]):
             return QueryType.SHOPPING
-
-        # Life advice queries
-        if any(x in m for x in ["frustrated", "help me", "how do i", "what should i", "advice", "worried", "stressed", "upset"]):
-            return QueryType.LIFE_ADVICE
 
         # Research queries
         if any(x in m for x in ["tell me about", "explain", "what is", "who is"]):
