@@ -30,6 +30,7 @@ class CompanyIntelligence:
             self._fetch_company_info()
             self._fetch_stock_data()
             self._fetch_news()
+            self._fetch_trends()  # NEW: Fetch financial history for trends
 
             return self.basics
         except Exception as e:

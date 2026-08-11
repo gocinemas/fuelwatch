@@ -1144,9 +1144,21 @@ def sms_reply():
         from miru_assistant import get_miru_assistant
         assistant = get_miru_assistant(phone=from_number)
 
+        # Extract media URLs if present
+        media_urls = []
+        num_media = int(request.form.get("NumMedia", 0))
+        for i in range(num_media):
+            media_url = request.form.get(f"MediaUrl{i}", "")
+            if media_url:
+                media_urls.append(media_url)
+
+        # Extract URLs from message
+        import re
+        urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', body)
+
         # Check if query matches assistant patterns
-        if any(x in body.lower() for x in ["should i buy", "compare", "how do i", "tell me about", "is this worth", "vs "]):
-            result = assistant.process_query(body)
+        if any(x in body.lower() for x in ["should i buy", "compare", "how do i", "tell me about", "is this worth", "vs "]) or media_urls or urls:
+            result = assistant.process_query(body, media_urls=media_urls, urls=urls)
 
             if result.get("type") == "shopping":
                 response_text = f"🛍️ Shopping Analysis: {result.get('product')}\n\n"

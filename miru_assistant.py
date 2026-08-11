@@ -25,8 +25,20 @@ class MiruAssistant:
         self.user_phone = user_phone
         self.judgments = []  # Track user decisions to learn taste
 
-    def process_query(self, query: str) -> Dict:
-        """Route query to appropriate agent"""
+    def process_query(self, query: str, media_urls: List[str] = None, urls: List[str] = None) -> Dict:
+        """Route query to appropriate agent with optional media/URLs"""
+        # Extract info from media
+        media_info = ""
+        if media_urls:
+            media_info = self._analyze_images(media_urls)
+            query = f"{query}\n[Image analysis: {media_info}]"
+
+        # Extract info from URLs
+        url_info = ""
+        if urls:
+            url_info = self._extract_url_info(urls)
+            query = f"{query}\n[URL info: {url_info}]"
+
         query_type = self._classify_query(query)
 
         if query_type == QueryType.SHOPPING:
@@ -149,6 +161,75 @@ class MiruAssistant:
     def _extract_topic(self, query: str) -> str:
         """Extract research topic"""
         return query.replace("tell me about", "").replace("what is", "").strip()
+
+    def _analyze_images(self, media_urls: List[str]) -> str:
+        """Analyze images using Claude vision to extract product info"""
+        try:
+            from anthropic import Anthropic
+            client = Anthropic()
+
+            analysis = []
+            for url in media_urls:
+                # Download image
+                img_response = requests.get(url)
+                img_data = img_response.content
+                import base64
+                b64_image = base64.standard_b64encode(img_data).decode('utf-8')
+
+                # Analyze with Claude
+                response = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=300,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/jpeg",
+                                    "data": b64_image
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": "Analyze this image. If it's a product, extract: name, price (if visible), specs, brand, condition. If it's a receipt, extract merchant, items, amount. If it's a screenshot, extract key info. Be concise."
+                            }
+                        ]
+                    }]
+                )
+                analysis.append(response.content[0].text)
+
+            return " | ".join(analysis)
+        except Exception as e:
+            return f"Could not analyze image: {str(e)}"
+
+    def _extract_url_info(self, urls: List[str]) -> str:
+        """Extract product info from URLs"""
+        info = []
+        for url in urls:
+            try:
+                # Try to fetch and parse
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                response = requests.get(url, headers=headers, timeout=5)
+
+                # Simple extraction
+                if "amazon" in url.lower():
+                    info.append(f"Amazon link: {url}")
+                elif "ebay" in url.lower():
+                    info.append(f"eBay link: {url}")
+                elif "price" in url.lower() or "shop" in url.lower():
+                    info.append(f"Shopping link: {url}")
+                else:
+                    # Extract title if possible
+                    if "<title>" in response.text:
+                        title = response.text.split("<title>")[1].split("</title>")[0]
+                        info.append(f"Page: {title[:100]}")
+
+            except Exception as e:
+                info.append(f"URL: {url}")
+
+        return " | ".join(info) if info else "Could not extract URL info"
 
     def record_judgment(self, query: str, outcome: str, feedback: str = ""):
         """Record user judgment to learn taste"""
