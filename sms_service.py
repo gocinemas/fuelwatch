@@ -1215,7 +1215,10 @@ def debug_orchestrator():
 @app.route("/sms", methods=["POST"])
 def sms_reply():
     import sys
-    print("🚀 SMS_REPLY START 🚀", file=sys.stderr, flush=True)
+    print("\n*** SMS_REPLY CALLED ***", file=sys.stderr, flush=True)
+    print("*** SMS_REPLY CALLED ***")
+    sys.stdout.flush()
+    sys.stderr.flush()
     body = request.form.get("Body", "").strip()
     # Normalise smart/curly quotes to ASCII so regex matching works on mobile input
     body = body.replace("\u2018", "'").replace("\u2019", "'").replace("\u201c", '"').replace("\u201d", '"')
