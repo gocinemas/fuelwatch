@@ -119,10 +119,14 @@ def _init_orchestrator():
 
 
 # Initialize on app startup
+print("[app] === STARTING ORCHESTRATOR INITIALIZATION ===")
 try:
-    _init_orchestrator()
+    result = _init_orchestrator()
+    print(f"[app] === ORCHESTRATOR INIT COMPLETE: {result} ===")
 except Exception as e:
-    print(f"[app] Orchestrator init warning: {e}")
+    print(f"[app] === ORCHESTRATOR INIT FAILED: {e} ===")
+    import traceback
+    traceback.print_exc()
 
 # Helper to convert time objects to strings before returning
 def _ensure_json_serializable(obj):
