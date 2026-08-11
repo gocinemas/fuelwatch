@@ -1243,19 +1243,25 @@ def sms_reply():
 
                 msg = client.messages.create(
                     model="claude-opus-4-1",
-                    max_tokens=300,
+                    max_tokens=400,
                     messages=[{
                         "role": "user",
-                        "content": f"Find {product} products under £{max_price}. List 3-4 with prices and brief reasons. Format: 1. Name - £Price (Reason). ONLY products under £{max_price}!"
+                        "content": f"""Find top {product} products under £{max_price}, SORTED BY USER RATING (highest first).
+For each, list: Rating (⭐ out of 5) • Price • Why buy
+Format: 1. ProductName - £Price ⭐Rating (Why buy in 1 line)
+ONLY products under £{max_price}. Sort by rating descending."""
                     }]
                 )
 
                 recs_text = msg.content[0].text.strip()
 
-                response = f"🛍️ {product.title()} (under £{max_price})\n\n{recs_text}\n\n"
-                response += "🔗 Compare on:\n"
-                response += f"• Amazon: amazon.co.uk/s?k={product.replace(' ', '+')}+under+{max_price}\n"
-                response += f"• Currys: currys.co.uk/search?term={product.replace(' ', '+')}"
+                response = f"🛍️ {product.title()} (under £{max_price}) - SORTED BY RATING\n\n{recs_text}\n\n"
+                response += "🛒 SHOP NOW:\n"
+                response += f"Amazon: amazon.co.uk/s?k={product.replace(' ', '+')}\n"
+                response += f"Currys: currys.co.uk/search?term={product.replace(' ', '+')}\n"
+                response += f"John Lewis: johnlewis.com/search?q={product.replace(' ', '+')}\n"
+                response += f"Argos: argos.co.uk/wcsearch?q={product.replace(' ', '+')}\n"
+                response += f"AO: ao.com/search?q={product.replace(' ', '+')}"
 
                 resp.message(response)
                 return str(resp)
