@@ -401,133 +401,99 @@ class CompanyIntelligence:
     @staticmethod
     def answer_question(company_name: str, question: str) -> str:
         """
-        Answer a question about a company using Groq API (fast + cheap).
-        Falls back to local database for direct questions.
+        Answer a question about a company using intelligent intent detection + layered fallback.
+        1. Classify question intent (competitor, brands, strategy, financial, etc.)
+        2. Try database handlers for that intent
+        3. Fall back to Groq API if needed
         """
         try:
             import os
             import requests
+            from qa_intent import detect_intent, get_answer_strategy
+            from qa_handlers import DatabaseHandlers
+            from sms_service import get_supabase
 
-            # Check for direct competitor question
-            q_lower = question.lower()
-            if any(word in q_lower for word in ["competitor", "rivals", "competition", "competitors"]):
-                competitors = get_competitor_list(company_name)
-                if competitors:
-                    comp_str = ", ".join(competitors)
-                    return f"Main competitors for {company_name}: {comp_str}. These companies compete directly in the same market segments."
-                else:
-                    return f"Competitors for {company_name} not yet mapped. Try asking about their brands or strategy instead."
+            # Step 1: Detect intent
+            intent = detect_intent(question)
+            logger.info(f"[Q&A] Question intent: {intent}")
 
-            # Check for brand question (but not if asking about market share, revenue, etc.)
-            if any(word in q_lower for word in ["what brands", "what are your brands", "brand", "product line", "list your brands"]):
-                if not any(word in q_lower for word in ["market", "share", "revenue", "price"]):
-                    intel = CompanyIntelligence(company_name)
-                    intel.fetch_all()
-                    if intel.basics.get("brands"):
-                        brands = ", ".join(intel.basics["brands"])
-                        return f"{company_name}'s main brands: {brands}"
-                    else:
-                        return f"Brand information for {company_name} not available. Try: 'Tell me about {company_name}'"
+            # Step 2: Get fallback strategy for this intent
+            strategy = get_answer_strategy(intent)
 
-            # Check for strategy/acquisition questions (use database first, then Groq)
-            if any(word in q_lower for word in ["strategy", "acquisition", "acquire", "growth", "focus"]):
-                try:
-                    from .sms_service import get_supabase
-                    supabase = get_supabase()
+            # Step 3: Try handlers in order
+            supabase = get_supabase()
+            for source, handler_name in strategy:
+                if source == "database":
+                    # Try database handler
+                    handler = getattr(DatabaseHandlers, handler_name, None)
+                    if handler:
+                        try:
+                            answer = handler(company_name, supabase)
+                            if answer:
+                                logger.info(f"[Q&A] Handler '{handler_name}' returned answer")
+                                return answer
+                        except Exception as handler_err:
+                            logger.warning(
+                                f"[Q&A] Handler '{handler_name}' failed: {handler_err}"
+                            )
+                            continue
 
-                    # Get M&A deals to infer strategy
-                    deals_response = supabase.table("company_deals").select("*").eq("company_name", company_name).order("year", desc=True).limit(5).execute()
-                    deals = deals_response.data if deals_response.data else []
+                elif source == "groq":
+                    # Fall back to Groq API
+                    groq_api_key = os.environ.get("GROQ_API_KEY")
+                    if not groq_api_key:
+                        logger.error("[Q&A] GROQ_API_KEY not set")
+                        continue
 
-                    # Get financials to infer growth strategy
-                    financials_response = supabase.table("company_financials").select("*").eq("company_name", company_name).order("year", desc=True).limit(5).execute()
-                    financials = financials_response.data if financials_response.data else []
-
-                    if deals or financials:
-                        # Build strategy insight from M&A and financials
-                        strategy_parts = []
-
-                        # M&A pattern analysis
-                        if deals:
-                            deal_types = {}
-                            for deal in deals:
-                                dtype = deal.get("deal_type", "").title()
-                                deal_types[dtype] = deal_types.get(dtype, 0) + 1
-                            deal_summary = ", ".join([f"{count} {dtype}s" for dtype, count in deal_types.items()])
-                            strategy_parts.append(f"Recent M&A: {deal_summary}")
-
-                        # Growth pattern
-                        if financials and len(financials) >= 2:
-                            latest = financials[0]
-                            prev = financials[1]
-                            revenue_latest = latest.get("revenue", 0)
-                            revenue_prev = prev.get("revenue", 0)
-                            if revenue_latest and revenue_prev and revenue_prev > 0:
-                                growth = ((revenue_latest - revenue_prev) / revenue_prev) * 100
-                                if growth > 5:
-                                    strategy_parts.append(f"Strong organic growth ({growth:.1f}% YoY)")
-                                elif growth < -2:
-                                    strategy_parts.append(f"Restructuring phase ({growth:.1f}% YoY)")
-
-                        if strategy_parts:
-                            return f"{company_name} strategy: {' | '.join(strategy_parts)}"
-                except Exception as db_err:
-                    logger.warning(f"[Q&A] Strategy database fallback failed: {db_err}")
-
-            groq_api_key = os.environ.get("GROQ_API_KEY")
-            if not groq_api_key:
-                logger.error("[Q&A] GROQ_API_KEY not set")
-                return "System error: API key missing. Try: 'What are their brands?' or 'Who are their competitors?'"
-
-            # System prompt for company Q&A
-            system_prompt = f"""You are a company intelligence expert. Answer questions about {company_name}.
+                    system_prompt = f"""You are a company intelligence expert. Answer about {company_name}.
 Be concise, factual, direct. 2-3 sentences max.
-Focus: business model, strategy, AI/tech focus, competitors, market position, brands, market share.
-IMPORTANT: If asked about brands or market share, provide specific numbers and percentages."""
+Focus: business model, strategy, competitors, market position, brands, growth."""
 
-            # Call Groq API
-            response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {groq_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "mixtral-8x7b-32768",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": question}
-                    ],
-                    "max_tokens": 500,
-                    "temperature": 0.7
-                },
-                timeout=10
-            )
+                    try:
+                        response = requests.post(
+                            "https://api.groq.com/openai/v1/chat/completions",
+                            headers={
+                                "Authorization": f"Bearer {groq_api_key}",
+                                "Content-Type": "application/json",
+                            },
+                            json={
+                                "model": "mixtral-8x7b-32768",
+                                "messages": [
+                                    {"role": "system", "content": system_prompt},
+                                    {"role": "user", "content": question},
+                                ],
+                                "max_tokens": 500,
+                                "temperature": 0.7,
+                            },
+                            timeout=10,
+                        )
 
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("choices") and len(data["choices"]) > 0:
-                    answer = data["choices"][0].get("message", {}).get("content", "")
-                    if answer and answer.strip():
-                        logger.info(f"[Q&A] Groq response for {company_name}: {answer[:100]}...")
-                        return answer.strip()
+                        if response.status_code == 200:
+                            data = response.json()
+                            if data.get("choices") and len(data["choices"]) > 0:
+                                answer = (
+                                    data["choices"][0]
+                                    .get("message", {})
+                                    .get("content", "")
+                                )
+                                if answer and answer.strip():
+                                    logger.info(f"[Q&A] Groq returned answer")
+                                    return answer.strip()
 
-            logger.warning(f"[Q&A] Groq returned empty or error: {response.status_code}")
-            return "Try asking: 'Who are their competitors?', 'What are their brands?', or 'Tell me about their strategy'"
+                        logger.warning(
+                            f"[Q&A] Groq returned empty: {response.status_code}"
+                        )
+                    except requests.Timeout:
+                        logger.warning("[Q&A] Groq timeout")
+                    except Exception as groq_err:
+                        logger.warning(f"[Q&A] Groq failed: {groq_err}")
+
+            # All handlers failed
+            return "Unable to answer that question. Try: 'Who are their competitors?', 'What brands do they own?', or 'Tell me about their strategy'"
 
         except Exception as e:
-            error_msg = str(e).lower()
-            logger.error(f"[Q&A] Groq error: {error_msg}")
-
-            # Suggest rephrasing based on error type
-            if "rate" in error_msg or "quota" in error_msg:
-                return "System busy. Try: 'Who are their competitors?' or 'What brands do they have?'"
-            elif "timeout" in error_msg:
-                return "Request timed out. Try: 'Tell me about their brands' or 'Who is their competition?'"
-            elif any(word in error_msg for word in ["invalid", "token", "auth", "api"]):
-                return "System error. Try asking about competitors or brands."
-            else:
-                return "Having trouble with that question. Try: 'Who are their competitors?' or 'What brands do they have?'"
+            logger.error(f"[Q&A] Unexpected error: {e}")
+            return "Having trouble with that question. Try asking about competitors or brands."
 
 
 def get_company_intelligence(company_name: str) -> dict:
