@@ -31,7 +31,7 @@ def get_budget_status(phone: str) -> dict:
             f"phone = '{phone}' AND shop_date >= '{month_start.isoformat()}' AND shop_date < '{now.isoformat()}'"
         ).execute()
 
-        current_spend = sum(float(r.get('total', 0)) for r in data[1] if data else [])
+        current_spend = sum(float(r.get('total', 0)) for r in (data[1] if data else []))
 
         # Get average monthly spend (last 3 months)
         three_months_ago = now - timedelta(days=90)
@@ -39,7 +39,7 @@ def get_budget_status(phone: str) -> dict:
             f"phone = '{phone}' AND shop_date >= '{three_months_ago.isoformat()}'"
         ).execute()
 
-        all_spend = [float(r.get('total', 0)) for r in historical[1] if historical else []]
+        all_spend = [float(r.get('total', 0)) for r in (historical[1] if historical else [])]
         average_monthly = sum(all_spend) / 3 if all_spend else 0
 
         # Calculate pace
