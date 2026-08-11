@@ -82,6 +82,7 @@ def _init_orchestrator():
         urls = urls or []
 
         result = assistant.process_query(message, media_urls=media_urls, urls=urls)
+        app.logger.info(f"[orchestrator] Assistant result: type={result.get('type')}, message={message[:50]}")
 
         if result.get("type") == "shopping":
             text = f"🛍️ {result.get('product')}\n\n"
@@ -89,6 +90,7 @@ def _init_orchestrator():
             text += f"💡 {result['analysis'].get('recommendation')}\n\n"
             for step in result.get('next_steps', [])[:2]:
                 text += f"• {step}\n"
+            app.logger.info(f"[orchestrator] Returning shopping response")
             return {"handled": True, "text": text}
 
         elif result.get("type") == "life_advice":
@@ -96,11 +98,14 @@ def _init_orchestrator():
             text += "🤔 Let's think through:\n"
             for q in result['analysis'].get('questions_to_ask', [])[:3]:
                 text += f"• {q}\n"
+            app.logger.info(f"[orchestrator] Returning life_advice response")
             return {"handled": True, "text": text}
 
         elif result.get("type") in ["comparison", "research"]:
+            app.logger.info(f"[orchestrator] Returning {result.get('type')} response")
             return {"handled": True, "text": f"📊 {result.get('analysis', {})}"}
 
+        app.logger.warning(f"[orchestrator] Unhandled result type: {result.get('type')}")
         return None
 
     # Register handlers
@@ -108,6 +113,8 @@ def _init_orchestrator():
     orchestrator.register_handler(QueryType.LIFE_ADVICE, handle_assistant)
     orchestrator.register_handler(QueryType.RESEARCH, handle_assistant)
 
+    app.logger.info(f"[orchestrator] Registered 3 handlers: SHOPPING, LIFE_ADVICE, RESEARCH")
+    print(f"[orchestrator] Init complete — handlers: {list(orchestrator.handlers.keys())}")
     return orchestrator
 
 
@@ -1224,62 +1231,7 @@ def sms_reply():
             return str(resp)
 
     except Exception as e:
-        app.logger.debug(f"[orchestrator] Not routed: {e}")
-
-    # MIRU ASSISTANT: Shopping, Life Advice, Research (PRIORITY)
-    try:
-        from miru_assistant import get_miru_assistant
-        import re
-
-        assistant = get_miru_assistant(phone=from_number)
-
-        # Extract media URLs if present
-        media_urls = []
-        num_media = int(request.form.get("NumMedia", 0))
-        for i in range(num_media):
-            media_url = request.form.get(f"MediaUrl{i}", "")
-            if media_url:
-                media_urls.append(media_url)
-
-        # Extract URLs from message
-        urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', body)
-
-        # ASSISTANT TRIGGERS (very broad to catch edge cases)
-        is_shopping = any(x in body.lower() for x in ["should i buy", "compare", "is this worth", "good price", "good deal", "should i get"])
-        is_life_advice = any(x in body.lower() for x in ["frustrated", "help me", "how do i", "what should i", "advice", "worried", "stressed", "upset", "anxious", "depressed"])
-        is_research = any(x in body.lower() for x in ["tell me about", "explain", "what is", "who is", "how do", "why"])
-        has_media = len(media_urls) > 0
-        has_urls = len(urls) > 0
-
-        # Route to assistant if ANY trigger fires
-        if is_shopping or is_life_advice or is_research or has_media or has_urls:
-            app.logger.info(f"[assistant] Routing: shopping={is_shopping}, life={is_life_advice}, research={is_research}, media={has_media}")
-            result = assistant.process_query(body, media_urls=media_urls, urls=urls)
-
-            if result.get("type") == "shopping":
-                response_text = f"🛍️ Shopping Analysis: {result.get('product')}\n\n"
-                response_text += f"Score: {result['analysis'].get('value_score', 'N/A')}/10\n"
-                response_text += f"💡 {result['analysis'].get('recommendation')}\n\n"
-                for step in result.get('next_steps', [])[:2]:
-                    response_text += f"• {step}\n"
-                resp.message(response_text)
-                return str(resp)
-
-            elif result.get("type") == "life_advice":
-                response_text = f"💭 I hear you.\n\n"
-                response_text += f"{result['analysis'].get('recommendation')}\n\n"
-                response_text += "🤔 Let's think through this:\n"
-                for q in result['analysis'].get('questions_to_ask', [])[:3]:
-                    response_text += f"• {q}\n"
-                resp.message(response_text)
-                return str(resp)
-
-            elif result.get("type") in ["comparison", "research"]:
-                response_text = f"📊 Let me research that for you...\n\n{result.get('analysis', {})}"
-                resp.message(response_text)
-                return str(resp)
-    except Exception as e:
-        app.logger.warning(f"[assistant] Error: {e}")
+        app.logger.error(f"[orchestrator] Failed to route: {e}")
 
     # Handle "event" command with poster image
     if body.lower().startswith("event") and request.form.get("NumMedia", "0") != "0":

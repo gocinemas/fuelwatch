@@ -41,18 +41,24 @@ class QueryOrchestrator:
             # Try receipt handler first if media present
             query_type = self._classify_as_receipt(message, media_urls)
             if query_type == QueryType.RECEIPT:
+                print(f"[orchestrator.route] Classified as RECEIPT")
                 return self._call_handler(QueryType.RECEIPT, message, from_number, media_urls, urls, request_form)
 
         # 2. Shopping/Life Advice/Research (Miru Assistant)
         query_type = self._classify_query(message, media_urls, urls)
+        print(f"[orchestrator.route] Classified '{message[:50]}' as {query_type}")
+
         if query_type in [QueryType.SHOPPING, QueryType.LIFE_ADVICE, QueryType.RESEARCH]:
+            print(f"[orchestrator.route] Routing to assistant handler for {query_type}")
             return self._call_handler(query_type, message, from_number, media_urls, urls, request_form)
 
         # 3. Commute/Fuel/Events (existing handlers)
         if query_type in [QueryType.COMMUTE, QueryType.FUEL, QueryType.EVENT]:
+            print(f"[orchestrator.route] Routing to handler for {query_type}")
             return self._call_handler(query_type, message, from_number, media_urls, urls, request_form)
 
         # No handler matched
+        print(f"[orchestrator.route] No handler matched for {query_type}")
         return None
 
     def _classify_as_receipt(self, message: str, media_urls: List[str]) -> QueryType:
@@ -95,9 +101,11 @@ class QueryOrchestrator:
     def _call_handler(self, query_type: QueryType, message: str, from_number: str, media_urls: List[str], urls: List[str], request_form=None) -> Optional[Dict]:
         """Call the registered handler for this query type"""
         if query_type not in self.handlers:
+            print(f"[orchestrator] No handler registered for {query_type}")
             return None
 
         handler = self.handlers[query_type]
+        print(f"[orchestrator] Found handler for {query_type}, calling...")
 
         try:
             # Call handler with appropriate parameters
@@ -108,9 +116,12 @@ class QueryOrchestrator:
                 urls=urls,
                 request_form=request_form
             )
+            print(f"[orchestrator] Handler returned: {result}")
             return result
         except Exception as e:
             print(f"[orchestrator] Handler error for {query_type}: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
 
