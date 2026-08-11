@@ -1227,13 +1227,19 @@ def sms_reply():
     resp = MessagingResponse()
 
     # ORCHESTRATION LAYER \u2014 Route to appropriate handler
-    print("\ud83d\udd35 ORCHESTRATOR BLOCK START \ud83d\udd35", file=sys.stderr, flush=True)
+    print("TEST1: About to enter orchestrator block")
+    sys.stdout.flush()
     try:
+        print("TEST2: Inside try block")
+        sys.stdout.flush()
         from query_orchestrator import get_orchestrator
         import re
 
+        print("TEST3: Import successful")
+        sys.stdout.flush()
         orchestrator = get_orchestrator()
-        print(f"[orchestrator] Retrieved instance with {len(orchestrator.handlers)} handlers: {list(orchestrator.handlers.keys())}")
+        print(f"[ROUTE] START message='{body[:40]}'")
+        sys.stdout.flush()
 
         # Extract media URLs
         media_urls = []
