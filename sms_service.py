@@ -1189,6 +1189,25 @@ def _refresh_all_ask_miru_contexts() -> dict:
         return {"error": str(e)}
 
 
+# ── Debug ─────────────────────────────────────────────────────────────────────
+
+@app.route("/debug/orchestrator")
+def debug_orchestrator():
+    """Check if orchestrator is initialized"""
+    try:
+        from query_orchestrator import get_orchestrator
+        orchestrator = get_orchestrator()
+        return jsonify({
+            "status": "ok",
+            "handlers_count": len(orchestrator.handlers),
+            "handlers": [str(h) for h in orchestrator.handlers.keys()]
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
+
 # ── Webhook ───────────────────────────────────────────────────────────────────
 
 @app.route("/sms", methods=["POST"])
