@@ -40066,6 +40066,43 @@ def api_company_documents_delete(doc_id):
         logging.error(f"[company-docs-delete] {e}")
         return jsonify({"error": str(e)[:100]}), 500
 
+
+@app.route("/api/company/hiring-focus", methods=["GET"])
+def api_company_hiring_focus():
+    """Fetch hiring focus and AI investment data for a company."""
+    try:
+        company = request.args.get("company", "").strip()
+        if not company:
+            return jsonify({"error": "company param required"}), 400
+
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                          os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+
+        result = sb.table("company_hiring_focus").select("*").eq(
+            "company_name", company
+        ).execute()
+
+        if not result.data or len(result.data) == 0:
+            return jsonify({
+                "company": company,
+                "data": None,
+                "message": "No hiring focus data available"
+            }), 404
+
+        data = result.data[0]
+        return jsonify({
+            "company": data.get("company_name"),
+            "hiring_growth_2025": data.get("hiring_growth_2025"),
+            "ai_investment_score": data.get("ai_investment_score"),
+            "strategic_direction": data.get("strategic_direction"),
+            "focus_areas": data.get("focus_areas", []),
+            "last_updated": data.get("last_updated")
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"[company-hiring-focus] {e}")
+        return jsonify({"error": str(e)[:100]}), 500
+
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
 
 @app.route("/api/fuel/stations/list", methods=["GET"])
