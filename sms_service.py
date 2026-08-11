@@ -1229,6 +1229,39 @@ def sms_reply():
 
     resp = MessagingResponse()
 
+    # SHOPPING — Price filtering (e.g., "juicer under 100" or "juicer £50-100")
+    import re
+    price_match = re.search(r'(under|less than|below|max|<|≤)\s*[£$]?\s*(\d+)', body.lower())
+    if price_match:
+        max_price = int(price_match.group(2))
+        product = re.sub(r'(under|less than|below|max|<|≤).*', '', body, flags=re.IGNORECASE).strip()
+
+        if product:
+            try:
+                from anthropic import Anthropic
+                client = Anthropic()
+
+                msg = client.messages.create(
+                    model="claude-opus-4-1",
+                    max_tokens=300,
+                    messages=[{
+                        "role": "user",
+                        "content": f"Find {product} products under £{max_price}. List 3-4 with prices and brief reasons. Format: 1. Name - £Price (Reason). ONLY products under £{max_price}!"
+                    }]
+                )
+
+                recs_text = msg.content[0].text.strip()
+
+                response = f"🛍️ {product.title()} (under £{max_price})\n\n{recs_text}\n\n"
+                response += "🔗 Compare on:\n"
+                response += f"• Amazon: amazon.co.uk/s?k={product.replace(' ', '+')}+under+{max_price}\n"
+                response += f"• Currys: currys.co.uk/search?term={product.replace(' ', '+')}"
+
+                resp.message(response)
+                return str(resp)
+            except Exception as e:
+                app.logger.error(f"Price filter error: {e}")
+
     # SHOPPING — /buy command with recommendations and URLs
     if body.lower().startswith("/buy "):
         product = body[5:].strip()
