@@ -1225,12 +1225,21 @@ def sms_reply():
             request_form=request.form
         )
 
+        print(f"[orchestrator] Route result: {result}")
+        app.logger.info(f"[orchestrator] Route result: {result}")
+
         # If orchestrator handled it, return response
         if result and result.get("handled"):
+            print(f"[orchestrator] ✓ Handled by orchestrator, sending response")
             resp.message(result.get("text", ""))
             return str(resp)
+        else:
+            print(f"[orchestrator] ✗ Not handled, falling through to legacy handlers")
 
     except Exception as e:
+        print(f"[orchestrator] Exception: {e}")
+        import traceback
+        traceback.print_exc()
         app.logger.error(f"[orchestrator] Failed to route: {e}")
 
     # Handle "event" command with poster image
