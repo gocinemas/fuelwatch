@@ -324,6 +324,61 @@ class CompanyIntelligence:
             logger.error(f"[news] Fetch failed: {str(e)[:100]}")
             self.basics["news"] = []
 
+    def _fetch_trends(self):
+        """Fetch financial trends from Supabase database."""
+        try:
+            from supabase import create_client
+            import os
+
+            db = create_client(
+                os.getenv("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                os.getenv("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+            )
+
+            # Fetch all financial records for this company
+            company_lower = self.company_name.lower().strip()
+            result = db.table("company_financials").select("*").eq("company_name", company_lower).execute()
+
+            if result.data and len(result.data) > 0:
+                # Build trends dict organized by metric
+                trends = {
+                    "revenue": {},
+                    "margin": {},
+                    "employees": {}
+                }
+
+                for record in result.data:
+                    period = str(record.get("period"))
+                    revenue = record.get("revenue_millions")
+                    margin = record.get("operating_margin_pct")
+                    employees = record.get("employees")
+
+                    if revenue:
+                        trends["revenue"][period] = revenue
+                    if margin:
+                        trends["margin"][period] = margin
+                    if employees:
+                        trends["employees"][period] = employees
+
+                # Also fetch latest financials for display
+                latest = result.data[-1]  # Assuming sorted by period
+                self.basics["financials"] = {
+                    "revenue_millions": latest.get("revenue_millions"),
+                    "operating_margin_pct": latest.get("operating_margin_pct"),
+                    "employees": latest.get("employees"),
+                    "revenue_growth_pct": latest.get("revenue_growth_pct"),
+                    "period": latest.get("period")
+                }
+                self.basics["trends"] = trends
+                logger.info(f"[trends] Fetched {len(result.data)} periods for {self.company_name}")
+            else:
+                logger.warning(f"[trends] No financial data found for {self.company_name}")
+                self.basics["trends"] = {"revenue": {}, "margin": {}, "employees": {}}
+
+        except Exception as e:
+            logger.error(f"[trends] Fetch failed: {str(e)[:100]}")
+            self.basics["trends"] = {"revenue": {}, "margin": {}, "employees": {}}
+
     @staticmethod
     def answer_question(company_name: str, question: str) -> str:
         """
