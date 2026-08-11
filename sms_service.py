@@ -39693,7 +39693,7 @@ def api_send_comparison_email():
 
 @app.route("/api/company/generate-pdf", methods=["POST"])
 def api_generate_pdf():
-    """Generate PDF from comparison HTML using reportlab."""
+    """Generate PDF from comparison HTML."""
     try:
         data = request.json or {}
         html = data.get("html", "")
@@ -39704,69 +39704,11 @@ def api_generate_pdf():
 
         try:
             from io import BytesIO
-            from html2text import html2text
-            from reportlab.lib.pagesizes import letter, A4
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.lib.units import inch
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-            from reportlab.lib import colors
+            import weasyprint
 
-            # Create PDF in memory
-            pdf_buffer = BytesIO()
-            doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
-
-            # Build story
-            story = []
-            styles = getSampleStyleSheet()
-
-            # Extract title and content from HTML
-            import re
-
-            # Extract title
-            title_match = re.search(r'<h1[^>]*>(.*?)</h1>', html, re.IGNORECASE)
-            if title_match:
-                title = title_match.group(1).strip()
-                story.append(Paragraph(title, styles['Heading1']))
-                story.append(Spacer(1, 0.2*inch))
-
-            # Extract table
-            table_match = re.search(r'<table[^>]*>(.*?)</table>', html, re.IGNORECASE | re.DOTALL)
-            if table_match:
-                table_html = table_match.group(1)
-                # Simple table extraction (real implementation would parse more thoroughly)
-                rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table_html, re.IGNORECASE | re.DOTALL)
-                if rows:
-                    table_data = []
-                    for row in rows:
-                        cells = re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', row, re.IGNORECASE | re.DOTALL)
-                        clean_cells = [re.sub(r'<[^>]*>', '', cell).strip() for cell in cells]
-                        table_data.append(clean_cells)
-
-                    if table_data:
-                        table = Table(table_data, colWidths=[2*inch] + [1.2*inch] * (len(table_data[0]) - 1))
-                        table.setStyle(TableStyle([
-                            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                            ('FONTSIZE', (0, 0), (-1, 0), 10),
-                            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-                            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                            ('FONTSIZE', (0, 1), (-1, -1), 9),
-                        ]))
-                        story.append(table)
-                        story.append(Spacer(1, 0.2*inch))
-
-            # Add footer
-            story.append(Spacer(1, 0.3*inch))
-            footer_text = f"Generated from Intel Company Intelligence — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            story.append(Paragraph(f"<i>{footer_text}</i>", styles['Normal']))
-
-            # Build PDF
-            doc.build(story)
-            pdf_buffer.seek(0)
+            # Use weasyprint to convert HTML to PDF
+            pdf_bytes = weasyprint.HTML(string=html).write_pdf()
+            pdf_buffer = BytesIO(pdf_bytes)
 
             return send_file(
                 pdf_buffer,
@@ -39774,11 +39716,42 @@ def api_generate_pdf():
                 as_attachment=True,
                 download_name=filename
             )
+        except ImportError:
+            # Fallback: try reportlab
+            try:
+                from reportlab.lib.pagesizes import letter
+                from reportlab.pdfgen import canvas
+                from io import BytesIO
+                import re
 
-        except ImportError as e:
-            # Fallback if reportlab not available
-            logger.warning(f"[pdf] reportlab not available: {e}")
-            return jsonify({"error": "PDF generation requires reportlab library"}), 400
+                pdf_buffer = BytesIO()
+                c = canvas.Canvas(pdf_buffer, pagesize=letter)
+
+                # Extract text from HTML and write to PDF
+                text_content = re.sub(r'<[^>]*>', '', html)
+                lines = text_content.split('\n')
+
+                y = 750
+                for line in lines[:100]:  # Limit to 100 lines
+                    if line.strip():
+                        c.drawString(50, y, line.strip()[:80])
+                        y -= 15
+                        if y < 50:
+                            c.showPage()
+                            y = 750
+
+                c.save()
+                pdf_buffer.seek(0)
+
+                return send_file(
+                    pdf_buffer,
+                    mimetype='application/pdf',
+                    as_attachment=True,
+                    download_name=filename
+                )
+            except Exception as fallback_error:
+                logger.warning(f"[pdf] Both methods failed: {str(fallback_error)[:100]}")
+                return jsonify({"error": "PDF generation not available", "note": "try again later"}), 503
 
     except Exception as e:
         logger.error(f"[pdf-generate] {e}")

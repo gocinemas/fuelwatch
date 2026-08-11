@@ -330,14 +330,26 @@ class CompanyIntelligence:
             from supabase import create_client
             import os
 
-            db = create_client(
-                os.getenv("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
-                os.getenv("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
-            )
+            # Initialize empty trends
+            self.basics["trends"] = {"revenue": {}, "margin": {}, "employees": {}}
+            self.basics["financials"] = {}
+
+            try:
+                db = create_client(
+                    os.getenv("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                    os.getenv("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+                )
+            except Exception as db_error:
+                logger.warning(f"[trends] Database connection failed: {str(db_error)[:100]}")
+                return
 
             # Fetch all financial records for this company
             company_lower = self.company_name.lower().strip()
-            result = db.table("company_financials").select("*").eq("company_name", company_lower).execute()
+            try:
+                result = db.table("company_financials").select("*").eq("company_name", company_lower).order("period", desc=False).execute()
+            except Exception as query_error:
+                logger.warning(f"[trends] Query failed for {company_lower}: {str(query_error)[:100]}")
+                return
 
             if result.data and len(result.data) > 0:
                 # Build trends dict organized by metric
@@ -348,35 +360,42 @@ class CompanyIntelligence:
                 }
 
                 for record in result.data:
-                    period = str(record.get("period"))
-                    revenue = record.get("revenue_millions")
-                    margin = record.get("operating_margin_pct")
-                    employees = record.get("employees")
+                    try:
+                        period = str(record.get("period", ""))
+                        revenue = record.get("revenue_millions")
+                        margin = record.get("operating_margin_pct")
+                        employees = record.get("employees")
 
-                    if revenue:
-                        trends["revenue"][period] = revenue
-                    if margin:
-                        trends["margin"][period] = margin
-                    if employees:
-                        trends["employees"][period] = employees
+                        if period and revenue:
+                            trends["revenue"][period] = revenue
+                        if period and margin:
+                            trends["margin"][period] = margin
+                        if period and employees:
+                            trends["employees"][period] = employees
+                    except Exception as record_error:
+                        logger.debug(f"[trends] Error processing record: {record_error}")
+                        continue
 
                 # Also fetch latest financials for display
-                latest = result.data[-1]  # Assuming sorted by period
-                self.basics["financials"] = {
-                    "revenue_millions": latest.get("revenue_millions"),
-                    "operating_margin_pct": latest.get("operating_margin_pct"),
-                    "employees": latest.get("employees"),
-                    "revenue_growth_pct": latest.get("revenue_growth_pct"),
-                    "period": latest.get("period")
-                }
+                try:
+                    latest = max(result.data, key=lambda x: str(x.get("period", "")))
+                    self.basics["financials"] = {
+                        "revenue_millions": latest.get("revenue_millions"),
+                        "operating_margin_pct": latest.get("operating_margin_pct"),
+                        "employees": latest.get("employees"),
+                        "revenue_growth_pct": latest.get("revenue_growth_pct"),
+                        "period": latest.get("period")
+                    }
+                except Exception as latest_error:
+                    logger.debug(f"[trends] Error processing latest: {latest_error}")
+
                 self.basics["trends"] = trends
                 logger.info(f"[trends] Fetched {len(result.data)} periods for {self.company_name}")
             else:
-                logger.warning(f"[trends] No financial data found for {self.company_name}")
-                self.basics["trends"] = {"revenue": {}, "margin": {}, "employees": {}}
+                logger.debug(f"[trends] No financial data found for {self.company_name}")
 
         except Exception as e:
-            logger.error(f"[trends] Fetch failed: {str(e)[:100]}")
+            logger.error(f"[trends] Unexpected error: {str(e)[:100]}")
             self.basics["trends"] = {"revenue": {}, "margin": {}, "employees": {}}
 
     @staticmethod
