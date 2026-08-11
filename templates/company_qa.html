@@ -931,20 +931,7 @@
             const messageEl = document.createElement('div');
             messageEl.className = `message ${role}`;
 
-            let html = `<div class="message-content">${content}`;
-
-            // Add share button for assistant messages
-            if (role === 'assistant' && isShareable && content.indexOf('<div class="loading">') === -1) {
-                const lastMsg = messages[messages.length - 2];
-                const question = lastMsg ? lastMsg.content : '';
-                html += `<div class="message-actions">
-                    <button class="share-button" onclick="shareConversation('${encodeURIComponent(question)}')">
-                        🔗 Share
-                    </button>
-                </div>`;
-            }
-
-            html += '</div>';
+            let html = `<div class="message-content">${content}</div>`;
             messageEl.innerHTML = html;
             container.appendChild(messageEl);
 

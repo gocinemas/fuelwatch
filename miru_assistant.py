@@ -40,13 +40,16 @@ class MiruAssistant:
             query = f"{query}\n[URL info: {url_info}]"
 
         query_type = self._classify_query(query)
+        print(f"[miru_assistant.process_query] Routing {query_type} to agent...")
 
         if query_type == QueryType.SHOPPING:
             return self._shopping_agent(query)
         elif query_type == QueryType.COMPARISON:
             return self._comparison_agent(query)
         elif query_type == QueryType.LIFE_ADVICE:
-            return self._life_advisor_agent(query)
+            result = self._life_advisor_agent(query)
+            print(f"[miru_assistant] Life advisor returned: {result}")
+            return result
         elif query_type == QueryType.RESEARCH:
             return self._research_agent(query)
         else:
@@ -60,21 +63,28 @@ class MiruAssistant:
         if len(q.split()) <= 2 and not any(x in q for x in ["should", "compare", "vs", "worth", "price"]):
             # Could be life advice follow-up or research
             if any(x in q for x in ["help", "advice", "frustrated", "upset", "worried", "stressed"]):
+                print(f"[miru_assistant] Classified as LIFE_ADVICE (short + keywords)")
                 return QueryType.LIFE_ADVICE
+            print(f"[miru_assistant] Classified as RESEARCH (short, no life keywords)")
             return QueryType.RESEARCH
 
         if any(x in q for x in ["should i buy", "is this worth", "worth buying", "good price", "good deal", "should i get"]):
+            print(f"[miru_assistant] Classified as SHOPPING")
             return QueryType.SHOPPING
 
         if any(x in q for x in ["compare", "vs", "versus", "which is better", "better", "best"]):
+            print(f"[miru_assistant] Classified as COMPARISON")
             return QueryType.COMPARISON
 
         if any(x in q for x in ["how do i", "what should i", "help with", "advice", "should i do", "how should i", "frustrated", "upset", "worried", "stressed", "anxious"]):
+            print(f"[miru_assistant] Classified as LIFE_ADVICE")
             return QueryType.LIFE_ADVICE
 
         if any(x in q for x in ["tell me", "about", "explain", "what is", "who is", "why"]):
+            print(f"[miru_assistant] Classified as RESEARCH")
             return QueryType.RESEARCH
 
+        print(f"[miru_assistant] Classified as UNKNOWN")
         return QueryType.UNKNOWN
 
     def _shopping_agent(self, query: str) -> Dict:
