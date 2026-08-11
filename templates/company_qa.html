@@ -886,9 +886,29 @@
                     if (hiringResponse.ok) {
                         const hiringData = await hiringResponse.json();
                         displayHiringFocus(hiringData);
+
+                        // Update basic card with THIS YEAR's hiring growth (not 4-year)
+                        const growth = hiringData.hiring_growth_2025 || 0;
+                        const growthText = growth > 0 ? `+${growth}%` : `${growth}%`;
+                        const growthColor = growth > 8 ? '#16a34a' : growth > 3 ? '#f59e0b' : '#dc3545';
+                        let badgeEmoji = '📉', badgeLabel = 'Declining';
+                        if (growth > 8) {
+                            badgeEmoji = '📈';
+                            badgeLabel = 'Growing';
+                        } else if (growth > 0) {
+                            badgeEmoji = '📈';
+                            badgeLabel = 'Slowly Growing';
+                        }
+
+                        document.getElementById('basicHiringRate').innerHTML = `
+                            <div>${growthText}</div>
+                            <div class="momentum-badge" style="margin-top: 8px; color: ${growthColor};">${badgeEmoji} ${badgeLabel}</div>
+                            <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">2025 vs 2024</div>
+                        `;
+                        document.getElementById('basicHiringRate').style.color = growthColor;
                     }
                 } catch (e) {
-                    // Hiring focus is optional
+                    // Hiring focus is optional, keep the 4-year trend as fallback
                 }
 
                 // Add welcome message
