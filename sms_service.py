@@ -39681,32 +39681,96 @@ def api_send_comparison_email():
 
 @app.route("/api/company/generate-pdf", methods=["POST"])
 def api_generate_pdf():
-    """Generate PDF from comparison HTML."""
+    """Generate PDF from comparison HTML using reportlab."""
     try:
         data = request.json or {}
         html = data.get("html", "")
+        filename = data.get("filename", "comparison.pdf")
 
         if not html:
             return jsonify({"error": "html required"}), 400
 
-        # Try to use xhtml2pdf or weasyprint
         try:
-            from xhtml2pdf import pisa
-            import io
+            from io import BytesIO
+            from html2text import html2text
+            from reportlab.lib.pagesizes import letter, A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+            from reportlab.lib import colors
 
-            pdf_buffer = io.BytesIO()
-            pisa.CreatePDF(html, dest=pdf_buffer)
+            # Create PDF in memory
+            pdf_buffer = BytesIO()
+            doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+
+            # Build story
+            story = []
+            styles = getSampleStyleSheet()
+
+            # Extract title and content from HTML
+            import re
+
+            # Extract title
+            title_match = re.search(r'<h1[^>]*>(.*?)</h1>', html, re.IGNORECASE)
+            if title_match:
+                title = title_match.group(1).strip()
+                story.append(Paragraph(title, styles['Heading1']))
+                story.append(Spacer(1, 0.2*inch))
+
+            # Extract table
+            table_match = re.search(r'<table[^>]*>(.*?)</table>', html, re.IGNORECASE | re.DOTALL)
+            if table_match:
+                table_html = table_match.group(1)
+                # Simple table extraction (real implementation would parse more thoroughly)
+                rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table_html, re.IGNORECASE | re.DOTALL)
+                if rows:
+                    table_data = []
+                    for row in rows:
+                        cells = re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', row, re.IGNORECASE | re.DOTALL)
+                        clean_cells = [re.sub(r'<[^>]*>', '', cell).strip() for cell in cells]
+                        table_data.append(clean_cells)
+
+                    if table_data:
+                        table = Table(table_data, colWidths=[2*inch] + [1.2*inch] * (len(table_data[0]) - 1))
+                        table.setStyle(TableStyle([
+                            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTSIZE', (0, 0), (-1, 0), 10),
+                            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                            ('FONTSIZE', (0, 1), (-1, -1), 9),
+                        ]))
+                        story.append(table)
+                        story.append(Spacer(1, 0.2*inch))
+
+            # Add footer
+            story.append(Spacer(1, 0.3*inch))
+            footer_text = f"Generated from Intel Company Intelligence — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            story.append(Paragraph(f"<i>{footer_text}</i>", styles['Normal']))
+
+            # Build PDF
+            doc.build(story)
             pdf_buffer.seek(0)
 
-            return send_file(pdf_buffer, mimetype='application/pdf', as_attachment=True, download_name='comparison.pdf')
-        except ImportError:
-            # Fallback: return HTML (user can print to PDF)
-            return jsonify({"error": "PDF generation not available", "html": html}), 400
+            return send_file(
+                pdf_buffer,
+                mimetype='application/pdf',
+                as_attachment=True,
+                download_name=filename
+            )
+
+        except ImportError as e:
+            # Fallback if reportlab not available
+            logger.warning(f"[pdf] reportlab not available: {e}")
+            return jsonify({"error": "PDF generation requires reportlab library"}), 400
 
     except Exception as e:
-        import logging
-        logging.error(f"[pdf-generate] {e}")
-        return jsonify({"error": str(e)[:100]}), 500
+        logger.error(f"[pdf-generate] {e}")
+        return jsonify({"error": f"PDF generation failed: {str(e)[:100]}"}), 500
 
 # ── Company Watch List / Change Tracking ─────────────────────────
 @app.route("/api/company/watchlist/add", methods=["POST"])
