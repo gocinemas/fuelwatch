@@ -1229,52 +1229,8 @@ def sms_reply():
 
     resp = MessagingResponse()
 
-    # LIFE ADVICE — Simple direct handler
-    body_lower = body.lower()
-
-    # Life advice
-    if any(x in body_lower for x in ["help me", "help with", "frustrated", "stressed", "worried", "anxious"]):
-        print(f"[LIFE_ADVICE] Matched keywords in: {body}")
-        try:
-            from miru_assistant import get_miru_assistant
-            assistant = get_miru_assistant(phone=from_number)
-            result = assistant.process_query(body)
-            print(f"[LIFE_ADVICE] Got result type: {result.get('type')}")
-
-            if result.get("type") == "life_advice":
-                text = "💭 I hear you.\n\n"
-                text += result['analysis'].get('recommendation') + "\n\n"
-                text += "🤔 Let's think through:\n"
-                for q in result['analysis'].get('questions_to_ask', [])[:3]:
-                    text += f"• {q}\n"
-                resp.message(text)
-                print(f"[LIFE_ADVICE] Returning response")
-                return str(resp)
-            else:
-                print(f"[LIFE_ADVICE] Wrong type, continuing...")
-        except Exception as e:
-            print(f"[LIFE_ADVICE] Exception: {e}")
-            import traceback
-            traceback.print_exc()
-            app.logger.error(f"Life advice error: {e}")
-
-    # Shopping/Should I buy
-    if any(x in body_lower for x in ["should i buy", "is this worth", "good price", "should i get"]):
-        try:
-            from miru_assistant import get_miru_assistant
-            assistant = get_miru_assistant(phone=from_number)
-            result = assistant.process_query(body)
-
-            if result.get("type") == "shopping":
-                text = f"🛍️ {result.get('product')}\n\n"
-                text += f"Score: {result['analysis'].get('value_score')}/10\n"
-                text += f"💡 {result['analysis'].get('recommendation')}\n\n"
-                for step in result.get('next_steps', [])[:2]:
-                    text += f"• {step}\n"
-                resp.message(text)
-                return str(resp)
-        except Exception as e:
-            app.logger.error(f"Shopping error: {e}")
+    # NOTE: Life advice & shopping moved to separate products
+    # This WhatsApp bot focuses on LOCAL + REAL-TIME intelligence only
 
     # Handle "event" command with poster image
     if body.lower().startswith("event") and request.form.get("NumMedia", "0") != "0":
