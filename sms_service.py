@@ -15938,18 +15938,6 @@ def api_home_brief():
             brief_text = r.json()["choices"][0]["message"]["content"].strip()
             # CRITICAL: Validate brief for inferences
             brief_text = _validate_brief_text(brief_text)
-
-            # NIGHT RULE: After 9 PM, remove going-out and spending suggestions
-            if time_mode == "night" and now.hour >= 21:
-                # Remove wine/drink/food suggestions at night
-                import re
-                brief_text = re.sub(r'[,.]?\s+(?:Also\s+)?(?:Additionally|For|You.*might want to).*?(?:wine|drink|drink option|Sauvignon|Cinsault|cocktail|beer|available).*?(?:\.|$)', '.', brief_text, flags=re.IGNORECASE)
-                brief_text = re.sub(r'[,.]?\s+(?:heading out|going out|evening plans).*?(?:\.|$)', '.', brief_text, flags=re.IGNORECASE)
-                brief_text = re.sub(r'\s+(?:Also|Additionally).*?\d+[°c]*(?:\.|$)', '.', brief_text, flags=re.IGNORECASE)
-                # Clean up double periods
-                brief_text = re.sub(r'\.{2,}', '.', brief_text)
-                app.logger.info(f"[brief-night] Filtered spending suggestions after 9 PM")
-
             # If validation removed everything, show raw facts as fallback
             if not brief_text:
                 if facts:
