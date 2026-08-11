@@ -1234,10 +1234,12 @@ def sms_reply():
 
     # Life advice
     if any(x in body_lower for x in ["help me", "help with", "frustrated", "stressed", "worried", "anxious"]):
+        print(f"[LIFE_ADVICE] Matched keywords in: {body}")
         try:
             from miru_assistant import get_miru_assistant
             assistant = get_miru_assistant(phone=from_number)
             result = assistant.process_query(body)
+            print(f"[LIFE_ADVICE] Got result type: {result.get('type')}")
 
             if result.get("type") == "life_advice":
                 text = "💭 I hear you.\n\n"
@@ -1246,8 +1248,14 @@ def sms_reply():
                 for q in result['analysis'].get('questions_to_ask', [])[:3]:
                     text += f"• {q}\n"
                 resp.message(text)
+                print(f"[LIFE_ADVICE] Returning response")
                 return str(resp)
+            else:
+                print(f"[LIFE_ADVICE] Wrong type, continuing...")
         except Exception as e:
+            print(f"[LIFE_ADVICE] Exception: {e}")
+            import traceback
+            traceback.print_exc()
             app.logger.error(f"Life advice error: {e}")
 
     # Shopping/Should I buy
