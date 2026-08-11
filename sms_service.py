@@ -31,6 +31,7 @@ import os
 import re
 import time
 import requests
+from typing import Dict
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
 from flask import Flask, request, send_file, render_template, jsonify, Response, redirect, make_response, after_this_request
@@ -64,6 +65,57 @@ class CustomJSONProvider(DefaultJSONProvider):
         return super().default(o)
 
 app.json = CustomJSONProvider(app)
+
+
+# REGISTER HANDLERS IN ORCHESTRATOR
+def _init_orchestrator():
+    """Initialize and register all handlers"""
+    from query_orchestrator import get_orchestrator, QueryType
+
+    orchestrator = get_orchestrator()
+
+    # Handler: Miru Assistant (Shopping, Life Advice, Research)
+    def handle_assistant(message: str, from_number: str, media_urls=None, urls=None, **kwargs) -> Dict:
+        from miru_assistant import get_miru_assistant
+        assistant = get_miru_assistant(phone=from_number)
+        media_urls = media_urls or []
+        urls = urls or []
+
+        result = assistant.process_query(message, media_urls=media_urls, urls=urls)
+
+        if result.get("type") == "shopping":
+            text = f"🛍️ {result.get('product')}\n\n"
+            text += f"Score: {result['analysis'].get('value_score')}/10\n"
+            text += f"💡 {result['analysis'].get('recommendation')}\n\n"
+            for step in result.get('next_steps', [])[:2]:
+                text += f"• {step}\n"
+            return {"handled": True, "text": text}
+
+        elif result.get("type") == "life_advice":
+            text = f"💭 I hear you.\n\n{result['analysis'].get('recommendation')}\n\n"
+            text += "🤔 Let's think through:\n"
+            for q in result['analysis'].get('questions_to_ask', [])[:3]:
+                text += f"• {q}\n"
+            return {"handled": True, "text": text}
+
+        elif result.get("type") in ["comparison", "research"]:
+            return {"handled": True, "text": f"📊 {result.get('analysis', {})}"}
+
+        return None
+
+    # Register handlers
+    orchestrator.register_handler(QueryType.SHOPPING, handle_assistant)
+    orchestrator.register_handler(QueryType.LIFE_ADVICE, handle_assistant)
+    orchestrator.register_handler(QueryType.RESEARCH, handle_assistant)
+
+    return orchestrator
+
+
+# Initialize on app startup
+try:
+    _init_orchestrator()
+except Exception as e:
+    print(f"[app] Orchestrator init warning: {e}")
 
 # Helper to convert time objects to strings before returning
 def _ensure_json_serializable(obj):
@@ -1138,6 +1190,41 @@ def sms_reply():
     print(f"SMS from {from_number}: {body}")
 
     resp = MessagingResponse()
+
+    # ORCHESTRATION LAYER \u2014 Route to appropriate handler
+    try:
+        from query_orchestrator import get_orchestrator
+        import re
+
+        orchestrator = get_orchestrator()
+
+        # Extract media URLs
+        media_urls = []
+        num_media = int(request.form.get("NumMedia", 0))
+        for i in range(num_media):
+            media_url = request.form.get(f"MediaUrl{i}", "")
+            if media_url:
+                media_urls.append(media_url)
+
+        # Extract URLs from message
+        urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', body)
+
+        # Route through orchestrator
+        result = orchestrator.route(
+            message=body,
+            from_number=from_number,
+            media_urls=media_urls,
+            urls=urls,
+            request_form=request.form
+        )
+
+        # If orchestrator handled it, return response
+        if result and result.get("handled"):
+            resp.message(result.get("text", ""))
+            return str(resp)
+
+    except Exception as e:
+        app.logger.debug(f"[orchestrator] Not routed: {e}")
 
     # MIRU ASSISTANT: Shopping, Life Advice, Research (PRIORITY)
     try:
