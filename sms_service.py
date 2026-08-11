@@ -1229,6 +1229,18 @@ def sms_reply():
 
     resp = MessagingResponse()
 
+    # BUDGET WARNING — Spending pace alerts
+    body_lower = body.lower()
+    if any(x in body_lower for x in ["how much", "spent", "budget", "pace", "spending"]):
+        try:
+            from budget_tracker import get_budget_status, format_budget_report
+            status = get_budget_status(from_number)
+            if status:
+                resp.message(format_budget_report(status))
+                return str(resp)
+        except Exception as e:
+            app.logger.error(f"Budget check error: {e}")
+
     # NOTE: Life advice & shopping moved to separate products
     # This WhatsApp bot focuses on LOCAL + REAL-TIME intelligence only
 

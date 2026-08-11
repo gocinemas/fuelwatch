@@ -5,6 +5,7 @@ Fetches real news articles from NewsAPI for companies.
 Shows latest 2026 coverage with dates and sources.
 """
 
+import os
 import requests
 import json
 from datetime import datetime, timedelta

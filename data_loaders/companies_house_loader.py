@@ -5,6 +5,7 @@ Fetches verified financial data from Companies House (UK government)
 for all UK-registered companies. This is official, audited data.
 """
 
+import os
 import requests
 import json
 from datetime import datetime
