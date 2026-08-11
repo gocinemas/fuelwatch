@@ -1139,9 +1139,11 @@ def sms_reply():
 
     resp = MessagingResponse()
 
-    # MIRU ASSISTANT: Shopping, Life Advice, Research
+    # MIRU ASSISTANT: Shopping, Life Advice, Research (PRIORITY)
     try:
         from miru_assistant import get_miru_assistant
+        import re
+
         assistant = get_miru_assistant(phone=from_number)
 
         # Extract media URLs if present
@@ -1153,38 +1155,44 @@ def sms_reply():
                 media_urls.append(media_url)
 
         # Extract URLs from message
-        import re
         urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', body)
 
-        # Check if query matches assistant patterns
-        if any(x in body.lower() for x in ["should i buy", "compare", "how do i", "tell me about", "is this worth", "vs "]) or media_urls or urls:
+        # ASSISTANT TRIGGERS (very broad to catch edge cases)
+        is_shopping = any(x in body.lower() for x in ["should i buy", "compare", "is this worth", "good price", "good deal", "should i get"])
+        is_life_advice = any(x in body.lower() for x in ["frustrated", "help me", "how do i", "what should i", "advice", "worried", "stressed", "upset", "anxious", "depressed"])
+        is_research = any(x in body.lower() for x in ["tell me about", "explain", "what is", "who is", "how do", "why"])
+        has_media = len(media_urls) > 0
+        has_urls = len(urls) > 0
+
+        # Route to assistant if ANY trigger fires
+        if is_shopping or is_life_advice or is_research or has_media or has_urls:
+            app.logger.info(f"[assistant] Routing: shopping={is_shopping}, life={is_life_advice}, research={is_research}, media={has_media}")
             result = assistant.process_query(body, media_urls=media_urls, urls=urls)
 
             if result.get("type") == "shopping":
                 response_text = f"🛍️ Shopping Analysis: {result.get('product')}\n\n"
                 response_text += f"Score: {result['analysis'].get('value_score', 'N/A')}/10\n"
-                response_text += f"📋 Recommendation: {result['analysis'].get('recommendation')}\n\n"
-                response_text += "💡 Next steps:\n"
-                for step in result.get('next_steps', []):
+                response_text += f"💡 {result['analysis'].get('recommendation')}\n\n"
+                for step in result.get('next_steps', [])[:2]:
                     response_text += f"• {step}\n"
                 resp.message(response_text)
                 return str(resp)
 
             elif result.get("type") == "life_advice":
-                response_text = f"💭 Life Advice\n\n"
-                response_text += f"Your situation: {result['analysis'].get('recommendation')}\n\n"
-                response_text += "🤔 Questions to consider:\n"
-                for q in result['analysis'].get('questions_to_ask', []):
+                response_text = f"💭 I hear you.\n\n"
+                response_text += f"{result['analysis'].get('recommendation')}\n\n"
+                response_text += "🤔 Let's think through this:\n"
+                for q in result['analysis'].get('questions_to_ask', [])[:3]:
                     response_text += f"• {q}\n"
                 resp.message(response_text)
                 return str(resp)
 
             elif result.get("type") in ["comparison", "research"]:
-                response_text = f"📊 Analysis coming up...\n{result.get('analysis', {})}"
+                response_text = f"📊 Let me research that for you...\n\n{result.get('analysis', {})}"
                 resp.message(response_text)
                 return str(resp)
     except Exception as e:
-        app.logger.debug(f"[assistant] Not an assistant query: {e}")
+        app.logger.warning(f"[assistant] Error: {e}")
 
     # Handle "event" command with poster image
     if body.lower().startswith("event") and request.form.get("NumMedia", "0") != "0":
