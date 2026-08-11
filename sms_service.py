@@ -1213,6 +1213,7 @@ def debug_orchestrator():
 @app.route("/sms", methods=["POST"])
 def sms_reply():
     import sys
+    print("🚀 SMS_REPLY START 🚀", file=sys.stderr, flush=True)
     body = request.form.get("Body", "").strip()
     # Normalise smart/curly quotes to ASCII so regex matching works on mobile input
     body = body.replace("\u2018", "'").replace("\u2019", "'").replace("\u201c", '"').replace("\u201d", '"')
@@ -1224,8 +1225,7 @@ def sms_reply():
     resp = MessagingResponse()
 
     # ORCHESTRATION LAYER \u2014 Route to appropriate handler
-    print(f"[sms_reply] About to enter orchestrator block", flush=True)
-    sys.stdout.flush()
+    print("\ud83d\udd35 ORCHESTRATOR BLOCK START \ud83d\udd35", file=sys.stderr, flush=True)
     try:
         from query_orchestrator import get_orchestrator
         import re
