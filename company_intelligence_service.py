@@ -418,15 +418,16 @@ class CompanyIntelligence:
                 else:
                     return f"Competitors for {company_name} not yet mapped. Try asking about their brands or strategy instead."
 
-            # Check for brand question
-            if any(word in q_lower for word in ["brand", "products", "product line"]):
-                intel = CompanyIntelligence(company_name)
-                intel.fetch_all()
-                if intel.basics.get("brands"):
-                    brands = ", ".join(intel.basics["brands"])
-                    return f"{company_name}'s main brands: {brands}"
-                else:
-                    return f"Brand information for {company_name} not available. Try: 'Tell me about {company_name}'"
+            # Check for brand question (but not if asking about market share, revenue, etc.)
+            if any(word in q_lower for word in ["what brands", "what are your brands", "brand", "product line", "list your brands"]):
+                if not any(word in q_lower for word in ["market", "share", "revenue", "price"]):
+                    intel = CompanyIntelligence(company_name)
+                    intel.fetch_all()
+                    if intel.basics.get("brands"):
+                        brands = ", ".join(intel.basics["brands"])
+                        return f"{company_name}'s main brands: {brands}"
+                    else:
+                        return f"Brand information for {company_name} not available. Try: 'Tell me about {company_name}'"
 
             # Check for strategy/acquisition questions (use database first, then Groq)
             if any(word in q_lower for word in ["strategy", "acquisition", "acquire", "growth", "focus"]):
