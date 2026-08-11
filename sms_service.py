@@ -1324,6 +1324,42 @@ def sms_reply():
     return str(resp)
 
 
+# ── MIRU DASHBOARD ────────────────────────────────────────────────────────────
+
+@app.route("/dashboard")
+def miru_dashboard():
+    """Personal budget dashboard"""
+    return render_template("miru_dashboard.html")
+
+
+@app.route("/api/budget/<phone>")
+def api_budget(phone):
+    """API endpoint for budget data"""
+    try:
+        from budget_tracker import get_budget_status
+        status = get_budget_status(phone)
+        if status:
+            return jsonify(status)
+        return jsonify({"error": "Could not fetch budget"}), 500
+    except Exception as e:
+        app.logger.error(f"Budget API error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/weekly/<phone>")
+def api_weekly(phone):
+    """API endpoint for weekly report"""
+    try:
+        from weekly_report import get_weekly_report
+        report = get_weekly_report(phone)
+        if report:
+            return jsonify(report)
+        return jsonify({"error": "Could not fetch weekly report"}), 500
+    except Exception as e:
+        app.logger.error(f"Weekly API error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/intel")
 def intel_root():
     """Intel landing page - mission and explanation"""
