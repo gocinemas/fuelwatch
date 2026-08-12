@@ -23,3 +23,4 @@ anthropic>=0.40.0
 reportlab>=4.0.0
 easyocr>=1.6.2
 pytesseract>=0.3.10
+apscheduler>=3.10.0
