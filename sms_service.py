@@ -15177,6 +15177,15 @@ def api_home_brief():
     else:
         saves_for_prompt = other_content[:3] + place_saves_unvisited[:2]
         event_context    = [_event_label(s) for s in event_saves[:1]]
+
+    # Filter alcohol/wine from morning briefs (before 12pm)
+    alcohol_keywords = ["wine", "beer", "alcohol", "cocktail", "whisky", "vodka", "gin", "rum", "brandy", "champagne", "prosecco", "sangria", "sauvignon", "pinot", "cabernet", "merlot", "chardonnay"]
+    if hour < 12:  # Morning: don't suggest alcohol
+        saves_for_prompt = [
+            s for s in saves_for_prompt
+            if not any(kw in (s.get("title", "") + " " + s.get("category", "")).lower() for kw in alcohol_keywords)
+        ]
+
     saves_context = [_save_label(s) for s in saves_for_prompt if s.get("title")]
 
     # Recent capture — photo taken in last 20 mins via WhatsApp
