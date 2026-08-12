@@ -15,8 +15,8 @@ INTENT_PATTERNS = {
         "priority": 12,  # Higher priority to catch "vs competitors" questions
     },
     "market_share": {
-        "required": ["market", "share", "rank", "size", "largest", "position"],
-        "excluded": ["growth", "hiring", "employee", "margin"],
+        "required": ["market", "share", "rank", "size", "largest", "position", "competitive", "advantage", "moat", "strength"],
+        "excluded": ["growth", "hiring", "employee"],
         "priority": 10,
     },
     "competitor": {
@@ -123,7 +123,7 @@ def get_answer_strategy(intent: str, question: str = "") -> list:
             ("groq", "ask_groq"),
         ],
         "market_share": [
-            ("database", "calculate_market_position"),
+            ("database", "query_market_position"),
             ("groq", "ask_groq"),
         ],
         "hiring": [
