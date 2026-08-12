@@ -1218,7 +1218,7 @@
                 const growthText = growth > 5 ? `📈 +${growth}% (Strong)` : growth > 0 ? `📈 +${growth}% (Moderate)` : `📉 ${growth}% (Declining)`;
 
                 const focusAreas = (data.focus_areas || []).map(area =>
-                    typeof area === 'object' ? area.title || area.name || String(area) : area
+                    typeof area === 'object' ? area.area || area.title || area.name || String(area) : area
                 ).join(', ') || 'General operations';
 
                 let aiStars = '';
