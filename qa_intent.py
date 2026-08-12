@@ -40,7 +40,7 @@ INTENT_PATTERNS = {
         "priority": 6,
     },
     "hiring": {
-        "required": ["hiring", "employ", "headcount", "workforce", "staff", "team", "trending"],
+        "required": ["hiring", "employ", "headcount", "workforce", "staff", "team", "talent", "recruitment", "expand", "reduce", "trending"],
         "excluded": [],
         "priority": 5,
     },
@@ -127,7 +127,7 @@ def get_answer_strategy(intent: str, question: str = "") -> list:
             ("groq", "ask_groq"),
         ],
         "hiring": [
-            ("database", "calculate_hiring_growth"),
+            ("database", "query_hiring_strategy"),
             ("groq", "ask_groq"),
         ],
         "general": [
