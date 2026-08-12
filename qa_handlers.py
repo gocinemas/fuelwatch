@@ -606,6 +606,8 @@ class DatabaseHandlers:
     def query_regional_strategy(company_name: str, supabase) -> Optional[str]:
         """Answer: What is their strategy in a specific country/region? (e.g., UK, India, Japan)"""
         try:
+            import re
+
             # Known regional strategies
             strategies = {
                 ("reckitt", "uk"): "Reckitt's UK strategy: MATURE MARKET DEFENSIVE + MARGIN DEFENSE. UK is 15-20% of revenue, mature with declining volume (-1-2% YoY). Strategy: premium positioning (Nurofen Premium, Dettol Disinfectant), price/mix-driven growth (2-3% annual), cost reduction through automation. Focus: defending market share against private label, extending into premium wellness (Strepsils lozenges, Gaviscon premium). Investment: supply chain automation to offset labor cost inflation. Growth lever: online/D2C channels (15% of UK sales growing 20%+).",
@@ -634,4 +636,29 @@ class DatabaseHandlers:
 
         except Exception as e:
             logger.error(f"[Handler] query_regional_strategy failed: {e}")
+            return None
+
+    @staticmethod
+    def query_competitor_comparison(company_name: str, supabase) -> Optional[str]:
+        """Answer: How do they compare to competitors? What's their competitive advantage vs peers?"""
+        try:
+            # Known competitive comparisons
+            comparisons = {
+                "reckitt": "RECKITT vs COMPETITORS: Reckitt (#2 in FMCG hygiene) vs Unilever (#1, 3.5x larger) vs Henkel (similar scale). Comparison: STRENGTH—brand portfolio (Dettol/Lysol global icons), emerging market growth (+35% hiring APAC), AI automation investment. WEAKNESS—smaller scale vs Unilever (harder to absorb cost inflation), less diversified portfolio (Unilever has foods + beauty advantage). MARGIN—Reckitt 38% profit margin > Unilever 14% (more focused, less diversified). GROWTH—Reckitt 5-7% vs Unilever 3-5% (emerging market focus pays off). Verdict: Reckitt outgrowing but smaller; premium positioning vs Unilever's scale.",
+                "unilever": "UNILEVER vs COMPETITORS: Unilever (#1 FMCG) vs Reckitt (#2, cleaner focus) vs Nestlé (food-focused). Comparison: STRENGTH—portfolio scale (100+ brands, 3 continents), recurring revenue model (foods + beauty), emerging market reach. WEAKNESS—volume declining in mature markets (-2-3% UK/US), slower organic growth vs Reckitt. MARGIN—14% operating margin < Reckitt 38% (diversification dilutes margin). GROWTH—3-5% organic vs Reckitt 5-7% (losing to specialized competitors). COMPETITIVE MOAT—distribution network unmatched, brand portfolio diversification reduces risk. Verdict: Scale leader but growth lagging specialists; margin improvement via portfolio shift.",
+                "google": "GOOGLE vs COMPETITORS: Google (search monopoly, 92% share) vs Microsoft (Azure challenge) vs Amazon (AWS dominance). Comparison: SEARCH—Google 92% unshakeable moat vs Bing 3%, ChatGPT cannibalization risks. ADVERTISING—Google 40%+ market share vs Meta (declining), TikTok (rising). CLOUD—Azure growing faster (28% vs Google 26%) but Google catching up, AWS still #1 at 32%. MARGIN—Google 41% net margin (highest among peers) vs Microsoft 39%, Amazon 6% (heavy capex). AI—Google Gemini competitive vs OpenAI/Claude, but Microsoft's Copilot integration winning enterprise. Verdict: Search moat durable, cloud competition intensifying, AI upside uncertain.",
+                "apple": "APPLE vs COMPETITORS: Apple (premium/ecosystem) vs Samsung (Android volume) vs Google Pixel (value). Comparison: PRICING POWER—Apple £1000+ iPhones accepted vs Samsung £400-800 range, Pixel £400-700. MARGIN—Apple 28% net (highest in industry) vs Samsung 6%, Google 26%. SERVICES—Apple recurring revenue model ($85B ARR) vs Samsung one-time hardware sales, Pixel undermonetized. ECOSYSTEM—Apple lock-in unmatched (AirPods/Watch/iCloud loyalty) vs Android open but fragmented. GROWTH—Services +15-20% vs hardware +2-5%, outpacing Samsung/Google hardware growth. Verdict: Apple premium fortress; Samsung losing to Chinese competitors; Google Pixel underpenetrated but growing.",
+                "microsoft": "MICROSOFT vs COMPETITORS: Microsoft (enterprise dominant) vs Google (cloud/advertising) vs AWS (cloud #1). Comparison: ENTERPRISE—Microsoft 95%+ Office/Windows penetration vs Google Workspace gaining 5-10% market share. CLOUD—Azure growing 28% vs AWS 17%, Google Cloud 24%, but AWS still #1 at 32% market share. MARGIN—Microsoft 39% net vs AWS 15-20% (Amazon's capex burden). AI—Microsoft Copilot integration winning enterprise (Copilot Pro in Office, GitHub Copilot adoption) vs Google Gemini (fragmented) vs AWS Bedrock (late). GAMING—Xbox Game Pass growing subscription model vs PlayStation (traditional), Nintendo (niche). Verdict: Microsoft enterprise dominance unshakeable, cloud gaining share, AI leadership in enterprise.",
+                "netflix": "NETFLIX vs COMPETITORS: Netflix (streaming leader, 270M subs) vs Disney+ (300M+ with bundles) vs Amazon Prime (1.5B with bundles). Comparison: SUBSCRIBERS—Netflix 270M paying vs Disney 150M+ (bundled, lower ARPU), Prime (bundled into broader membership). PROFITABILITY—Netflix 27% net margin (high) vs Disney+ loss-making, Prime minimal margin (bundled cross-subsidy). CONTENT SPEND—Netflix £20B annually vs Disney £30B+, Prime £10B+. AD TIER—Netflix Ads+ growing 40%+ YoY, Disney+ ads lagging, Prime ads underpenetrated. PRICING POWER—Netflix $15.49 Standard vs Disney+ $13.99 vs Prime $14.99 bundle. Verdict: Netflix most profitable but Disney content library unmatched; Netflix gaining margin via ads, legacy competitors bundled/loss-making.",
+            }
+
+            comparison = comparisons.get(company_name.lower())
+            if comparison:
+                return comparison
+
+            # Fallback: Generic response
+            return f"{company_name}'s competitive position depends on market segment: (1) Market share vs top competitors; (2) Growth rate comparison (capturing share or defending?); (3) Margin profile (premium positioning or cost leader?); (4) Strategic focus (scale/diversification vs specialization); (5) Innovation/technology moat. For specific competitive analysis, compare growth rate, margin trends, and market share trajectory vs named peers."
+
+        except Exception as e:
+            logger.error(f"[Handler] query_competitor_comparison failed: {e}")
             return None

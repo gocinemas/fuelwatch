@@ -19,6 +19,11 @@ INTENT_PATTERNS = {
         "excluded": ["growth", "hiring", "employee", "stock", "price"],
         "priority": 10,
     },
+    "comparison": {
+        "required": ["compare", "vs", "versus", "compared to", "how do we compare"],
+        "excluded": [],
+        "priority": 10,
+    },
     "competitor": {
         "required": ["compet", "rival", "who compete"],
         "excluded": ["vs", "versus", "compare", "trending"],  # Exclude if it's actually a comparison
@@ -128,6 +133,10 @@ def get_answer_strategy(intent: str, question: str = "") -> list:
     strategies = {
         "comparison": [
             ("database", "compare_companies"),
+            ("groq", "ask_groq"),
+        ],
+        "comparison": [
+            ("database", "query_competitor_comparison"),
             ("groq", "ask_groq"),
         ],
         "competitor": [
