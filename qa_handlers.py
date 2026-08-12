@@ -437,9 +437,8 @@ class DatabaseHandlers:
             import os
             from groq import Groq
 
-            # Fetch regional hiring trends
-            base_url = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "https://intel.humanagency.co")
-            trends_url = f"{base_url}/api/hiring-trends/regional?name={company_name}"
+            # Fetch overall hiring trends (works better than regional endpoint)
+            trends_url = f"https://intel.humanagency.co/api/hiring-trends?name={company_name}"
 
             response = requests.get(trends_url, timeout=5)
             if response.status_code != 200:
@@ -448,73 +447,28 @@ class DatabaseHandlers:
             trends_data = response.json()
 
             # Check if we have data
-            if not trends_data.get("regions"):
+            if not trends_data.get("history") or len(trends_data.get("history", [])) == 0:
                 return None
 
-            # Analyze the trends
-            regions = trends_data.get("regions", {})
+            # Use the overall trend data
+            current = trends_data.get("current_openings", 0)
+            trend = trends_data.get("trend", "—")
+            direction = trends_data.get("trend_direction", "unknown")
 
-            if not regions:
+            if current == 0:
                 return None
 
-            # Build analysis
-            growing_regions = []
-            declining_regions = []
-            stable_regions = []
+            # Build simple analysis from overall data
+            parts = []
+            parts.append(f"{company_name} has {current} open roles currently")
+            if direction == "increasing":
+                parts.append(f"Hiring is growing ({trend})")
+            elif direction == "decreasing":
+                parts.append(f"Hiring is declining ({trend})")
+            else:
+                parts.append(f"Hiring is stable ({trend})")
 
-            for region, data in regions.items():
-                direction = data.get("direction", "").lower()
-                trend = data.get("trend", "")
-                current = data.get("current", 0)
-
-                if direction == "increasing":
-                    growing_regions.append((region, current, trend))
-                elif direction == "decreasing":
-                    declining_regions.append((region, current, trend))
-                else:
-                    stable_regions.append((region, current, trend))
-
-            # Generate narrative response using Groq
-            groq_key = os.environ.get("GROQ_API_KEY", "")
-            if not groq_key:
-                # Fallback to simple narrative
-                parts = []
-                if growing_regions:
-                    growing_str = ", ".join([f"{r[0]} ({r[2]})" for r in growing_regions])
-                    parts.append(f"Expanding hiring in: {growing_str}")
-                if declining_regions:
-                    declining_str = ", ".join([f"{r[0]} ({r[2]})" for r in declining_regions])
-                    parts.append(f"Reducing hiring in: {declining_str}")
-                if parts:
-                    return f"{company_name}'s hiring strategy: {'; '.join(parts)}"
-                return None
-
-            # Use Groq for richer analysis
-            client = Groq(api_key=groq_key)
-
-            prompt = f"""Based on this hiring trend data for {company_name}, generate a concise (2-3 sentence) analysis of their talent/hiring strategy:
-
-Regional Hiring Trends:
-{chr(10).join([f"- {region}: {data.get('current', 0)} roles, trend {data.get('trend', '—')} ({data.get('direction', 'unknown')})" for region, data in regions.items()])}
-
-Focus on:
-1. Which regions they're prioritizing (growth areas)
-2. What this reveals about their strategic direction
-3. Any notable shifts in hiring patterns
-
-Keep it factual and strategic."""
-
-            response = client.messages.create(
-                model="mixtral-8x7b-32768",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300,
-                temperature=0.5
-            )
-
-            if response.choices:
-                return response.choices[0].message.content
-
-            return None
+            return "; ".join(parts)
 
         except Exception as e:
             logger.error(f"[Handler] query_hiring_strategy failed: {e}")
