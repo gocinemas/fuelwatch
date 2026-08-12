@@ -15431,19 +15431,6 @@ def api_home_brief():
                      ("Dining", "Coffee & Lunch", "Groceries")]
     content_saves  = [s for s in saves_list if s not in receipt_saves and s not in place_saves]
 
-    # Categorize saves for proactive surfacing (wines, restaurants, activities, events)
-    categorized_saves = {"wines": [], "restaurants": [], "activities": [], "events": [], "proactive": []}
-    try:
-        categorized_saves = _categorize_and_surface_saves(
-            content_saves + place_saves,
-            hour=hour,
-            loc_str=loc_str,
-            has_location=has_location
-        )
-    except Exception as e:
-        app.logger.warning(f"[brief-categorize] Failed to categorize saves: {e}")
-        # Use empty categorization, don't break the brief
-
     # Build set of merchants already visited (have a receipt for) — exclude from evening suggestions
     _visited_merchants = set()
     for _rs in receipt_saves:
@@ -15549,6 +15536,19 @@ def api_home_brief():
         loc_str = loc_area
     else:
         loc_str = ""
+
+    # Categorize saves for proactive surfacing (wines, restaurants, activities, events)
+    categorized_saves = {"wines": [], "restaurants": [], "activities": [], "events": [], "proactive": []}
+    try:
+        categorized_saves = _categorize_and_surface_saves(
+            content_saves + place_saves,
+            hour=hour,
+            loc_str=loc_str,
+            has_location=has_location
+        )
+    except Exception as e:
+        app.logger.warning(f"[brief-categorize] Failed to categorize saves: {e}")
+        # Use empty categorization, don't break the brief
 
     # Learned patterns from location signals — surface in brief prompt
     _learned_departure = prefs.get("learned_departure_hour")
