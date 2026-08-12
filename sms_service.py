@@ -40101,6 +40101,47 @@ def api_company_hiring_focus():
         logging.error(f"[company-hiring-focus] {e}")
         return jsonify({"error": str(e)[:100]}), 500
 
+@app.route("/api/company/ma-activity", methods=["GET"])
+def api_company_ma_activity():
+    """Fetch M&A activity history for a company."""
+    try:
+        company = request.args.get("name", "").strip()
+        if not company:
+            return jsonify({"error": "name param required"}), 400
+
+        sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
+                          os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
+
+        result = sb.table("company_ma_activity").select("*").eq(
+            "company_name", company
+        ).order("date", desc=True).limit(10).execute()
+
+        deals = result.data or []
+
+        formatted_deals = []
+        for deal in deals:
+            formatted_deals.append({
+                "target_company": deal.get("target_company", "N/A"),
+                "deal_type": deal.get("deal_type", "N/A"),
+                "value": deal.get("value_millions"),
+                "date": deal.get("date", "N/A"),
+                "description": deal.get("description", "Strategic transaction")
+            })
+
+        return jsonify({
+            "company": company,
+            "deals": formatted_deals,
+            "total_deals": len(formatted_deals)
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"[company-ma-activity] {e}")
+        return jsonify({
+            "company": request.args.get("name", "Unknown"),
+            "deals": [],
+            "error": "Could not fetch M&A data"
+        }), 200
+
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
 
 @app.route("/api/fuel/stations/list", methods=["GET"])

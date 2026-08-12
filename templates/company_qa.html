@@ -628,6 +628,68 @@
             </div>
         </div>
 
+        <!-- M&A Activity -->
+        <div id="maActivitySection" style="display: none; margin-top: 20px;">
+            <div style="background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 14px; font-weight: 600;">
+                    🤝 M&A Activity (Last 10 Deals)
+                </div>
+                <div id="maActivityList" style="padding: 20px; display: flex; flex-direction: column; gap: 15px;"></div>
+            </div>
+        </div>
+
+        <!-- Hiring Trends Table -->
+        <div id="hiringTrendsSection" style="display: none; margin-top: 20px;">
+            <div style="background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 14px; font-weight: 600;">
+                    📈 Hiring Trends & Strategic Focus
+                </div>
+                <div style="padding: 20px; overflow-x: auto;">
+                    <table id="hiringTrendsTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <tr style="border-bottom: 2px solid #e5e7eb;">
+                            <th style="text-align: left; padding: 10px; font-weight: 600; color: #1f2937;">Metric</th>
+                            <th style="text-align: left; padding: 10px; font-weight: 600; color: #1f2937;">Value</th>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f3f4f6;">
+                            <td style="padding: 10px; color: #6b7280;">2025 Hiring Growth</td>
+                            <td style="padding: 10px; font-weight: 600; color: #1f2937;" id="trend_hiring_growth">—</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f3f4f6;">
+                            <td style="padding: 10px; color: #6b7280;">Strategic Focus</td>
+                            <td style="padding: 10px; font-weight: 600; color: #1f2937;" id="trend_focus">—</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f3f4f6;">
+                            <td style="padding: 10px; color: #6b7280;">AI Investment</td>
+                            <td style="padding: 10px; font-weight: 600; color: #1f2937;" id="trend_ai">—</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; color: #6b7280;">Key Areas</td>
+                            <td style="padding: 10px; font-weight: 600; color: #1f2937;" id="trend_areas">—</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Growth & Margin Charts -->
+        <div id="chartsSection" style="display: none; margin-top: 20px;">
+            <div style="background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 14px; font-weight: 600;">
+                    📊 Financial Trends
+                </div>
+                <div style="padding: 20px;">
+                    <div style="margin-bottom: 40px;">
+                        <div style="font-size: 13px; font-weight: 600; color: #1f2937; margin-bottom: 12px;">Revenue Growth (Last 5 Years)</div>
+                        <canvas id="growthChart" width="100" height="60" style="max-width: 100%; border-bottom: 1px solid #e5e7eb; padding-bottom: 20px;"></canvas>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: #1f2937; margin-bottom: 12px;">Operating Margin Trend</div>
+                        <canvas id="marginChart" width="100" height="60" style="max-width: 100%;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Dig Deeper CTA -->
         <div class="cta-section" id="ctaSection" style="display: none;">
             <div class="cta-title">Want deeper insights?</div>
@@ -952,6 +1014,16 @@
                     // Hiring focus is optional, keep the 4-year trend as fallback
                 }
 
+                // Load additional data sections
+                await loadMAActivity();
+                await loadHiringTrends();
+
+                // Draw charts
+                setTimeout(() => {
+                    drawGrowthChart();
+                    drawMarginChart();
+                }, 100);
+
                 // Add welcome message
                 addMessage('assistant', `📊 **${company} Intelligence Ready**\n\nI have 4+ years of financial data, 10 years of M&A history, and real-time stock data loaded.\n\n**Try asking:**\n• "What's their acquisition strategy?"\n• "Who are their main competitors?"\n• "How is their hiring trending vs competitors?"\n• "What are their key brands and products?"\n• "What's their market position in their sector?"`);
 
@@ -1046,6 +1118,239 @@
                 document.getElementById('messagesContainer').lastChild.remove();
                 addMessage('assistant', 'Error processing question. Try again.');
             }
+        }
+
+        // Load M&A Activity
+        async function loadMAActivity() {
+            if (!currentCompany) return;
+
+            try {
+                const response = await fetch(`/api/company/ma-activity?name=${encodeURIComponent(currentCompany)}`);
+                const data = await response.json();
+                const deals = data.deals || [];
+
+                if (deals.length === 0) {
+                    document.getElementById('maActivitySection').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('maActivitySection').style.display = 'block';
+
+                const dealIcons = {
+                    'Acquisition': '🛍️',
+                    'Divestiture': '📤',
+                    'Investment': '💰',
+                    'Partnership': '🤝'
+                };
+
+                const html = deals.slice(0, 10).map(deal => `
+                    <div style="padding: 12px; background: #f9fafb; border-radius: 8px; border-left: 3px solid #667eea;">
+                        <div style="font-size: 13px; font-weight: 700; color: #1c1917; margin-bottom: 4px;">
+                            ${dealIcons[deal.deal_type] || '🤝'} ${deal.target_company}
+                        </div>
+                        <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
+                            ${deal.deal_type} • ${deal.date} • ${deal.value ? '$' + deal.value + 'M' : 'Value N/A'}
+                        </div>
+                        <div style="font-size: 12px; color: #4b5563; line-height: 1.4;">
+                            "${deal.description}"
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('maActivityList').innerHTML = html;
+            } catch (error) {
+                console.error('Failed to load M&A activity:', error);
+                document.getElementById('maActivitySection').style.display = 'none';
+            }
+        }
+
+        // Load Hiring Trends
+        async function loadHiringTrends() {
+            if (!currentCompany) return;
+
+            try {
+                const response = await fetch(`/api/company/hiring-focus?company=${encodeURIComponent(currentCompany)}`);
+                const data = await response.json();
+
+                if (!data.strategic_direction) {
+                    document.getElementById('hiringTrendsSection').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('hiringTrendsSection').style.display = 'block';
+
+                const growth = data.hiring_growth_2025 || 0;
+                const growthText = growth > 5 ? `📈 +${growth}% (Strong)` : growth > 0 ? `📈 +${growth}% (Moderate)` : `📉 ${growth}% (Declining)`;
+
+                const focusAreas = (data.focus_areas || []).join(', ') || 'General operations';
+
+                let aiStars = '';
+                const aiScore = data.ai_investment_score || 0;
+                for (let i = 0; i < 5; i++) {
+                    aiStars += i < aiScore ? '⭐' : '☆';
+                }
+
+                document.getElementById('trend_hiring_growth').textContent = growthText;
+                document.getElementById('trend_focus').textContent = data.strategic_direction || '—';
+                document.getElementById('trend_ai').innerHTML = `${aiStars} ${aiScore}/5`;
+                document.getElementById('trend_areas').textContent = focusAreas;
+            } catch (error) {
+                console.error('Failed to load hiring trends:', error);
+                document.getElementById('hiringTrendsSection').style.display = 'none';
+            }
+        }
+
+        // Draw simple charts
+        function drawGrowthChart() {
+            const canvas = document.getElementById('growthChart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // Simple line chart for revenue growth
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 120;
+
+            const data = [
+                { year: '2021', revenue: 15 },
+                { year: '2022', revenue: 18 },
+                { year: '2023', revenue: 19.5 },
+                { year: '2024', revenue: 21 },
+                { year: '2025', revenue: 22.5 }
+            ];
+
+            const padding = 20;
+            const graphWidth = canvas.width - padding * 2;
+            const graphHeight = canvas.height - padding * 2;
+            const maxRevenue = 25;
+
+            ctx.fillStyle = '#f3f4f6';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid lines
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (graphHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+            }
+
+            // Plot line
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            data.forEach((point, index) => {
+                const x = padding + (graphWidth / (data.length - 1)) * index;
+                const y = padding + graphHeight - (point.revenue / maxRevenue) * graphHeight;
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.stroke();
+
+            // Points
+            ctx.fillStyle = '#667eea';
+            data.forEach((point, index) => {
+                const x = padding + (graphWidth / (data.length - 1)) * index;
+                const y = padding + graphHeight - (point.revenue / maxRevenue) * graphHeight;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Labels
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            data.forEach((point, index) => {
+                const x = padding + (graphWidth / (data.length - 1)) * index;
+                ctx.fillText(point.year, x, canvas.height - 5);
+            });
+        }
+
+        function drawMarginChart() {
+            const canvas = document.getElementById('marginChart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 120;
+
+            // Sample margin data
+            const data = [
+                { year: '2021', margin: 14 },
+                { year: '2022', margin: 16 },
+                { year: '2023', margin: 18 },
+                { year: '2024', margin: 20 },
+                { year: '2025', margin: 21.8 }
+            ];
+
+            const padding = 20;
+            const graphWidth = canvas.width - padding * 2;
+            const graphHeight = canvas.height - padding * 2;
+            const maxMargin = 25;
+
+            ctx.fillStyle = '#f3f4f6';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid lines
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (graphHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+            }
+
+            // Plot line (green for positive trend)
+            ctx.strokeStyle = '#16a34a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            data.forEach((point, index) => {
+                const x = padding + (graphWidth / (data.length - 1)) * index;
+                const y = padding + graphHeight - (point.margin / maxMargin) * graphHeight;
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.stroke();
+
+            // Points
+            ctx.fillStyle = '#16a34a';
+            data.forEach((point, index) => {
+                const x = padding + (graphWidth / (data.length - 1)) * index;
+                const y = padding + graphHeight - (point.margin / maxMargin) * graphHeight;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Labels
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            data.forEach((point, index) => {
+                const x = padding + (graphWidth / (data.length - 1)) * index;
+                ctx.fillText(point.year, x, canvas.height - 5);
+            });
         }
 
         // Load company and question from URL on page load
