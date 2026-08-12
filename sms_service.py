@@ -16721,7 +16721,9 @@ def api_home_brief():
                             confidence=1.0
                         ))
 
-                    if ctx.get("trains", {}).get("departures"):
+                    # Only surface trains during commute hours (not late night)
+                    is_commute_time = (5 <= hour <= 9) or (16 <= hour <= 20)
+                    if is_commute_time and ctx.get("trains", {}).get("departures"):
                         trains = ctx["trains"]
                         facts_with_source.append(FactWithSource(
                             text=f"Trains: {trains.get('destination', 'N/A')}",
