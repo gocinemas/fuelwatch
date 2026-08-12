@@ -14680,6 +14680,71 @@ def _rank_evening_saves(place_saves: list, content_saves: list, event_saves: lis
         return place_saves[:2] + content_saves[:1], events[:2]
 
 
+def _categorize_and_surface_saves(saves_list, hour, loc_str, has_location):
+    """
+    Categorize saves (wines, restaurants, activities, events) and surface
+    relevant ones based on time of day and location.
+
+    Returns: {"wines": [...], "restaurants": [...], "activities": [...], "proactive": [...]}
+    """
+    if not saves_list:
+        return {"wines": [], "restaurants": [], "activities": [], "proactive": []}
+
+    categorized = {
+        "wines": [],
+        "restaurants": [],
+        "activities": [],
+        "events": [],
+        "proactive": []
+    }
+
+    # Keywords for each category
+    wine_keywords = ["wine", "beer", "alcohol", "cocktail", "champagne", "prosecco", "sauvignon", "merlot", "cabernet", "chardonnay", "whisky", "gin", "vodka", "rum", "brandy"]
+    restaurant_keywords = ["restaurant", "cafe", "cafe", "pub", "bar", "bistro", "diner", "pizzeria", "curry", "chinese", "indian", "thai", "japanese", "sushi", "nando", "wagamama", "pret", "greggs", "costa", "starbucks"]
+    activity_keywords = ["park", "walk", "hike", "museum", "gallery", "cinema", "theatre", "theater", "concert", "sport", "gym", "yoga", "book", "reading", "club", "night out"]
+    event_keywords = ["event", "concert", "festival", "show", "exhibition", "match", "game", "performance", "theatre", "theater"]
+
+    for save in saves_list:
+        title = (save.get("title") or "").lower()
+        category = (save.get("category") or "").lower()
+        summary = (save.get("summary") or "").lower()
+        search_text = f"{title} {category} {summary}".lower()
+
+        # Categorize the save
+        if any(kw in search_text for kw in wine_keywords):
+            categorized["wines"].append(save)
+        elif any(kw in search_text for kw in restaurant_keywords):
+            categorized["restaurants"].append(save)
+        elif any(kw in search_text for kw in event_keywords):
+            categorized["events"].append(save)
+        elif any(kw in search_text for kw in activity_keywords):
+            categorized["activities"].append(save)
+
+    # Surface proactively based on time of day + location
+    proactive = []
+
+    if has_location and loc_str:
+        # Suggest restaurants at meal times
+        if 11 <= hour < 13:  # Lunch
+            proactive.extend([s for s in categorized["restaurants"][:2] if "lunch" not in search_text.lower() or "casual" in search_text.lower()])
+        elif 17 <= hour < 20:  # Dinner
+            proactive.extend([s for s in categorized["restaurants"][:2]])
+
+        # Suggest activities in afternoon/evening
+        if 14 <= hour < 18:  # Afternoon
+            proactive.extend([s for s in categorized["activities"][:2]])
+        elif 18 <= hour < 22:  # Evening
+            proactive.extend([s for s in categorized["wines"][:1]])  # Evening wine
+            proactive.extend([s for s in categorized["activities"][:1]])
+
+        # Events in evening
+        if 18 <= hour < 23:
+            proactive.extend([s for s in categorized["events"][:1]])
+
+    categorized["proactive"] = proactive[:3]  # Max 3 proactive suggestions
+    return categorized
+
+
 def _detect_major_events(today_date):
     """
     Detect major events happening today (eclipses, bank holidays, etc).
@@ -15355,6 +15420,14 @@ def api_home_brief():
     place_saves    = [s for s in saves_list if s not in receipt_saves and s.get("category") in
                      ("Dining", "Coffee & Lunch", "Groceries")]
     content_saves  = [s for s in saves_list if s not in receipt_saves and s not in place_saves]
+
+    # Categorize saves for proactive surfacing (wines, restaurants, activities, events)
+    categorized_saves = _categorize_and_surface_saves(
+        content_saves + place_saves,
+        hour=hour,
+        loc_str=loc_str,
+        has_location=has_location
+    )
 
     # Build set of merchants already visited (have a receipt for) — exclude from evening suggestions
     _visited_merchants = set()
@@ -16914,6 +16987,13 @@ def api_home_brief():
         "brief":        brief_text,
         "context":      ctx,
         "events":       _major_events,  # Major events like eclipses, bank holidays
+        "suggestions":  {  # Proactive suggestions based on time + location
+            "wines": categorized_saves.get("wines", [])[:3],
+            "restaurants": categorized_saves.get("restaurants", [])[:3],
+            "activities": categorized_saves.get("activities", [])[:3],
+            "events": categorized_saves.get("events", [])[:2],
+            "proactive": [{"title": s.get("title"), "category": s.get("category"), "summary": (s.get("summary") or "")[:100]} for s in categorized_saves.get("proactive", [])],
+        },
         "evening_saves": _evening_chip_saves,
         "weekly_saves": _weekly_saves,
         "prefs":     prefs,
