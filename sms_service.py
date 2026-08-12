@@ -130,6 +130,17 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Initialize scheduler for hiring snapshots
+print("[app] === STARTING SCHEDULER INITIALIZATION ===")
+try:
+    from scheduler_init import init_scheduler
+    scheduler_ok = init_scheduler(app)
+    print(f"[app] === SCHEDULER INIT COMPLETE: {scheduler_ok} ===")
+except Exception as e:
+    print(f"[app] === SCHEDULER INIT FAILED: {e} ===")
+    import traceback
+    traceback.print_exc()
+
 # Helper to convert time objects to strings before returning
 def _ensure_json_serializable(obj):
     """Recursively convert datetime/time objects to strings."""
@@ -5299,6 +5310,124 @@ def api_hiring_signals():
         return jsonify(result)
     except Exception as e:
         app.logger.error(f"[hiring-signals] ERROR: {e}", exc_info=True)
+        return jsonify({"error": str(e), "company": name}), 500
+
+
+@app.route("/api/hiring-trends", methods=["GET"])
+def api_hiring_trends():
+    """Get historical hiring trends for a company.
+
+    Query params:
+    - name: Company name (required)
+    - region: Filter by region (optional) - North America, Europe, Asia, Remote
+    - days: Number of days to look back (default: 30)
+
+    Returns: {
+        "company_name": "Reckitt",
+        "region": "Europe",
+        "current_openings": 45,
+        "previous_openings": 38,
+        "trend": "↑ +18%",
+        "trend_direction": "increasing",
+        "history": [...]
+    }
+    """
+    name = request.args.get("name", "").strip()
+    region = request.args.get("region", "").strip() or None
+    days = int(request.args.get("days", 30))
+
+    if not name or len(name) < 2:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        from hiring_trends_tracker import get_trend
+        result = get_trend(name, region=region, days=days)
+
+        if not result:
+            return jsonify({
+                "message": f"No trend data yet for {name}",
+                "company_name": name,
+                "note": "Data will be available after first daily snapshot"
+            }), 202
+
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"[hiring-trends] ERROR: {e}", exc_info=True)
+        return jsonify({"error": str(e), "company": name}), 500
+
+
+@app.route("/api/hiring-trends/regional", methods=["GET"])
+def api_hiring_trends_regional():
+    """Get hiring trends broken down by region.
+
+    Query params:
+    - name: Company name (required)
+    - days: Number of days to look back (default: 30)
+
+    Returns: {
+        "company_name": "Reckitt",
+        "regions": {
+            "Europe": {
+                "current": 45,
+                "trend": "↑ +18%",
+                "direction": "increasing"
+            },
+            "North America": {
+                "current": 32,
+                "trend": "↓ -10%",
+                "direction": "decreasing"
+            }
+        }
+    }
+    """
+    name = request.args.get("name", "").strip()
+    days = int(request.args.get("days", 30))
+
+    if not name or len(name) < 2:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        from hiring_trends_tracker import get_regional_trends_data
+        result = get_regional_trends_data(name, days=days)
+
+        if not result or not result.get("regions"):
+            return jsonify({
+                "message": f"No regional trend data yet for {name}",
+                "company_name": name,
+                "note": "Data will be available after first daily snapshot"
+            }), 202
+
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"[hiring-trends-regional] ERROR: {e}", exc_info=True)
+        return jsonify({"error": str(e), "company": name}), 500
+
+
+@app.route("/api/hiring-snapshot", methods=["POST"])
+def api_hiring_snapshot():
+    """Manually trigger a hiring snapshot for a company (for testing).
+
+    Query params:
+    - name: Company name (required)
+
+    Returns: Snapshot data or queued message
+    """
+    name = request.args.get("name", "").strip()
+
+    if not name or len(name) < 2:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        from hiring_trends_tracker import take_snapshot
+        result = take_snapshot(name)
+
+        return jsonify({
+            "status": "snapshot_taken",
+            "company": name,
+            "data": result
+        })
+    except Exception as e:
+        app.logger.error(f"[hiring-snapshot] ERROR: {e}", exc_info=True)
         return jsonify({"error": str(e), "company": name}), 500
 
 
