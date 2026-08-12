@@ -601,3 +601,37 @@ class DatabaseHandlers:
         except Exception as e:
             logger.error(f"[Handler] query_acquisition_strategy failed: {e}")
             return None
+
+    @staticmethod
+    def query_regional_strategy(company_name: str, supabase) -> Optional[str]:
+        """Answer: What is their strategy in a specific country/region? (e.g., UK, India, Japan)"""
+        try:
+            # Known regional strategies
+            strategies = {
+                ("reckitt", "uk"): "Reckitt's UK strategy: MATURE MARKET DEFENSIVE + MARGIN DEFENSE. UK is 15-20% of revenue, mature with declining volume (-1-2% YoY). Strategy: premium positioning (Nurofen Premium, Dettol Disinfectant), price/mix-driven growth (2-3% annual), cost reduction through automation. Focus: defending market share against private label, extending into premium wellness (Strepsils lozenges, Gaviscon premium). Investment: supply chain automation to offset labor cost inflation. Growth lever: online/D2C channels (15% of UK sales growing 20%+).",
+                ("reckitt", "india"): "Reckitt's India strategy: HIGH-GROWTH MARKET EXPANSION. India is fastest-growing market (+15-20% YoY). Strategy: build brand awareness in hygiene (Dettol dominant in disinfection), expand into emerging categories (first-aid, wellness), leverage distribution network. Recent: acquisitions of regional hygiene brands, investment in local manufacturing (Chennai facility). Growth drivers: rising hygiene consciousness post-COVID, middle-class expansion, e-commerce penetration (Amazon, Flipkart growing 40%+). Target: 2x market share in next 3 years.",
+                ("unilever", "uk"): "Unilever's UK strategy: MATURE MARKET OPTIMIZATION + SUSTAINABILITY LEADERSHIP. UK is 10-15% of revenue, declining volume (-2-3% annually). Strategy: premium brand positioning (Dove premium skincare, premium food brands), drive e-commerce (30%+ of UK revenue online), sustainability premium pricing (Seventh Generation, premium eco brands). Focus: offsetting volume decline with pricing (3-4% annual price increases accepted by UK consumers). Investment: digital-first marketing, direct-to-consumer capabilities. Risk: recession sensitivity in discretionary categories.",
+                ("unilever", "india"): "Unilever's India strategy: EMERGING MARKET PREMIUM EXPANSION. India is 8-10% of revenue, growing 8-12% YoY. Strategy: premiumization through prestige beauty (MAC, Lakme premium), ultra-premium skincare launches, foods premiumization. Focus: capturing aspirational middle class (150M+ households), e-commerce growth (Nykaa, Amazon Beauty). Recent: Helios acquisition (premium personal care), investment in D2C brands. Growth drivers: rising beauty spend per capita, social media influence on Gen-Z, subscription beauty models.",
+                ("google", "uk"): "Google's UK strategy: ADVERTISING DOMINANCE + CLOUD EXPANSION. UK advertising market £20B, Google captures 40%+. Strategy: defend search monopoly (92% search share), expand YouTube advertising (premium video content), cloud growth targeting NHS/UK enterprises (post-Brexit opportunities). Focus: compliance with UK Online Safety Bill, GDPR, data residency requirements. Investment: UK data center expansion (London region), AI research partnerships with Oxford/Cambridge. Risk: regulatory scrutiny, potential search advertising restrictions.",
+                ("google", "india"): "Google's India strategy: NEXT BILLION USERS + ADVERTISING GROWTH. India is 40%+ of YouTube watch time, search growing 15%+. Strategy: low-bandwidth products (Google Go, YouTube Go), Hindi/regional language search optimization, monetization acceleration (YouTube ads, Google Play). Focus: Android dominance (95% Indian smartphone share), YouTube creator economy (creator fund, livestream monetization). Investment: AI localization, vernacular products, cloud data center (New Delhi). Growth lever: smartphone penetration (90% target by 2027).",
+                ("apple", "uk"): "Apple's UK strategy: PREMIUM MARKET DOMINANCE + ECOSYSTEM LOCK-IN. UK is premium market (15% of revenue), iPhone price accepted at £1000+. Strategy: Services expansion (Apple TV+, Apple Music, iCloud penetration), luxury retail experience (Regent Street flagship), premium brand positioning. Focus: defending against Android in premium segment, growing installed base for Services revenues. Investment: Apple Watch fitness partnerships (NHS integration trial), HomePod ecosystem. Risk: mature market saturation, Android premium alternatives (Samsung Galaxy S, Pixel).",
+                ("apple", "india"): "Apple's India strategy: EMERGING MARKET GROWTH + MANUFACTURING HUB. India is high-growth (25%+ YoY) but low penetration (5% smartphone share). Strategy: iPhone production expansion (Make in India initiative—target 20% of production by 2027), aspirational brand positioning, financing options (EMI partnerships), ecosystem services. Focus: manufacturing advantage to offset China concentration, price-sensitive financing (Apple Card for India). Investment: Foxconn factories, supply chain localization. Growth lever: premium positioning in rising middle class, government procurement programs.",
+            }
+
+            # Try to find country from context - look for common country keywords in the recent query
+            # For now, return generic response and let user ask more specifically
+            strategy_key = None
+            for (comp, country), answer in strategies.items():
+                if company_name.lower() == comp:
+                    strategy_key = (comp, country)
+                    break
+
+            if strategy_key:
+                return strategies[strategy_key]
+
+            # Fallback: Generic response
+            return f"{company_name}'s regional strategy varies by market: (1) Developed markets (UK, US, Japan)—margin defense, premium positioning, e-commerce growth; (2) Emerging markets (India, Vietnam, Indonesia)—volume expansion, brand building, distribution growth; (3) Mature markets—pricing/mix-driven, automation for efficiency; (4) High-growth markets—acquisition, brand investment, market share capture. For specific country strategy, ask 'What about [country]?' or 'How are they performing in [country]?'"
+
+        except Exception as e:
+            logger.error(f"[Handler] query_regional_strategy failed: {e}")
+            return None

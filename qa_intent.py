@@ -44,8 +44,13 @@ INTENT_PATTERNS = {
         "excluded": ["hiring", "employee"],
         "priority": 6,
     },
+    "regional": {
+        "required": ["about", "how", "uk", "india", "japan", "china", "france", "germany", "brazil", "mexico", "specific"],
+        "excluded": [],
+        "priority": 8,
+    },
     "geographic": {
-        "required": ["country", "countries", "geographic", "region"],
+        "required": ["country", "countries", "geographic", "region", "expand"],
         "excluded": ["share", "position", "competitive"],
         "priority": 7,
     },
@@ -160,6 +165,10 @@ def get_answer_strategy(intent: str, question: str = "") -> list:
         ],
         "growth": [
             ("database", "query_growth_composition"),
+            ("groq", "ask_groq"),
+        ],
+        "regional": [
+            ("database", "query_regional_strategy"),
             ("groq", "ask_groq"),
         ],
         "geographic": [
