@@ -16,7 +16,7 @@ INTENT_PATTERNS = {
     },
     "market_share": {
         "required": ["market", "share", "rank", "size", "largest", "position", "competitive", "advantage", "moat", "strength"],
-        "excluded": ["growth", "hiring", "employee"],
+        "excluded": ["growth", "hiring", "employee", "stock", "price"],
         "priority": 10,
     },
     "competitor": {
@@ -35,9 +35,9 @@ INTENT_PATTERNS = {
         "priority": 8,
     },
     "stock": {
-        "required": ["stock", "share price", "price", "why", "driver", "movement", "catalyst"],
-        "excluded": ["market", "share market"],
-        "priority": 7,
+        "required": ["stock", "price", "driver", "movement", "catalyst"],
+        "excluded": ["market"],
+        "priority": 11,
     },
     "growth": {
         "required": ["growth", "pricing", "volume", "composition", "led", "driven"],
