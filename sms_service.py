@@ -9905,6 +9905,7 @@ def api_home_last_receipt():
 
     try:
         r = None
+        candidates = []  # List of valid receipts with extracted dates
 
         # Query wa_saves (where WhatsApp receipts actually go) - order by created_at (most recent save)
         rows_wa = lib._sb().table("wa_saves").select(
@@ -9960,8 +9961,39 @@ def api_home_last_receipt():
             if not merchant or merchant.lower() in ("receipt", "photo", "image", "scanned", "shopping", "groceries"):
                 continue
 
-            # Use created_at as shop_date (when saved in Miru)
-            shop_date = wa_row.get("created_at", "")[:10] if wa_row.get("created_at") else None
+            # Extract actual transaction date from receipt summary (DATE: line)
+            # This is more reliable than created_at (when saved in Miru)
+            shop_date = None
+            date_match = re.search(r'(?:^|\n)\s*DATE:\s*(.+?)(?:\n|$)', summary, re.IGNORECASE | re.MULTILINE)
+            if date_match:
+                raw_date = date_match.group(1).strip()
+                # Try to normalize the date
+                try:
+                    from miru.core.formatting import DateFormatter
+                    shop_date = DateFormatter.to_storage(raw_date)
+                    app.logger.info(f"[last-receipt] Extracted date from summary: {raw_date} → {shop_date}")
+                except Exception as e:
+                    # Fallback: try to parse it ourselves
+                    try:
+                        # Try common formats: DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD, etc.
+                        from datetime import datetime as _dt_parse
+                        for fmt in ["%d/%m/%Y", "%d/%m/%y", "%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d", "%d-%m-%Y"]:
+                            try:
+                                parsed = _dt_parse.strptime(raw_date, fmt)
+                                shop_date = parsed.strftime("%Y-%m-%d")
+                                app.logger.info(f"[last-receipt] Manual date parse: {raw_date} ({fmt}) → {shop_date}")
+                                break
+                            except ValueError:
+                                pass
+                    except Exception as parse_err:
+                        app.logger.debug(f"[last-receipt] Date parsing failed: {parse_err}")
+
+            # Fallback: use created_at (when saved in Miru) if no date found in receipt
+            if not shop_date:
+                shop_date = wa_row.get("created_at", "")[:10] if wa_row.get("created_at") else None
+                if shop_date:
+                    app.logger.info(f"[last-receipt] No DATE in summary, using created_at: {shop_date}")
+
             if not shop_date:
                 continue
 
@@ -10014,7 +10046,7 @@ def api_home_last_receipt():
             # Build full location from address lines
             full_location = " ".join(address_lines[:2]) if address_lines else ""  # Combine first 2 address lines
 
-            r = {
+            candidate = {
                 "id": wa_row.get("id"),
                 "merchant": merchant,
                 "total": total,
@@ -10022,8 +10054,23 @@ def api_home_last_receipt():
                 "items": items,
                 "location": full_location,  # Full address
                 "category": wa_row.get("category", "Other"),
+                "created_at": wa_row.get("created_at"),  # Keep for sorting fallback
             }
-            break  # Return first valid receipt found
+            candidates.append(candidate)
+            app.logger.info(f"[last-receipt] Candidate: {merchant} £{total} on {shop_date}")
+
+        # Sort candidates by shop_date (most recent first)
+        if candidates:
+            try:
+                from datetime import datetime as _dt_sort
+                candidates.sort(key=lambda c: _dt_sort.strptime(c.get("shop_date", "1900-01-01"), "%Y-%m-%d"), reverse=True)
+                r = candidates[0]  # Get the most recent receipt
+                app.logger.info(f"[last-receipt] Selected most recent receipt by transaction date: {r.get('merchant')} on {r.get('shop_date')}")
+            except Exception as sort_err:
+                app.logger.warning(f"[last-receipt] Sort failed: {sort_err}, using first candidate")
+                r = candidates[0]
+        else:
+            r = None
 
         if not r:
             app.logger.warning(f"[last-receipt] No receipt found for {from_number}")
