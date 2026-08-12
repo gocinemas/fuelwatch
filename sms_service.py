@@ -10056,13 +10056,36 @@ def api_home_last_receipt():
             if any(skip_cat in category for skip_cat in skip_categories):
                 continue
 
-            # Extract total (£ amount)
-            m_total = re.search(r'£([\d,]+\.?\d{0,2})', summary)
-            if not m_total:
+            # Extract total (£ amount) — look for "Amount Due", "Total", or last significant amount
+            total = None
+
+            # First try: Look for "Amount Due:" or "Total:" patterns
+            amount_patterns = [
+                r'Amount Due:\s*£?([\d,]+\.?\d{0,2})',
+                r'Total:\s*£?([\d,]+\.?\d{0,2})',
+                r'TOTAL:\s*£?([\d,]+\.?\d{0,2})',
+                r'Amount:\s*£?([\d,]+\.?\d{0,2})',
+            ]
+
+            for pattern in amount_patterns:
+                m = re.search(pattern, summary, re.IGNORECASE)
+                if m:
+                    total = float(m.group(1).replace(",", ""))
+                    app.logger.info(f"[last-receipt] Extracted total via pattern '{pattern}': £{total}")
+                    break
+
+            # Fallback: Get the LAST £ amount (usually the total at end of receipt)
+            if not total:
+                all_amounts = re.findall(r'£([\d,]+\.?\d{0,2})', summary)
+                if all_amounts:
+                    # Use the largest amount (most likely the total)
+                    amounts = [float(a.replace(",", "")) for a in all_amounts]
+                    total = max(amounts)
+                    app.logger.info(f"[last-receipt] Extracted total via largest amount: £{total}")
+
+            if not total:
                 # No amount found, skip
                 continue
-
-            total = float(m_total.group(1).replace(",", ""))
             if total <= 0:
                 continue
 
