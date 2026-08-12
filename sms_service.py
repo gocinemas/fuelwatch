@@ -14657,6 +14657,50 @@ def _rank_evening_saves(place_saves: list, content_saves: list, event_saves: lis
         return place_saves[:2] + content_saves[:1], events[:2]
 
 
+def _detect_major_events(today_date):
+    """
+    Detect major events happening today (eclipses, bank holidays, etc).
+    Returns list of event dicts: {emoji, title, description, priority}
+    """
+    events = []
+
+    # UK Solar eclipse — August 12, 2026 at 13:37 UTC (14:37 BST)
+    if today_date.year == 2026 and today_date.month == 8 and today_date.day == 12:
+        events.append({
+            "emoji": "🌑",
+            "title": "Solar Eclipse Today",
+            "description": "Partial solar eclipse visible from UK • Peak: 14:37 BST • Use eclipse glasses!",
+            "priority": 95,  # Very high — once in a lifetime event
+            "type": "astronomy"
+        })
+
+    # Future eclipses can be added here
+    # UK Bank holidays (2026)
+    bank_holidays_2026 = {
+        "2026-01-01": ("New Year's Day", 60),
+        "2026-04-10": ("Good Friday", 65),
+        "2026-04-13": ("Easter Monday", 65),
+        "2026-05-08": ("Early May Bank Holiday", 50),
+        "2026-05-25": ("Spring Bank Holiday", 50),
+        "2026-08-31": ("Summer Bank Holiday", 50),
+        "2026-12-25": ("Christmas Day", 70),
+        "2026-12-28": ("Boxing Day (observed)", 70),
+    }
+
+    today_iso = today_date.isoformat()
+    if today_iso in bank_holidays_2026:
+        name, priority = bank_holidays_2026[today_iso]
+        events.append({
+            "emoji": "🏛️",
+            "title": f"{name}",
+            "description": "Bank holiday — most places closed",
+            "priority": priority,
+            "type": "holiday"
+        })
+
+    return events
+
+
 def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, weather, now, active_trip=None, recent_saves=None):
     """
     Build AGENTIC brief using personal data & patterns + Intelligence insights.
@@ -14673,6 +14717,15 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
     try:
         insights = []
         priority_score = {}
+
+        # === MAJOR EVENTS (eclipses, holidays, etc) ===
+        major_events = _detect_major_events(now.date())
+        if major_events:
+            # Sort by priority and add top event
+            major_events.sort(key=lambda e: e.get("priority", 0), reverse=True)
+            top_event = major_events[0]
+            insights.insert(0, f"{top_event['emoji']} {top_event['title']}")
+            priority_score["major_event"] = top_event.get("priority", 90)
 
         # === EARLY RETURN: Check for must-do items ===
         # If user has active trip, that's #1
@@ -16831,9 +16884,13 @@ def api_home_brief():
         except:
             pass
 
+    # Detect major events (eclipses, bank holidays, etc)
+    _major_events = _detect_major_events(now.date())
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
+        "events":       _major_events,  # Major events like eclipses, bank holidays
         "evening_saves": _evening_chip_saves,
         "weekly_saves": _weekly_saves,
         "prefs":     prefs,
