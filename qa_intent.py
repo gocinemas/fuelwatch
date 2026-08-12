@@ -49,9 +49,14 @@ INTENT_PATTERNS = {
         "excluded": ["share", "position", "competitive"],
         "priority": 7,
     },
+    "acquisition": {
+        "required": ["acquisition", "acquire", "acquir", "m&a", "merge", "deal", "deal"],
+        "excluded": [],
+        "priority": 8,
+    },
     "strategy": {
-        "required": ["strategy", "acquisition", "acquire", "focus", "direction"],
-        "excluded": ["hiring", "talent", "recruitment", "employ", "headcount", "financial", "health"],
+        "required": ["strategy", "focus", "direction", "roadmap"],
+        "excluded": ["hiring", "talent", "recruitment", "employ", "headcount", "financial", "health", "acquisition"],
         "priority": 7,
     },
     "hiring": {
@@ -126,6 +131,10 @@ def get_answer_strategy(intent: str, question: str = "") -> list:
         ],
         "brands": [
             ("database", "query_brands"),
+            ("groq", "ask_groq"),
+        ],
+        "acquisition": [
+            ("database", "query_acquisition_strategy"),
             ("groq", "ask_groq"),
         ],
         "strategy": [

