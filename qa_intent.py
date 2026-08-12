@@ -34,6 +34,16 @@ INTENT_PATTERNS = {
         "excluded": ["market"],
         "priority": 8,
     },
+    "stock": {
+        "required": ["stock", "share price", "price", "why", "driver", "movement", "catalyst"],
+        "excluded": ["market", "share market"],
+        "priority": 7,
+    },
+    "growth": {
+        "required": ["growth", "pricing", "volume", "composition", "led", "driven"],
+        "excluded": ["hiring", "employee"],
+        "priority": 6,
+    },
     "geographic": {
         "required": ["country", "countries", "geographic", "region"],
         "excluded": ["share", "position", "competitive"],
@@ -133,6 +143,14 @@ def get_answer_strategy(intent: str, question: str = "") -> list:
         ],
         "hiring": [
             ("database", "query_hiring_strategy"),
+            ("groq", "ask_groq"),
+        ],
+        "stock": [
+            ("database", "query_stock_price_drivers"),
+            ("groq", "ask_groq"),
+        ],
+        "growth": [
+            ("database", "query_growth_composition"),
             ("groq", "ask_groq"),
         ],
         "geographic": [
