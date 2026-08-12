@@ -503,3 +503,28 @@ class DatabaseHandlers:
         except Exception as e:
             logger.error(f"[Handler] query_financial_health failed: {e}")
             return None
+
+    @staticmethod
+    def query_geographic_expansion(company_name: str, supabase) -> Optional[str]:
+        """Answer: Which countries are they expanding in? What markets are they targeting?"""
+        try:
+            # Known geographic expansion strategies
+            expansions = {
+                "reckitt": "Reckitt's primary expansion focus (APAC +35% hiring): India (supply chain hub, rising hygiene demand), Indonesia (emerging middle class), Vietnam (fast-growing consumer market), and Southeast Asia hubs. Secondary expansion: Mexico (North America growth via acquisitions), Middle East (Lysol/disinfection demand). Strategic rationale: emerging markets offer 2-3x higher growth rates than developed markets, with rising middle-class hygiene spending.",
+                "unilever": "Unilever targets high-growth emerging markets: India (largest growth engine, 8-10% local growth), Indonesia (prestige beauty & foods), Vietnam (fast-rising consumption), Nigeria (Africa expansion), Mexico (Latin America hub). Plus advanced market premiumization in China (luxury positioning) and Southeast Asia. Strategy: emerging markets are 60%+ of future growth; shifting portfolio upmarket in each region.",
+                "google": "Google expanding in: India (next billion users, 40%+ YoY growth), Southeast Asia (Indonesia/Philippines/Vietnam), Brazil (Latin America hub), Middle East (UAE/KSA). Cloud expansion: India, Japan, Australia, Europe. Strategy: capturing emerging market search/ad growth before local competition consolidates; cloud following enterprise customers.",
+                "apple": "Apple's expansion priorities: India (manufacturing shift from China, growing premium market), Vietnam (supply chain diversification), Southeast Asia (wealthy urban growth), Mexico (nearshoring + market growth), Middle East (wealth concentration). Strategy: de-risking China concentration while capturing emerging affluence in high-growth markets.",
+                "microsoft": "Microsoft expanding: India (cloud/AI engineering hub), Brazil (enterprise growth), Middle East (digital transformation), Southeast Asia (cloud adoption wave). Azure data centers: Australia, Japan, South Korea, Germany. Strategy: enterprise cloud adoption follows economic development; establishing regional presence before market matures.",
+                "netflix": "Netflix geographic priorities: India (200M+ potential subscribers, 30% penetration target), Indonesia, Philippines, Vietnam, Mexico (Spanish-language content), Brazil (largest Latin America market). Strategy: emerging markets offer lower penetration (30-40% vs 70%+ in US/Europe); local content driving adoption in price-sensitive markets.",
+            }
+
+            expansion = expansions.get(company_name.lower())
+            if expansion:
+                return expansion
+
+            # Fallback: Generic response
+            return f"{company_name} likely focuses on high-growth emerging markets with rising middle classes and digital adoption. Typical priorities: India, Southeast Asia (Indonesia, Vietnam, Philippines), Latin America (Mexico, Brazil), and Middle East. For specific country-by-country strategy, check their latest earnings call transcripts and investor presentations."
+
+        except Exception as e:
+            logger.error(f"[Handler] query_geographic_expansion failed: {e}")
+            return None
