@@ -409,9 +409,9 @@ class CompanyIntelligence:
         try:
             import os
             import requests
+            import library as lib
             from qa_intent import detect_intent, get_answer_strategy
             from qa_handlers import DatabaseHandlers
-            from sms_service import get_supabase
 
             # Step 1: Detect intent
             intent = detect_intent(question)
@@ -421,7 +421,7 @@ class CompanyIntelligence:
             strategy = get_answer_strategy(intent)
 
             # Step 3: Try handlers in order
-            supabase = get_supabase()
+            supabase = lib._sb()
             for source, handler_name in strategy:
                 if source == "database":
                     # Try database handler
