@@ -3885,14 +3885,88 @@
 
       const clipsData = await clipsResponse.json();
       if (clipsResponse.ok) {
-        alert('✅ Saved to My Saves!');
-        return cmData.save_id || clipsData.id;
+        const saveId = cmData.save_id || clipsData.id;
+
+        // Show "Did you like it?" prompt for wines, restaurants, activities
+        const likeableCategories = ['wine', 'wines', 'restaurant', 'restaurants', 'cafe', 'pub', 'bar', 'activity', 'activities', 'place', 'places'];
+        if (likeableCategories.some(cat => category.toLowerCase().includes(cat))) {
+          _showLikePrompt(saveId, title, category, token);
+        } else {
+          alert('✅ Saved to My Saves!');
+        }
+        return saveId;
       } else {
         alert('❌ Save failed');
       }
     } catch (err) {
       console.error('Save error:', err);
       alert('❌ Error: ' + err.message);
+    }
+  }
+
+  async function _showLikePrompt(saveId, title, category, token) {
+    """Show 'Did you like it?' prompt and store response."""
+    return new Promise((resolve) => {
+      // Create modal
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); display: flex; align-items: flex-end;
+        z-index: 9999; justify-content: center;
+      `;
+
+      const sheet = document.createElement('div');
+      sheet.style.cssText = `
+        background: var(--surface); width: 100%; max-width: 480px;
+        border-radius: 20px 20px 0 0; padding: 24px 16px;
+        border: 1px solid var(--border);
+      `;
+
+      sheet.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px">
+          <div style="font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px">Did you like it?</div>
+          <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px">${title.substring(0, 40)}</div>
+          <div style="display: flex; gap: 8px; justify-content: center">
+            <button onclick="this.parentElement.parentElement.parentElement.parentElement.remove(); _saveLikeResponse('${saveId}', '${token}', true)" style="flex: 1; padding: 10px; background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px">👍 Yes</button>
+            <button onclick="this.parentElement.parentElement.parentElement.parentElement.remove(); _saveLikeResponse('${saveId}', '${token}', false)" style="flex: 1; padding: 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px">👎 No</button>
+            <button onclick="this.parentElement.parentElement.parentElement.parentElement.remove();" style="flex: 1; padding: 10px; background: var(--bg); color: var(--muted); border: 1px solid var(--border); border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px">⊘ Skip</button>
+          </div>
+        </div>
+      `;
+
+      modal.appendChild(sheet);
+      document.body.appendChild(modal);
+    });
+  }
+
+  async function _saveLikeResponse(saveId, token, liked) {
+    """Send like/dislike response to backend."""
+    try {
+      const response = await fetch('/api/save/rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          save_id: saveId,
+          liked: liked
+        })
+      });
+
+      if (response.ok) {
+        const msg = liked ? '❤️ Liked! We\'ll suggest similar things' : '👍 Noted! Won\'t suggest this again';
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+          position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+          background: var(--surface); color: var(--text); padding: 12px 20px;
+          border: 1px solid var(--border); border-radius: 12px; z-index: 10000;
+          font-size: 13px; font-weight: 600;
+        `;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
+      }
+    } catch (err) {
+      console.error('Rate error:', err);
     }
   }
 

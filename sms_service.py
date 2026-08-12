@@ -14685,6 +14685,9 @@ def _categorize_and_surface_saves(saves_list, hour, loc_str, has_location):
     Categorize saves (wines, restaurants, activities, events) and surface
     relevant ones based on time of day and location.
 
+    IMPORTANT: Only surface saves where liked === true (user explicitly liked it)
+    This avoids creepy product stalking.
+
     Returns: {"wines": [...], "restaurants": [...], "activities": [...], "proactive": [...]}
     """
     if not saves_list:
@@ -14705,6 +14708,13 @@ def _categorize_and_surface_saves(saves_list, hour, loc_str, has_location):
     event_keywords = ["event", "concert", "festival", "show", "exhibition", "match", "game", "performance", "theatre", "theater"]
 
     for save in saves_list:
+        # CRITICAL: Only surface if user explicitly said they liked it
+        # liked=None → reference save (don't suggest)
+        # liked=False → user said no (don't suggest)
+        # liked=True → user said yes (SURFACE)
+        if save.get("liked") is not True:
+            continue
+
         title = (save.get("title") or "").lower()
         category = (save.get("category") or "").lower()
         summary = (save.get("summary") or "").lower()
@@ -38826,6 +38836,54 @@ def api_save_interact():
     except Exception as e:
         print(f"❌ Interact save error: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/save/rate", methods=["POST"])
+def api_save_rate():
+    """Rate a save (liked/disliked) for proactive recommendations."""
+    try:
+        token = request.json.get("token", "").strip()
+        from_number = _v2_resolve(token)
+        if not from_number:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        save_id = request.json.get("save_id")
+        liked = request.json.get("liked")  # true/false
+
+        if not save_id or liked is None:
+            return jsonify({"error": "Missing save_id or liked field"}), 400
+
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+        sb = lib._sb()
+
+        # Update both user_saves_v2 and wa_saves with the liked field
+        try:
+            sb.table("user_saves_v2").update({
+                "liked": liked,
+                "rating_timestamp": "now()"
+            }).eq("id", save_id).execute()
+        except:
+            pass  # May not exist in user_saves_v2
+
+        try:
+            sb.table("wa_saves").update({
+                "liked": liked,
+                "rating_timestamp": "now()"
+            }).eq("id", save_id).execute()
+        except:
+            pass  # May not exist in wa_saves
+
+        app.logger.info(f"[save-rate] User {phone_clean} rated save {save_id}: liked={liked}")
+
+        return jsonify({
+            "success": True,
+            "message": f"✓ {'Added to favorites' if liked else 'Noted'} - we\'ll use this for recommendations"
+        })
+
+    except Exception as e:
+        app.logger.warning(f"[save-rate] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/saves")
 def saves_dashboard():
