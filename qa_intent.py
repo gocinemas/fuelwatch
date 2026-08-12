@@ -29,25 +29,25 @@ INTENT_PATTERNS = {
         "excluded": ["market", "share", "revenue", "price", "cost"],
         "priority": 8,
     },
-    "strategy": {
-        "required": ["strategy", "acquisition", "acquire", "growth", "focus", "direction"],
-        "excluded": ["hiring", "talent", "recruitment", "employ", "headcount"],
-        "priority": 7,
-    },
     "financial": {
-        "required": ["revenue", "margin", "profit", "ebitda", "earnings", "cash", "financial", "health", "trajectory", "growth", "fcf", "dividend"],
+        "required": ["revenue", "margin", "profit", "ebitda", "earnings", "cash", "financial", "health", "trajectory", "fcf", "dividend"],
         "excluded": ["market"],
-        "priority": 6,
-    },
-    "hiring": {
-        "required": ["hiring", "employ", "headcount", "workforce", "staff", "team", "talent", "recruitment", "expand", "reduce", "trending"],
-        "excluded": [],
-        "priority": 6,
+        "priority": 8,
     },
     "geographic": {
-        "required": ["country", "countries", "expand", "geographic", "region", "market", "which"],
+        "required": ["country", "countries", "geographic", "region"],
         "excluded": ["share", "position", "competitive"],
-        "priority": 5,
+        "priority": 7,
+    },
+    "strategy": {
+        "required": ["strategy", "acquisition", "acquire", "focus", "direction"],
+        "excluded": ["hiring", "talent", "recruitment", "employ", "headcount", "financial", "health"],
+        "priority": 7,
+    },
+    "hiring": {
+        "required": ["hiring", "employ", "headcount", "workforce", "staff", "team", "talent", "recruitment", "trending"],
+        "excluded": ["country", "countries", "geographic"],
+        "priority": 6,
     },
     "general": {
         "required": ["tell", "about", "what", "who", "how"],
