@@ -31,7 +31,7 @@ INTENT_PATTERNS = {
     },
     "strategy": {
         "required": ["strategy", "acquisition", "acquire", "growth", "focus", "direction"],
-        "excluded": [],
+        "excluded": ["hiring", "talent", "recruitment", "employ", "headcount"],
         "priority": 7,
     },
     "financial": {
@@ -42,7 +42,7 @@ INTENT_PATTERNS = {
     "hiring": {
         "required": ["hiring", "employ", "headcount", "workforce", "staff", "team", "talent", "recruitment", "expand", "reduce", "trending"],
         "excluded": [],
-        "priority": 5,
+        "priority": 6,
     },
     "general": {
         "required": ["tell", "about", "what", "who", "how"],
