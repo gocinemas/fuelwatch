@@ -3905,7 +3905,7 @@
   }
 
   async function _showLikePrompt(saveId, title, category, token) {
-    """Show 'Did you like it?' prompt and store response."""
+    // Show 'Did you like it?' prompt and store response
     return new Promise((resolve) => {
       // Create modal
       const modal = document.createElement('div');
@@ -3940,7 +3940,7 @@
   }
 
   async function _saveLikeResponse(saveId, token, liked) {
-    """Send like/dislike response to backend."""
+    // Send like/dislike response to backend
     try {
       const response = await fetch('/api/save/rate', {
         method: 'POST',
