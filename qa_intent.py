@@ -35,7 +35,7 @@ INTENT_PATTERNS = {
         "priority": 7,
     },
     "financial": {
-        "required": ["revenue", "margin", "profit", "ebitda", "earnings", "cash"],
+        "required": ["revenue", "margin", "profit", "ebitda", "earnings", "cash", "financial", "health", "trajectory", "growth", "fcf", "dividend"],
         "excluded": ["market"],
         "priority": 6,
     },
@@ -119,7 +119,7 @@ def get_answer_strategy(intent: str, question: str = "") -> list:
             ("groq", "ask_groq"),
         ],
         "financial": [
-            ("database", "query_financial_metrics"),
+            ("database", "query_financial_health"),
             ("groq", "ask_groq"),
         ],
         "market_share": [
