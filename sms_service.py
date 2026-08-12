@@ -14736,20 +14736,20 @@ def _categorize_and_surface_saves(saves_list, hour, loc_str, has_location):
     if has_location and loc_str:
         # Suggest restaurants at meal times
         if 11 <= hour < 13:  # Lunch
-            proactive.extend([s for s in categorized["restaurants"][:2] if "lunch" not in search_text.lower() or "casual" in search_text.lower()])
+            proactive.extend(categorized["restaurants"][:2])
         elif 17 <= hour < 20:  # Dinner
-            proactive.extend([s for s in categorized["restaurants"][:2]])
+            proactive.extend(categorized["restaurants"][:2])
 
         # Suggest activities in afternoon/evening
         if 14 <= hour < 18:  # Afternoon
-            proactive.extend([s for s in categorized["activities"][:2]])
+            proactive.extend(categorized["activities"][:2])
         elif 18 <= hour < 22:  # Evening
-            proactive.extend([s for s in categorized["wines"][:1]])  # Evening wine
-            proactive.extend([s for s in categorized["activities"][:1]])
+            proactive.extend(categorized["wines"][:1])  # Evening wine
+            proactive.extend(categorized["activities"][:1])
 
         # Events in evening
         if 18 <= hour < 23:
-            proactive.extend([s for s in categorized["events"][:1]])
+            proactive.extend(categorized["events"][:1])
 
     categorized["proactive"] = proactive[:3]  # Max 3 proactive suggestions
     return categorized
