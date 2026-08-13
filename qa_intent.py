@@ -74,6 +74,11 @@ INTENT_PATTERNS = {
         "excluded": ["country", "countries", "geographic"],
         "priority": 6,
     },
+    "swot": {
+        "required": ["swot", "strength", "weakness", "opportunity", "threat"],
+        "excluded": [],
+        "priority": 9,
+    },
     "general": {
         "required": ["tell", "about", "what", "who", "how"],
         "excluded": [],
@@ -182,6 +187,10 @@ def get_answer_strategy(intent: str, question: str = "") -> list:
         ],
         "geographic": [
             ("database", "query_geographic_expansion"),
+            ("groq", "ask_groq"),
+        ],
+        "swot": [
+            ("database", "query_swot"),
             ("groq", "ask_groq"),
         ],
         "general": [

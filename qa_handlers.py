@@ -662,3 +662,225 @@ class DatabaseHandlers:
         except Exception as e:
             logger.error(f"[Handler] query_competitor_comparison failed: {e}")
             return None
+
+    @staticmethod
+    def query_swot(company_name: str, supabase) -> Optional[str]:
+        """Answer: What is their SWOT analysis (Strengths, Weaknesses, Opportunities, Threats)?"""
+        try:
+            # SWOT Analysis for known companies
+            swot_data = {
+                "reckitt": {
+                    "strengths": [
+                        "🏆 Global hygiene & home care leader (rank #2 in FMCG)",
+                        "🎯 Iconic, trusted brands with pricing power (Dettol, Lysol, Airwick)",
+                        "📈 Strong emerging market presence (+35% hiring in APAC)",
+                        "💪 High profit margins (38%), superior to diversified competitors",
+                        "🤖 Investing in AI/automation to drive margin expansion"
+                    ],
+                    "weaknesses": [
+                        "❌ Smaller scale vs Unilever (3.5x smaller by revenue)",
+                        "📉 Less diversified portfolio = category concentration risk",
+                        "💰 Higher cost exposure in mature markets (UK/US declining)",
+                        "🔧 Supply chain complexity in emerging markets",
+                        "📊 Lower brand awareness in developing countries vs global leaders"
+                    ],
+                    "opportunities": [
+                        "🌍 Emerging market expansion (India, Indonesia, Brazil)",
+                        "💰 Acquisition of regional hygiene brands to build scale",
+                        "🏥 Health & wellness category expansion post-COVID",
+                        "♻️ Sustainability positioning = premium pricing in Western markets",
+                        "🛒 Direct-to-consumer via e-commerce (Amazon, Flipkart)"
+                    ],
+                    "threats": [
+                        "💥 Commodity inflation (oil, resin prices for plastic)",
+                        "🏢 Competition from Unilever's scale & distribution",
+                        "🇨🇳 Chinese private label hygiene brands in APAC",
+                        "📉 Mature market declines (UK/EU volume pressured)",
+                        "🚫 Regulatory pressure on plastic packaging"
+                    ]
+                },
+                "unilever": {
+                    "strengths": [
+                        "👑 #1 FMCG global leader by scale (£60B revenue)",
+                        "🎨 Unmatched portfolio: 100+ brands across beauty, home care, foods",
+                        "🌐 Unbeatable global distribution (180+ countries)",
+                        "💚 Sustainability leadership positioning (Dove, Ben & Jerry's)",
+                        "💵 Strong recurring revenue model (foods + beauty bundles)"
+                    ],
+                    "weaknesses": [
+                        "📉 Organic growth lagging specialists (3-5% vs Reckitt 5-7%)",
+                        "🔀 Portfolio dilution = lower margins (14% operating vs Reckitt 38%)",
+                        "🇬🇧 Mature market exposure (UK/US declining 2-3% annually)",
+                        "🐢 Slower decision-making due to scale & bureaucracy",
+                        "📊 Brand proliferation = complexity & overlapping sales"
+                    ],
+                    "opportunities": [
+                        "💄 Premium beauty expansion (luxury acquisitions like Cerave)",
+                        "🌱 Plant-based & sustainable product growth",
+                        "🇮🇳 India/Southeast Asia emerging market penetration",
+                        "📦 Margin recovery via portfolio optimization (divest low-margin brands)",
+                        "🎯 DTC digital transformation (direct to consumer via Shopify, Amazon)"
+                    ],
+                    "threats": [
+                        "🔪 Reckitt's specialized focus winning market share",
+                        "🏪 Private label retailers gaining share in foods category",
+                        "💹 Commodity cost inflation (cocoa, palm oil, sugar)",
+                        "🌍 Emerging market currency volatility (India rupee, Brazil real)",
+                        "📱 Social media backlash on sustainability claims (greenwashing risk)"
+                    ]
+                },
+                "google": {
+                    "strengths": [
+                        "🔍 Search monopoly: 92% market share, $175B annual revenue",
+                        "💰 Advertising duopoly with Meta (60% of global digital ads)",
+                        "🤖 Best-in-class AI/ML infrastructure (Gemini, TPU chips)",
+                        "☁️ Cloud growth (26% YoY, Azure catching up but Google improving)",
+                        "📱 Android ecosystem: 2B+ monthly users"
+                    ],
+                    "weaknesses": [
+                        "⚠️ Search moat vulnerable to ChatGPT cannibalization",
+                        "😤 Regulatory pressure (DOJ antitrust suit ongoing)",
+                        "☁️ Cloud #3 behind AWS & Azure (market share losses)",
+                        "📉 YouTube ad slowdown in economic downturns",
+                        "🔐 Privacy regulation (GDPR, iOS tracking limits) impacting ad targeting"
+                    ],
+                    "opportunities": [
+                        "🤖 AI search transformation (Gemini integration)",
+                        "☁️ Enterprise cloud expansion with AI workloads",
+                        "📺 YouTube Shorts monetization (competing with TikTok)",
+                        "💬 Gemini API enterprise adoption",
+                        "🏥 Healthcare AI (medical imaging, drug discovery via DeepMind)"
+                    ],
+                    "threats": [
+                        "💥 ChatGPT/OpenAI disrupting search model",
+                        "⚖️ DOJ antitrust could force structural break-up",
+                        "🇨🇳 China's Baidu/Tencent AI advancement",
+                        "📱 iOS changes reducing ad targeting effectiveness",
+                        "🚫 Regulatory bans in EU (AI Act compliance costs)"
+                    ]
+                },
+                "apple": {
+                    "strengths": [
+                        "👑 Premium brand lock-in: ecosystem of iPhone/Mac/Watch/AirPods",
+                        "💎 Pricing power: £1000+ iPhones accepted by affluent consumers",
+                        "💰 Services recurring revenue ($85B+ ARR, 30%+ margins)",
+                        "🏭 Vertical integration (in-house chips = M3/M4 outperforming)",
+                        "📈 Net margin leader: 28% (highest in consumer tech)"
+                    ],
+                    "weaknesses": [
+                        "🔒 Ecosystem lock-in = customer service complaints (repair costs)",
+                        "🇨🇳 China dependency: 20% revenue, 90% production in China",
+                        "📱 Hardware growth slowing (mature smartphone market)",
+                        "🤔 AI capabilities lagging vs Microsoft/Google (no Copilot equivalent)",
+                        "🔋 Battery/repairability criticism (right-to-repair campaigns)"
+                    ],
+                    "opportunities": [
+                        "🤖 AI on-device integration (Siri enhancement via Gemini-like tech)",
+                        "⌚ Wearables expansion (health monitoring, vision pro metaverse)",
+                        "🏥 Healthcare services (ECG, blood oxygen partnerships with hospitals)",
+                        "🇮🇳 India market expansion (lower-cost iPhone SE variants)",
+                        "💳 Fintech (Apple Card, Apple Pay expansion in emerging markets)"
+                    ],
+                    "threats": [
+                        "🔴 Regulatory pressure on App Store (40% commission scrutiny)",
+                        "🇨🇳 Geopolitical risk (US-China chip war, India alternatives)",
+                        "📉 Smartphone saturation in developed markets",
+                        "🤖 AI commoditization (every phone getting AI, margins compress)",
+                        "⚖️ EU regulations forcing USB-C, sideloading (reducing ecosystem value)"
+                    ]
+                },
+                "netflix": {
+                    "strengths": [
+                        "📺 Streaming leader: 270M subscribers, best tech platform",
+                        "🎬 Original content excellence (Emmy wins, cultural hits)",
+                        "💵 Profitability leader: 27% net margin (Disney+/Prime lose money)",
+                        "📈 Ad tier growth: Ads+ tier growing 40%+ YoY",
+                        "🌐 Global expansion: available in 190+ countries"
+                    ],
+                    "weaknesses": [
+                        "📉 Subscriber growth plateauing in developed markets",
+                        "💸 Content spend rising (£20B annually, inflation pressure)",
+                        "🎬 Hit dependency (few mega-hits carry whole platform)",
+                        "📱 Mobile-first viewers = lower willingness to pay",
+                        "🚫 Password sharing crackdown alienating some users"
+                    ],
+                    "opportunities": [
+                        "🎮 Gaming expansion (game streaming via Netflix Games)",
+                        "📱 Mobile device bundling (telcos, mobile operators)",
+                        "🎭 Live events (comedy, sports, award shows = premium pricing)",
+                        "💰 Tier expansion: cheaper ad-supported + premium tiers",
+                        "🌍 Emerging market penetration (India mobile-first pricing)"
+                    ],
+                    "threats": [
+                        "👑 Disney+ bundle war (Disney+/ESPN+/Hulu bundle $14.99)",
+                        "🎬 Hollywood strikes increasing content costs",
+                        "🔴 Amazon Prime Video aggressive content spending",
+                        "📺 Linear TV cannibalization fear from studios",
+                        "🚫 Regulatory scrutiny on market power (EU investigating)"
+                    ]
+                },
+                "microsoft": {
+                    "strengths": [
+                        "💼 Enterprise dominance: 95%+ Office/Windows market share",
+                        "🤖 AI leadership: Copilot integration across Office/GitHub",
+                        "☁️ Azure growth: 28% YoY, gaining vs AWS",
+                        "💻 Developer ecosystem: GitHub (15M+ developers), VSCode",
+                        "💰 Net margin: 39%, recurring SaaS revenue model"
+                    ],
+                    "weaknesses": [
+                        "🏢 Legacy Windows/Office business declining in emerging markets",
+                        "☁️ Still #3 in cloud (AWS 32%, Azure 23%, Google Cloud 11%)",
+                        "📱 Mobile weakness: Windows Phone dead, limited mobile presence",
+                        "🎮 Gaming underperforming vs Sony (PlayStation more profitable)",
+                        "🇪🇺 Regulatory pressure (EU antitrust, AI guardrails)"
+                    ],
+                    "opportunities": [
+                        "🤖 Copilot enterprise expansion (Office, Dynamics, Teams monetization)",
+                        "☁️ AI workloads cloud growth (companies training models on Azure)",
+                        "🎮 Xbox Game Pass expanding (subscription model working)",
+                        "🏥 Healthcare cloud (medical records, pharma research via Azure)",
+                        "🇮🇳 Emerging market cloud expansion (lower-cost Azure regions)"
+                    ],
+                    "threats": [
+                        "☁️ AWS price wars compressing margins",
+                        "🤖 Google Gemini/Claude advancing faster in some domains",
+                        "📉 PC market saturation reducing Windows revenue",
+                        "🇨🇳 China's homegrown alternatives (Alibaba Cloud, Tencent Cloud)",
+                        "⚖️ Potential EU breakup if antitrust escalates"
+                    ]
+                }
+            }
+
+            swot = swot_data.get(company_name.lower())
+            if swot:
+                return f"""
+**SWOT ANALYSIS: {company_name.upper()}**
+
+💪 **STRENGTHS**
+{chr(10).join('• ' + s for s in swot['strengths'])}
+
+❌ **WEAKNESSES**
+{chr(10).join('• ' + w for w in swot['weaknesses'])}
+
+🚀 **OPPORTUNITIES**
+{chr(10).join('• ' + o for o in swot['opportunities'])}
+
+⚡ **THREATS**
+{chr(10).join('• ' + t for t in swot['threats'])}
+"""
+
+            # Fallback: Generic response
+            return f"""**SWOT ANALYSIS: {company_name}**
+
+To perform a complete SWOT analysis for {company_name}, consider:
+
+💪 **Strengths**: What competitive advantages? (brand, technology, scale, profitability)
+❌ **Weaknesses**: What vulnerabilities? (dependence, regulation, legacy business)
+🚀 **Opportunities**: Growth vectors? (new markets, adjacent categories, M&A targets)
+⚡ **Threats**: Competitive/regulatory risks? (disruption, commoditization, regulation)
+
+For detailed analysis, review their latest earnings reports and competitive positioning."""
+
+        except Exception as e:
+            logger.error(f"[Handler] query_swot failed: {e}")
+            return None

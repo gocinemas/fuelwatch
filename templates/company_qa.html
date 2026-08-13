@@ -884,6 +884,48 @@
             </div>
         </div>
 
+        <!-- SWOT Analysis Section -->
+        <div id="swotSection" style="display: none; margin-top: 20px;">
+            <div style="background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 14px; font-weight: 600;">
+                    ⚡ SWOT Analysis
+                </div>
+                <div style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <!-- Strengths -->
+                    <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; border-radius: 8px;">
+                        <div style="font-size: 14px; font-weight: 700; color: #166534; margin-bottom: 12px;">💪 Strengths</div>
+                        <ul id="swotStrengths" style="list-style: none; padding: 0; margin: 0; font-size: 13px; color: #374151; line-height: 1.8;">
+                            <li>—</li>
+                        </ul>
+                    </div>
+
+                    <!-- Weaknesses -->
+                    <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 8px;">
+                        <div style="font-size: 14px; font-weight: 700; color: #7f1d1d; margin-bottom: 12px;">❌ Weaknesses</div>
+                        <ul id="swotWeaknesses" style="list-style: none; padding: 0; margin: 0; font-size: 13px; color: #374151; line-height: 1.8;">
+                            <li>—</li>
+                        </ul>
+                    </div>
+
+                    <!-- Opportunities -->
+                    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px;">
+                        <div style="font-size: 14px; font-weight: 700; color: #92400e; margin-bottom: 12px;">🚀 Opportunities</div>
+                        <ul id="swotOpportunities" style="list-style: none; padding: 0; margin: 0; font-size: 13px; color: #374151; line-height: 1.8;">
+                            <li>—</li>
+                        </ul>
+                    </div>
+
+                    <!-- Threats -->
+                    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px;">
+                        <div style="font-size: 14px; font-weight: 700; color: #1e40af; margin-bottom: 12px;">⚡ Threats</div>
+                        <ul id="swotThreats" style="list-style: none; padding: 0; margin: 0; font-size: 13px; color: #374151; line-height: 1.8;">
+                            <li>—</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Dig Deeper CTA -->
         <div class="cta-section" id="ctaSection" style="display: none;">
             <div class="cta-title">Want deeper insights?</div>
@@ -1211,6 +1253,7 @@
                 // Load additional data sections
                 await loadMAActivity();
                 await loadHiringTrends();
+                await loadSWOT(company);
 
                 // Draw charts
                 setTimeout(() => {
@@ -1656,6 +1699,74 @@
         function handleQuestionKeypress(event) {
             if (event.key === 'Enter') {
                 askQuestion();
+            }
+        }
+
+        async function loadSWOT(company) {
+            if (!company) return;
+
+            try {
+                const response = await fetch('/api/company/answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company: company,
+                        question: `What is the SWOT analysis for ${company}?`
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.answer) {
+                    document.getElementById('swotSection').style.display = 'none';
+                    return;
+                }
+
+                // Parse SWOT from response
+                const answer = data.answer;
+                const swotMatch = answer.match(/💪 \*\*STRENGTHS\*\*([\s\S]*?)❌ \*\*WEAKNESSES\*\*([\s\S]*?)🚀 \*\*OPPORTUNITIES\*\*([\s\S]*?)⚡ \*\*THREATS\*\*([\s\S]*?)(?=$|##)/);
+
+                if (!swotMatch) {
+                    document.getElementById('swotSection').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('swotSection').style.display = 'block';
+
+                // Extract and parse each section
+                const parseItems = (text) => {
+                    return text
+                        .split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.startsWith('•') && line.length > 1)
+                        .map(line => line.substring(2).trim());
+                };
+
+                const strengths = parseItems(swotMatch[1]);
+                const weaknesses = parseItems(swotMatch[2]);
+                const opportunities = parseItems(swotMatch[3]);
+                const threats = parseItems(swotMatch[4]);
+
+                // Populate sections
+                document.getElementById('swotStrengths').innerHTML = strengths.length > 0
+                    ? strengths.map(item => `<li>• ${item}</li>`).join('')
+                    : '<li>—</li>';
+
+                document.getElementById('swotWeaknesses').innerHTML = weaknesses.length > 0
+                    ? weaknesses.map(item => `<li>• ${item}</li>`).join('')
+                    : '<li>—</li>';
+
+                document.getElementById('swotOpportunities').innerHTML = opportunities.length > 0
+                    ? opportunities.map(item => `<li>• ${item}</li>`).join('')
+                    : '<li>—</li>';
+
+                document.getElementById('swotThreats').innerHTML = threats.length > 0
+                    ? threats.map(item => `<li>• ${item}</li>`).join('')
+                    : '<li>—</li>';
+
+            } catch (error) {
+                console.error('Error loading SWOT:', error);
+                document.getElementById('swotSection').style.display = 'none';
             }
         }
 
