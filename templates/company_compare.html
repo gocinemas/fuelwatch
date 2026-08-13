@@ -476,6 +476,7 @@
             border-left: 4px solid #dc2626;
         }
 
+        /* ===== RESPONSIVE MEDIA QUERIES ===== */
         @media (max-width: 1024px) {
             .comparison {
                 grid-template-columns: 1fr;
@@ -483,6 +484,266 @@
 
             .comparison-row {
                 grid-template-columns: 150px 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .header {
+                padding: 16px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .header p {
+                font-size: 12px;
+            }
+
+            .company-chips {
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-top: 12px;
+            }
+
+            .chip {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+
+            .chip-remove {
+                margin-left: 6px;
+            }
+
+            .chip-add {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            #exportSection {
+                flex-direction: column !important;
+                gap: 8px !important;
+            }
+
+            #exportSection button {
+                width: 100%;
+                padding: 12px !important;
+                font-size: 13px !important;
+            }
+
+            .company-card {
+                margin-bottom: 12px;
+            }
+
+            .company-header {
+                padding: 16px;
+            }
+
+            .company-header h2 {
+                font-size: 18px;
+            }
+
+            .company-header p {
+                font-size: 12px;
+                margin-bottom: 6px;
+            }
+
+            .company-sector {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+
+            .company-body {
+                padding: 12px;
+            }
+
+            .metric-row {
+                padding: 8px 0;
+                border-bottom: 1px solid #f3f4f6;
+            }
+
+            .metric-label {
+                font-size: 11px;
+            }
+
+            .metric-value {
+                font-size: 13px;
+            }
+
+            .metric-meta {
+                font-size: 10px;
+            }
+
+            /* Table optimization for mobile */
+            .metrics-table {
+                font-size: 11px;
+                width: 100%;
+            }
+
+            .metrics-table thead th {
+                padding: 8px 4px;
+                font-size: 11px;
+            }
+
+            .metrics-table tbody td {
+                padding: 6px 4px;
+                font-size: 11px;
+            }
+
+            .metric-name {
+                max-width: 120px;
+                font-size: 10px !important;
+            }
+
+            .metric-name > div {
+                font-size: 9px !important;
+            }
+
+            /* Modal optimization */
+            .add-company-modal .add-company-content {
+                width: 95vw;
+                max-height: 80vh;
+                padding: 16px;
+            }
+
+            .add-company-modal h2 {
+                font-size: 16px;
+            }
+
+            .add-company-modal input {
+                font-size: 16px;
+                padding: 10px;
+            }
+
+            .company-option {
+                padding: 8px;
+                font-size: 13px;
+            }
+
+            .add-company-buttons {
+                gap: 6px;
+            }
+
+            .btn-cancel,
+            .btn-add {
+                padding: 10px !important;
+                font-size: 13px !important;
+            }
+
+            /* Legend adjustments */
+            .legend-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .legend-item {
+                padding: 8px;
+            }
+
+            .legend-icon {
+                font-size: 20px;
+            }
+
+            .legend-label {
+                font-size: 12px;
+            }
+
+            .legend-desc {
+                font-size: 11px;
+            }
+
+            /* Charts on mobile */
+            #growthChart,
+            #marginChart {
+                height: 40px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            .header {
+                padding: 12px;
+            }
+
+            h1 {
+                font-size: 18px;
+            }
+
+            .header p {
+                font-size: 11px;
+            }
+
+            .company-header {
+                padding: 12px;
+            }
+
+            .company-header h2 {
+                font-size: 16px;
+            }
+
+            .company-header p {
+                font-size: 11px;
+            }
+
+            .company-body {
+                padding: 10px;
+            }
+
+            .metric-label {
+                font-size: 10px;
+            }
+
+            .metric-value {
+                font-size: 12px;
+            }
+
+            .metrics-table {
+                font-size: 10px;
+            }
+
+            .metrics-table thead th {
+                padding: 6px 2px;
+                font-size: 9px;
+            }
+
+            .metrics-table tbody td {
+                padding: 4px 2px;
+                font-size: 10px;
+            }
+
+            .metric-name {
+                max-width: 90px;
+                font-size: 9px !important;
+            }
+
+            .metric-name > div {
+                display: none;
+            }
+
+            /* Legend stacked on small screens */
+            .legend-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Heatmap smaller */
+            .metric-heat {
+                gap: 4px;
+            }
+
+            .heat-sample {
+                font-size: 10px;
+                padding: 4px 6px;
             }
         }
     </style>

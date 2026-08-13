@@ -477,6 +477,165 @@
                 background-position: -200% 0;
             }
         }
+
+        /* ===== MOBILE OPTIMIZATION ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .header {
+                padding: 16px;
+                margin-bottom: 12px;
+            }
+
+            .company-title {
+                font-size: 22px;
+            }
+
+            .search-box {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .search-box input,
+            .search-box button {
+                width: 100%;
+                font-size: 16px;
+                padding: 12px 14px;
+            }
+
+            .basics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 8px;
+            }
+
+            #suggestedQuestionsContainer {
+                padding: 12px !important;
+                grid-template-columns: 1fr !important;
+                gap: 8px !important;
+            }
+
+            .suggested-q-btn {
+                padding: 10px 12px !important;
+                font-size: 12px !important;
+            }
+
+            .qa-input-area {
+                flex-direction: column;
+                gap: 8px;
+                padding: 12px 16px;
+            }
+
+            .qa-input-area input,
+            .qa-input-area button {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+            }
+
+            .qa-input-area button {
+                min-width: unset;
+                padding: 12px 16px;
+            }
+
+            .messages {
+                padding: 12px;
+                gap: 8px;
+            }
+
+            .message-content {
+                max-width: 95%;
+                font-size: 13px;
+                padding: 10px 12px;
+            }
+
+            .qa-header {
+                padding: 12px 16px;
+                font-size: 13px;
+            }
+
+            /* Modal adjustments */
+            #requestModalOuter > div {
+                width: 95% !important;
+                padding: 20px !important;
+            }
+
+            /* Table scrolling on mobile */
+            .metrics-table {
+                font-size: 11px !important;
+            }
+
+            .metrics-table th,
+            .metrics-table td {
+                padding: 6px !important;
+            }
+
+            /* Charts should be smaller on mobile */
+            #growthChart,
+            #marginChart {
+                height: 40px !important;
+            }
+
+            /* Reduce section spacing */
+            #qaSection,
+            #knowledgeBaseSection,
+            #competitorSection,
+            #newsSection,
+            #maActivitySection,
+            #hiringTrendsSection,
+            #chartsSection {
+                margin-top: 12px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            .header {
+                padding: 12px;
+            }
+
+            .company-title {
+                font-size: 18px;
+            }
+
+            .company-meta {
+                font-size: 11px;
+            }
+
+            .search-box input::placeholder,
+            .qa-input-area input::placeholder {
+                font-size: 12px;
+            }
+
+            .qa-input-area button {
+                padding: 10px 12px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            .message-content {
+                max-width: 98%;
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+
+            .loading {
+                font-size: 11px;
+            }
+
+            .dot {
+                width: 6px;
+                height: 6px;
+            }
+        }
     </style>
 </head>
 <body>
