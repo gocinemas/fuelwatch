@@ -15505,6 +15505,10 @@ def api_home_brief():
         saves_for_prompt = other_content[:3] + place_saves_unvisited[:2]
         event_context    = [_event_label(s) for s in event_saves[:1]]
 
+    # CRITICAL: Only include saves where user said they liked it (liked=true)
+    # Reference saves (liked=None/False) are NOT for suggestion
+    saves_for_prompt = [s for s in saves_for_prompt if s.get("liked") is True]
+
     # Filter alcohol/wine from morning briefs (before 12pm)
     alcohol_keywords = ["wine", "beer", "alcohol", "cocktail", "whisky", "vodka", "gin", "rum", "brandy", "champagne", "prosecco", "sangria", "sauvignon", "pinot", "cabernet", "merlot", "chardonnay"]
     if hour < 12:  # Morning: don't suggest alcohol
