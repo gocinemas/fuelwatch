@@ -848,6 +848,150 @@ class DatabaseHandlers:
                         "🇨🇳 China's homegrown alternatives (Alibaba Cloud, Tencent Cloud)",
                         "⚖️ Potential EU breakup if antitrust escalates"
                     ]
+                },
+                "meta": {
+                    "strengths": ["📱 2B+ monthly active users across Facebook/Instagram/WhatsApp", "📺 Reels growing (competing with TikTok)", "💰 Ad targeting unmatched (70%+ digital ad market share)", "🤖 AI research leadership (Meta AI, LLAMA models)", "💸 High profitability: 35%+ net margins"],
+                    "weaknesses": ["⚠️ Apple privacy changes killing ad targeting accuracy", "🇪🇺 Regulatory pressures (GDPR, Digital Markets Act)", "🎮 Metaverse investments $16B+ with minimal returns", "👴 User base aging (Instagram losing young users to TikTok)", "😤 Brand trust issues (misinformation, mental health)"],
+                    "opportunities": ["🤖 Generative AI monetization (ads, enterprise)", "🎥 Short-form video monetization via Reels", "🛒 Commerce integration (Instagram Shopping, Marketplace)", "🌍 Emerging market user growth (India, Africa)", "💬 WhatsApp Business monetization (payment processing)"],
+                    "threats": ["📱 TikTok dominance in younger demographics (US ban political risk)", "🔐 Apple privacy changes ongoing (iOS tracking limits)", "💔 Advertiser boycotts over content moderation", "🤖 Google competition in advertising (Search dominance)", "⚖️ Potential breakup (spin off Instagram/WhatsApp)"]
+                },
+                "amazon": {
+                    "strengths": ["☁️ AWS dominance: 32% cloud market share, $85B revenue", "📦 Unmatched logistics network (2-day delivery), 1.5B Prime members", "💰 Scale economics (lowest-cost retailer)", "📺 Media ecosystem (Prime Video, MGM acquisition)", "💻 Diverse business model reduces revenue concentration"],
+                    "weaknesses": ["📉 Retail margins razor-thin (advertising subsidizes shipping losses)", "⚙️ Legacy infrastructure (acquired companies operate independently)", "📱 Mobile/digital services underpenetrated vs competitors", "🇨🇳 China market never achieved (pulled out 2019)", "😠 Labor relations (warehouse unionization pressure)"],
+                    "opportunities": ["🛒 Advertising business (fastest-growing segment, $55B+ TAM)", "🏥 Healthcare expansion (Amazon Pharmacy, Whole Foods integration)", "🚀 Space tech (Blue Origin satellite broadband)", "🤖 AI enterprise services (Bedrock, SageMaker monetization)", "🌍 Emerging market e-commerce (India Flipkart, Brazil)"],
+                    "threats": ["☁️ Google Cloud/Azure competing (price wars)", "📦 Logistical costs rising (shipping, labor inflation)", "🛍️ Walmart competing aggressively in online", "⚖️ Antitrust scrutiny (FTC investigating marketplace practices)", "💼 AWS consolidation risk (enterprise multi-cloud moves away from single vendor)"]
+                },
+                "nvidia": {
+                    "strengths": ["🤖 AI chip monopoly: 80%+ of GPU market share (H100, A100)", "🏆 Unmatched engineering (CUDA ecosystem lock-in)", "💰 Gross margins 65%+, net margins 50%+", "📈 AI infrastructure tailwinds ($1T TAM being created)", "🎮 Gaming segment still 25% of revenue (diversification)"],
+                    "weaknesses": ["🔴 Single-product concentration (GPUs = 90% revenue)", "⚠️ Export restrictions to China (lost market opportunity)", "🏭 Manufacturing outsourced to TSMC (geopolitical risk)", "⏱️ Supply chain vulnerability (advanced node competition)", "😤 Pricing power complaints (customers forced to buy overpriced chips)"],
+                    "opportunities": ["🤖 AI inference chips (Blackwell for data centers)", "🎮 RTX gaming GPUs (metaverse, VR adoption)", "🚗 Autonomous vehicle compute (Nvidia Drive platform)", "☁️ Enterprise cloud GPU services (Nvidia Cloud monetization)", "🇹🇼 Taiwan geopolitical hedge (building US fab partnerships)"],
+                    "threats": ["🔴 AMD gaining share (MI300 competing in inference)", "📉 Custom chips (Google TPU, Amazon Trainium, Microsoft Maia)", "⚖️ China export restrictions limiting TAM", "🏭 TSMC capacity constraints (competition for N3/N5 nodes)", "💻 CPU-GPU convergence reducing GPU-only demand"]
+                },
+                "tesla": {
+                    "strengths": ["🚗 EV market leader: 50%+ global market share", "🏭 Vertical integration (batteries, chips, manufacturing)", "💰 Margins highest in auto industry (25%+)", "🤖 Autonomous driving tech (FSD, humanoid robots potential)", "⚡ Supercharger network (15K+ stations)"],
+                    "weaknesses": ["⚠️ Regulatory dependency (EV subsidies ending, regulatory credits declining)", "😤 Quality control issues (build quality complaints)", "🇨🇳 China market exposure (BYD taking share)", "🔋 Battery cost parity with ICE (margin compression ahead)", "👔 Brand polarization (CEO controversy, political divisions)"],
+                    "opportunities": ["🤖 Full autonomous driving (Robotaxi fleet, $100B+ TAM)", "🚙 Lower-cost models ($20K EV for mass market)", "🏭 Energy business (Powerwall, grid services, solar)", "🚘 Semi truck (Semi production scaling)", "💰 Financing/Insurance (high-margin services)"],
+                    "threats": ["🏎️ Legacy OEMs competing (VW ID, GM Ultium, Toyota BZ)", "⚡ BYD EV dominance in China (cheaper lithium iron phosphate)", "⚙️ EV subsidies ending (margin compression)", "🔋 Raw materials shortage (lithium, cobalt, nickel)", "🤖 Autonomous driving regulatory/safety delays (FSD liability risk)"]
+                },
+                "pfizer": {
+                    "strengths": ["💉 COVID vaccine empire: $80B+ cumulative COVID vaccine revenue", "📊 Diversified portfolio (oncology, vaccines, specialty pharma)", "💰 Operating margins 40%+", "🏭 Manufacturing scale & reliability (trusted partner)", "🌍 Global distribution (150+ countries)"],
+                    "weaknesses": ["📉 COVID revenue cliff: $67B → $21B (2021→2024)", "💊 Pipeline concentration (Eliquat, Vyndaqel carrying company)", "🧬 Biosimilars emerging (margin compression on key drugs)", "⚙️ Integration challenges (Allergan, Seagen acquisitions)", "⚖️ Litigation exposure (vaccine mandates, product liability)"],
+                    "opportunities": ["🧬 Oncology expansion (cancer immunotherapy, CAR-T)", "💉 RSV vaccine market ($2B+ TAM)", "🤖 AI drug discovery (reducing R&D cycles)", "🇮🇳 Emerging market pharma (India, China expansion)", "💊 GLP-1 agonists (weight loss, diabetes)"],
+                    "threats": ["💊 Drug pricing pressure (Biden initiatives, international regulation)", "🏭 Generic competition (patent cliffs on top 10 drugs)", "📉 Clinical trial failures (pipeline risk)", "⚖️ Patent litigation (biosimilar challenges)", "🔬 Competition from better-capitalized biotech (Moderna, BioNTech)"]
+                },
+                "coca-cola": {
+                    "strengths": ["🌍 Unbeatable brand portfolio (Coca-Cola, Sprite, Fanta, Minute Maid, Dasani)", "🏭 Global supply chain (200+ countries, 1.9B servings daily)", "💰 Pricing power (premium brands command 20%+ price premiums)", "💵 Consistent FCF generation ($10B+ annually)", "📈 Dividend aristocrat (60+ years of increases)"],
+                    "weaknesses": ["📉 Volume declining (sugar consumption down in developed markets)", "🍬 Health perception (obesity, diabetes associations)", "⚠️ Sugar tax regulations (higher costs in EU, Mexico, etc.)", "🏪 Retailer concentration (Amazon, Walmart growing share)", "😤 ESG pressure (plastic bottle waste, water usage in drought areas)"],
+                    "opportunities": ["🥤 Non-sugar beverages (sports drinks, energy, plant-based)", "☕ Coffee expansion (Costa acquisition integration)", "🍷 Alcoholic beverages (Fresca acquisition, Gen Z drinking up)", "🌍 Emerging market penetration (India, Africa growth)", "♻️ Circular economy (refillable bottles, recycled packaging)"],
+                    "threats": ["📊 Sugar decline accelerating (regulatory bans in developed markets)", "🧋 Competitors (PepsiCo diversification, energy drink upstarts)", "🇧🇷 Currency headwinds (USD strength hurts international revenue)", "♻️ ESG litigation (plastic waste lawsuits)", "⚖️ Class action suits (health claims, plastic leakage)"]
+                },
+                "procter-gamble": {
+                    "strengths": ["🏆 Portfolio: 65+ billion-dollar brands (Gillette, Tide, Pampers, Olay, Crest)", "🏪 Retail distribution unmatched (presence in 180 countries)", "💰 Consistent margins 18%+ across economic cycles", "🧪 Innovation pipeline (smart products, sustainability materials)", "👨‍👩‍👧‍👦 Brand loyalty (generational usage patterns)"],
+                    "weaknesses": ["📉 Organic growth slow (mature categories, private label competition)", "🛍️ Retailer power increasing (Walmart, Amazon consolidation)", "🇪🇺 Commodity inflation (palm oil, chemicals, energy)", "♻️ Sustainability capex burden (reducing plastic, etc.)", "🏙️ Urban penetration gap (private label winning in value segment)"],
+                    "opportunities": ["🌿 Sustainability premium (eco-friendly products command 10-15% premiums)", "🇮🇳 Emerging market expansion (India, Southeast Asia middle-class growth)", "💇 Beauty/personal care premiumization (Olay, Crest expansion)", "♻️ Circular economy (refillable formats, recycled materials)", "🛒 DTC expansion (P&G stores, Shopify selling directly)"],
+                    "threats": ["🏪 Amazon/Walmart direct sourcing (bypassing P&G)", "🧼 Private label quality improving (retailer brands gaining share)", "📉 Millennial/Gen Z rejecting 'mega-brands'", "♻️ Plastic bans accelerating (regulatory capex)", "🌍 Commodity volatility (raw materials cost unpredictability)"]
+                },
+                "amazon": {
+                    "strengths": ["☁️ AWS dominance: 32% cloud share, $85B revenue", "📦 Unmatched last-mile logistics (2-day Prime delivery)", "💰 Scale economies (lowest-cost operator)", "📺 Prime ecosystem (video, music, shopping, perks)", "💻 Tech stack (AWS enables rapid product development)"],
+                    "weaknesses": ["📉 Retail margins thin (5-10%, subsidized by ads & AWS)", "⚙️ Organizational fragmentation (subsidiaries operate independently)", "🔴 Antitrust target (FTC investigating marketplace conflicts)", "🏠 Failed ventures (Whole Foods integration, Echo device flops)", "👷 Labor cost inflation (wage pressure, unionization)"],
+                    "opportunities": ["📢 Advertising: fastest-growing segment (20%+ YoY, $55B TAM)", "🏥 Healthcare (Pharmacy expansion, clinic partnerships)", "🤖 AI infrastructure (Bedrock, SageMaker for enterprises)", "🌍 Emerging market e-commerce (Flipkart scaling in India)", "💳 Fintech (payment processing, Amazon Pay globalization)"],
+                    "threats": ["☁️ Cloud competition (Azure 28% growth, Google Cloud 24%)", "🛍️ Walmart aggressive online (price matching Prime)", "⚖️ Antitrust break-up risk (spin off AWS)", "🏢 Office real estate write-downs (work-from-home pivot)", "📦 Shipping cost inflation (fuel, labor, vehicle capex)"]
+                },
+                "johnson-johnson": {
+                    "strengths": ["💊 Diversified: Pharma, MedTech, Consumer Health (3 divisions)", "🏆 Iconic brands (Tylenol, Band-Aid, Listerine)", "💰 Consistent margins (net 20%+), rock-solid FCF", "🌍 Global footprint (250+ countries)", "🧬 Pharma pipeline strength (Imbruvica, Stelara dominance)"],
+                    "weaknesses": ["⚖️ Litigation burden ($8B+) - talc, opioid lawsuits ongoing", "📉 Patent cliffs (Remicade, Imbruvica generics incoming)", "😤 Regulatory scrutiny (drug pricing pressure)", "🧬 M&A integration challenges (Actelion, Galapagos)", "⚠️ COVID vaccine underperformance vs Pfizer/Moderna"],
+                    "opportunities": ["🧬 Oncology/immunology expansion (CAR-T, checkpoint inhibitors)", "💉 Vaccines (RSV shot Arexvy, COVID next-gen)", "🤖 AI-driven drug discovery (reducing R&D cycles)", "🏥 MedTech robotic surgery (DaVinci dominance)", "🇮🇳 Emerging market consumer health (India, emerging markets)"],
+                    "threats": ["⚖️ Talc litigation settlements ($9B+)", "📉 Opioid settlement ($8.6B) ongoing", "💊 Drug pricing regulation (Biden administration focus)", "🏥 MedTech competition (Intuitive Surgery facing pressure)", "🧬 Biosimilar erosion (Remicade generics approved)"]
+                },
+                "moderna": {
+                    "strengths": ["💉 mRNA technology pioneer (COVID vaccine foundational)", "💰 Cash hoard: $18B+ (not spending on acquisitions)", "🧬 Broad pipeline (influenza, RSV, cancer, personalized medicine)", "📈 Margins exceptional (net margins 30%+)", "🚀 First-mover advantage in personalized vaccines"],
+                    "weaknesses": ["📉 COVID revenue cliff ($19B → $5B 2021→2024)", "⚠️ Single-CEO dependency (Noubar Afeyan key person)", "🧬 Limited commercial infrastructure (reliant on partners)", "⚙️ Manufacturing scale (outsourced, not vertically integrated)", "🔴 Clinical trial risks (pipeline concentration on RSV, influenza)"],
+                    "opportunities": ["💉 RSV vaccine (approved 2023, $2B+ peak sales potential)", "🧬 Personalized cancer vaccines (with Merck, Roche partnerships)", "💊 Influenza mRNA vaccine (seasonal revenue stream)", "🤖 AI drug discovery (speeding mRNA targets)", "💰 Royalty streams (partnered programs generating recurring revenue)"],
+                    "threats": ["📉 COVID vaccine saturation (mature market, price erosion)", "🧬 mRNA competition (BioNTech, Curevac entering market)", "⚖️ Patent challenges (mRNA technique patents being contested)", "🏭 Manufacturing constraints (supply chain for scale)", "💰 Valuation bubble bursting (trading at 2x revenue despite risks)"]
+                },
+                "netflix": {
+                    "strengths": ["📺 Streaming leader: 270M subscribers (vs Disney+ 150M)", "🎬 Cultural content hits (Stranger Things, Squid Game, The Crown)", "💰 Most profitable streamer (27% net margins, competitors losing money)", "📈 Ad tier growing 40%+ YoY (new revenue stream)", "🌐 Global scale (190 countries, 50%+ international revenue)"],
+                    "weaknesses": ["📉 Subscriber growth plateauing in developed markets", "💸 Content spend rising ($20B annually, competition pushing higher)", "🎬 Hit-dependent (few shows carry entire platform)", "⚠️ Password sharing crackdown alienating casual users", "👴 Audience aging (losing Gen Z to TikTok)"],
+                    "opportunities": ["🎮 Gaming expansion (Netflix Games launching, 50 titles in development)", "🎭 Live events (Netflix comedy specials, live sports)", "📱 Mobile gaming (easier monetization path)", "💰 Premium tier expansion (ad-free, higher price points)", "🌍 Emerging market penetration (mobile-first pricing in India, Africa)"],
+                    "threats": ["👑 Disney bundle war (Disney+/ESPN+/Hulu $14.99 cheaper)", "🎬 Hollywood writers strike impact (content delays, cost increases)", "🎥 Competition intensifying (Prime Video aggressive spend)", "📱 TikTok dominance (shorter-form content cannibalization)", "⚖️ Regulatory scrutiny (EU investigating market power)"]
+                },
+                "disney": {
+                    "strengths": ["🎬 Unmatched content portfolio (Marvel, Star Wars, Pixar, Fox)", "📺 Streaming scale (400M+ subscribers with bundles)", "🎢 Theme parks (highest-margin segment, $30B+ revenue)", "📱 Media networks (ESPN, ABC, FX)", "✨ Brand magic (Disney+ subscriber growth 19% YoY)"],
+                    "weaknesses": ["📉 Streaming unprofitable ($2B+ losses annually)", "📚 Legacy media declining (cable, linear TV volume -15%)", "⚖️ ESPN subscriber losses (cord-cutting, sports rights inflation)", "😤 Cultural backlash (political controversies, brand fatigue)", "🎬 Content production costs ballooning ($40B+ spend)"],
+                    "opportunities": ["📺 Streaming profitability path (price increases, cost discipline)", "🎬 Live action adaptations (monetizing animated franchises)", "💰 Sports streaming (ESPN+ growth, sports rights management)", "🌍 International expansion (Disney+ in 150+ countries)", "🎭 Theater box office recovery (after-pandemic rebound)"],
+                    "threats": ["📡 Cord-cutting accelerating (cable declining 8%+ annually)", "🎬 Streaming price war (competition from Netflix, Prime, others)", "📺 Sports rights inflation (ESPN+ acquiring expensive rights)", "⚖️ Regulatory scrutiny (Fox acquisition integration)", "🎪 Theme park saturation (market penetration plateau in US)"]
+                },
+                "facebook": {
+                    "strengths": ["👥 Social media dominance (3B monthly users across ecosystem)", "💰 Advertising duopoly (with Google, 60% global digital ad share)", "📱 Reels growth (TikTok competitor gaining adoption)", "🤖 AI research leadership (Meta AI Labs, LLaMA models)", "💸 Profitability recovered (margins 40%+)"],
+                    "weaknesses": ["📱 User base aging (losing young users to TikTok, Snapchat)", "😤 Brand trust issues (misinformation, mental health impacts)", "⚠️ Apple privacy changes reducing ad targeting", "🇪🇺 Regulatory pressure (GDPR, Digital Markets Act compliance)", "💰 Metaverse burning $16B+ with minimal return"],
+                    "opportunities": ["🎥 Reels monetization (Facebook, Instagram, WhatsApp integration)", "🛒 Commerce (marketplace, Instagram Shopping, group commerce)", "🤖 AI-powered ads (targeting, creative generation)", "💬 WhatsApp monetization (business payments, premium features)", "🌍 Emerging market growth (India, Southeast Asia expansion)"],
+                    "threats": ["🚫 TikTok ban (US regulatory risk, Chinese competitor threat)", "🔐 Apple privacy changes ongoing (tracking limits)", "📱 Gen Z brand rejection (seen as uncool, out-of-touch)", "⚖️ Antitrust break-up (spin off Instagram/WhatsApp)", "👁️ Metaverse skepticism (VR adoption slower than expected)"]
+                },
+                "eli-lilly": {
+                    "strengths": ["💊 GLP-1 obesity dominance (Mounjaro leading market)", "🏆 Oncology leader (Verzenio, Alimta)", "💰 Margins 40%+ (premium pricing)", "🇮🇳 India manufacturing hub", "🧬 20+ late-stage pipeline"],
+                    "weaknesses": ["📉 Patent cliff (Humalog insulin)", "⚙️ Capacity constraints", "⚖️ Pricing pressure", "🧬 Obesity competition heating up", "📊 Valuation elevated (60x earnings)"],
+                    "opportunities": ["💊 $100B GLP-1 market", "🧬 Cancer vaccines", "💉 Combo therapies", "🇮🇳 India expansion", "🤖 AI drug discovery"],
+                    "threats": ["💊 GLP-1 generics 2030s", "🏥 Novo/Roche competing", "⚖️ Drug pricing regulation", "📈 Input costs inflation", "🧬 Clinical trial failures"]
+                },
+                "merck": {
+                    "strengths": ["🏆 Keytruda oncology dominance", "💊 Vaccines (Gardasil HPV)", "💰 35%+ margins", "🌍 140 countries", "🧬 50+ trials in progress"],
+                    "weaknesses": ["📉 Keytruda patent cliff 2027", "⚖️ Litigation ongoing", "⚙️ Integration complexity", "😤 Manufacturing quality issues", "🧬 Obesity late to market"],
+                    "opportunities": ["🧬 Cancer vaccines", "💉 RSV/shingles vaccines", "🤖 AI drug discovery", "🌍 EM vaccines", "💊 Combination therapies"],
+                    "threats": ["📉 Revenue cliff 2027 (12B→6B)", "🏥 Checkpoint inhibitor competition", "⚖️ Patent litigation", "💰 Drug pricing", "🧬 Pipeline concentration risk"]
+                },
+                "exxonmobil": {
+                    "strengths": ["⚡ Largest integrated oil/gas", "💰 $20B+ FCF annually", "🏭 Low-cost shale", "🌍 Guyana reserves", "💵 40+ year dividends"],
+                    "weaknesses": ["♻️ Fossil fuel exposure", "⚠️ Carbon tax risk", "🌍 Geopolitical exposure", "⚙️ Legacy cost structure", "😤 ESG divestment pressure"],
+                    "opportunities": ["⚡ Asia oil demand growth", "🔋 Hydrogen & CCS", "⛽ LNG expansion", "🇬🇾 Guyana production online", "🏭 Petrochemicals"],
+                    "threats": ["♻️ Energy transition", "⚖️ Carbon pricing", "💰 Oil volatility", "⚠️ Energy independence", "🌍 Supply disruptions"]
+                },
+                "adobe": {
+                    "strengths": ["🎨 Creative Suite dominance", "💰 80%+ recurring SaaS", "💵 $18B+ revenue", "🏆 Network effects", "🤖 Firefly AI"],
+                    "weaknesses": ["💳 Subscription backlash", "😤 Price increases unpopular", "🎨 Open-source competition", "🤖 GenAI ethics concerns", "⚖️ Regulatory scrutiny"],
+                    "opportunities": ["🤖 AI creative tools", "📱 Mobile creation", "🎬 Video editing", "🎨 Web design", "📊 Analytics"],
+                    "threats": ["🎨 Figma competition", "🤖 AI art concerns", "💳 Subscription fatigue", "⚖️ Antitrust", "💻 DIY tools"]
+                },
+                "salesforce": {
+                    "strengths": ["☁️ CRM market leader", "💰 $34B+ revenue", "🏆 AppExchange ecosystem", "🤖 Einstein AI", "🚀 Agentforce agents"],
+                    "weaknesses": ["📉 Growth slowing (7%)", "⚙️ Integration complexity", "😤 User backlash on AI", "💰 High costs", "🎯 Market saturation"],
+                    "opportunities": ["🤖 Agentforce agents", "☁️ Industry clouds", "🏥 Healthcare/finance", "💼 Enterprise AI", "🔄 Recurring revenue"],
+                    "threats": ["☁️ Competitor CRMs", "🤖 AI commoditization", "💰 Recession", "⚖️ Regulation", "📉 Churn"]
+                },
+                "zoom": {
+                    "strengths": ["📹 Video conferencing leader", "💰 $4B+ revenue", "👥 500M+ monthly users", "🏆 UX excellence", "🤖 AI features"],
+                    "weaknesses": ["📉 Growth slowing post-COVID", "😤 Meeting fatigue", "💻 Teams free competition", "💳 Pricing pressure", "🔐 Security concerns"],
+                    "opportunities": ["🤖 AI assistant", "🏢 Hybrid work", "🎬 Marketing", "🏥 Telehealth", "🌍 EM markets"],
+                    "threats": ["💻 Microsoft Teams", "📉 Usage decline", "💰 Recession", "🔐 Privacy regulation", "🚀 Competitors"]
+                },
+                "airbnb": {
+                    "strengths": ["🏠 2M+ listings", "💰 $9B+ revenue", "🌍 200+ countries", "📱 Mobile-first", "💵 25%+ margins"],
+                    "weaknesses": ["⚖️ Regulatory crackdown", "🏠 Host churn", "😤 Fees criticism", "💰 Volatility", "🇪🇺 Tax compliance"],
+                    "opportunities": ["🏞️ Experiences", "🏢 Long-term rentals", "🌍 Emerging markets", "💼 Business travel", "🤖 AI pricing"],
+                    "threats": ["⚖️ NYC/EU regulations", "🏠 Hotels competing", "💰 Recession", "😤 Host disputes", "🌍 Geopolitics"]
+                },
+                "starbucks": {
+                    "strengths": ["☕ 35K stores globally", "💰 High unit economics", "🏪 CPG presence", "💳 200M loyalty members", "🌍 83 countries"],
+                    "weaknesses": ["😤 Union expansion", "🇺🇸 Market saturation", "⚙️ Rising costs", "🛍️ Indie competition", "📱 App issues"],
+                    "opportunities": ["🤖 AI personalization", "🏠 CPG growth", "🌍 China/India", "💰 Premium tier", "🛒 Licensing"],
+                    "threats": ["😤 Labor costs", "🇺🇸 Negative comp sales", "🏪 Competition", "♻️ Sustainability costs", "🤖 Automation"]
+                },
+                "qualcomm": {
+                    "strengths": ["📱 Snapdragon 80%+ share", "💰 60%+ gross margins", "🏆 Patent portfolio", "🚗 Auto growth", "🤖 AI chips"],
+                    "weaknesses": ["📱 Apple 20% of revenue", "⚙️ TSMC dependency", "⚠️ Antitrust", "🇨🇳 Export limits", "😤 Apple in-house"],
+                    "opportunities": ["🤖 AI inference", "🚗 Autonomous vehicles", "📡 5G/6G royalties", "🎮 Gaming", "💳 IoT/wearables"],
+                    "threats": ["📱 Apple modems", "🇨🇳 Huawei", "⚙️ Fab capacity", "💰 Licensing pressure", "🤖 Custom chips"]
+                },
+                "jpmorgan": {
+                    "strengths": ["🏦 IB leader", "💰 $50B+ revenue", "🌍 Largest US bank", "💵 30%+ ROE", "🤖 AI trading"],
+                    "weaknesses": ["⚖️ Regulation", "💷 Rate-sensitive margins", "😤 Tech talent war", "🔐 Cyber risk", "💰 Costs rising"],
+                    "opportunities": ["💻 Fintech partnerships", "🤖 AI/ML", "🌍 EM banking", "💳 Digital", "📊 Wealth"],
+                    "threats": ["⚖️ Dodd-Frank", "💷 Recession", "🏢 Fintech", "🌍 Geopolitics", "🤖 Trading risks"]
+                },
+                "berkshire": {
+                    "strengths": ["💰 $88B cash", "🏆 Buffett brand", "💵 20%+ ROE", "🌍 Diversified", "💎 Track record"],
+                    "weaknesses": ["👴 Succession risk", "📉 Mega-cap inertia", "💰 Deployment challenges", "⚖️ Derivative risk", "🇨🇳 China exposure"],
+                    "opportunities": ["🤖 AI investing", "🏦 Insurance", "📡 Energy", "🌍 EM", "💱 Buybacks"],
+                    "threats": ["👴 Age 94", "🏦 Rate risk", "💰 Size limits", "⚖️ Regulation", "🌍 Geopolitics"]
                 }
             }
 
