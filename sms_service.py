@@ -16079,6 +16079,21 @@ def api_home_brief():
             facts.append(f"🏫 {child}: {title} today" if child else f"🏫 {title} today")
 
     # === ADD PERSONAL EVENTS (today only, strict filtering) ===
+    def _is_online_event(event):
+        """Detect if event is online/virtual (no travel needed)."""
+        title = (event.get("title") or "").lower()
+        location = (event.get("location") or "").lower()
+        description = (event.get("description") or "").lower()
+        search_text = f"{title} {location} {description}"
+
+        # Check for online keywords
+        online_keywords = ["online", "zoom", "teams", "virtual", "webinar", "video call", "google meet", "skype", "web meeting", "https://", "http://"]
+        has_online_keywords = any(kw in search_text for kw in online_keywords)
+
+        # If no location OR has online keywords → it's online
+        is_online = (not location or has_online_keywords)
+        return is_online
+
     personal_events_today = [
         e for e in _cal_events
         if e.get("date") == _today_s and e.get("personal") and e.get("date", "") >= _today_iso
@@ -16087,7 +16102,9 @@ def api_home_brief():
         title = ev.get("title", "")
         start = ev.get("start", "")
         if title:
-            facts.append(f"📅 {title}" + (f" at {start}" if start else "") + " today")
+            # Mark online events so Groq doesn't suggest travel
+            online_tag = " (online)" if _is_online_event(ev) else ""
+            facts.append(f"📅 {title}" + (f" at {start}" if start else "") + f" today{online_tag}")
 
     # === ADD RECURRING ACTIVITIES (clubs, sports) ===
     if _recurring_today:
