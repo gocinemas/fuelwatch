@@ -856,12 +856,30 @@
                             <td style="padding: 10px; color: #6b7280;">AI Investment</td>
                             <td style="padding: 10px; font-weight: 600; color: #1f2937;" id="trend_ai">—</td>
                         </tr>
-                        <tr>
+                        <tr style="border-bottom: 1px solid #f3f4f6;">
                             <td style="padding: 10px; color: #6b7280;">Key Areas</td>
                             <td style="padding: 10px; font-weight: 600; color: #1f2937;" id="trend_areas">—</td>
                         </tr>
+                        <tr style="border-bottom: 1px solid #f3f4f6;">
+                            <td style="padding: 10px; color: #6b7280;">🔄 Employee Retention</td>
+                            <td style="padding: 10px; font-weight: 600; color: #1f2937;" id="trend_retention">—</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; color: #6b7280;">💼 Turnover Risk</td>
+                            <td style="padding: 10px; font-weight: 600; color: #1f2937;" id="trend_turnover">—</td>
+                        </tr>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <!-- News Feed -->
+        <div id="newsSection" style="display: none; margin-top: 20px;">
+            <div style="background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 14px; font-weight: 600;">
+                    📰 Latest News & Updates
+                </div>
+                <div id="newsList" style="padding: 20px; display: flex; flex-direction: column; gap: 15px;"></div>
             </div>
         </div>
 
@@ -1253,6 +1271,7 @@
                 // Load additional data sections
                 await loadMAActivity();
                 await loadHiringTrends();
+                await loadNews();
                 await loadSWOT(company);
 
                 // Draw charts
@@ -1357,14 +1376,14 @@
             }
         }
 
-        // Load M&A Activity
+        // Load M&A Activity with Enhanced Timeline
         async function loadMAActivity() {
             if (!currentCompany) return;
 
             try {
                 const response = await fetch(`/api/company/ma-activity?name=${encodeURIComponent(currentCompany)}`);
                 const data = await response.json();
-                const deals = data.deals || [];
+                let deals = data.deals || [];
 
                 if (deals.length === 0) {
                     document.getElementById('maActivitySection').style.display = 'none';
@@ -1373,35 +1392,67 @@
 
                 document.getElementById('maActivitySection').style.display = 'block';
 
+                // Sort by date (most recent first)
+                deals.sort((a, b) => {
+                    const dateA = new Date(a.announcement_date || a.date || 0);
+                    const dateB = new Date(b.announcement_date || b.date || 0);
+                    return dateB - dateA;
+                });
+
                 const dealIcons = {
-                    'Acquisition': '🛍️',
-                    'Divestiture': '📤',
-                    'Investment': '💰',
-                    'Partnership': '🤝'
+                    'acquisition': '🛒',
+                    'divestiture': '📤',
+                    'investment': '💰',
+                    'partnership': '🤝'
                 };
 
-                const html = deals.slice(0, 10).map(deal => `
-                    <div style="padding: 12px; background: #f9fafb; border-radius: 8px; border-left: 3px solid #667eea;">
-                        <div style="font-size: 13px; font-weight: 700; color: #1c1917; margin-bottom: 4px;">
-                            ${dealIcons[deal.deal_type] || '🤝'} ${deal.target_company}
-                        </div>
-                        <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
-                            ${deal.deal_type} • ${deal.date} • ${deal.value ? '$' + deal.value + 'M' : 'Value N/A'}
-                        </div>
-                        <div style="font-size: 12px; color: #4b5563; line-height: 1.4;">
-                            "${deal.description}"
-                        </div>
-                    </div>
-                `).join('');
+                const dealColors = {
+                    'acquisition': '#10b981',
+                    'divestiture': '#ef4444',
+                    'investment': '#3b82f6',
+                    'partnership': '#8b5cf6'
+                };
 
-                document.getElementById('maActivityList').innerHTML = html;
+                const html = deals.slice(0, 12).map((deal, idx) => {
+                    const dealType = (deal.deal_type || '').toLowerCase();
+                    const icon = dealIcons[dealType] || '🤝';
+                    const color = dealColors[dealType] || '#667eea';
+                    const amount = deal.amount_millions || deal.value || 0;
+                    const amountLabel = amount ? `$${amount.toLocaleString()}M` : 'Undisclosed';
+                    const date = deal.announcement_date || deal.date || 'Date N/A';
+                    const dateStr = new Date(date).toLocaleDateString('en-GB', {year: 'numeric', month: 'short'});
+
+                    return `
+                        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                            <div style="flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: ${color}22; border-radius: 8px; font-size: 16px;">
+                                ${icon}
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 4px;">
+                                    <div style="font-size: 13px; font-weight: 700; color: #1c1917;">
+                                        ${deal.target_company || 'Unknown'}
+                                    </div>
+                                    <span style="font-size: 11px; font-weight: 600; color: ${color}; background: ${color}11; padding: 2px 8px; border-radius: 4px;">
+                                        ${dealType.charAt(0).toUpperCase() + dealType.slice(1)}
+                                    </span>
+                                </div>
+                                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
+                                    ${dateStr} • ${amountLabel}
+                                </div>
+                                ${deal.description ? `<div style="font-size: 12px; color: #4b5563; line-height: 1.4; margin-top: 4px;">${deal.description}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('maActivityList').innerHTML = html || '<div style="padding: 20px; text-align: center; color: #9ca3af;">No M&A activity found</div>';
             } catch (error) {
                 console.error('Failed to load M&A activity:', error);
                 document.getElementById('maActivitySection').style.display = 'none';
             }
         }
 
-        // Load Hiring Trends
+        // Load Hiring Trends with Retention Metrics
         async function loadHiringTrends() {
             if (!currentCompany) return;
 
@@ -1433,9 +1484,93 @@
                 document.getElementById('trend_focus').textContent = data.strategic_direction || '—';
                 document.getElementById('trend_ai').innerHTML = `${aiStars} ${aiScore}/5`;
                 document.getElementById('trend_areas').textContent = focusAreas;
+
+                // Employee Retention Rate
+                const retentionRate = data.retention_rate || data.employee_retention_pct || null;
+                if (retentionRate) {
+                    const retentionColor = retentionRate >= 90 ? '#10b981' : retentionRate >= 80 ? '#3b82f6' : '#f59e0b';
+                    document.getElementById('trend_retention').innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 60px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                                <div style="width: ${Math.min(retentionRate, 100)}%; height: 100%; background: ${retentionColor};"></div>
+                            </div>
+                            <span style="font-size: 13px; font-weight: 600; color: ${retentionColor};">${retentionRate}%</span>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('trend_retention').textContent = '—';
+                }
+
+                // Turnover Risk (inverse of retention)
+                const turnoverRisk = data.turnover_risk || data.employee_turnover_pct || (retentionRate ? (100 - retentionRate) : null);
+                if (turnoverRisk !== null) {
+                    const riskLevel = turnoverRisk > 20 ? '🔴 High' : turnoverRisk > 10 ? '🟡 Moderate' : '🟢 Low';
+                    document.getElementById('trend_turnover').innerHTML = `${riskLevel} (${turnoverRisk}% annually)`;
+                } else {
+                    document.getElementById('trend_turnover').textContent = '—';
+                }
             } catch (error) {
                 console.error('Failed to load hiring trends:', error);
                 document.getElementById('hiringTrendsSection').style.display = 'none';
+            }
+        }
+
+        // Load Company News from NewsAPI
+        async function loadNews() {
+            if (!currentCompany) return;
+
+            try {
+                const response = await fetch(`/api/company/news?name=${encodeURIComponent(currentCompany)}`);
+                const data = await response.json();
+                const articles = data.articles || [];
+
+                if (articles.length === 0) {
+                    document.getElementById('newsSection').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('newsSection').style.display = 'block';
+
+                const html = articles.slice(0, 5).map(article => {
+                    const pubDate = new Date(article.published_date).toLocaleDateString('en-GB', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+
+                    const categoryEmoji = {
+                        'Financial': '💰',
+                        'Product': '🚀',
+                        'Market Position': '📊',
+                        'Sustainability': '🌱',
+                        'Innovation': '⚡',
+                        'News': '📰'
+                    }[article.category] || '📰';
+
+                    return `
+                        <div style="padding: 12px; background: #f9fafb; border-radius: 8px; border-left: 3px solid #667eea;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                <div style="font-size: 13px; font-weight: 700; color: #1c1917; margin-right: 8px;">
+                                    ${categoryEmoji} ${article.title}
+                                </div>
+                            </div>
+                            <div style="font-size: 11px; color: #9ca3af; margin-bottom: 8px;">
+                                ${article.source} • ${pubDate}
+                            </div>
+                            <div style="font-size: 12px; color: #4b5563; line-height: 1.4; margin-bottom: 8px;">
+                                ${article.description || 'No description available'}
+                            </div>
+                            <a href="${article.url}" target="_blank" style="font-size: 11px; color: #667eea; text-decoration: none; font-weight: 600;">
+                                Read full article →
+                            </a>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('newsList').innerHTML = html;
+            } catch (error) {
+                console.error('Failed to load news:', error);
+                document.getElementById('newsSection').style.display = 'none';
             }
         }
 

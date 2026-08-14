@@ -40581,7 +40581,7 @@ def api_company_documents_delete(doc_id):
 
 @app.route("/api/company/hiring-focus", methods=["GET"])
 def api_company_hiring_focus():
-    """Fetch hiring focus and AI investment data for a company."""
+    """Fetch hiring focus and AI investment data for a company with retention metrics."""
     try:
         company = request.args.get("company", "").strip()
         if not company:
@@ -40602,13 +40602,26 @@ def api_company_hiring_focus():
             }), 404
 
         data = result.data[0]
+
+        # Get retention metrics
+        try:
+            from hiring_trends_tracker import get_retention_metrics
+            retention_data = get_retention_metrics(company)
+        except:
+            retention_data = {}
+
         return jsonify({
             "company": data.get("company_name"),
             "hiring_growth_2025": data.get("hiring_growth_2025"),
             "ai_investment_score": data.get("ai_investment_score"),
             "strategic_direction": data.get("strategic_direction"),
             "focus_areas": data.get("focus_areas", []),
-            "last_updated": data.get("last_updated")
+            "last_updated": data.get("last_updated"),
+            # Retention metrics
+            "retention_rate": retention_data.get("retention_rate"),
+            "turnover_rate": retention_data.get("turnover_rate"),
+            "retention_trend": retention_data.get("retention_trend"),
+            "employee_retention_pct": retention_data.get("retention_rate")
         })
     except Exception as e:
         import logging
@@ -40654,6 +40667,35 @@ def api_company_ma_activity():
             "company": request.args.get("name", "Unknown"),
             "deals": [],
             "error": "Could not fetch M&A data"
+        }), 200
+
+@app.route("/api/company/news", methods=["GET"])
+def api_company_news():
+    """Fetch real news articles for a company from NewsAPI."""
+    try:
+        company = request.args.get("name", "").strip()
+        if not company:
+            return jsonify({"error": "name param required"}), 400
+
+        try:
+            from news_service import fetch_brand_news
+            news_articles = fetch_brand_news(company, days_back=30)
+        except Exception as e:
+            logging.warning(f"[company-news] News fetch failed: {e}")
+            news_articles = []
+
+        return jsonify({
+            "company": company,
+            "articles": news_articles,
+            "total_articles": len(news_articles)
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"[company-news] {e}")
+        return jsonify({
+            "company": request.args.get("name", "Unknown"),
+            "articles": [],
+            "error": "Could not fetch news"
         }), 200
 
 # ── My Fuel Stations (saved bookmarks in database) ─────────────────────────
