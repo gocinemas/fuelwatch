@@ -40590,37 +40590,35 @@ def api_company_hiring_focus():
         sb = create_client(os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co"),
                           os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat"))
 
-        result = sb.table("company_hiring_focus").select("*").eq(
-            "company_name", company
-        ).execute()
-
-        if not result.data or len(result.data) == 0:
-            return jsonify({
-                "company": company,
-                "data": None,
-                "message": "No hiring focus data available"
-            }), 404
-
-        data = result.data[0]
-
-        # Get retention metrics (only real data from Comparably/Glassdoor)
+        # Always get retention metrics (real data from Comparably/Glassdoor)
         try:
             from hiring_trends_tracker import get_retention_metrics
             retention_data = get_retention_metrics(company)
         except:
             retention_data = {}
 
-        # Build response - only include retention fields if we have real data
+        # Try to get hiring focus data (optional)
+        result = sb.table("company_hiring_focus").select("*").eq(
+            "company_name", company
+        ).execute()
+
+        # Build response
         response = {
-            "company": data.get("company_name"),
-            "hiring_growth_2025": data.get("hiring_growth_2025"),
-            "ai_investment_score": data.get("ai_investment_score"),
-            "strategic_direction": data.get("strategic_direction"),
-            "focus_areas": data.get("focus_areas", []),
-            "last_updated": data.get("last_updated"),
+            "company": company,
         }
 
-        # Add retention metrics only if available
+        # Add hiring focus data if available
+        if result.data and len(result.data) > 0:
+            data = result.data[0]
+            response.update({
+                "hiring_growth_2025": data.get("hiring_growth_2025"),
+                "ai_investment_score": data.get("ai_investment_score"),
+                "strategic_direction": data.get("strategic_direction"),
+                "focus_areas": data.get("focus_areas", []),
+                "last_updated": data.get("last_updated"),
+            })
+
+        # Add retention metrics only if available (real data)
         if retention_data:
             response.update({
                 "retention_rate": retention_data.get("retention_rate"),
@@ -40629,7 +40627,15 @@ def api_company_hiring_focus():
                 "source": retention_data.get("source"),
             })
 
-        return jsonify(response)
+        # Return 200 even if minimal data, as long as we have something
+        if len(response) > 1:  # More than just company name
+            return jsonify(response)
+        else:
+            return jsonify({
+                "company": company,
+                "error": "No data available"
+            }), 404
+
     except Exception as e:
         import logging
         logging.error(f"[company-hiring-focus] {e}")
