@@ -340,6 +340,9 @@ class CompanyIntelligence:
                 week_52_high = info.get("fiftyTwoWeekHigh")
                 week_52_low = info.get("fiftyTwoWeekLow")
 
+                # Yahoo Finance returns dividend_yield as decimal (0.0267 = 2.67%), so just format it
+                dividend_yield_pct = round(dividend_yield * 100, 2) if dividend_yield and dividend_yield < 1 else round(dividend_yield, 2) if dividend_yield else None
+
                 self.basics["stock"] = {
                     "ticker": ticker,
                     "price": info.get("currentPrice", info.get("regularMarketPrice")),
@@ -347,7 +350,7 @@ class CompanyIntelligence:
                     "market_cap": market_cap,
                     "market_cap_billions": round(market_cap / 1e9, 1) if market_cap else None,
                     "pe_ratio": round(pe_ratio, 1) if pe_ratio else None,
-                    "dividend_yield": round(dividend_yield * 100, 2) if dividend_yield else None,
+                    "dividend_yield": dividend_yield_pct,
                     "week_52_high": round(week_52_high, 2) if week_52_high else None,
                     "week_52_low": round(week_52_low, 2) if week_52_low else None,
                     "employees": info.get("fullTimeEmployees"),
