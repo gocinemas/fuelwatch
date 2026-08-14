@@ -3245,7 +3245,7 @@ def api_ai_summarize():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [
                     {"role": "system", "content": "You write concise, clear 2-sentence summaries of video/podcast descriptions for a resource library. Plain text only, no markdown, no fluff."},
                     {"role": "user", "content": f"Summarise this in 2 sentences:\n\n{text}"}
@@ -3526,7 +3526,7 @@ Keep answers short and practical — 2-4 sentences max. WhatsApp style, no markd
             r = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "messages": [
+                json={"model": "llama-3.3-70b-versatile", "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": message}
                 ], "max_tokens": 200, "temperature": 0.6, "stream": True},
@@ -3585,7 +3585,7 @@ No bullet lists unless essential. No markdown headers. Be direct and genuinely h
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
                 json={
-                    "model": "llama-3.1-8b-instant",
+                    "model": "llama-3.3-70b-versatile",
                     "messages": [
                         {"role": "system", "content": SITE_CONTEXT},
                         {"role": "user", "content": question}
@@ -4530,7 +4530,7 @@ def api_brand_debug():
         r = _req.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant",
+            json={"model": "llama-3.3-70b-versatile",
                   "messages": [{"role": "user", "content":
                       f'The user searched for brand/company: "{name}".\n'
                       'Return ONLY the canonical brand or company name. Rules:\n'
@@ -6127,7 +6127,7 @@ def api_brand_standing():
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
                 json={
-                    "model": "llama-3.1-8b-instant",
+                    "model": "llama-3.3-70b-versatile",
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 60,
                     "temperature": 0.4,
@@ -8672,7 +8672,7 @@ def api_area_famous():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 60, "temperature": 0.2,
+            json={"model": "llama-3.3-70b-versatile", "max_tokens": 60, "temperature": 0.2,
                   "messages": [{"role": "user", "content":
                     f"What is {area}, UK known for? Give 2-3 items separated by · (middle dot). "
                     f"Each item max 8 words. No intro, no quotes, no full sentences. "
@@ -8768,7 +8768,7 @@ def api_area_summary():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [
                     {"role": "system", "content": (
                         "You are a UK property analyst. Write a 2-3 sentence plain English verdict based SOLELY on the facts provided. "
@@ -9700,7 +9700,7 @@ def api_intel_deep_dive():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 1600, "temperature": 0.2,
+            json={"model": "llama-3.3-70b-versatile", "max_tokens": 1600, "temperature": 0.2,
                   "response_format": {"type": "json_object"},
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=30,
@@ -16425,7 +16425,7 @@ def api_home_brief():
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                          "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "max_tokens": 100,
+                json={"model": "llama-3.3-70b-versatile", "max_tokens": 100,
                       "messages": [{"role": "user", "content": prompt}]},
                 timeout=10,
             )
@@ -16774,7 +16774,7 @@ def api_home_brief():
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                              "Content-Type": "application/json"},
-                    json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
+                    json={"model": "llama-3.3-70b-versatile", "max_tokens": 120,
                           "temperature": 0.3,
                           "messages": [{"role": "user", "content": prompt}]},
                     timeout=10,
@@ -18464,7 +18464,7 @@ def api_home_ask():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant",
+            json={"model": "llama-3.3-70b-versatile",
                   "max_tokens": 400 if any(w in q_lower for w in ["show", "recipe", "ingredient", "steps"]) else 120,
                   "temperature": 0.2, "messages": messages},
             timeout=8,
@@ -19523,7 +19523,7 @@ def api_health():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": 'Brand: "Pepsi". Return ONLY valid JSON with keys: facts (founded,hq,revenue), competitors (array, 3 items), timeline (array, 3 items).'}],
                 "temperature": 0.2, "max_tokens": 800,
             },
@@ -19656,7 +19656,7 @@ def _groq_vision(img_b64: str, mime: str, prompt: str, model: str = None) -> str
     raise RuntimeError(f"All Groq vision models failed. Last error: {last_err}")
 
 
-def _groq_chat(system, messages, max_tokens=600, json_mode=False, model="llama-3.1-8b-instant"):
+def _groq_chat(system, messages, max_tokens=600, json_mode=False, model="llama-3.3-70b-versatile"):
     """Call Groq API (OpenAI-compatible). Returns reply text."""
     body = {
         "model": model,
@@ -20460,7 +20460,7 @@ def _groq_place_summary(name: str, category: str, address: str,
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}],
+            json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
                   "temperature": 0.3, "max_tokens": 160},
             timeout=8,
         )
@@ -20629,7 +20629,7 @@ def api_places_price():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content":
                     f'Business: "{name}" ({category})\n'
                     f'Website text:\n{text}\n\n'
@@ -21741,7 +21741,7 @@ def api_product():
         r = _req.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant",
+            json={"model": "llama-3.3-70b-versatile",
                   "messages": [{"role": "user", "content": prompt}],
                   "max_tokens": max_tokens, "temperature": 0.3},
             timeout=15,
@@ -22104,7 +22104,7 @@ def _quick_brand_intel(brand_name: str) -> dict:
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content":
                     f'Brand: "{brand_name}"\n'
                     'Return ONLY valid JSON:\n'
@@ -24123,7 +24123,7 @@ def _wa_menu_lookup_pc(name: str, home_pc: str = "") -> str:
 
     def _groq_call(messages, max_tokens=400, temperature=0.3):
         r = requests.post(_groq_url, headers=_groq_hdrs, json={
-            "model": "llama-3.1-8b-instant",
+            "model": "llama-3.3-70b-versatile",
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -26101,7 +26101,7 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
         s, e = text.find("{"), text.rfind("}")
         return _json.loads(text[s:e+1]) if s != -1 and e != -1 else {}
 
-    def _groq(prompt, max_tokens=500, model="llama-3.1-8b-instant"):
+    def _groq(prompt, max_tokens=500, model="llama-3.3-70b-versatile"):
         r = _req.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
@@ -26171,7 +26171,7 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
                 raw = _groq(
                     f'UK grocery "{product_name}": give typical prices at Aldi, Asda, Tesco, Sainsburys. '
                     'Return ONLY JSON: {"name":"...","brand":"...","prices":{"aldi":"£X.XX","asda":"£X.XX","tesco":"£X.XX","sainsburys":"£X.XX"}}',
-                    max_tokens=200, model="llama-3.1-8b-instant"
+                    max_tokens=200, model="llama-3.3-70b-versatile"
                 )
                 obj = _obj(raw)
                 if obj.get("name"):
@@ -26460,7 +26460,7 @@ def _wa_recipe_card(dish: str, from_number: str = "", return_dict: bool = False)
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 200, "temperature": 0.4,
+            json={"model": "llama-3.3-70b-versatile", "max_tokens": 200, "temperature": 0.4,
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=10,
         )
@@ -26476,7 +26476,7 @@ def _wa_recipe_card(dish: str, from_number: str = "", return_dict: bool = False)
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 50, "temperature": 0.3,
+            json={"model": "llama-3.3-70b-versatile", "max_tokens": 50, "temperature": 0.3,
                   "messages": [{"role": "user", "content": explain_prompt}]},
             timeout=8,
         )
@@ -26526,7 +26526,7 @@ def _wa_drink_info_card(drink: str) -> str:
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 150, "temperature": 0.3,
+            json={"model": "llama-3.3-70b-versatile", "max_tokens": 150, "temperature": 0.3,
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=10,
         )
@@ -29445,7 +29445,7 @@ def wa_digest():
                 _gr = _req2.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {_groq_key}"},
-                    json={"model": "llama-3.1-8b-instant",
+                    json={"model": "llama-3.3-70b-versatile",
                           "messages": [{"role": "user", "content": _groq_prompt}],
                           "max_tokens": 80, "temperature": 0.4},
                     timeout=8,
@@ -32419,7 +32419,7 @@ def receipt_followup():
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
                          "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "max_tokens": 60, "temperature": 0.7,
+                json={"model": "llama-3.3-70b-versatile", "max_tokens": 60, "temperature": 0.7,
                       "messages": [{"role": "user", "content": " ".join(ctx_parts)}]},
                 timeout=10,
             )
@@ -34087,7 +34087,7 @@ def api_book_intel():
             gr = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}", "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}],
+                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
                       "max_tokens": 400, "temperature": 0.2},
                 timeout=10,
             )
@@ -39762,7 +39762,7 @@ def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}"},
                     json={
-                        "model": "llama-3.1-8b-instant",
+                        "model": "llama-3.3-70b-versatile",
                         "max_tokens": 120,
                         "temperature": 0.3,
                         "messages": [{"role": "user", "content": prompt}]
