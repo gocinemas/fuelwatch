@@ -522,6 +522,42 @@
                 <div id="hiringContent">Loading hiring data...</div>
             </div>
 
+            <!-- M&A Activity Section -->
+            <div class="section" id="maSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">🤝</span>
+                    M&A Activity
+                </div>
+                <div id="maContent" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+
+            <!-- Retention Metrics Section -->
+            <div class="section" id="retentionSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">🔄</span>
+                    Employee Retention & Turnover
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="stat-card">
+                        <div class="stat-label">🔄 Retention Rate</div>
+                        <div id="retentionRate" class="stat-value">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">💼 Turnover Risk</div>
+                        <div id="turnoverRisk" class="stat-value">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- News Feed Section -->
+            <div class="section" id="newsSection" style="display: none;">
+                <div class="section-title">
+                    <span class="section-icon">📰</span>
+                    Latest News
+                </div>
+                <div id="newsList" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+
             <a href="/" class="back-link">← Back to Intel</a>
         </div>
     </div>
@@ -923,6 +959,123 @@
                         document.getElementById('hiringSection').style.display = 'block';
                     }
                 }
+            }
+
+            // Load additional data sections
+            loadMAActivity(data.name);
+            loadRetentionMetrics(data.name);
+            loadNews(data.name);
+        }
+
+        // Load M&A Activity
+        async function loadMAActivity(companyName) {
+            try {
+                const response = await fetch(`/api/company/ma-activity?name=${encodeURIComponent(companyName)}`);
+                const data = await response.json();
+                const deals = data.deals || [];
+
+                if (deals.length === 0) {
+                    document.getElementById('maSection').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('maSection').style.display = 'block';
+                const dealIcons = {'acquisition': '🛒', 'divestiture': '📤', 'investment': '💰', 'partnership': '🤝'};
+                const dealColors = {'acquisition': '#10b981', 'divestiture': '#ef4444', 'investment': '#3b82f6', 'partnership': '#8b5cf6'};
+
+                const html = deals.slice(0, 5).map(deal => {
+                    const dealType = (deal.deal_type || '').toLowerCase();
+                    const icon = dealIcons[dealType] || '🤝';
+                    const color = dealColors[dealType] || '#0f766e';
+                    const amount = deal.amount_millions || deal.value || 0;
+                    const amountLabel = amount ? `$${amount.toLocaleString()}M` : 'Undisclosed';
+
+                    return `
+                        <div class="list-item" style="border-left: 3px solid ${color}; padding-left: 12px;">
+                            <div><strong>${icon} ${deal.target_company}</strong></div>
+                            <div style="color: var(--text-secondary); font-size: 12px; margin: 4px 0;">
+                                ${dealType.charAt(0).toUpperCase() + dealType.slice(1)} • ${amountLabel}
+                            </div>
+                            ${deal.description ? `<div style="color: var(--text-secondary); font-size: 12px;">${deal.description}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('maContent').innerHTML = html;
+            } catch (error) {
+                console.error('Failed to load M&A:', error);
+                document.getElementById('maSection').style.display = 'none';
+            }
+        }
+
+        // Load Retention Metrics
+        async function loadRetentionMetrics(companyName) {
+            try {
+                const response = await fetch(`/api/company/hiring-focus?company=${encodeURIComponent(companyName)}`);
+                const data = await response.json();
+
+                const retentionRate = data.retention_rate;
+                const turnoverRate = data.turnover_rate;
+
+                if (!retentionRate) {
+                    document.getElementById('retentionSection').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('retentionSection').style.display = 'block';
+
+                const retentionColor = retentionRate >= 90 ? '#10b981' : retentionRate >= 80 ? '#3b82f6' : '#f59e0b';
+                document.getElementById('retentionRate').innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 60px; height: 6px; background: rgba(15, 118, 110, 0.2); border-radius: 3px; overflow: hidden;">
+                            <div style="width: ${Math.min(retentionRate, 100)}%; height: 100%; background: ${retentionColor};"></div>
+                        </div>
+                        <span>${retentionRate}%</span>
+                    </div>
+                `;
+
+                const riskLevel = turnoverRate > 20 ? '🔴 High' : turnoverRate > 10 ? '🟡 Moderate' : '🟢 Low';
+                document.getElementById('turnoverRisk').textContent = `${riskLevel} (${turnoverRate}% annually)`;
+            } catch (error) {
+                console.error('Failed to load retention:', error);
+                document.getElementById('retentionSection').style.display = 'none';
+            }
+        }
+
+        // Load News
+        async function loadNews(companyName) {
+            try {
+                const response = await fetch(`/api/company/news?name=${encodeURIComponent(companyName)}`);
+                const data = await response.json();
+                const articles = data.articles || [];
+
+                if (articles.length === 0) {
+                    document.getElementById('newsSection').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('newsSection').style.display = 'block';
+
+                const html = articles.slice(0, 5).map(article => {
+                    const pubDate = new Date(article.published_date).toLocaleDateString('en-GB');
+                    const categoryEmoji = {'Financial': '💰', 'Product': '🚀', 'Market Position': '📊', 'Sustainability': '🌱', 'Innovation': '⚡', 'News': '📰'}[article.category] || '📰';
+
+                    return `
+                        <div class="list-item">
+                            <div><strong>${categoryEmoji} ${article.title}</strong></div>
+                            <div style="color: var(--text-secondary); font-size: 12px; margin: 4px 0;">
+                                ${article.source} • ${pubDate}
+                            </div>
+                            <div style="color: var(--text-secondary); font-size: 12px; margin: 4px 0;">${article.description || 'No description'}</div>
+                            <a href="${article.url}" target="_blank" style="color: var(--primary-light); text-decoration: none; font-size: 12px;">Read more →</a>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('newsList').innerHTML = html;
+            } catch (error) {
+                console.error('Failed to load news:', error);
+                document.getElementById('newsSection').style.display = 'none';
             }
         }
 
