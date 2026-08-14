@@ -1008,7 +1008,7 @@
             }
         }
 
-        // Load Retention Metrics
+        // Load Retention Metrics (Real Data Only)
         async function loadRetentionMetrics(companyName) {
             try {
                 const response = await fetch(`/api/company/hiring-focus?company=${encodeURIComponent(companyName)}`);
@@ -1016,25 +1016,32 @@
 
                 const retentionRate = data.retention_rate;
                 const turnoverRate = data.turnover_rate;
+                const source = data.source;
+                const glassdoor = data.glassdoor_rating;
 
-                if (!retentionRate) {
+                // Only show section if we have real data
+                if (!retentionRate || retentionRate === null) {
                     document.getElementById('retentionSection').style.display = 'none';
                     return;
                 }
 
                 document.getElementById('retentionSection').style.display = 'block';
 
-                const retentionColor = retentionRate >= 90 ? '#10b981' : retentionRate >= 80 ? '#3b82f6' : '#f59e0b';
+                const retentionColor = retentionRate >= 85 ? '#10b981' : retentionRate >= 75 ? '#3b82f6' : '#f59e0b';
                 document.getElementById('retentionRate').innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="width: 60px; height: 6px; background: rgba(15, 118, 110, 0.2); border-radius: 3px; overflow: hidden;">
-                            <div style="width: ${Math.min(retentionRate, 100)}%; height: 100%; background: ${retentionColor};"></div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 60px; height: 6px; background: rgba(15, 118, 110, 0.2); border-radius: 3px; overflow: hidden;">
+                                <div style="width: ${Math.min(retentionRate, 100)}%; height: 100%; background: ${retentionColor};"></div>
+                            </div>
+                            <span style="font-weight: 600;">${retentionRate}%</span>
                         </div>
-                        <span>${retentionRate}%</span>
+                        ${source ? `<div style="color: var(--text-secondary); font-size: 11px;">📊 ${source}</div>` : ''}
+                        ${glassdoor ? `<div style="color: var(--text-secondary); font-size: 11px;">⭐ Glassdoor: ${glassdoor}/5.0</div>` : ''}
                     </div>
                 `;
 
-                const riskLevel = turnoverRate > 20 ? '🔴 High' : turnoverRate > 10 ? '🟡 Moderate' : '🟢 Low';
+                const riskLevel = turnoverRate > 20 ? '🔴 High' : turnoverRate > 15 ? '🟡 Moderate' : '🟢 Low';
                 document.getElementById('turnoverRisk').textContent = `${riskLevel} (${turnoverRate}% annually)`;
             } catch (error) {
                 console.error('Failed to load retention:', error);

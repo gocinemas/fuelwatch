@@ -40603,26 +40603,33 @@ def api_company_hiring_focus():
 
         data = result.data[0]
 
-        # Get retention metrics
+        # Get retention metrics (only real data from Comparably/Glassdoor)
         try:
             from hiring_trends_tracker import get_retention_metrics
             retention_data = get_retention_metrics(company)
         except:
             retention_data = {}
 
-        return jsonify({
+        # Build response - only include retention fields if we have real data
+        response = {
             "company": data.get("company_name"),
             "hiring_growth_2025": data.get("hiring_growth_2025"),
             "ai_investment_score": data.get("ai_investment_score"),
             "strategic_direction": data.get("strategic_direction"),
             "focus_areas": data.get("focus_areas", []),
             "last_updated": data.get("last_updated"),
-            # Retention metrics
-            "retention_rate": retention_data.get("retention_rate"),
-            "turnover_rate": retention_data.get("turnover_rate"),
-            "retention_trend": retention_data.get("retention_trend"),
-            "employee_retention_pct": retention_data.get("retention_rate")
-        })
+        }
+
+        # Add retention metrics only if available
+        if retention_data:
+            response.update({
+                "retention_rate": retention_data.get("retention_rate"),
+                "turnover_rate": retention_data.get("turnover_rate"),
+                "glassdoor_rating": retention_data.get("glassdoor_rating"),
+                "source": retention_data.get("source"),
+            })
+
+        return jsonify(response)
     except Exception as e:
         import logging
         logging.error(f"[company-hiring-focus] {e}")
