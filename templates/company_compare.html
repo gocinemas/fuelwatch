@@ -2258,36 +2258,57 @@
                 <head>
                     <meta charset="UTF-8">
                     <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        h1 { color: #667eea; margin-bottom: 10px; }
-                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-                        th { background: #f3f4f6; font-weight: bold; }
-                        .company-info { margin: 20px 0; padding: 15px; background: #f9fafb; border-radius: 8px; }
-                        .company-name { font-size: 18px; font-weight: bold; color: #667eea; margin-bottom: 5px; }
-                        .company-detail { font-size: 13px; color: #6b7280; line-height: 1.6; }
+                        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+                        h1 { color: #667eea; margin-bottom: 10px; font-size: 24px; }
+                        h2 { color: #667eea; margin-top: 20px; margin-bottom: 10px; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 5px; }
+                        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 11px; }
+                        th { background: #667eea; color: white; font-weight: bold; }
+                        tr:nth-child(even) { background: #f9fafb; }
+                        .company-info { margin: 15px 0; padding: 12px; background: #f3f4f6; border-left: 4px solid #667eea; page-break-inside: avoid; }
+                        .company-name { font-size: 14px; font-weight: bold; color: #667eea; margin-bottom: 5px; }
+                        .company-detail { font-size: 11px; color: #6b7280; line-height: 1.5; }
+                        .metric-row { margin-bottom: 8px; }
+                        .metric-label { font-weight: bold; color: #1f2937; }
+                        .metric-value { color: #4b5563; }
+                        p { font-size: 11px; color: #6b7280; }
+                        .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 10px; color: #9ca3af; text-align: center; }
                     </style>
                 </head>
                 <body>
                     <h1>⚖️ Company Comparison Report</h1>
-                    <p>Generated on ${new Date().toLocaleDateString('en-GB')}</p>
+                    <p>Generated on ${new Date().toLocaleDateString('en-GB')} | Intel Platform</p>
             `;
 
-            // Company details
+            // Executive Summary
+            html += `<h2>Executive Summary</h2>`;
+            html += `<p>${companies.length} companies compared across financial metrics, growth, profitability, and market position.</p>`;
+
+            // Company profiles
+            html += `<h2>Company Profiles</h2>`;
             companies.forEach(company => {
                 html += `
                     <div class="company-info">
                         <div class="company-name">${company.name}</div>
                         <div class="company-detail">
-                            <strong>Sector:</strong> ${company.sector || 'N/A'}<br>
-                            <strong>Headquarters:</strong> ${company.headquarters || 'N/A'}<br>
-                            <strong>Stock:</strong> ${company.stock?.ticker || 'N/A'} (Price: $${company.stock?.price ? company.stock.price.toFixed(2) : 'N/A'})
+                            <div class="metric-row">
+                                <span class="metric-label">Sector:</span> <span class="metric-value">${company.sector || 'N/A'}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Headquarters:</span> <span class="metric-value">${company.headquarters || 'N/A'}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Stock Ticker:</span> <span class="metric-value">${company.stock?.ticker || 'N/A'}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Description:</span> <span class="metric-value">${company.description?.substring(0, 100) || 'N/A'}...</span>
+                            </div>
                         </div>
                     </div>
                 `;
             });
 
-            // Comparison table
+            // Financial Comparison Table
             html += `<h2>Financial Metrics Comparison</h2><table>
                 <tr>
                     <th>Metric</th>
@@ -2295,14 +2316,19 @@
                 </tr>
             `;
 
-            // Rows
+            // Rows with more metrics
             const metrics = [
-                { label: 'Revenue (Latest)', format: (c) => c.financials?.revenue_millions ? `$${(c.financials.revenue_millions/1000).toFixed(1)}B` : 'N/A' },
-                { label: 'Revenue Growth', format: (c) => c.financials?.revenue_growth_pct !== undefined ? `${c.financials.revenue_growth_pct.toFixed(1)}%` : 'N/A' },
-                { label: 'Operating Margin', format: (c) => c.financials?.operating_margin_pct ? `${c.financials.operating_margin_pct.toFixed(1)}%` : 'N/A' },
+                { label: 'Revenue (2025)', format: (c) => c.financials?.revenue_millions ? `$${(c.financials.revenue_millions/1000).toFixed(1)}B` : 'N/A' },
+                { label: 'Revenue Growth %', format: (c) => c.financials?.revenue_growth_pct !== undefined ? `${c.financials.revenue_growth_pct.toFixed(1)}%` : 'N/A' },
+                { label: 'Operating Margin %', format: (c) => c.financials?.operating_margin_pct ? `${c.financials.operating_margin_pct.toFixed(1)}%` : 'N/A' },
                 { label: 'Employees', format: (c) => c.financials?.employees ? `${(c.financials.employees/1000).toFixed(0)}K` : 'N/A' },
+                { label: 'Revenue per Employee', format: (c) => c.financials && c.financials.revenue_millions && c.financials.employees ? `$${(c.financials.revenue_millions * 1000 / c.financials.employees).toFixed(2)}K` : 'N/A' },
                 { label: 'Market Cap', format: (c) => c.stock?.market_cap_billions ? `$${c.stock.market_cap_billions}B` : 'N/A' },
-                { label: 'P/E Ratio', format: (c) => c.stock?.pe_ratio || 'N/A' },
+                { label: 'Stock Price', format: (c) => c.stock?.price ? `$${c.stock.price.toFixed(2)}` : 'N/A' },
+                { label: 'P/E Ratio', format: (c) => c.stock?.pe_ratio ? c.stock.pe_ratio.toFixed(1) : 'N/A' },
+                { label: 'Dividend Yield', format: (c) => c.stock?.dividend_yield ? `${c.stock.dividend_yield.toFixed(2)}%` : 'N/A' },
+                { label: '52-Week High', format: (c) => c.stock?.week_52_high ? `$${c.stock.week_52_high.toFixed(2)}` : 'N/A' },
+                { label: '52-Week Low', format: (c) => c.stock?.week_52_low ? `$${c.stock.week_52_low.toFixed(2)}` : 'N/A' },
             ];
 
             metrics.forEach(metric => {
@@ -2313,7 +2339,22 @@
                 html += `</tr>`;
             });
 
-            html += `</table></body></html>`;
+            html += `</table>`;
+
+            // Key Takeaways
+            html += `<h2>Key Insights</h2>`;
+            html += `<ul>`;
+            html += `<li><strong>Largest by Revenue:</strong> ${lastComparisonData.comparison?.largest_by_revenue || 'N/A'}</li>`;
+            html += `<li><strong>Fastest Growth:</strong> ${lastComparisonData.comparison?.fastest_growth || 'N/A'}</li>`;
+            html += `<li><strong>Highest Margin:</strong> ${lastComparisonData.comparison?.highest_margin || 'N/A'}</li>`;
+            html += `<li><strong>Largest by Employees:</strong> ${lastComparisonData.comparison?.largest_by_employees || 'N/A'}</li>`;
+            html += `</ul>`;
+
+            html += `<div class="footer">
+                <p>This report was generated by Intel - Company Intelligence Platform</p>
+                <p>Data sourced from: Companies House, SEC Edgar, Yahoo Finance, NewsAPI</p>
+            </div>
+            </body></html>`;
 
             // Send to server for PDF conversion
             fetch('/api/company/generate-pdf', {

@@ -40242,30 +40242,122 @@ def api_generate_pdf():
                 download_name=filename
             )
         except ImportError:
-            # Fallback: try reportlab
+            # Fallback: try reportlab with professional formatting
             try:
-                from reportlab.lib.pagesizes import letter
-                from reportlab.pdfgen import canvas
+                from reportlab.lib.pagesizes import letter, A4
+                from reportlab.lib import colors
+                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+                from reportlab.lib.units import inch
                 from io import BytesIO
                 import re
+                from html.parser import HTMLParser
+
+                # Parse HTML to extract data
+                class HTMLTableParser(HTMLParser):
+                    def __init__(self):
+                        super().__init__()
+                        self.title = ""
+                        self.company_sections = []
+                        self.current_company = {}
+                        self.tables = []
+                        self.current_table = []
+                        self.in_table = False
+                        self.in_row = False
+                        self.in_cell = False
+                        self.cell_content = ""
+                        self.in_h1 = False
+                        self.in_h2 = False
+                        self.in_company_name = False
+
+                    def handle_starttag(self, tag, attrs):
+                        if tag == 'h1':
+                            self.in_h1 = True
+                        elif tag == 'h2':
+                            self.in_h2 = True
+                        elif tag == 'table':
+                            self.in_table = True
+                            self.current_table = []
+                        elif tag == 'tr' and self.in_table:
+                            self.in_row = True
+                            self.current_row = []
+                        elif tag in ['td', 'th'] and self.in_row:
+                            self.in_cell = True
+                            self.cell_content = ""
+                        elif tag == 'div' and ('company-name' in dict(attrs)):
+                            self.in_company_name = True
+
+                    def handle_endtag(self, tag):
+                        if tag == 'h1':
+                            self.in_h1 = False
+                        elif tag == 'h2':
+                            self.in_h2 = False
+                        elif tag == 'table':
+                            self.in_table = False
+                            if self.current_table:
+                                self.tables.append(self.current_table)
+                        elif tag == 'tr' and self.in_row:
+                            self.in_row = False
+                            if hasattr(self, 'current_row'):
+                                self.current_table.append(self.current_row)
+                        elif tag in ['td', 'th'] and self.in_cell:
+                            self.in_cell = False
+                            if hasattr(self, 'current_row'):
+                                self.current_row.append(self.cell_content.strip())
+                        elif tag == 'div' and self.in_company_name:
+                            self.in_company_name = False
+
+                    def handle_data(self, data):
+                        if self.in_h1:
+                            self.title = data.strip()
+                        elif self.in_cell:
+                            self.cell_content += data.strip()
+
+                parser = HTMLTableParser()
+                parser.feed(html)
 
                 pdf_buffer = BytesIO()
-                c = canvas.Canvas(pdf_buffer, pagesize=letter)
+                doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
+                story = []
+                styles = getSampleStyleSheet()
 
-                # Extract text from HTML and write to PDF
-                text_content = re.sub(r'<[^>]*>', '', html)
-                lines = text_content.split('\n')
+                # Title
+                title_style = ParagraphStyle(
+                    'CustomTitle',
+                    parent=styles['Heading1'],
+                    fontSize=24,
+                    textColor=colors.HexColor('#667eea'),
+                    spaceAfter=6,
+                    alignment=1
+                )
+                story.append(Paragraph("⚖️ Company Comparison Report", title_style))
+                story.append(Paragraph(f"Generated on {datetime.utcnow().strftime('%d %B %Y')}", styles['Normal']))
+                story.append(Spacer(1, 0.2*inch))
 
-                y = 750
-                for line in lines[:100]:  # Limit to 100 lines
-                    if line.strip():
-                        c.drawString(50, y, line.strip()[:80])
-                        y -= 15
-                        if y < 50:
-                            c.showPage()
-                            y = 750
+                # Add tables from HTML
+                if parser.tables and len(parser.tables) > 0:
+                    table_data = parser.tables[0]
+                    if table_data:
+                        # Create table with styling
+                        tbl = Table(table_data, colWidths=[1.5*inch] * (len(table_data[0]) if table_data else 1))
+                        tbl.setStyle(TableStyle([
+                            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTSIZE', (0, 0), (-1, 0), 11),
+                            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                            ('FONTSIZE', (0, 1), (-1, -1), 9),
+                            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+                        ]))
+                        story.append(tbl)
 
-                c.save()
+                story.append(Spacer(1, 0.3*inch))
+                story.append(Paragraph("Generated by Intel - Company Intelligence Platform", styles['Italic']))
+
+                doc.build(story)
                 pdf_buffer.seek(0)
 
                 return send_file(
@@ -40275,7 +40367,7 @@ def api_generate_pdf():
                     download_name=filename
                 )
             except Exception as fallback_error:
-                logger.warning(f"[pdf] Both methods failed: {str(fallback_error)[:100]}")
+                logger.warning(f"[pdf] ReportLab failed: {str(fallback_error)[:100]}")
                 return jsonify({"error": "PDF generation not available", "note": "try again later"}), 503
 
     except Exception as e:
