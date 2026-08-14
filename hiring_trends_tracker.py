@@ -231,16 +231,21 @@ class HiringTrendsTracker:
 
     def calculate_retention_metrics(self, company_name: str) -> dict:
         """
-        Calculate employee retention metrics.
-        Uses employee count changes and hiring data to estimate retention.
-        Provides sensible defaults when financial data is missing.
+        Calculate employee retention metrics from hiring signals and financial data.
+        Uses current hiring openings, growth rate, and hiring trend to estimate retention.
+        Does NOT require 2+ years of data.
+
+        Logic:
+        - High hiring rate + stable/low employee growth = High turnover (low retention)
+        - Low hiring rate + stable/growing employees = Low turnover (high retention)
+        - Hiring growth decreasing = Improving retention (less churn)
 
         Returns:
             {
                 "retention_rate": 88,  # percentage
                 "turnover_rate": 12,   # percentage
                 "retention_trend": "stable",  # stable, improving, declining
-                "based_on": "hiring_and_employee_data"
+                "based_on": "hiring_analysis"
             }
         """
         try:
@@ -253,59 +258,73 @@ class HiringTrendsTracker:
                     "based_on": "industry_average"
                 }
 
-            # Get latest financial data for employee count
-            fin_response = self.sb.table("company_financials").select(
-                "period, employees"
-            ).eq("company_name", company_name).order(
-                "period", desc=True
-            ).limit(3).execute()
-
-            financials = fin_response.data or []
-
-            # If we have at least 2 years of data, calculate actual retention
-            if len(financials) >= 2:
-                # Employee count change over periods
-                latest_employees = financials[0].get("employees", 0)
-                previous_employees = financials[1].get("employees", 0)
-                employee_growth = ((latest_employees - previous_employees) / previous_employees * 100) if previous_employees > 0 else 0
-
-                # Get hiring trend for same period
-                hiring_trend = self.get_hiring_trend(company_name, days=365)
-                hiring_growth = hiring_trend.get("trend_direction") == "increasing"
-
-                # Estimate retention based on hiring vs employee growth
-                if hiring_growth and employee_growth < 5:
-                    # Hiring aggressively but employees not growing much = replacing people
-                    retention_rate = max(70, 100 - abs(employee_growth) - 20)
-                    retention_trend = "declining"
-                elif not hiring_growth and employee_growth > 0:
-                    # Minimal hiring, employees still growing = high retention
-                    retention_rate = min(95, 85 + employee_growth)
-                    retention_trend = "improving"
-                else:
-                    # Balanced scenario
-                    retention_rate = 85
-                    retention_trend = "stable"
-
-                retention_rate = max(60, min(98, int(retention_rate)))  # Clamp 60-98%
-                turnover_rate = 100 - retention_rate
-
+            # Fetch current hiring signals for the company
+            hiring_data = self.fetcher.fetch_hiring_signals(company_name)
+            if not hiring_data:
+                logger.warning(f"[retention] No hiring data for {company_name}")
                 return {
-                    "retention_rate": retention_rate,
-                    "turnover_rate": turnover_rate,
-                    "retention_trend": retention_trend,
-                    "employee_growth_pct": round(employee_growth, 1),
-                    "based_on": "financial_hiring_analysis"
-                }
-            else:
-                # No financial data, use industry defaults
-                logger.info(f"[retention] No financial data for {company_name}, using industry average")
-                return {
-                    "retention_rate": 85,  # Industry average for tech/consumer companies
+                    "retention_rate": 85,
                     "turnover_rate": 15,
                     "retention_trend": "stable",
                     "based_on": "industry_average"
                 }
+
+            # Get hiring trends over last 90 days
+            hiring_trend = self.get_hiring_trend(company_name, days=90)
+            trend_direction = hiring_trend.get("trend_direction", "unknown")
+            current_openings = hiring_data.get("overview", {}).get("total_open_roles", 0)
+
+            # Get top departments to understand hiring velocity
+            top_departments = hiring_data.get("top_departments", [])
+            if not top_departments:
+                return {
+                    "retention_rate": 85,
+                    "turnover_rate": 15,
+                    "retention_trend": "stable",
+                    "based_on": "industry_average"
+                }
+
+            # Calculate hiring intensity (avg openings per department)
+            dept_count = len(top_departments)
+            avg_openings_per_dept = current_openings / dept_count if dept_count > 0 else 0
+
+            # Infer retention from hiring patterns:
+            # - High department hiring (8+ per dept) = likely replacing people = 75-80% retention
+            # - Medium hiring (5-8 per dept) = stable = 82-87% retention
+            # - Low hiring (2-4 per dept) = growth without replacement = 88-93% retention
+
+            if avg_openings_per_dept > 8:
+                # Aggressive hiring - likely replacing departures
+                retention_rate = 76 if trend_direction == "increasing" else 82
+                retention_trend = "declining"
+            elif avg_openings_per_dept > 5:
+                # Moderate hiring - balanced growth
+                if trend_direction == "decreasing":
+                    retention_rate = 88
+                    retention_trend = "improving"
+                elif trend_direction == "increasing":
+                    retention_rate = 80
+                    retention_trend = "declining"
+                else:
+                    retention_rate = 84
+                    retention_trend = "stable"
+            else:
+                # Light hiring - strong retention
+                retention_rate = 90 if trend_direction == "stable" else 87
+                retention_trend = "improving"
+
+            # Clamp to realistic range (60-95%)
+            retention_rate = max(60, min(95, retention_rate))
+            turnover_rate = 100 - retention_rate
+
+            return {
+                "retention_rate": retention_rate,
+                "turnover_rate": turnover_rate,
+                "retention_trend": retention_trend,
+                "current_openings": current_openings,
+                "hiring_intensity": round(avg_openings_per_dept, 1),
+                "based_on": "hiring_analysis"
+            }
 
         except Exception as e:
             logger.error(f"[retention] Error calculating retention for {company_name}: {e}")
