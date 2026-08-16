@@ -1052,15 +1052,20 @@
         // Load News
         async function loadNews(companyName) {
             try {
+                console.log('[NEWS] Loading news for:', companyName);
                 const response = await fetch(`/api/company/news?name=${encodeURIComponent(companyName)}`);
                 const data = await response.json();
                 const articles = data.articles || [];
 
+                console.log('[NEWS] Got articles:', articles.length);
+
                 if (articles.length === 0) {
+                    console.log('[NEWS] No articles found, hiding section');
                     document.getElementById('newsSection').style.display = 'none';
                     return;
                 }
 
+                console.log('[NEWS] Showing news section');
                 document.getElementById('newsSection').style.display = 'block';
 
                 const html = articles.slice(0, 5).map(article => {
@@ -1081,10 +1086,13 @@
                     `;
                 }).join('');
 
+                console.log('[NEWS] Setting HTML, length:', html.length);
                 document.getElementById('newsList').innerHTML = html;
+                console.log('[NEWS] HTML set successfully');
             } catch (error) {
-                console.error('Failed to load news:', error);
-                document.getElementById('newsSection').style.display = 'none';
+                console.error('[NEWS] Error:', error);
+                document.getElementById('newsSection').style.display = 'block';
+                document.getElementById('newsList').innerHTML = `<div style="color: red; padding: 12px;">Error loading news: ${error.message}</div>`;
             }
         }
 
