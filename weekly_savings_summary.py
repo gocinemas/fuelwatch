@@ -13,7 +13,7 @@ Computes:
 
 import re
 from datetime import date, timedelta
-import lib
+import library as lib
 
 
 def get_weekly_savings(from_number: str) -> dict:
