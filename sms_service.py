@@ -28965,7 +28965,7 @@ def _whatsapp_reply_inner():
         return str(resp)
 
     # ── Phase 1: Motivation Features (Price alerts, Weekly summary, Targets) ──
-    if body_lower in ("price alert", "price alerts", "alert me", "fuel alert"):
+    if body_lower.startswith("price alert") or body_lower.startswith("alert me") or body_lower in ("fuel alert",):
         from miru.motivation.handlers import handle_price_alert_setup
         reply = handle_price_alert_setup(from_number, body)
         resp.message(reply)
