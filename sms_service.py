@@ -70,6 +70,10 @@ app.json = CustomJSONProvider(app)
 from miru.motivation.endpoints import register_motivation_endpoints
 register_motivation_endpoints(app)
 
+# ── Phase 2: Family Goals Endpoints ──
+from miru.goals.endpoints import register_goals_endpoints
+register_goals_endpoints(app)
+
 # REGISTER HANDLERS IN ORCHESTRATOR
 def _init_orchestrator():
     """Initialize and register all handlers"""
@@ -26807,6 +26811,40 @@ def _whatsapp_reply_inner():
             resp.message(reply)
             return str(resp)
         except Exception as e:
+            resp.message(f"❌ Error: {str(e)[:100]}")
+            return str(resp)
+
+    # ── Phase 2: Family Goals Handlers ──
+    if body_lower.startswith("set goal "):
+        try:
+            from miru.goals.handlers import handle_set_family_goal
+            reply = handle_set_family_goal(from_number, body)
+            resp.message(reply)
+            return str(resp)
+        except Exception as e:
+            app.logger.error(f"[goals] set goal error: {e}")
+            resp.message(f"❌ Error: {str(e)[:100]}")
+            return str(resp)
+
+    if body_lower in ("goals", "show goals", "list goals", "my goals"):
+        try:
+            from miru.goals.handlers import handle_list_goals
+            reply = handle_list_goals(from_number)
+            resp.message(reply)
+            return str(resp)
+        except Exception as e:
+            app.logger.error(f"[goals] list goals error: {e}")
+            resp.message(f"❌ Error: {str(e)[:100]}")
+            return str(resp)
+
+    if body_lower.startswith("add member "):
+        try:
+            from miru.goals.handlers import handle_add_household_member
+            reply = handle_add_household_member(from_number, body)
+            resp.message(reply)
+            return str(resp)
+        except Exception as e:
+            app.logger.error(f"[goals] add member error: {e}")
             resp.message(f"❌ Error: {str(e)[:100]}")
             return str(resp)
 
