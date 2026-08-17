@@ -23456,6 +23456,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
                 elif img_type == "product":
                     update_data["category"] = "Shopping"
                 lib._sb().table("wa_saves").update(update_data).eq("id", sid).execute()
+
+                # ── Phase 2: Auto-link receipts to household goals ──
+                if img_type == "receipt" and receipt_data and receipt_data.get("total"):
+                    try:
+                        from miru.goals import link_receipt_to_goals
+                        amount_pence = int(receipt_data.get("total", 0) * 100)
+                        category = update_data.get("category", "")
+                        link_receipt_to_goals(fn, amount_pence, category)
+                    except Exception as goal_err:
+                        app.logger.warning(f"[goals] Receipt linking failed: {goal_err}")
+
             except Exception:
                 pass
 
