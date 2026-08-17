@@ -31745,14 +31745,16 @@ def api_home_week_full():
             for r in spend_rows:
                 merchant = r.get("merchant", "Unknown")
                 location = r.get("location", "")
-                merchant_key = f"{merchant}|{location}" if location else merchant  # Key includes location
+                shop_date = r.get("shop_date", "")
+                amount = float(r.get("total", 0) or 0)
+                # Make merchant_key unique per receipt using date + amount to avoid merging different purchases
+                merchant_key = f"{merchant}|{location}|{shop_date}|{amount}" if location else f"{merchant}|{shop_date}|{amount}"
 
                 # Use manually-set category if available, otherwise fall back to merchant-based categorization
                 if r.get("category") and r.get("category") != "Other":
                     cat = r.get("category")
                 else:
                     cat = _receipt_category(merchant)
-                amount = float(r.get("total", 0) or 0)
                 if cat not in this_week["spend_by_category"]:
                     this_week["spend_by_category"][cat] = {"total": 0, "count": 0, "merchants": []}
                     merchants_by_cat[cat] = {}
@@ -31772,11 +31774,10 @@ def api_home_week_full():
             merchant_items = merchants_by_cat.get(cat, {})
             merchants = []
             for merchant_key, data in merchant_items.items():
-                # merchant_key might be "Costa|Virginia Water" or just "Costa"
-                if "|" in merchant_key:
-                    merchant_name, location = merchant_key.split("|", 1)
-                else:
-                    merchant_name, location = merchant_key, ""
+                # merchant_key format: "Costa|Virginia Water|2026-08-15|20.64" or "Costa|2026-08-15|20.64"
+                parts = merchant_key.split("|")
+                merchant_name = parts[0] if parts else "Unknown"
+                location = parts[1] if len(parts) > 2 else ""  # If 3+ parts, part[1] is location; if 2 parts, no location
 
                 merchants.append({
                     "name": merchant_name,
@@ -32012,10 +32013,12 @@ def api_home_week_full():
             for r in last_spend_rows:
                 merchant = r.get("merchant", "Unknown")
                 location = r.get("location", "")
-                merchant_key = f"{merchant}|{location}" if location else merchant
+                shop_date = r.get("shop_date", "")
+                amount = float(r.get("total", 0) or 0)
+                # Make merchant_key unique per receipt using date + amount to avoid merging different purchases
+                merchant_key = f"{merchant}|{location}|{shop_date}|{amount}" if location else f"{merchant}|{shop_date}|{amount}"
 
                 cat = _receipt_category(merchant)
-                amount = float(r.get("total", 0) or 0)
                 if cat not in last_week["spend_by_category"]:
                     last_week["spend_by_category"][cat] = {"total": 0, "count": 0, "merchants": []}
                     last_merchants_by_cat[cat] = {}
@@ -32032,11 +32035,10 @@ def api_home_week_full():
             merchant_items = last_merchants_by_cat.get(cat, {})
             merchants = []
             for merchant_key, data in merchant_items.items():
-                # merchant_key might be "Costa|Virginia Water" or just "Costa"
-                if "|" in merchant_key:
-                    merchant_name, location = merchant_key.split("|", 1)
-                else:
-                    merchant_name, location = merchant_key, ""
+                # merchant_key format: "Costa|Virginia Water|2026-08-15|20.64" or "Costa|2026-08-15|20.64"
+                parts = merchant_key.split("|")
+                merchant_name = parts[0] if parts else "Unknown"
+                location = parts[1] if len(parts) > 2 else ""  # If 3+ parts, part[1] is location; if 2 parts, no location
 
                 merchants.append({
                     "name": merchant_name,
@@ -32163,6 +32165,117 @@ def api_home_week_full():
             "error": error_msg,
             "type": type(e).__name__
         }), 200  # Return 200 so frontend can handle gracefully
+
+
+@app.route("/api/debug/week-spending")
+def debug_week_spending():
+    """Debug endpoint: show all receipts found for this week with extracted amounts."""
+    import datetime as _dt
+    import zoneinfo as _zi
+
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        wa = (request.cookies.get("miru_saves_phone") or "").strip()
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    from_number = _v2_resolve(wa)
+    if not from_number:
+        return jsonify({"error": "Invalid phone number"}), 400
+
+    try:
+        now = _dt.datetime.now(_zi.ZoneInfo("Europe/London"))
+        today = now.date()
+
+        days_since_monday = today.weekday()
+        this_monday = today - _dt.timedelta(days=days_since_monday)
+        this_sunday = this_monday + _dt.timedelta(days=6)
+
+        sb = lib._sb()
+
+        # Fetch receipts
+        receipt_rows = sb.table("wa_saves").select("id,title,summary,created_at") \
+            .eq("from_number", from_number) \
+            .gte("created_at", this_monday.isoformat()) \
+            .lte("created_at", (this_sunday + _dt.timedelta(days=1)).isoformat()) \
+            .ilike("title", "🧾%") \
+            .execute().data or []
+
+        import re as _re_debug
+        _amount_patterns = [
+            r'(?:Total|TOTAL)\s+to\s+(?:Pay|pay)[:\s]*£([\d,]+\.?\d*)',
+            r'(?:Total|TOTAL)\s+due[:\s]*£([\d,]+\.?\d*)',
+            r'(?:Total|TOTAL)\s+amount[:\s]*£([\d,]+\.?\d*)',
+            r'(?:Total|TOTAL)\s+(?:Amount|AMOUNT)[:\s]*£([\d,]+\.?\d*)',
+            r'(?:Total|TOTAL)\s+balance\s+due[:\s]*£([\d,]+\.?\d*)',
+            r'(?:Total|TOTAL)\s*\([^)]*\)[:\s]*£([\d,]+\.?\d*)',
+            r'(?:Total|TOTAL)[:\s]*£([\d,]+\.?\d*)',
+            r'(?:Total|TOTAL)\s+£([\d,]+\.?\d*)',
+            r'Payable[:\s]*£([\d,]+\.?\d*)',
+            r'Amount\s+due[:\s]*£([\d,]+\.?\d*)',
+            r'[£]\s*([\d,]+\.?\d*)\s*(?:paid|total|due)',
+        ]
+
+        receipts_found = []
+        for r in receipt_rows:
+            summary = r.get("summary", "")
+            title = r.get("title", "")
+            merchant = (title or "").replace("🧾", "").strip() or "Unknown"
+            amount = 0
+
+            for pattern in _amount_patterns:
+                m = _re_debug.search(pattern, summary)
+                if m:
+                    try:
+                        amount = float(m.group(1).replace(",", ""))
+                        break
+                    except (ValueError, IndexError):
+                        pass
+
+            if amount == 0:
+                m = _re_debug.search(r'🧾\s*([^·]+)\s*·\s*£([\d.]+)', summary + " " + title)
+                if m:
+                    merchant = m.group(1).strip()
+                    try:
+                        amount = float(m.group(2))
+                    except (ValueError, IndexError):
+                        pass
+
+            receipts_found.append({
+                "id": r.get("id"),
+                "date": r.get("created_at", "")[:10],
+                "merchant": merchant,
+                "extracted_amount": amount,
+                "summary_preview": (summary or "")[:100],
+                "title": title[:60]
+            })
+
+        # Group by extracted amount to spot duplicates
+        by_amount = {}
+        for rec in receipts_found:
+            amt = rec["extracted_amount"]
+            if amt not in by_amount:
+                by_amount[amt] = []
+            by_amount[amt].append(rec)
+
+        # Find amounts that appear multiple times
+        duplicates = {amt: recs for amt, recs in by_amount.items() if len(recs) > 1}
+
+        return jsonify({
+            "week": f"{this_monday} to {this_sunday}",
+            "total_receipts": len(receipts_found),
+            "receipts": receipts_found,
+            "amounts_found": sorted(by_amount.keys()),
+            "duplicates": duplicates,
+            "looking_for_65_98": [r for r in receipts_found if abs(r["extracted_amount"] - 65.98) < 0.01]
+        })
+
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 
 @app.route("/api/audit/receipts")
