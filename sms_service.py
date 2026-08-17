@@ -15721,6 +15721,29 @@ def api_home_brief():
             pattern_text = merchant_pattern.get("description", "")
             if pattern_text:
                 facts.append(f"Routine: {pattern_text}")
+
+    # Savings summary (Phase 1b) — show weekly progress if available
+    savings = ctx.get("savings")
+    if savings and isinstance(savings, dict) and savings.get("status") == "ok":
+        try:
+            total_pence = savings.get("total_spent_pence", 0)
+            variance = savings.get("week_variance_pence", 0)
+            variance_dir = savings.get("variance_direction", "→")
+            fuel_saved = savings.get("fuel_saved_pence", 0)
+
+            if total_pence > 0:
+                total_gbp = total_pence / 100
+                variance_gbp = abs(variance) / 100
+
+                # Build savings fact
+                savings_fact = f"💰 This week: £{total_gbp:.2f} ({variance_dir}£{variance_gbp:.2f} vs last week)"
+                if fuel_saved > 0:
+                    fuel_gbp = fuel_saved / 100
+                    savings_fact += f", fuel alerts saved £{fuel_gbp:.2f}"
+
+                facts.append(savings_fact)
+        except Exception as e:
+            app.logger.warning(f"[brief] savings fact error: {e}")
     # School holiday status — Surrey term dates + Gmail inset days
     _hs = school_data.get("holiday_status") if isinstance(school_data, dict) else None
     if _hs and kids:
