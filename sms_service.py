@@ -66,6 +66,9 @@ class CustomJSONProvider(DefaultJSONProvider):
 
 app.json = CustomJSONProvider(app)
 
+# ── Phase 1: Motivation Layer Endpoints ──
+from miru.motivation.endpoints import register_motivation_endpoints
+register_motivation_endpoints(app)
 
 # REGISTER HANDLERS IN ORCHESTRATOR
 def _init_orchestrator():
@@ -7787,6 +7790,25 @@ def api_fuel_check_drops():
             _wa_send_proactive(f"whatsapp:{wa_to}", msg)
             lib._sb().table("fuel_alerts").update({"last_alerted_at": datetime.utcnow().isoformat()}) \
                 .eq("id", alert["id"]).execute()
+
+            # ── Log to savings_events (motivation layer) ──
+            try:
+                saving_pence = int((float(last) - price) * 55 * 10)  # 55L tank, in pence
+                lib._sb().table("savings_events").insert({
+                    "wa": wa,
+                    "event_type": "fuel_drop",
+                    "amount_pence": saving_pence,
+                    "description": f"Fuel {fuel} dropped {float(last)-price:.1f}p/L in {pc}"
+                }).execute()
+
+                # Update running total on fuel_alerts
+                current_total = alert.get('total_saved_pence', 0) or 0
+                lib._sb().table("fuel_alerts").update({
+                    "total_saved_pence": current_total + saving_pence
+                }).eq("id", alert["id"]).execute()
+            except Exception as log_err:
+                app.logger.error(f"[fuel-check-drops] Error logging savings event: {log_err}")
+
             sent += 1
         except Exception as ex:
             app.logger.error(f"fuel check-drops row: {ex}")
@@ -28939,6 +28961,31 @@ def _whatsapp_reply_inner():
             return str(resp)
         reply = whatsapp_product_format(product_name.strip(), loc_postcode)
         _WA_CACHE[cache_key] = (time.time(), reply)
+        resp.message(reply)
+        return str(resp)
+
+    # ── Phase 1: Motivation Features (Price alerts, Weekly summary, Targets) ──
+    if body_lower in ("price alert", "price alerts", "alert me", "fuel alert"):
+        from miru.motivation.handlers import handle_price_alert_setup
+        reply = handle_price_alert_setup(from_number, body)
+        resp.message(reply)
+        return str(resp)
+
+    if body_lower in ("alerts off", "stop alerts", "stop fuel"):
+        from miru.motivation.handlers import handle_alerts_off
+        reply = handle_alerts_off(from_number)
+        resp.message(reply)
+        return str(resp)
+
+    if body_lower in ("beat", "beat target"):
+        from miru.motivation.handlers import handle_beat_target
+        reply = handle_beat_target(from_number)
+        resp.message(reply)
+        return str(resp)
+
+    if body_lower in ("weekly", "weekly summary"):
+        from miru.motivation.handlers import handle_weekly_summary_toggle
+        reply = handle_weekly_summary_toggle(from_number, True)
         resp.message(reply)
         return str(resp)
 
