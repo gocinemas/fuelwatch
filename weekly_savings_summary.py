@@ -190,18 +190,30 @@ def format_weekly_message(savings_data: dict) -> str:
         trend = "⚪"  # Same
 
     # Build message
-    week_dates = "11–17 Aug"  # TODO: compute actual dates from savings_data period
+    # Calculate actual week dates from period_start and period_end
+    from datetime import datetime
+    period_start = savings_data.get('period_start_date', '')
+    period_end = savings_data.get('period_end_date', '')
 
-    msg = f"""📊 YOUR WEEK WITH MIRU
-{week_dates}
+    try:
+        start_obj = datetime.fromisoformat(period_start)
+        end_obj = datetime.fromisoformat(period_end)
+        week_dates = f"{start_obj.strftime('%d')}–{end_obj.strftime('%d %b')}"
+    except:
+        week_dates = "This week"
 
-💰 Spent: £{total_gbp:.2f} ({variance_dir}£{variance_gbp:.2f} vs last week)
-⛽ Fuel alerts saved you £{fuel_gbp:.2f}
-🧾 {receipt_count} receipts logged, mostly {top_cat.lower()}
+    # Clearer message without confusing phrasing
+    msg = f"""📊 YOUR WEEK
+Week of {week_dates}
 
-You're spending {('less' if variance < 0 else 'more')} than last week. {trend}
+💰 Spent this week: £{total_gbp:.2f}
+   Last week: £{last_week_pence/100:.2f} ({variance_dir}£{variance_gbp:.2f} difference)
+⛽ Fuel alerts saved: £{fuel_gbp:.2f}
+🧾 {receipt_count} receipts logged ({top_cat.lower()})
 
-Reply BEAT to set next week's target lower.
+You're spending {('less ✅' if variance < 0 else 'more ⚠️' if variance > 0 else 'about the same')} compared to last week.
+
+Reply *BEAT* to set next week's target.
 """
 
     return msg.strip()
