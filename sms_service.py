@@ -28966,10 +28966,18 @@ def _whatsapp_reply_inner():
 
     # ── Phase 1: Motivation Features (Price alerts, Weekly summary, Targets) ──
     if body_lower.startswith("price alert") or body_lower.startswith("alert me") or body_lower in ("fuel alert",):
-        from miru.motivation.handlers import handle_price_alert_setup
-        reply = handle_price_alert_setup(from_number, body)
-        resp.message(reply)
-        return str(resp)
+        try:
+            app.logger.info(f"[motivation] Price alert handler triggered for: {body_lower}")
+            from miru.motivation.handlers import handle_price_alert_setup
+            reply = handle_price_alert_setup(from_number, body)
+            resp.message(reply)
+            return str(resp)
+        except Exception as e:
+            app.logger.error(f"[motivation] Price alert handler error: {e}")
+            import traceback
+            traceback.print_exc()
+            resp.message(f"❌ Error setting up alert: {str(e)[:100]}")
+            return str(resp)
 
     if body_lower in ("alerts off", "stop alerts", "stop fuel"):
         from miru.motivation.handlers import handle_alerts_off
