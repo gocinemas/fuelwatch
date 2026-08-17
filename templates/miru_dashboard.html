@@ -285,20 +285,24 @@
             `).join('');
             document.getElementById('dailyChart').innerHTML = chartHTML;
 
-            // Categories
-            const totalSpent = Object.values(data.categories).reduce((a, b) => a + b, 0);
-            const categoryHTML = Object.entries(data.categories)
-                .sort((a, b) => b[1] - a[1])
-                .map(([name, amount]) => `
-                    <div class="category-item">
-                        <div class="category-name">${name}</div>
-                        <div class="category-bar">
-                            <div class="category-fill" style="width: ${(amount / totalSpent * 100)}%;"></div>
+            // Categories — only show if there's actual data
+            if (Object.keys(data.categories).length === 0 || Object.values(data.categories).every(v => v === 0)) {
+                document.getElementById('categoryList').innerHTML = '<p style="color: #999; text-align: center;">No spending data this week yet</p>';
+            } else {
+                const totalSpent = Object.values(data.categories).reduce((a, b) => a + b, 0);
+                const categoryHTML = Object.entries(data.categories)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([name, amount]) => `
+                        <div class="category-item">
+                            <div class="category-name">${name}</div>
+                            <div class="category-bar">
+                                <div class="category-fill" style="width: ${(amount / totalSpent * 100)}%;"></div>
+                            </div>
+                            <div class="category-amount">£${amount}</div>
                         </div>
-                        <div class="category-amount">£${amount}</div>
-                    </div>
-                `).join('');
-            document.getElementById('categoryList').innerHTML = categoryHTML;
+                    `).join('');
+                document.getElementById('categoryList').innerHTML = categoryHTML;
+            }
         }
 
         // Load real data on page load
