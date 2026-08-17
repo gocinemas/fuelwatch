@@ -13898,6 +13898,15 @@ def _v2_fetch_weather(postcode: str) -> dict:
         return {}
 
 
+def _v2_fetch_savings_summary(from_number: str) -> dict:
+    """Fetch weekly savings summary for brief integration."""
+    try:
+        from weekly_savings_summary import get_weekly_savings
+        return get_weekly_savings(from_number)
+    except Exception as e:
+        app.logger.error(f"[savings-summary] Error: {e}")
+        return {"status": "error"}
+
 def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
     """Next 3 departures on the saved route using RTT calling_at filter."""
     # Map common London locations to their nearest rail stations
@@ -15290,6 +15299,7 @@ def api_home_brief():
         if from_number:
             futures["school"]          = pool.submit(_v2_fetch_school, from_number)
             futures["spend"]           = pool.submit(_v2_fetch_spend, from_number)
+            futures["savings"]         = pool.submit(_v2_fetch_savings_summary, from_number)
             futures["saves"]           = pool.submit(_v2_fetch_saves, from_number)
             futures["deliveries"]      = pool.submit(_v2_fetch_deliveries, from_number)
             futures["gmail_accounts"]  = pool.submit(_v2_fetch_gmail_accounts, from_number)
