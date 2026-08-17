@@ -11,7 +11,7 @@ Routes:
 
 from flask import request, jsonify
 from datetime import datetime, date, timedelta
-import lib
+import library as lib
 from weekly_savings_summary import get_weekly_savings, format_weekly_message
 from miru.motivation import nudges
 

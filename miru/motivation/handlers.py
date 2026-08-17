@@ -3,7 +3,7 @@ WhatsApp handlers for motivation features (Phase 1b).
 Called from sms_service._whatsapp_reply_inner() for keywords: price alert, alerts off, beat.
 """
 
-import lib
+import library as lib
 from miru.motivation import nudges
 
 
