@@ -26755,6 +26755,51 @@ def _whatsapp_reply_inner():
     # ── Image/photo capture (before body checks — body is empty when photo sent) ─
     body_lower = body.strip().lower()
 
+    # ── PRIORITY: Phase 1 Motivation Features (run FIRST before any postcode parsing) ──
+    if body_lower.startswith("price alert") or body_lower.startswith("alert me") or body_lower in ("fuel alert",):
+        try:
+            app.logger.info(f"[motivation] Price alert handler triggered for: {body_lower}")
+            from miru.motivation.handlers import handle_price_alert_setup
+            reply = handle_price_alert_setup(from_number, body)
+            resp.message(reply)
+            return str(resp)
+        except Exception as e:
+            app.logger.error(f"[motivation] Price alert handler error: {e}")
+            import traceback
+            traceback.print_exc()
+            resp.message(f"❌ Error setting up alert: {str(e)[:100]}")
+            return str(resp)
+
+    if body_lower in ("alerts off", "stop alerts", "stop fuel"):
+        try:
+            from miru.motivation.handlers import handle_alerts_off
+            reply = handle_alerts_off(from_number)
+            resp.message(reply)
+            return str(resp)
+        except Exception as e:
+            resp.message(f"❌ Error: {str(e)[:100]}")
+            return str(resp)
+
+    if body_lower in ("beat", "beat target"):
+        try:
+            from miru.motivation.handlers import handle_beat_target
+            reply = handle_beat_target(from_number)
+            resp.message(reply)
+            return str(resp)
+        except Exception as e:
+            resp.message(f"❌ Error: {str(e)[:100]}")
+            return str(resp)
+
+    if body_lower in ("weekly", "weekly summary"):
+        try:
+            from miru.motivation.handlers import handle_weekly_summary_toggle
+            reply = handle_weekly_summary_toggle(from_number, True)
+            resp.message(reply)
+            return str(resp)
+        except Exception as e:
+            resp.message(f"❌ Error: {str(e)[:100]}")
+            return str(resp)
+
     # ── PRIORITY: Check if last message was "What book is this from?" (must be first check)
     num_media_str = request.form.get("NumMedia", "0")
     if int(num_media_str or 0) == 0 and body and len(body.strip()) > 2:  # Text-only, non-empty
@@ -28961,39 +29006,6 @@ def _whatsapp_reply_inner():
             return str(resp)
         reply = whatsapp_product_format(product_name.strip(), loc_postcode)
         _WA_CACHE[cache_key] = (time.time(), reply)
-        resp.message(reply)
-        return str(resp)
-
-    # ── Phase 1: Motivation Features (Price alerts, Weekly summary, Targets) ──
-    if body_lower.startswith("price alert") or body_lower.startswith("alert me") or body_lower in ("fuel alert",):
-        try:
-            app.logger.info(f"[motivation] Price alert handler triggered for: {body_lower}")
-            from miru.motivation.handlers import handle_price_alert_setup
-            reply = handle_price_alert_setup(from_number, body)
-            resp.message(reply)
-            return str(resp)
-        except Exception as e:
-            app.logger.error(f"[motivation] Price alert handler error: {e}")
-            import traceback
-            traceback.print_exc()
-            resp.message(f"❌ Error setting up alert: {str(e)[:100]}")
-            return str(resp)
-
-    if body_lower in ("alerts off", "stop alerts", "stop fuel"):
-        from miru.motivation.handlers import handle_alerts_off
-        reply = handle_alerts_off(from_number)
-        resp.message(reply)
-        return str(resp)
-
-    if body_lower in ("beat", "beat target"):
-        from miru.motivation.handlers import handle_beat_target
-        reply = handle_beat_target(from_number)
-        resp.message(reply)
-        return str(resp)
-
-    if body_lower in ("weekly", "weekly summary"):
-        from miru.motivation.handlers import handle_weekly_summary_toggle
-        reply = handle_weekly_summary_toggle(from_number, True)
         resp.message(reply)
         return str(resp)
 
