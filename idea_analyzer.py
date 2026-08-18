@@ -92,25 +92,34 @@ def fetch_and_analyze_url(url: str, app_name: str = None) -> dict:
 
 def generate_framework_assessment(analysis: dict) -> dict:
     """
-    Apply the FrameWork v2 assessment with deep research:
-    - Problem validation (Reddit)
-    - Competitive landscape (web search + analysis)
-    - Multi-dimensional scoring
-    - Improvements + pivots + risk assessment
+    Apply the FrameWork v2 assessment with REAL deep analysis using Groq.
 
-    NOTE: Using fallback for now. Full framework will be integrated after MVP testing.
+    Uses Groq AI to:
+    - Analyze app positioning vs market
+    - Identify specific gaps
+    - Suggest real improvements (not templates)
+    - Provide tailored pivots
+    - Assess market viability
     """
     try:
-        # For MVP, use enhanced fallback instead of framework modules
-        # Framework modules are ready but need real API integration first
-        return _enhanced_fallback_assessment(analysis)
+        # Use Groq for REAL assessment (no templates, no generic fallbacks)
+        from framework.groq_analyzer import generate_real_assessment
+
+        result = generate_real_assessment(analysis)
+
+        if result.get("error"):
+            print(f"[framework_assessment] Groq analysis failed: {result.get('error')}")
+            # If Groq fails, return error (don't use generic fallback)
+            return {"error": result.get("error")}
+
+        return result
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"[framework_assessment] Error: {e}, using basic fallback")
-        # Fallback: return basic assessment without framework
-        return _fallback_assessment(analysis)
+        print(f"[framework_assessment] Error: {e}")
+        # Return error, not fallback
+        return {"error": str(e)}
 
 
 def _enhanced_fallback_assessment(analysis: dict) -> dict:
