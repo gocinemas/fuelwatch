@@ -106,7 +106,8 @@ Be HONEST. Be SPECIFIC. No templates."""
 
         print("[groq_analyzer] Calling Groq API...")
         try:
-            message = client.messages.create(
+            # Groq uses OpenAI-compatible chat.completions API
+            message = client.chat.completions.create(
                 model="mixtral-8x7b-32768",
                 max_tokens=1500,
                 messages=[
@@ -125,7 +126,7 @@ Be HONEST. Be SPECIFIC. No templates."""
             }
 
         # Parse Groq response
-        response_text = message.content[0].text
+        response_text = message.choices[0].message.content
 
         # Extract JSON from response
         try:
