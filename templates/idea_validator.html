@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FrameWork — App Idea Validator</title>
+    <title>FrameWork — Deep App Idea Validator</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -17,26 +17,26 @@
 
         .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
 
-        /* Hero Section */
+        /* Hero */
         .hero {
             text-align: center;
-            margin-bottom: 60px;
+            margin-bottom: 50px;
             animation: fadeIn 0.6s ease-in;
         }
 
         .logo {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 2px;
             color: #64748b;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         h1 {
-            font-size: 48px;
+            font-size: 42px;
             font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             background: linear-gradient(135deg, #60a5fa, #a78bfa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -44,15 +44,13 @@
         }
 
         .subtitle {
-            font-size: 18px;
+            font-size: 16px;
             color: #94a3b8;
-            margin-bottom: 40px;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
+            max-width: 600px;
+            margin: 0 auto 40px;
         }
 
-        /* Input Section */
+        /* Input */
         .input-section {
             display: flex;
             gap: 12px;
@@ -85,58 +83,99 @@
             border-radius: 8px;
             color: white;
             font-weight: 600;
-            font-size: 16px;
             cursor: pointer;
             transition: all 0.3s;
         }
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
-        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3); }
+        button:active { transform: translateY(0); }
 
-        button:active {
-            transform: translateY(0);
-        }
-
-        /* Loading State */
-        .loading {
+        /* Progress Section */
+        .progress-section {
             display: none;
-            text-align: center;
-            padding: 40px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
         }
 
-        .loading.active { display: block; }
+        .progress-section.active { display: block; animation: fadeIn 0.6s; }
+
+        .phase {
+            margin-bottom: 24px;
+        }
+
+        .phase-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .phase.complete .phase-label { color: #10b981; }
+
+        .phase-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+        }
 
         .spinner {
             display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #334155;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #334155;
             border-top-color: #60a5fa;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .checkmark {
+            display: none;
+            color: #10b981;
+            font-weight: bold;
         }
 
-        .loading-text {
-            margin-top: 20px;
-            color: #94a3b8;
-            font-size: 14px;
+        .phase.complete .spinner { display: none; }
+        .phase.complete .checkmark { display: inline; }
+
+        .progress-bar {
+            height: 4px;
+            background: #334155;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .phase.complete .progress-fill { width: 100%; }
+
+        .phase-detail {
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-top: 6px;
         }
 
         /* Results Section */
         .results {
             display: none;
-            animation: fadeIn 0.6s ease-in;
         }
 
-        .results.active { display: block; }
+        .results.active { display: block; animation: fadeIn 0.6s; }
 
-        /* Summary Card */
         .summary-card {
             background: linear-gradient(135deg, #1e293b, #0f172a);
             border: 1px solid #334155;
@@ -160,32 +199,13 @@
             color: #60a5fa;
         }
 
-        .verdict {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: #e2e8f0;
-        }
+        .verdict { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .verdict-detail { color: #94a3b8; font-size: 14px; margin-bottom: 16px; }
+        .confidence { display: inline-block; padding: 6px 12px; background: #334155; border-radius: 20px; font-size: 12px; }
 
-        .verdict-reason {
-            color: #94a3b8;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
-        .confidence {
-            display: inline-block;
-            padding: 8px 16px;
-            background: #334155;
-            border-radius: 20px;
-            font-size: 13px;
-            color: #cbd5e1;
-        }
-
-        /* Metrics Grid */
         .metrics {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 16px;
             margin-bottom: 30px;
         }
@@ -198,26 +218,15 @@
             text-align: center;
         }
 
-        .metric-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #64748b;
-            margin-bottom: 8px;
-        }
+        .metric-label { font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 8px; }
+        .metric-score { font-size: 28px; font-weight: 700; color: #60a5fa; }
 
-        .metric-score {
-            font-size: 32px;
-            font-weight: 700;
-            color: #60a5fa;
-        }
-
-        /* Improvements Section */
         .section {
-            margin-bottom: 40px;
+            margin-bottom: 35px;
         }
 
         .section-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             margin-bottom: 16px;
             color: #e2e8f0;
@@ -233,7 +242,7 @@
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 8px;
-            padding: 24px;
+            padding: 20px;
             transition: all 0.3s;
         }
 
@@ -242,72 +251,48 @@
             box-shadow: 0 10px 25px rgba(96, 165, 250, 0.1);
         }
 
-        .card-title {
+        .card-title { font-weight: 600; margin-bottom: 8px; }
+        .card-desc { font-size: 13px; color: #94a3b8; line-height: 1.6; }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            font-size: 11px;
             font-weight: 600;
+            border-radius: 4px;
             margin-bottom: 8px;
-            color: #e2e8f0;
         }
 
-        .card-desc {
-            font-size: 14px;
-            color: #94a3b8;
-            line-height: 1.6;
-        }
+        .risk-high { background: #7f1d1d; color: #fca5a5; }
+        .risk-medium { background: #7c3e0f; color: #fdba74; }
 
-        /* Positioning Box */
-        .positioning {
+        .research-sources {
             background: #1e293b;
             border-left: 4px solid #60a5fa;
             border-radius: 8px;
-            padding: 24px;
+            padding: 20px;
             margin-bottom: 20px;
         }
 
-        .positioning-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #64748b;
-            margin-bottom: 8px;
-        }
-
-        .positioning-text {
-            font-size: 16px;
-            color: #e2e8f0;
-            font-weight: 500;
-        }
-
-        /* Share Section */
-        .share {
-            text-align: center;
-            padding: 20px;
-            border-top: 1px solid #334155;
-            margin-top: 40px;
-        }
-
-        .share-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-top: 12px;
-        }
-
-        .share-btn {
-            padding: 10px 16px;
+        .sources-title { font-weight: 600; margin-bottom: 12px; }
+        .source-link {
+            display: inline-block;
+            padding: 6px 12px;
             background: #334155;
-            border: none;
-            border-radius: 6px;
-            color: #cbd5e1;
-            font-size: 13px;
-            cursor: pointer;
+            border-radius: 4px;
+            color: #60a5fa;
+            text-decoration: none;
+            font-size: 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
             transition: all 0.3s;
         }
 
-        .share-btn:hover {
+        .source-link:hover {
             background: #475569;
-            color: #e2e8f0;
+            text-decoration: underline;
         }
 
-        /* Error State */
         .error {
             display: none;
             background: #7f1d1d;
@@ -322,22 +307,16 @@
 
         /* Animations */
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @media (max-width: 768px) {
-            h1 { font-size: 32px; }
-            .input-section { flex-direction: column; }
+            h1 { font-size: 28px; }
             input[type="url"] { min-width: 100%; }
             button { width: 100%; }
             .metrics { grid-template-columns: 1fr; }
+            .summary-card { padding: 25px; }
         }
     </style>
 </head>
@@ -345,8 +324,8 @@
     <div class="container">
         <div class="hero">
             <div class="logo">🚀 FrameWork</div>
-            <h1>Understand Any App Idea</h1>
-            <p class="subtitle">Paste a URL and get a framework assessment in 60 seconds. Is it worth building? What should improve?</p>
+            <h1>Deep App Idea Validator</h1>
+            <p class="subtitle">Research any app's market potential in 2-5 minutes. Framework analysis based on Reddit demand, competitive landscape, and multi-dimensional scoring.</p>
         </div>
 
         <div class="error" id="errorBox"></div>
@@ -356,21 +335,66 @@
             <button onclick="analyzeApp()">Analyze</button>
         </div>
 
-        <div class="loading" id="loadingState">
-            <div class="spinner"></div>
-            <div class="loading-text">
-                <div id="loadingStep">Fetching app...</div>
+        <!-- Progress -->
+        <div class="progress-section" id="progressSection">
+            <div class="phase" id="phase1">
+                <div class="phase-label">
+                    <span class="phase-icon">
+                        <span class="spinner"></span>
+                        <span class="checkmark">✓</span>
+                    </span>
+                    Phase 1: Scraping App
+                </div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <div class="phase-detail" id="phase1-detail">Extracting positioning, features, design...</div>
+            </div>
+
+            <div class="phase" id="phase2">
+                <div class="phase-label">
+                    <span class="phase-icon">
+                        <span class="spinner"></span>
+                        <span class="checkmark">✓</span>
+                    </span>
+                    Phase 2: Market Research
+                </div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <div class="phase-detail" id="phase2-detail">Analyzing Reddit demand, competitors, trends...</div>
+            </div>
+
+            <div class="phase" id="phase3">
+                <div class="phase-label">
+                    <span class="phase-icon">
+                        <span class="spinner"></span>
+                        <span class="checkmark">✓</span>
+                    </span>
+                    Phase 3: Framework Scoring
+                </div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <div class="phase-detail" id="phase3-detail">Scoring across 4 dimensions...</div>
+            </div>
+
+            <div class="phase" id="phase4">
+                <div class="phase-label">
+                    <span class="phase-icon">
+                        <span class="spinner"></span>
+                        <span class="checkmark">✓</span>
+                    </span>
+                    Phase 4: Generating Report
+                </div>
+                <div class="progress-bar"><div class="progress-fill"></div></div>
+                <div class="phase-detail" id="phase4-detail">Creating analysis and recommendations...</div>
             </div>
         </div>
 
+        <!-- Results -->
         <div class="results" id="resultsSection">
             <!-- Summary Card -->
             <div class="summary-card">
                 <div class="score-circle" id="scoreCircle" style="--score: 65%;">
                     <span id="scoreValue">75</span>
                 </div>
-                <div class="verdict" id="verdictText">Worth Pursuing</div>
-                <div class="verdict-reason" id="verdictReason">Strong product-market fit signals detected</div>
+                <div class="verdict" id="verdictText">✅ Worth Pursuing</div>
+                <div class="verdict-detail" id="verdictReason">Strong signals across dimensions</div>
                 <div class="confidence" id="confidenceText">Confidence: 75%</div>
             </div>
 
@@ -388,12 +412,16 @@
                     <div class="metric-label">Design Quality</div>
                     <div class="metric-score" id="designScore">65</div>
                 </div>
+                <div class="metric">
+                    <div class="metric-label">Execution Risk</div>
+                    <div class="metric-score" id="riskScore">72</div>
+                </div>
             </div>
 
-            <!-- Positioning -->
-            <div class="positioning">
-                <div class="positioning-label">Current Positioning</div>
-                <div class="positioning-text" id="positioningText">Clear value prop identified</div>
+            <!-- Research Sources -->
+            <div class="research-sources" id="researchSources" style="display:none;">
+                <div class="sources-title">📚 Research Sources</div>
+                <div id="sourcesContent"></div>
             </div>
 
             <!-- Improvements -->
@@ -408,20 +436,21 @@
                 <div class="cards-grid" id="pivotsGrid"></div>
             </div>
 
-            <!-- Share -->
-            <div class="share">
-                <strong>Share this analysis</strong>
-                <div class="share-buttons">
-                    <button class="share-btn" onclick="shareTwitter()">𝕏 Twitter</button>
-                    <button class="share-btn" onclick="copyLink()">📋 Copy Link</button>
-                </div>
+            <!-- Risks -->
+            <div class="section">
+                <div class="section-title">⚠️ Risks to Watch</div>
+                <div class="cards-grid" id="risksGrid"></div>
             </div>
         </div>
     </div>
 
     <script>
-        const steps = ["Fetching app...", "Analyzing design...", "Validating idea...", "Generating framework..."];
-        let currentStep = 0;
+        const phases = [
+            { id: 'phase1', duration: 1000 },
+            { id: 'phase2', duration: 2000 },
+            { id: 'phase3', duration: 1500 },
+            { id: 'phase4', duration: 1000 },
+        ];
 
         async function analyzeApp() {
             const url = document.getElementById('urlInput').value;
@@ -431,30 +460,28 @@
                 return;
             }
 
-            // Show loading
-            document.getElementById('loadingState').classList.add('active');
+            // Show progress
+            document.getElementById('progressSection').classList.add('active');
             document.getElementById('resultsSection').classList.remove('active');
             document.getElementById('errorBox').classList.remove('active');
-            currentStep = 0;
 
-            // Animate loading steps
-            const stepInterval = setInterval(() => {
-                if (currentStep < steps.length) {
-                    document.getElementById('loadingStep').textContent = steps[currentStep];
-                    currentStep++;
-                } else {
-                    clearInterval(stepInterval);
-                }
-            }, 400);
+            // Animate phases
+            for (const phase of phases) {
+                await new Promise(resolve => {
+                    setTimeout(() => {
+                        document.getElementById(phase.id).classList.add('complete');
+                        resolve();
+                    }, phase.duration);
+                });
+            }
 
+            // Fetch results
             try {
                 const response = await fetch('/api/idea/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: url })
                 });
-
-                clearInterval(stepInterval);
 
                 if (!response.ok) {
                     const error = await response.json();
@@ -465,10 +492,10 @@
                 displayResults(data);
 
             } catch (error) {
-                clearInterval(stepInterval);
                 showError(error.message);
-            } finally {
-                document.getElementById('loadingState').classList.remove('active');
+                // Reset progress
+                phases.forEach(p => document.getElementById(p.id).classList.remove('complete'));
+                document.getElementById('progressSection').classList.remove('active');
             }
         }
 
@@ -476,38 +503,62 @@
             const a = data.assessment;
             const score = a.score || 75;
 
-            // Update summary
+            // Summary
             document.getElementById('scoreValue').textContent = score;
             document.getElementById('scoreCircle').style.setProperty('--score', score + '%');
             document.getElementById('verdictText').textContent = a.verdict.worth_pursuing ? '✅ Worth Pursuing' : '⚠️ Needs Pivot';
             document.getElementById('verdictReason').textContent = a.verdict.reason;
             document.getElementById('confidenceText').textContent = `Confidence: ${a.verdict.confidence}%`;
 
-            // Update metrics
+            // Metrics
             document.getElementById('ideaScore').textContent = a.idea_validation.score;
-            document.getElementById('potentialScore').textContent = a.potential.score;
+            document.getElementById('potentialScore').textContent = a.market_potential.score;
             document.getElementById('designScore').textContent = a.design_quality.score;
+            document.getElementById('riskScore').textContent = a.execution_risk;
 
-            // Update positioning
-            document.getElementById('positioningText').textContent = a.idea_validation.reasoning;
+            // Research sources
+            if (a.research_sources) {
+                let sourcesHTML = '';
+                if (a.research_sources.reddit_threads && a.research_sources.reddit_threads.length > 0) {
+                    sourcesHTML += '<div><strong>Reddit Threads:</strong> ';
+                    a.research_sources.reddit_threads.slice(0, 3).forEach(t => {
+                        sourcesHTML += `<a href="${t.url || '#'}" class="source-link" target="_blank">${t.title || 'Thread'}</a>`;
+                    });
+                    sourcesHTML += '</div>';
+                }
+                if (sourcesHTML) {
+                    document.getElementById('sourcesContent').innerHTML = sourcesHTML;
+                    document.getElementById('researchSources').style.display = 'block';
+                }
+            }
 
             // Improvements
             const improvementsGrid = document.getElementById('improvementsGrid');
-            improvementsGrid.innerHTML = a.improvements.map(imp => `
+            improvementsGrid.innerHTML = (a.improvements || []).map(imp => `
                 <div class="card">
-                    <div class="card-title">💡 ${imp.split(' ')[0]}</div>
+                    <div class="card-title">${imp.split(':')[0] || '💡'}</div>
                     <div class="card-desc">${imp}</div>
                 </div>
             `).join('');
 
             // Pivots
             const pivotsGrid = document.getElementById('pivotsGrid');
-            pivotsGrid.innerHTML = a.pivots.map(piv => `
+            pivotsGrid.innerHTML = (a.pivots || []).map(piv => `
                 <div class="card">
-                    <div class="card-title">🎯 ${piv.split(' ')[0]}</div>
+                    <div class="card-title">${piv.split(':')[0] || '🎯'}</div>
                     <div class="card-desc">${piv}</div>
                 </div>
             `).join('');
+
+            // Risks
+            const risksGrid = document.getElementById('risksGrid');
+            risksHTML = (a.risks || []).map(risk => `
+                <div class="card">
+                    <div class="risk-badge risk-${risk.severity?.toLowerCase() || 'high'}">${risk.category}</div>
+                    <div class="card-desc">${risk.description}</div>
+                </div>
+            `).join('');
+            risksGrid.innerHTML = risksHTML;
 
             // Show results
             document.getElementById('resultsSection').classList.add('active');
@@ -518,17 +569,6 @@
             document.getElementById('errorBox').classList.add('active');
         }
 
-        function shareTwitter() {
-            const text = `Just analyzed an app idea with @FrameWork — scored ${document.getElementById('scoreValue').textContent}/100 on our validation framework. Worth building? Check it out.`;
-            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-        }
-
-        function copyLink() {
-            navigator.clipboard.writeText(window.location.href);
-            alert('Link copied to clipboard!');
-        }
-
-        // Allow Enter to submit
         document.getElementById('urlInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') analyzeApp();
         });
