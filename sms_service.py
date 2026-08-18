@@ -70,6 +70,10 @@ app.json = CustomJSONProvider(app)
 from miru.motivation.endpoints import register_motivation_endpoints
 register_motivation_endpoints(app)
 
+# ── Apply database migrations ──
+from apply_migrations import apply_all_migrations
+apply_all_migrations()
+
 # ── Phase 2: Family Goals Endpoints ──
 from miru.goals.endpoints import register_goals_endpoints
 register_goals_endpoints(app)
