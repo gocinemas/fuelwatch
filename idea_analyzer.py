@@ -92,90 +92,82 @@ def fetch_and_analyze_url(url: str, app_name: str = None) -> dict:
 
 def generate_framework_assessment(analysis: dict) -> dict:
     """
-    Apply the FrameWork assessment:
-    - Idea validation
-    - Potential (TAM, timing, differentiation)
-    - Design quality
-    - Worth pursuing verdict + reasoning
-    - Top 3 improvements
-    - Pivot suggestions
+    Apply the FrameWork v2 assessment with deep research:
+    - Problem validation (Reddit)
+    - Competitive landscape (web search + analysis)
+    - Multi-dimensional scoring
+    - Improvements + pivots + risk assessment
     """
     try:
-        title = analysis.get("title", "Unknown")
-        value_prop = analysis.get("value_prop", "")
-        features = analysis.get("features", [])
-        description = analysis.get("description", "")
-        ctas = analysis.get("ctas", [])
+        from framework import (
+            validate_problem,
+            analyze_competition,
+            score_idea_validation,
+            score_market_potential,
+            score_design_quality,
+            score_execution_risk,
+            calculate_overall_score,
+            generate_improvements,
+            generate_pivots,
+            generate_risk_assessment,
+        )
 
-        # Simple framework scoring
-        # In production, would use Groq for deeper analysis
+        # Phase 2a: Problem Validation (Reddit)
+        print("[framework] Phase 2a: Reddit research...")
+        problem_validation = validate_problem(analysis)
 
-        # Idea score (clear value prop?)
-        idea_score = 70
-        if value_prop and len(value_prop) > 15:
-            idea_score += 20
-        if "revolutionary" not in value_prop.lower() and "next" not in value_prop.lower():
-            idea_score += 10  # Bonus for avoiding hype words
+        # Phase 2b: Competitive Analysis
+        print("[framework] Phase 2b: Competitor analysis...")
+        competition_analysis = analyze_competition(analysis)
 
-        # Potential score (features, market positioning)
-        potential_score = 60
-        if len(features) >= 5:
-            potential_score += 20
-        if features:
-            potential_score += 15
+        # Phase 3: Scoring
+        print("[framework] Phase 3: Scoring framework...")
+        idea_score = score_idea_validation(problem_validation.get("problem_validation", {}))
+        potential_score = score_market_potential(competition_analysis, analysis)
+        design_score = score_design_quality(analysis, competition_analysis)
+        risk_score = score_execution_risk(analysis)
 
-        # Design score (minimal data, would use vision model)
-        design_score = 65
-        if ctas:
-            design_score += 15
+        # Calculate overall
+        scores = calculate_overall_score(idea_score, potential_score, design_score, risk_score)
 
-        # Overall verdict
-        avg_score = (idea_score + potential_score + design_score) / 3
-        worth_pursuing = avg_score > 70
-
-        # Improvement suggestions (generic for now, would be personalized)
-        improvements = [
-            "Clarify your target audience in the headline",
-            "Add social proof (logos, testimonials, numbers)",
-            "Emphasize the unique differentiation vs competitors",
-            "Simplify the core CTA (one primary action per page)",
-            "Show the problem before the solution",
-        ]
-
-        # Pivot suggestions
-        pivots = [
-            "Consider B2B version (more revenue potential)",
-            "Add collaboration features (network effects)",
-            "Expand to mobile if currently web-only",
-            "Build data/intelligence layer (defensibility)",
-            "Create freemium model with upgrade path",
-        ]
+        # Phase 4: Generate recommendations
+        print("[framework] Phase 4: Generating recommendations...")
+        improvements = generate_improvements(analysis, problem_validation.get("problem_validation", {}), competition_analysis, scores)
+        pivots = generate_pivots(analysis, competition_analysis, scores)
+        risks = generate_risk_assessment(scores)
 
         return {
-            "score": int(avg_score),
+            "score": scores["overall_score"],
             "idea_validation": {
-                "score": idea_score,
-                "reasoning": f"Clear value prop identified: '{value_prop[:60]}...'"
+                "score": scores["idea_validation"],
+                "reasoning": f"Problem validation: {problem_validation.get('problem_validation', {}).get('threads_analyzed', 0)} Reddit threads analyzed"
             },
             "potential": {
-                "score": potential_score,
-                "reasoning": f"Strong feature set ({len(features)} key features identified)"
+                "score": scores["market_potential"],
+                "reasoning": f"Market saturation: {competition_analysis.get('competition_analysis', {}).get('saturation_score', 0)}/100"
             },
             "design_quality": {
-                "score": design_score,
-                "reasoning": "Professional positioning detected"
+                "score": scores["design_quality"],
+                "reasoning": "Design matches category best practices"
             },
             "verdict": {
-                "worth_pursuing": worth_pursuing,
-                "confidence": 75,  # 0-100
-                "reason": f"Scores above threshold. Good market fit signals detected." if worth_pursuing else "Consider pivoting before launch."
+                "worth_pursuing": scores["overall_score"] > 70,
+                "confidence": scores["confidence"],
+                "reason": scores["reason"]
             },
-            "improvements": improvements[:3],
-            "pivots": pivots[:3],
-            "summary": f"This idea shows potential. {len(features)} core features, clear positioning. Worth testing with early users."
+            "improvements": improvements,
+            "pivots": pivots,
+            "risks": risks.get("risks", []),
+            "research_sources": {
+                "reddit_threads": problem_validation.get("problem_validation", {}).get("threads", []),
+                "competitors": competition_analysis.get("competition_analysis", {}).get("competitors", []),
+            },
+            "summary": f"Deep research complete. {scores['overall_score']}/100 score. {scores['verdict']}"
         }
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"[framework_assessment] Error: {e}")
         return {"error": str(e)}
 
