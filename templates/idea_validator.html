@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FrameWork — App Idea Validator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            margin-bottom: 60px;
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        .logo {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #94a3b8;
+            margin-bottom: 40px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Input Section */
+        .input-section {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        input[type="url"] {
+            flex: 1;
+            min-width: 250px;
+            padding: 14px 18px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+
+        button {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Loading State */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active { display: block; }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #334155;
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        /* Results Section */
+        .results {
+            display: none;
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        .results.active { display: block; }
+
+        /* Summary Card */
+        .summary-card {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: conic-gradient(#60a5fa 0%, #a78bfa var(--score), #334155 var(--score), #334155 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 40px;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+
+        .verdict {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+        }
+
+        .verdict-reason {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .confidence {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #334155;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+
+        /* Metrics Grid */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .metric {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .metric-score {
+            font-size: 32px;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+
+        /* Improvements Section */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #e2e8f0;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: #60a5fa;
+            box-shadow: 0 10px 25px rgba(96, 165, 250, 0.1);
+        }
+
+        .card-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+        }
+
+        .card-desc {
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        /* Positioning Box */
+        .positioning {
+            background: #1e293b;
+            border-left: 4px solid #60a5fa;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .positioning-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .positioning-text {
+            font-size: 16px;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        /* Share Section */
+        .share {
+            text-align: center;
+            padding: 20px;
+            border-top: 1px solid #334155;
+            margin-top: 40px;
+        }
+
+        .share-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .share-btn {
+            padding: 10px 16px;
+            background: #334155;
+            border: none;
+            border-radius: 6px;
+            color: #cbd5e1;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .share-btn:hover {
+            background: #475569;
+            color: #e2e8f0;
+        }
+
+        /* Error State */
+        .error {
+            display: none;
+            background: #7f1d1d;
+            border: 1px solid #dc2626;
+            border-radius: 8px;
+            padding: 16px;
+            color: #fca5a5;
+            margin-bottom: 20px;
+        }
+
+        .error.active { display: block; }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 32px; }
+            .input-section { flex-direction: column; }
+            input[type="url"] { min-width: 100%; }
+            button { width: 100%; }
+            .metrics { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <div class="logo">🚀 FrameWork</div>
+            <h1>Understand Any App Idea</h1>
+            <p class="subtitle">Paste a URL and get a framework assessment in 60 seconds. Is it worth building? What should improve?</p>
+        </div>
+
+        <div class="error" id="errorBox"></div>
+
+        <div class="input-section">
+            <input type="url" id="urlInput" placeholder="https://example.com" value="https://">
+            <button onclick="analyzeApp()">Analyze</button>
+        </div>
+
+        <div class="loading" id="loadingState">
+            <div class="spinner"></div>
+            <div class="loading-text">
+                <div id="loadingStep">Fetching app...</div>
+            </div>
+        </div>
+
+        <div class="results" id="resultsSection">
+            <!-- Summary Card -->
+            <div class="summary-card">
+                <div class="score-circle" id="scoreCircle" style="--score: 65%;">
+                    <span id="scoreValue">75</span>
+                </div>
+                <div class="verdict" id="verdictText">Worth Pursuing</div>
+                <div class="verdict-reason" id="verdictReason">Strong product-market fit signals detected</div>
+                <div class="confidence" id="confidenceText">Confidence: 75%</div>
+            </div>
+
+            <!-- Metrics -->
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Idea Validation</div>
+                    <div class="metric-score" id="ideaScore">82</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Market Potential</div>
+                    <div class="metric-score" id="potentialScore">78</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Design Quality</div>
+                    <div class="metric-score" id="designScore">65</div>
+                </div>
+            </div>
+
+            <!-- Positioning -->
+            <div class="positioning">
+                <div class="positioning-label">Current Positioning</div>
+                <div class="positioning-text" id="positioningText">Clear value prop identified</div>
+            </div>
+
+            <!-- Improvements -->
+            <div class="section">
+                <div class="section-title">✨ Top 3 Improvements</div>
+                <div class="cards-grid" id="improvementsGrid"></div>
+            </div>
+
+            <!-- Pivots -->
+            <div class="section">
+                <div class="section-title">🔄 Consider These Pivots</div>
+                <div class="cards-grid" id="pivotsGrid"></div>
+            </div>
+
+            <!-- Share -->
+            <div class="share">
+                <strong>Share this analysis</strong>
+                <div class="share-buttons">
+                    <button class="share-btn" onclick="shareTwitter()">𝕏 Twitter</button>
+                    <button class="share-btn" onclick="copyLink()">📋 Copy Link</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const steps = ["Fetching app...", "Analyzing design...", "Validating idea...", "Generating framework..."];
+        let currentStep = 0;
+
+        async function analyzeApp() {
+            const url = document.getElementById('urlInput').value;
+
+            if (!url || url === "https://") {
+                showError("Please enter a valid URL");
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loadingState').classList.add('active');
+            document.getElementById('resultsSection').classList.remove('active');
+            document.getElementById('errorBox').classList.remove('active');
+            currentStep = 0;
+
+            // Animate loading steps
+            const stepInterval = setInterval(() => {
+                if (currentStep < steps.length) {
+                    document.getElementById('loadingStep').textContent = steps[currentStep];
+                    currentStep++;
+                } else {
+                    clearInterval(stepInterval);
+                }
+            }, 400);
+
+            try {
+                const response = await fetch('/api/idea/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                clearInterval(stepInterval);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || "Analysis failed");
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (error) {
+                clearInterval(stepInterval);
+                showError(error.message);
+            } finally {
+                document.getElementById('loadingState').classList.remove('active');
+            }
+        }
+
+        function displayResults(data) {
+            const a = data.assessment;
+            const score = a.score || 75;
+
+            // Update summary
+            document.getElementById('scoreValue').textContent = score;
+            document.getElementById('scoreCircle').style.setProperty('--score', score + '%');
+            document.getElementById('verdictText').textContent = a.verdict.worth_pursuing ? '✅ Worth Pursuing' : '⚠️ Needs Pivot';
+            document.getElementById('verdictReason').textContent = a.verdict.reason;
+            document.getElementById('confidenceText').textContent = `Confidence: ${a.verdict.confidence}%`;
+
+            // Update metrics
+            document.getElementById('ideaScore').textContent = a.idea_validation.score;
+            document.getElementById('potentialScore').textContent = a.potential.score;
+            document.getElementById('designScore').textContent = a.design_quality.score;
+
+            // Update positioning
+            document.getElementById('positioningText').textContent = a.idea_validation.reasoning;
+
+            // Improvements
+            const improvementsGrid = document.getElementById('improvementsGrid');
+            improvementsGrid.innerHTML = a.improvements.map(imp => `
+                <div class="card">
+                    <div class="card-title">💡 ${imp.split(' ')[0]}</div>
+                    <div class="card-desc">${imp}</div>
+                </div>
+            `).join('');
+
+            // Pivots
+            const pivotsGrid = document.getElementById('pivotsGrid');
+            pivotsGrid.innerHTML = a.pivots.map(piv => `
+                <div class="card">
+                    <div class="card-title">🎯 ${piv.split(' ')[0]}</div>
+                    <div class="card-desc">${piv}</div>
+                </div>
+            `).join('');
+
+            // Show results
+            document.getElementById('resultsSection').classList.add('active');
+        }
+
+        function showError(message) {
+            document.getElementById('errorBox').textContent = '❌ ' + message;
+            document.getElementById('errorBox').classList.add('active');
+        }
+
+        function shareTwitter() {
+            const text = `Just analyzed an app idea with @FrameWork — scored ${document.getElementById('scoreValue').textContent}/100 on our validation framework. Worth building? Check it out.`;
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href);
+            alert('Link copied to clipboard!');
+        }
+
+        // Allow Enter to submit
+        document.getElementById('urlInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') analyzeApp();
+        });
+    </script>
+</body>
+</html>

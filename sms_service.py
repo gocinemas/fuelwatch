@@ -74,6 +74,67 @@ register_motivation_endpoints(app)
 from miru.goals.endpoints import register_goals_endpoints
 register_goals_endpoints(app)
 
+# ── FrameWork: App Idea Validator (Stealth) ──
+from idea_analyzer import generate_report
+
+@app.route("/idea")
+def idea_landing():
+    """Serve the FrameWork idea validator landing page."""
+    return render_template("idea_validator.html")
+
+@app.route("/api/idea/analyze", methods=["POST"])
+def api_idea_analyze():
+    """Analyze an app idea from URL."""
+    try:
+        data = request.get_json() or {}
+        url = data.get("url", "").strip()
+        app_name = data.get("app_name", "").strip()
+
+        if not url or not url.startswith("http"):
+            return jsonify({"error": "Invalid URL"}), 400
+
+        # Generate report
+        result = generate_report(url, app_name)
+
+        if result.get("error"):
+            return jsonify(result), 400
+
+        return jsonify({
+            "status": "ok",
+            "report_id": result.get("report_id"),
+            "analysis": result.get("analysis"),
+            "assessment": result.get("assessment")
+        })
+
+    except Exception as e:
+        app.logger.error(f"[idea-analyze] Error: {e}")
+        return jsonify({"error": str(e), "status": "error"}), 500
+
+@app.route("/api/idea/report/<report_id>", methods=["GET"])
+def api_idea_report(report_id):
+    """Fetch a saved idea report."""
+    try:
+        report = lib._sb().table("idea_reports").select("*") \
+            .eq("id", report_id) \
+            .maybe_single().execute()
+
+        if not report or not report.data:
+            return jsonify({"error": "Report not found"}), 404
+
+        # Increment view count
+        lib._sb().table("idea_reports").update({
+            "viewed_count": lib._sb().table("idea_reports").select("viewed_count").eq("id", report_id).execute().data[0]["viewed_count"] + 1
+        }).eq("id", report_id).execute()
+
+        return jsonify({
+            "status": "ok",
+            "report": report.data[0]
+        })
+
+    except Exception as e:
+        app.logger.error(f"[idea-report] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # REGISTER HANDLERS IN ORCHESTRATOR
 def _init_orchestrator():
     """Initialize and register all handlers"""
