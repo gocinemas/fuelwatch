@@ -100,26 +100,37 @@ def api_idea_analyze():
         app.logger.info(f"[idea-analyze] Starting analysis for {url}")
         result = generate_report(url, app_name)
 
+        app.logger.info(f"[idea-analyze] Result keys: {result.keys() if isinstance(result, dict) else 'not a dict'}")
+        app.logger.info(f"[idea-analyze] Assessment: {result.get('assessment') if result.get('assessment') else 'MISSING'}")
+
         if result.get("error"):
             app.logger.error(f"[idea-analyze] Report generation failed: {result.get('error')}")
             return jsonify(result), 400
 
-        if not result.get("assessment"):
-            app.logger.error(f"[idea-analyze] No assessment in result: {result}")
-            return jsonify({"error": "Assessment generation failed", "result": result}), 500
+        # Ensure assessment exists
+        assessment = result.get("assessment")
+        if not assessment:
+            app.logger.error(f"[idea-analyze] No assessment in result")
+            # Use fallback
+            from idea_analyzer import _fallback_assessment
+            assessment = _fallback_assessment(result.get("analysis", {}))
+            app.logger.info(f"[idea-analyze] Using fallback assessment")
 
-        return jsonify({
+        response = {
             "status": "ok",
             "report_id": result.get("report_id"),
             "analysis": result.get("analysis"),
-            "assessment": result.get("assessment")
-        })
+            "assessment": assessment
+        }
+
+        app.logger.info(f"[idea-analyze] Response has assessment score: {assessment.get('score')}")
+        return jsonify(response)
 
     except Exception as e:
         import traceback
         app.logger.error(f"[idea-analyze] Exception: {e}")
         app.logger.error(traceback.format_exc())
-        return jsonify({"error": str(e), "status": "error", "trace": traceback.format_exc()}), 500
+        return jsonify({"error": str(e), "status": "error"}), 500
 
 @app.route("/api/idea/report/<report_id>", methods=["GET"])
 def api_idea_report(report_id):
