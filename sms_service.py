@@ -97,10 +97,16 @@ def api_idea_analyze():
             return jsonify({"error": "Invalid URL"}), 400
 
         # Generate report
+        app.logger.info(f"[idea-analyze] Starting analysis for {url}")
         result = generate_report(url, app_name)
 
         if result.get("error"):
+            app.logger.error(f"[idea-analyze] Report generation failed: {result.get('error')}")
             return jsonify(result), 400
+
+        if not result.get("assessment"):
+            app.logger.error(f"[idea-analyze] No assessment in result: {result}")
+            return jsonify({"error": "Assessment generation failed", "result": result}), 500
 
         return jsonify({
             "status": "ok",
@@ -110,8 +116,10 @@ def api_idea_analyze():
         })
 
     except Exception as e:
-        app.logger.error(f"[idea-analyze] Error: {e}")
-        return jsonify({"error": str(e), "status": "error"}), 500
+        import traceback
+        app.logger.error(f"[idea-analyze] Exception: {e}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({"error": str(e), "status": "error", "trace": traceback.format_exc()}), 500
 
 @app.route("/api/idea/report/<report_id>", methods=["GET"])
 def api_idea_report(report_id):

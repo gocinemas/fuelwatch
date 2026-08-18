@@ -483,15 +483,20 @@
                     body: JSON.stringify({ url: url })
                 });
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || "Analysis failed");
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || data.trace || "Analysis failed");
                 }
 
-                const data = await response.json();
+                if (!data.assessment) {
+                    throw new Error("No assessment returned. Check server logs.");
+                }
+
                 displayResults(data);
 
             } catch (error) {
+                console.error("Analysis error:", error);
                 showError(error.message);
                 // Reset progress
                 phases.forEach(p => document.getElementById(p.id).classList.remove('complete'));
