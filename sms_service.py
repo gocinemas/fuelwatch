@@ -85,6 +85,26 @@ def idea_landing():
     response.headers['X-Framework-Version'] = '1.0'
     return response
 
+@app.route("/api/idea/test", methods=["GET"])
+def api_idea_test():
+    """Debug endpoint to test assessment generation."""
+    try:
+        from idea_analyzer import generate_report
+        result = generate_report("https://example.com", "Test App")
+        return jsonify({
+            "status": "test",
+            "result_keys": list(result.keys()) if isinstance(result, dict) else "not dict",
+            "has_assessment": "assessment" in result if isinstance(result, dict) else False,
+            "assessment_type": str(type(result.get("assessment"))) if isinstance(result, dict) else "N/A",
+            "full_result": result
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "trace": traceback.format_exc()
+        }), 500
+
 @app.route("/api/idea/analyze", methods=["POST"])
 def api_idea_analyze():
     """Analyze an app idea from URL."""

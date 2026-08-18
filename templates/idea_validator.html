@@ -505,8 +505,27 @@
         }
 
         function displayResults(data) {
+            console.log("displayResults data:", data);
+
+            if (!data || !data.assessment) {
+                console.error("Missing assessment:", data);
+                showError("Assessment data missing from server response");
+                return;
+            }
+
             const a = data.assessment;
+            if (!a || typeof a !== 'object') {
+                console.error("Assessment is not an object:", a);
+                showError("Invalid assessment structure");
+                return;
+            }
+
             const score = a.score || 75;
+            if (isNaN(score)) {
+                console.error("Score is not a number:", a.score);
+                showError("Invalid score value");
+                return;
+            }
 
             // Summary
             document.getElementById('scoreValue').textContent = score;
