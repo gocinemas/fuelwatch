@@ -108,6 +108,26 @@ def api_idea_test():
 @app.route("/api/idea/analyze", methods=["POST"])
 def api_idea_analyze():
     """Analyze an app idea from URL."""
+    # TEMPORARY: Return hardcoded response to test
+    return jsonify({
+        "status": "ok",
+        "report_id": None,
+        "analysis": {"title": "Test", "value_prop": "Test app", "features": ["A", "B"]},
+        "assessment": {
+            "score": 75,
+            "idea_validation": {"score": 75, "reasoning": "Test"},
+            "potential": {"score": 70, "reasoning": "Test"},
+            "design_quality": {"score": 65, "reasoning": "Test"},
+            "execution_risk": 70,
+            "verdict": {"worth_pursuing": True, "confidence": 75, "reason": "Test"},
+            "improvements": ["Improvement 1", "Improvement 2", "Improvement 3"],
+            "pivots": ["Pivot 1", "Pivot 2", "Pivot 3"],
+            "risks": [{"category": "Market", "severity": "MEDIUM", "description": "Test risk"}],
+            "research_sources": {}
+        }
+    })
+
+    # REAL CODE (disabled for debugging - uncomment after verifying hardcoded response works):
     try:
         data = request.get_json() or {}
         url = data.get("url", "").strip()
