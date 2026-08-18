@@ -9,6 +9,8 @@ Uses Groq to analyze:
 - Actual risks
 
 NO templates. NO generic fallbacks. REAL analysis only.
+
+FIXED: Using chat.completions API (OpenAI-compatible)
 """
 
 import os
