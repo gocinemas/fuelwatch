@@ -149,13 +149,15 @@ def api_idea_analyze():
 
         # Ensure assessment exists
         try:
+            # If result has error, return it (don't hide it)
+            if result.get("error"):
+                app.logger.error(f"[idea-analyze] Report error: {result.get('error')}")
+                return jsonify(result), 400
+
             assessment = result.get("assessment")
             if not assessment:
                 app.logger.error(f"[idea-analyze] No assessment in result")
-                # Use fallback
-                from idea_analyzer import _fallback_assessment
-                assessment = _fallback_assessment(result.get("analysis", {}))
-                app.logger.info(f"[idea-analyze] Using fallback assessment")
+                return jsonify({"error": "No assessment generated", "result_keys": list(result.keys())}), 500
 
             if not isinstance(assessment, dict):
                 app.logger.error(f"[idea-analyze] Assessment is not dict: {type(assessment)}")

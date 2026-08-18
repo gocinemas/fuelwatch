@@ -260,10 +260,15 @@ def generate_report(url: str, app_name: str = None) -> dict:
         # Step 2: Apply framework
         assessment = generate_framework_assessment(analysis)
 
-        # Check if assessment has error, use fallback
+        # Check if assessment has error - DO NOT HIDE IT
         if assessment.get("error"):
-            print(f"[framework] Assessment error, using fallback: {assessment.get('error')}")
-            assessment = _fallback_assessment(analysis)
+            print(f"[framework] Assessment error: {assessment.get('error')}")
+            # Return error so API can show what's wrong
+            return {
+                "status": "error",
+                "error": assessment.get("error"),
+                "analysis": analysis
+            }
 
         # Step 3: Save report to DB (for tracking + learning loop) - NON-CRITICAL
         report_id = None
