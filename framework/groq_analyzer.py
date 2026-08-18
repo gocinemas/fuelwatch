@@ -109,9 +109,9 @@ Be HONEST. Be SPECIFIC. No templates."""
         print("[groq_analyzer] Calling Groq API...")
         try:
             # Groq uses OpenAI-compatible chat.completions API
-            # Using llama-3.1-70b-versatile (current model, mixtral deprecated)
+            # Using llama-3.1-8b-instant (stable, fast inference model)
             message = client.chat.completions.create(
-                model="llama-3.1-70b-versatile",
+                model="llama-3.1-8b-instant",
                 max_tokens=1500,
                 messages=[
                     {
