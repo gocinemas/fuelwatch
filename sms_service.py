@@ -128,23 +128,41 @@ def api_idea_analyze():
             return jsonify(result), 400
 
         # Ensure assessment exists
-        assessment = result.get("assessment")
-        if not assessment:
-            app.logger.error(f"[idea-analyze] No assessment in result")
-            # Use fallback
+        try:
+            assessment = result.get("assessment")
+            if not assessment:
+                app.logger.error(f"[idea-analyze] No assessment in result")
+                # Use fallback
+                from idea_analyzer import _fallback_assessment
+                assessment = _fallback_assessment(result.get("analysis", {}))
+                app.logger.info(f"[idea-analyze] Using fallback assessment")
+
+            if not isinstance(assessment, dict):
+                app.logger.error(f"[idea-analyze] Assessment is not dict: {type(assessment)}")
+                from idea_analyzer import _fallback_assessment
+                assessment = _fallback_assessment(result.get("analysis", {}))
+
+            response = {
+                "status": "ok",
+                "report_id": result.get("report_id"),
+                "analysis": result.get("analysis"),
+                "assessment": assessment
+            }
+
+            app.logger.info(f"[idea-analyze] Response assessment score: {assessment.get('score')}")
+            return jsonify(response)
+
+        except Exception as assess_err:
+            app.logger.error(f"[idea-analyze] Assessment error: {assess_err}")
+            # Return minimal valid response with fallback
             from idea_analyzer import _fallback_assessment
-            assessment = _fallback_assessment(result.get("analysis", {}))
-            app.logger.info(f"[idea-analyze] Using fallback assessment")
-
-        response = {
-            "status": "ok",
-            "report_id": result.get("report_id"),
-            "analysis": result.get("analysis"),
-            "assessment": assessment
-        }
-
-        app.logger.info(f"[idea-analyze] Response has assessment score: {assessment.get('score')}")
-        return jsonify(response)
+            fallback = _fallback_assessment({})
+            return jsonify({
+                "status": "ok",
+                "report_id": None,
+                "analysis": result.get("analysis"),
+                "assessment": fallback
+            })
 
     except Exception as e:
         import traceback
