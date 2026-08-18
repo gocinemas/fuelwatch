@@ -80,7 +80,10 @@ from idea_analyzer import generate_report
 @app.route("/idea")
 def idea_landing():
     """Serve the FrameWork idea validator landing page."""
-    return render_template("idea_validator.html")
+    app.logger.info("[idea] Route hit successfully")
+    response = make_response(render_template("idea_validator.html"))
+    response.headers['X-Framework-Version'] = '1.0'
+    return response
 
 @app.route("/api/idea/analyze", methods=["POST"])
 def api_idea_analyze():
