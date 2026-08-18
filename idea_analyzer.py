@@ -246,9 +246,10 @@ def generate_report(url: str, app_name: str = None) -> dict:
             print(f"[framework] Assessment error, using fallback: {assessment.get('error')}")
             assessment = _fallback_assessment(analysis)
 
-        # Step 3: Save report to DB (for tracking + learning loop)
+        # Step 3: Save report to DB (for tracking + learning loop) - NON-CRITICAL
         report_id = None
         try:
+            # Check if table exists first
             report_data = {
                 "url": url,
                 "app_name": app_name or analysis.get("title", "Unknown"),
@@ -267,12 +268,18 @@ def generate_report(url: str, app_name: str = None) -> dict:
                 "pivots": json.dumps(assessment.get("pivots", []))
             }
 
-            result = lib._sb().table("idea_reports").insert(report_data).execute()
-            if result.data:
-                report_id = result.data[0]['id']
-                print(f"[framework] Report saved: {report_id}")
+            try:
+                result = lib._sb().table("idea_reports").insert(report_data).execute()
+                if result.data:
+                    report_id = result.data[0]['id']
+                    print(f"[framework] Report saved: {report_id}")
+            except Exception as table_err:
+                if "could not find the table" in str(table_err).lower():
+                    print(f"[framework] Table idea_reports doesn't exist yet (non-critical). Apply migration to Supabase.")
+                else:
+                    print(f"[framework] DB save warning: {table_err}")
         except Exception as save_err:
-            print(f"[framework] DB save failed (non-critical): {save_err}")
+            print(f"[framework] DB operation warning (non-critical): {save_err}")
 
         return {
             "status": "ok",
