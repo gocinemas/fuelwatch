@@ -93,13 +93,29 @@ def idea_landing():
 def api_idea_test():
     """Debug endpoint to test assessment generation."""
     try:
+        # Test Groq availability
+        groq_available = False
+        groq_error = None
+        try:
+            import os
+            if os.environ.get("GROQ_API_KEY"):
+                groq_available = True
+            else:
+                groq_error = "GROQ_API_KEY not set"
+        except Exception as ge:
+            groq_error = str(ge)
+
+        # Test assessment generation
         from idea_analyzer import generate_report
         result = generate_report("https://example.com", "Test App")
+
         return jsonify({
             "status": "test",
+            "groq_available": groq_available,
+            "groq_error": groq_error,
             "result_keys": list(result.keys()) if isinstance(result, dict) else "not dict",
             "has_assessment": "assessment" in result if isinstance(result, dict) else False,
-            "assessment_type": str(type(result.get("assessment"))) if isinstance(result, dict) else "N/A",
+            "assessment": result.get("assessment") if isinstance(result, dict) else None,
             "full_result": result
         })
     except Exception as e:

@@ -105,21 +105,31 @@ def generate_framework_assessment(analysis: dict) -> dict:
         # Use Groq for REAL assessment (no templates, no generic fallbacks)
         from framework.groq_analyzer import generate_real_assessment
 
+        print("[framework_assessment] Calling Groq analyzer...")
         result = generate_real_assessment(analysis)
+
+        print(f"[framework_assessment] Groq result: {result}")
 
         if result.get("error"):
             print(f"[framework_assessment] Groq analysis failed: {result.get('error')}")
-            # If Groq fails, return error (don't use generic fallback)
-            return {"error": result.get("error")}
+            # Return the error so API can handle it
+            return result
+
+        if not result.get("score"):
+            print(f"[framework_assessment] No score in result: {result}")
+            return result
 
         return result
 
+    except ImportError as ie:
+        print(f"[framework_assessment] Import error: {ie}")
+        return {"error": f"Framework module import failed: {ie}"}
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        print(f"[framework_assessment] Error: {e}")
-        # Return error, not fallback
-        return {"error": str(e)}
+        print(f"[framework_assessment] Exception: {e}")
+        print(traceback.format_exc())
+        # Return error with details
+        return {"error": str(e), "trace": traceback.format_exc()}
 
 
 def _enhanced_fallback_assessment(analysis: dict) -> dict:
