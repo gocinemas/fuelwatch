@@ -29,9 +29,26 @@ def analyze_with_groq(app_analysis: dict) -> dict:
     - Market assessment
     """
     try:
-        from groq import Groq
+        # Check API key first
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            print("[groq_analyzer] ERROR: GROQ_API_KEY not set in environment")
+            return {
+                "status": "error",
+                "error": "GROQ_API_KEY not configured. Set environment variable GROQ_API_KEY on Railway."
+            }
 
-        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        try:
+            from groq import Groq
+        except ImportError as ie:
+            print(f"[groq_analyzer] Import error: {ie}")
+            return {
+                "status": "error",
+                "error": f"Groq import failed: {ie}"
+            }
+
+        print("[groq_analyzer] Initializing Groq client...")
+        client = Groq(api_key=api_key)
 
         # Build analysis prompt with actual app data
         title = app_analysis.get("title", "Unknown")
@@ -87,16 +104,25 @@ Format as JSON:
 
 Be HONEST. Be SPECIFIC. No templates."""
 
-        message = client.messages.create(
-            model="mixtral-8x7b-32768",
-            max_tokens=1500,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        )
+        print("[groq_analyzer] Calling Groq API...")
+        try:
+            message = client.messages.create(
+                model="mixtral-8x7b-32768",
+                max_tokens=1500,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            )
+            print("[groq_analyzer] Groq API call successful")
+        except Exception as groq_err:
+            print(f"[groq_analyzer] Groq API error: {groq_err}")
+            return {
+                "status": "error",
+                "error": f"Groq API call failed: {groq_err}"
+            }
 
         # Parse Groq response
         response_text = message.content[0].text
