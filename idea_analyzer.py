@@ -174,9 +174,238 @@ def generate_framework_assessment(analysis: dict) -> dict:
     return _fallback_assessment(analysis)
 
 
+def _get_product_category(title: str, value_prop: str, features: list) -> str:
+    """
+    Detect product category to determine GTM playbook.
+    """
+    combined_text = (title + " " + value_prop + " " + " ".join(features)).lower()
+
+    if any(word in combined_text for word in ["saas", "software", "tool", "app", "platform", "management", "analytics", "crm", "erp"]):
+        if any(word in combined_text for word in ["b2b", "business", "enterprise", "company", "team", "workflow"]):
+            return "SaaS B2B"
+        else:
+            return "SaaS B2C"
+
+    if any(word in combined_text for word in ["mobile", "ios", "android", "app store"]):
+        return "Mobile App"
+
+    if any(word in combined_text for word in ["marketplace", "platform", "buy", "sell", "trade", "service"]):
+        return "Marketplace"
+
+    if any(word in combined_text for word in ["ai", "chatbot", "automation", "agent"]):
+        return "AI Tool"
+
+    if any(word in combined_text for word in ["plugin", "extension", "api", "integration"]):
+        return "Developer Tool"
+
+    return "General SaaS"
+
+
+def _get_gtm_playbook(product_category: str) -> dict:
+    """
+    Return 90-day GTM roadmap based on product type.
+    """
+    playbooks = {
+        "SaaS B2B": {
+            "month_1": [
+                "Week 1-2: ProductHunt launch + HN post (target: 300-500 upvotes, 20-50 signups)",
+                "Week 3: Guest post on industry blog (Substack, Medium) + LinkedIn outreach to 100 ICP profiles",
+                "Week 4: Email founders + early customers asking 'what would make you use this?'"
+            ],
+            "month_2": [
+                "Week 5-6: Land first 5 paying customers (directly reach out, offer free month)",
+                "Week 7: Create case study from first customer",
+                "Week 8: Cold email + LinkedIn to 500 SMB founders in target vertical"
+            ],
+            "month_3": [
+                "Week 9-10: Optimize based on feedback, build 1 killer feature",
+                "Week 11: Launch on G2 + Capterra for reviews",
+                "Week 12: Analyze which channel got best customers (retention + LTV), 3x that channel"
+            ],
+            "winning_signal": "5+ paying customers, >50% week-1 retention, $500+ MRR"
+        },
+        "SaaS B2C": {
+            "month_1": [
+                "Week 1-2: ProductHunt launch (target: #1 Product of the Day)",
+                "Week 3: TikTok/YouTube shorts showing before/after (if relevant)",
+                "Week 4: Email outreach to 10 micro-influencers in space + Reddit communities"
+            ],
+            "month_2": [
+                "Week 5-6: Paid ads test ($500 budget) on TikTok/Instagram targeting similar products",
+                "Week 7: Optimize creative based on what converts",
+                "Week 8: Viral content push (if applicable) or community building"
+            ],
+            "month_3": [
+                "Week 9-10: Build referral program (give $5-10 credit per referral)",
+                "Week 11: Launch on AppStore (if mobile) or launch landing page campaign",
+                "Week 12: Measure: which channel has best LTV? Double down there"
+            ],
+            "winning_signal": "1000+ signups, 100+ paid, >30% day-1 retention, $1k+ MRR"
+        },
+        "Mobile App": {
+            "month_1": [
+                "Week 1-2: AppStore + PlayStore optimization (ASO), ProductHunt for web version",
+                "Week 3: Reach out to 20 iOS/Android reviewers + tech blogs",
+                "Week 4: TikTok/Instagram content showing app in action"
+            ],
+            "month_2": [
+                "Week 5-6: Paid user acquisition test on Apple Search Ads ($500 budget)",
+                "Week 7: Optimize based on CAC, increase if profitable",
+                "Week 8: Build retention features (notifications, streaks, social)"
+            ],
+            "month_3": [
+                "Week 9-10: Launch on Reddit + Discord communities for feedback",
+                "Week 11: Build referral system for organic growth",
+                "Week 12: Measure retention cohorts, optimize for day-30 retention >20%"
+            ],
+            "winning_signal": "10k+ downloads, 1k+ DAU, >20% day-30 retention"
+        },
+        "Marketplace": {
+            "month_1": [
+                "Week 1-2: Recruit 50 supply-side users (sellers/service providers) directly",
+                "Week 3: ProductHunt launch highlighting unique value prop",
+                "Week 4: Recruit demand-side users (buyers) via ads or organic"
+            ],
+            "month_2": [
+                "Week 5-6: Drive first 20 transactions manually (help close deals)",
+                "Week 7: Create case study from first transaction",
+                "Week 8: Referral program launch (incentivize supply + demand)"
+            ],
+            "month_3": [
+                "Week 9-10: Paid ads test for demand-side ($1k budget)",
+                "Week 11: Organic supply-side growth (influencers, affiliate program)",
+                "Week 12: Measure GMV, transaction volume, repeat rate"
+            ],
+            "winning_signal": "100+ supply + 500+ demand users, 20+ transactions, $1k+ GMV/week"
+        },
+        "AI Tool": {
+            "month_1": [
+                "Week 1-2: ProductHunt + HN launch (emphasize unique capability vs. ChatGPT)",
+                "Week 3: Guest appearances on AI podcasts + newsletters (Neuron, Import AI)",
+                "Week 4: Twitter/LinkedIn thought leadership (share learnings, not just selling)"
+            ],
+            "month_2": [
+                "Week 5-6: Integrate into relevant Discord/Slack communities + offer free tier",
+                "Week 7: Build partnerships with adjacent tools (Zapier, Make, etc.)",
+                "Week 8: Create viral use case demo (Twitter thread, video)"
+            ],
+            "month_3": [
+                "Week 9-10: Paid ads test targeting AI enthusiasts ($1k budget)",
+                "Week 11: B2B outreach to companies using your use case",
+                "Week 12: Build enterprise tier, reach out to 50 companies"
+            ],
+            "winning_signal": "5k+ users, 500+ paid, $5k+ MRR, 50%+ week-1 retention"
+        },
+        "General SaaS": {
+            "month_1": [
+                "Week 1-2: ProductHunt launch",
+                "Week 3: HN + relevant subreddits",
+                "Week 4: Email founders + target audience (100 emails)"
+            ],
+            "month_2": [
+                "Week 5-6: Close first 5 customers",
+                "Week 7: Create case study",
+                "Week 8: Double down on best performing channel"
+            ],
+            "month_3": [
+                "Week 9-10: Optimize product based on retention data",
+                "Week 11: Launch on G2 + integrate feedback",
+                "Week 12: Measure retention, CAC, LTV. Scale winning channel"
+            ],
+            "winning_signal": "5+ customers, >40% week-1 retention, $500+ MRR"
+        }
+    }
+
+    return playbooks.get(product_category, playbooks["General SaaS"])
+
+
+def _find_competitors(title: str, value_prop: str, features: list) -> list:
+    """
+    Identify likely competitors based on product description.
+    (In real implementation, would query Crunchbase API + ProductHunt + Google)
+    """
+    # For now, return common competitors by category
+    # In production: call Crunchbase + ProductHunt API + Google to find real competitors
+
+    combined_text = (title + " " + value_prop).lower()
+
+    if "productivity" in combined_text or "task" in combined_text or "todo" in combined_text:
+        return ["Notion", "Asana", "Monday.com", "ClickUp", "Trello"]
+    elif "finance" in combined_text or "expense" in combined_text or "budget" in combined_text:
+        return ["Emma", "Snoop", "Plum", "Starling Bank", "YNAB"]
+    elif "analytics" in combined_text or "dashboard" in combined_text:
+        return ["Mixpanel", "Amplitude", "Segment", "Metabase", "Looker"]
+    elif "communication" in combined_text or "chat" in combined_text:
+        return ["Slack", "Discord", "Teams", "Telegram", "WhatsApp Business"]
+    elif "design" in combined_text or "creative" in combined_text:
+        return ["Figma", "Adobe XD", "Sketch", "Canva", "Penpot"]
+    elif "hr" in combined_text or "recruiting" in combined_text:
+        return ["Workday", "BambooHR", "Ashby", "Guidepoint", "Lever"]
+    else:
+        # Generic SaaS competitors
+        return ["Zapier", "IFTTT", "n8n", "Make", "Integromat"]
+
+
+def _score_defensibility(title: str, competitors: list, feature_count: int) -> dict:
+    """
+    Score how defensible your idea is against competitors.
+    """
+    score = 50
+    reasoning = []
+
+    # Competitor count impact
+    if len(competitors) <= 2:
+        score += 25
+        reasoning.append("✅ Low competition: 1-2 major players. High defensibility.")
+    elif len(competitors) <= 5:
+        score += 15
+        reasoning.append("🟡 Moderate competition: 3-5 players. Must differentiate.")
+    elif len(competitors) <= 10:
+        score += 5
+        reasoning.append("⚠️ High competition: 5-10 players. Difficult to win.")
+    else:
+        score -= 10
+        reasoning.append("🔴 Very high competition: 10+ players. Crowded market.")
+
+    # Feature count vs. competitors
+    if feature_count >= 8:
+        score += 10
+        reasoning.append("✅ Feature parity: 8+ features matches competitor depth.")
+    elif feature_count >= 5:
+        score += 0
+        reasoning.append("🟡 Lean feature set: Competitors likely have more. Need differentiation.")
+    else:
+        score -= 15
+        reasoning.append("🔴 Too minimal: Need more features to compete.")
+
+    # Defensibility factors
+    if "ai" in title.lower() or "ml" in title.lower():
+        score -= 10
+        reasoning.append("⚠️ AI/ML market: Hard to defend. Google/OpenAI will enter fast.")
+
+    # Network effects check
+    if any(word in title.lower() for word in ["social", "marketplace", "network", "community"]):
+        score += 15
+        reasoning.append("✅ Network effects potential: Can build defensibility through scale.")
+
+    # Data moat
+    if any(word in title.lower() for word in ["analytics", "data", "intelligence", "insights"]):
+        score += 10
+        reasoning.append("✅ Data moat possible: More users = better product = defensible.")
+
+    score = max(20, min(100, score))
+
+    return {
+        "score": score,
+        "level": "🟢 Strong" if score >= 70 else "🟡 Moderate" if score >= 50 else "🔴 Weak",
+        "reasoning": reasoning
+    }
+
+
 def _simple_assessment(analysis: dict) -> dict:
     """
-    Back to basics: answer 4 simple questions.
+    Phase 1: Competitive Framework
+    Answer: What is it? What's winning? What needs work? How do you win?
     """
     title = analysis.get("title", "Unknown App")
     value_prop = analysis.get("value_prop", "")
@@ -185,8 +414,20 @@ def _simple_assessment(analysis: dict) -> dict:
     ctas = analysis.get("ctas", [])
     pricing = analysis.get("pricing_model", "Free")
 
+    # DETECT PRODUCT CATEGORY
+    product_category = _get_product_category(title, value_prop, features)
+
+    # FIND COMPETITORS
+    competitors = _find_competitors(title, value_prop, features)
+
+    # SCORE DEFENSIBILITY
+    defensibility = _score_defensibility(title, competitors, len(features))
+
+    # GET GTM PLAYBOOK
+    gtm_playbook = _get_gtm_playbook(product_category)
+
     # 1. WHAT IS IT?
-    what_is_it = f"Product: {title}"
+    what_is_it = f"Product: {title}\nCategory: {product_category}"
     if value_prop:
         what_is_it += f"\nMission: {value_prop}"
     if description:
@@ -230,23 +471,40 @@ def _simple_assessment(analysis: dict) -> dict:
     if not improvements:
         improvements.append("✓ Foundation is solid. Next: measure what users actually value.")
 
-    # 4. WHAT'S NEXT?
+    # 4. COMPETITIVE LANDSCAPE
+    competitive_landscape = {
+        "category": product_category,
+        "competitors": competitors,
+        "competitor_count": len(competitors),
+        "defensibility": defensibility,
+        "winning_factors": [
+            f"🎯 Differentiation potential: Pick 1 area competitors don't own (e.g., better UX, lower price, vertical focus)",
+            f"🛡️ Defensibility: {defensibility['level']} ({defensibility['score']}/100). " +
+            (" Build moat through data/network effects" if defensibility['score'] >= 70 else
+             " You can win with superior execution" if defensibility['score'] >= 50 else
+             " Must differentiate aggressively or pick new idea")
+        ]
+    }
+
+    # 5. GO-TO-MARKET ROADMAP
+    gtm_roadmap = {
+        "category": product_category,
+        "winning_signal": gtm_playbook.get("winning_signal", ""),
+        "month_1": gtm_playbook.get("month_1", []),
+        "month_2": gtm_playbook.get("month_2", []),
+        "month_3": gtm_playbook.get("month_3", []),
+        "summary": f"90-day roadmap for {product_category} launching. Focus on: {gtm_playbook.get('winning_signal', '')}"
+    }
+
+    # 4. WHAT'S NEXT? (Updated with GTM focus)
     next_steps = []
+    next_steps.append(f"🎯 Category: You're building a {product_category}")
+    next_steps.append(f"🏆 Competitors: {', '.join(competitors[:3])} + {len(competitors)-3} others. Study them.")
+    next_steps.append(f"🛡️ Defensibility: {defensibility['level']}. {defensibility['reasoning'][0]}")
+    next_steps.append(f"📅 GTM: Follow the {product_category} playbook (see below)")
+    next_steps.append(f"🚀 Win condition: {gtm_playbook.get('winning_signal', '')}")
 
-    if len(features) >= 5:
-        next_steps.append("📊 Measure: Which feature has highest engagement/retention? Double down on that.")
-    else:
-        next_steps.append("🔧 Build: Add 2-3 more core features before heavy marketing.")
-
-    if pricing == "Free":
-        next_steps.append("💰 Monetization: Test willingness-to-pay. Add premium tier with high-value features.")
-
-    if len(description) < 100:
-        next_steps.append("👥 Traction: Get real users. Add testimonials and usage stats to homepage.")
-
-    next_steps.append("🎯 Focus: Pick ONE use case that excites you most. Make that legendary.")
-
-    # Score (simple: 1-100 based on completeness)
+    # Score (simple: 1-100 based on completeness + defensibility)
     score = 50  # Start middle
     if value_prop and len(value_prop) > 40:
         score += 15
@@ -259,23 +517,30 @@ def _simple_assessment(analysis: dict) -> dict:
     if pricing != "Free":
         score += 10
 
+    # Adjust for defensibility
+    score += defensibility['score'] // 5  # Add defensibility to overall score
+
     return {
         "score": min(100, score),
         "what_is_it": what_is_it,
         "winning": winning,
         "needs_improvement": improvements,
+        "competitive_landscape": competitive_landscape,
+        "gtm_roadmap": gtm_roadmap,
         "next_steps": next_steps,
         "verdict": {
-            "summary": f"{'🚀 Strong foundation' if score >= 75 else '🟡 Good start' if score >= 60 else '⚠️ Needs work'} ({score}/100)",
-            "confidence": 85  # High confidence in basic analysis
+            "summary": f"{'🚀 Strong position' if score >= 75 else '🟡 Viable' if score >= 60 else '⚠️ Needs work'} ({score}/100)",
+            "confidence": 85,
+            "defensibility": defensibility['level'],
+            "category": product_category
         },
         "idea_validation": {"score": (score // 2), "reasoning": "Positioning clarity"},
-        "market_potential": {"score": (score // 2), "reasoning": "Feature depth"},
+        "market_potential": {"score": defensibility['score'], "reasoning": f"Defensibility: {defensibility['level']}"},
         "design_quality": {"score": (score // 2), "reasoning": "UX signals"},
-        "execution_risk": 70,
+        "execution_risk": 100 - defensibility['score'],
         "improvements": [f"• {i}" for i in improvements],
         "pivots": next_steps,
-        "risks": []
+        "risks": defensibility['reasoning']
     }
 
 
