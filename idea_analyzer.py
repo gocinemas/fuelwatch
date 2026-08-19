@@ -107,6 +107,47 @@ def generate_framework_assessment(analysis: dict) -> dict:
     return _fallback_assessment(analysis)
 
 
+def _generate_deep_verdict(score: float, idea_score: int, potential_score: int, feature_count: int, pricing: str, value_prop: str) -> str:
+    """
+    Generate a detailed, nuanced verdict on whether to pursue this idea.
+    Goes beyond just a score — explains the reasoning.
+    """
+    if score >= 80:
+        return (
+            f"🚀 STRONG SIGNAL ({int(score)}/100): Clear positioning + solid features + revenue model. "
+            f"Execute now. Focus: (1) Validate your target user cohort gets 10x value vs. alternatives, "
+            f"(2) Measure retention after week 1 + month 1. If retention >50% week 1, scale acquisition."
+        )
+    elif score >= 70:
+        return (
+            f"✅ WORTH PURSUING ({int(score)}/100): Good foundation. You can win, but only if you: "
+            f"(1) Nail your target user (go vertical, not horizontal), (2) Prove unit economics work "
+            f"(one customer pays for CAC in <6mo), (3) Build 1-2 features that competitors don't have. "
+            f"Validate PMF in next 30 days with real users."
+        )
+    elif score >= 60:
+        return (
+            f"🟡 VIABLE WITH WORK ({int(score)}/100): Market opportunity exists but positioning is weak. "
+            f"Before building: (1) Interview 20 potential users — does your headline resonate? If <60% say 'I need this', pivot. "
+            f"(2) Identify ONE specific user type (not 'everyone'). (3) Build MVP for that one user type. "
+            f"If early traction >30% retention week 1, then scale."
+        )
+    elif score >= 50:
+        return (
+            f"⚠️ HIGH RISK ({int(score)}/100): Idea has gaps. Recommend: (1) Validate demand before building. "
+            f"Run 20-30 customer interviews OR build landing page + ads to test willingness-to-try (target: 5%+ click-through). "
+            f"(2) Clarify positioning — currently too vague. (3) Identify what makes you defensible vs. incumbents. "
+            f"If validation passes, revisit."
+        )
+    else:
+        return (
+            f"❌ STOP ({int(score)}/100): Multiple red flags. Gaps: unclear positioning + weak feature set + unproven market. "
+            f"Recommend: (1) Pivot to an adjacent market where you have unfair advantage, OR (2) Validate demand rigorously "
+            f"before investing further. "
+            f"What problem are you UNIQUELY positioned to solve that nobody else can?"
+        )
+
+
 def _enhanced_fallback_assessment(analysis: dict) -> dict:
     """
     Enhanced fallback assessment - analyzes REAL scraped data.
@@ -180,50 +221,73 @@ def _enhanced_fallback_assessment(analysis: dict) -> dict:
     overall = (idea_score * 0.35 + potential_score * 0.30 + design_score * 0.20 + risk_score * 0.15)
     overall = max(25, min(100, overall))  # Clamp 25-100
 
-    # === SPECIFIC, ACTIONABLE RECOMMENDATIONS ===
+    # === DEEP ANALYSIS & IMPROVEMENTS ===
 
     improvements = []
 
-    # Improvement 1: Value prop clarity
-    if len(value_prop) < 50:
-        improvements.append(f"📝 Headline too short ('{value_prop}'): Expand to explain WHO it's for + WHAT problem it solves (target: 60-100 chars)")
+    # Improvement 1: Value Proposition - Depth Analysis
+    if len(value_prop) < 30:
+        improvements.append(f"🎯 CRITICAL: Headline '{value_prop}' is too vague. Users won't understand WHO it's for or WHAT problem you solve. Rewrite as: '[For X user] [Product name] helps you [specific outcome] in [timeframe/way]'")
+    elif len(value_prop) < 50:
+        improvements.append(f"⚠️ Headline '{value_prop}' lacks specificity. Add: target user type + quantified outcome (e.g., 'helps managers save 5 hours/week' not just 'manage tasks')")
     elif len(value_prop) > 150:
-        improvements.append(f"📝 Headline too long ({len(value_prop)} chars): Simplify core claim first. Add detail in sub-heading.")
+        improvements.append(f"📝 Headline is long ({len(value_prop)} chars) — break into main claim + benefit bullets. Users won't read a paragraph.")
     else:
-        improvements.append(f"📝 Headline strength: '{value_prop[:50]}...' is clear. Test A/B against a benefit-focused alternative.")
+        improvements.append(f"✓ Headline '{value_prop[:40]}...' is reasonable. Validate with 3 target users: Does it immediately make sense? Would they click?")
 
-    # Improvement 2: Feature completeness
-    if feature_count < 5:
-        improvements.append(f"🔧 Feature set sparse ({feature_count} features listed). Competitors likely have 8-12. Add missing: integration options, analytics, customization")
-    elif feature_count >= 8:
-        improvements.append(f"🔧 Strong feature count ({feature_count}). Next: Add 'what you get' ROI/timeline (e.g., 'Setup in 15 min', '10x faster')")
-
-    # Improvement 3: Social proof gap
-    if not description or len(description) < 100:
-        improvements.append("👥 No social proof visible (users, testimonials, case studies). Add 1-2 quantified wins (e.g., '5,000+ businesses', '40% time saved')")
+    # Improvement 2: Feature Depth - Beyond Just Count
+    if feature_count == 0:
+        improvements.append("🔧 CRITICAL: No features listed. Users can't evaluate if this solves their problem. Add: top 5 capabilities (focus on outcomes, not tech)")
+    elif feature_count < 3:
+        improvements.append(f"🔧 Only {feature_count} feature(s) — too minimal to validate market need. Competitors in this space have 8-12. Either: (a) expand MVP scope or (b) position as 'focused tool' with deep UX")
+    elif feature_count < 5:
+        improvements.append(f"🔧 {feature_count} features is lean but risky. Missing likely: analytics/reporting, integrations, or customization. Add the #1 request from early users.")
+    elif feature_count < 8:
+        improvements.append(f"✓ {feature_count} features is solid MVP. Next step: Measure which features drive retention + engagement. Double down on top 2.")
     else:
-        improvements.append("👥 Has description. Add specific user testimonials with metrics (avoid generic praise)")
+        improvements.append(f"✓ {feature_count} features shows maturity. Risk: feature creep. Map each to a real user job. Cut bottom 30%.")
 
-    # === PIVOTS (market repositioning strategies) ===
+    # Improvement 3: Social Proof - Quantified Impact
+    if not description or len(description) < 50:
+        improvements.append("👥 CRITICAL: No evidence of traction shown. Add: user count, revenue, retention rate, or testimonials with results (e.g., '2,000+ users', '92% still active after 1 year')")
+    elif len(description) < 150:
+        improvements.append("👥 Description exists but too thin. Add specifics: Who uses it? What's the typical outcome? (e.g., 'Used by 500+ design agencies to cut project time 40%')")
+    else:
+        improvements.append("👥 Has description. Critical now: Add credibility markers — testimonials with real names/photos, press mentions, or quantified results (not generic praise)")
+
+    # === DEEP PIVOTS (strategic repositioning if current positioning weak) ===
 
     pivots = []
 
+    # Revenue Model Pivots
     if pricing == "Free":
-        pivots.append("💰 Free model limits revenue. Test freemium tier (Pro/Teams) targeting power users at $10-50/mo")
+        pivots.append("💰 PIVOT 1 — Revenue Model: Free is fine for traction (first 6mo), but you must test willingness-to-pay by month 9. Run pricing experiments: freemium tier (Pro) at $15-30/mo targeting power users, or land-and-expand (free → teams → enterprise).")
     elif pricing == "Paid" and feature_count < 5:
-        pivots.append("💰 Limited features + paid pricing = high churn risk. Add free tier to drive adoption, paywall later")
+        pivots.append("💰 PIVOT 1 — Revenue Model: Paid pricing on limited features = high churn risk. Either: (a) add 2-3 more critical features first, or (b) switch to free + optional premium tier to reduce buyer hesitation.")
+    elif pricing == "Freemium":
+        pivots.append("💰 PIVOT 1 — Revenue Model: Freemium is smart. Critical now: Ensure free tier has enough value to prove concept (users get 70% of core job done). Premium should be 'nice-to-have' not 'required'.")
 
-    # Market-specific pivots
-    if "admin" in value_prop.lower() or "management" in value_prop.lower():
-        pivots.append("🎯 B2B admin tools need vertical focus. Target SMBs in 1 industry (e.g., agencies, clinics, gyms) vs. generic")
-    elif "consumer" not in value_prop.lower() and "personal" not in value_prop.lower():
-        pivots.append("🎯 B2B positioning unclear. Nail the job title/company size that gets 80% value (e.g., 'for freelance designers' not 'for all creators')")
+    # Market Positioning Pivots
+    if len(value_prop) < 50:
+        pivots.append("🎯 PIVOT 2 — Market Clarity: Current positioning is too broad. Pick ONE of these angles and own it deeply: (a) a specific job (e.g., 'content scheduling'), (b) a specific user type (e.g., 'solopreneurs'), (c) a specific outcome (e.g., 'save 10 hours/week'). Go narrow before going wide.")
+    elif "for everyone" in value_prop.lower() or "all" in value_prop.lower():
+        pivots.append("🎯 PIVOT 2 — Market Focus: Horizontal positioning ('for everyone') is hard. Pick: 1 vertical (e.g., marketing agencies) OR 1 job (e.g., project scheduling) and dominate that first. 80% of revenue will come from one user type — find it fast.")
+    else:
+        pivots.append("🎯 PIVOT 2 — Market Validation: Test if your positioning resonates with real users. Survey 20 users: Is the headline immediately clear? Would they recommend? If <70% say yes, reposition.")
 
-    if feature_count > 15:
-        pivots.append("🎯 Feature bloat risk. Focus: Pick top 3 jobs-to-be-done, cut everything else. Depth > breadth in early stage.")
+    # Feature/Product Pivots
+    if feature_count < 3:
+        pivots.append("🔧 PIVOT 3 — Product Depth: You're too minimal. Benchmark top 3 competitors — what do they have that you don't? Prioritize: (a) integrations (Zapier, Slack, etc.), (b) analytics/reporting, (c) mobile support. Pick the #1 request from users.")
+    elif feature_count > 12:
+        pivots.append("🔧 PIVOT 3 — Product Focus: You have feature bloat. Which feature drives 80% of user retention? Double down there. Cut or remove bottom 5 features. Specialization > generalization at this stage.")
+    else:
+        pivots.append("🔧 PIVOT 3 — Product-Market Fit: You have reasonable feature depth. Now: measure usage. Which 2-3 features do power users rely on? Build workflows around those. Cut everything else.")
 
+    # GTM Pivots
     if not ctas or len(ctas) == 0:
-        pivots.append("🎯 No clear conversion path. Add: 'Start Free', 'See Demo', 'Join Beta' — test urgency (limited spots, pricing deadline)")
+        pivots.append("📢 PIVOT 4 — Go-to-Market: No conversion path visible. Add clear CTA: 'Start Free' or 'Join 5,000+ Users'. Test urgency: 'Limited beta spots' or '7-day free trial'. Measure: are sign-ups happening? If not, reposition.")
+    else:
+        pivots.append(f"📢 PIVOT 4 — Go-to-Market: You have {len(ctas)} CTA(s). Test which converts best. A/B test: 'Start Free' vs 'See Demo' vs 'Join Beta'. Pick the top converter, double down.")
 
     # === RISKS (real execution challenges) ===
 
@@ -270,12 +334,9 @@ def _enhanced_fallback_assessment(analysis: dict) -> dict:
         },
         "execution_risk": risk_score,
         "verdict": {
-            "worth_pursuing": overall > 65,
-            "confidence": int(min(90, idea_score + 10)),
-            "reason": f"{int(overall)}/100: " +
-                     ("✅ Strong signals. Pursue with vertical focus." if overall > 75 else
-                      "🟡 Viable with fixes. Address value prop + feature gaps." if overall > 60 else
-                      "❌ High risk. Validate market demand first. Consider pivot.")
+            "worth_pursuing": overall > 60,
+            "confidence": int(min(95, 40 + (overall * 0.55))),  # More nuanced confidence
+            "reason": _generate_deep_verdict(overall, idea_score, potential_score, feature_count, pricing, value_prop)
         },
         "improvements": improvements,
         "pivots": pivots,
