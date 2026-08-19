@@ -453,23 +453,29 @@ def _simple_assessment(analysis: dict) -> dict:
     # 3. WHAT NEEDS IMPROVEMENT?
     improvements = []
 
-    if len(value_prop) < 30:
-        improvements.append(f"📝 Headline too vague ('{value_prop}'). Users don't immediately understand what this does.")
+    if len(value_prop) == 0:
+        improvements.append("📝 CRITICAL: No headline found. Add H1 tag with value prop (e.g., 'WhatsApp AI for UK daily life')")
+    elif len(value_prop) < 30:
+        improvements.append(f"📝 Headline too short ('{value_prop}'). Expand to 40-60 chars explaining WHO + WHAT.")
+    elif len(value_prop) > 100:
+        improvements.append(f"📝 Headline too long ({len(value_prop)} chars). Shorten to <80 chars for quick comprehension.")
 
     if len(features) < 3:
-        improvements.append(f"🔧 Only {len(features)} feature(s) listed. Either expand or better showcase what you have.")
+        improvements.append(f"🔧 Only {len(features)} feature(s) visible. Expand or better showcase what you have.")
+    elif len(features) > 12:
+        improvements.append(f"🎯 Too many features ({len(features)}). Focus on top 3-5 and make those legendary.")
 
     if len(ctas) == 0:
-        improvements.append(f"📢 No clear call-to-action. Add 'Join', 'Try Now', or 'Learn More' button.")
+        improvements.append("📢 No CTA found. Add 'Join Free', 'Try Now', or 'See Demo' button.")
 
-    if not description or len(description) < 100:
-        improvements.append(f"👥 Missing social proof. Add: user count, testimonials, or results achieved.")
+    if not description or len(description) < 50:
+        improvements.append("👥 Missing social proof/traction. Add: user count, testimonials, retention rate, or press mentions.")
 
-    if len(features) > 12:
-        improvements.append(f"🎯 Too many features ({len(features)}). Pick top 3-5 and promote those heavily.")
+    # Deduplicate improvements
+    improvements = list(dict.fromkeys(improvements))
 
     if not improvements:
-        improvements.append("✓ Foundation is solid. Next: measure what users actually value.")
+        improvements.append("✓ Foundation is solid. Next: measure what users value most.")
 
     # 4. COMPETITIVE LANDSCAPE
     competitive_landscape = {
@@ -520,6 +526,21 @@ def _simple_assessment(analysis: dict) -> dict:
     # Adjust for defensibility
     score += defensibility['score'] // 5  # Add defensibility to overall score
 
+    # Build verdict based on actual score
+    if score >= 80:
+        verdict_text = f"🚀 STRONG ({score}/100): Clear market fit. High defensibility. Execute GTM playbook."
+    elif score >= 70:
+        verdict_text = f"✅ VIABLE ({score}/100): Good foundation + competitive opportunity. Focus on differentiation."
+    elif score >= 60:
+        verdict_text = f"🟡 POSSIBLE ({score}/100): Viable but needs work. Address improvements + defensibility concerns."
+    elif score >= 50:
+        verdict_text = f"⚠️ RISKY ({score}/100): Multiple gaps. Validate demand before investing heavily."
+    else:
+        verdict_text = f"❌ HIGH RISK ({score}/100): Significant challenges. Consider pivoting or reshaping idea."
+
+    # Format defensibility reasoning as string
+    defensibility_text = " ".join(defensibility['reasoning'])
+
     return {
         "score": min(100, score),
         "what_is_it": what_is_it,
@@ -529,7 +550,7 @@ def _simple_assessment(analysis: dict) -> dict:
         "gtm_roadmap": gtm_roadmap,
         "next_steps": next_steps,
         "verdict": {
-            "summary": f"{'🚀 Strong position' if score >= 75 else '🟡 Viable' if score >= 60 else '⚠️ Needs work'} ({score}/100)",
+            "summary": verdict_text,
             "confidence": 85,
             "defensibility": defensibility['level'],
             "category": product_category
@@ -540,7 +561,9 @@ def _simple_assessment(analysis: dict) -> dict:
         "execution_risk": 100 - defensibility['score'],
         "improvements": [f"• {i}" for i in improvements],
         "pivots": next_steps,
-        "risks": defensibility['reasoning']
+        "risks": [
+            {"category": "Defensibility", "severity": "MEDIUM" if defensibility['score'] >= 50 else "HIGH", "description": defensibility_text}
+        ]
     }
 
 
