@@ -168,42 +168,41 @@ def generate_framework_assessment(analysis: dict) -> dict:
 
 def _generate_deep_verdict(score: float, idea_score: int, potential_score: int, feature_count: int, pricing: str, value_prop: str) -> str:
     """
-    Generate a detailed, nuanced verdict on whether to pursue this idea.
-    Goes beyond just a score — explains the reasoning.
+    For EXISTING, LIVE products: Strategic assessment on what's working, next opportunities.
+    NOT validation for early-stage ideas.
     """
     if score >= 80:
         return (
-            f"🚀 STRONG SIGNAL ({int(score)}/100): Clear positioning + solid features + revenue model. "
-            f"Execute now. Focus: (1) Validate your target user cohort gets 10x value vs. alternatives, "
-            f"(2) Measure retention after week 1 + month 1. If retention >50% week 1, scale acquisition."
+            f"🚀 STRONG PRODUCT ({int(score)}/100): Clear positioning + multiple modules working + real users. "
+            f"Next: (1) Measure what drives retention (which modules?), (2) Identify your power users + what they value most, "
+            f"(3) Double down on that use case. Growth opportunity: expand the winning vertical/feature into enterprise/B2B."
         )
     elif score >= 70:
         return (
-            f"✅ WORTH PURSUING ({int(score)}/100): Good foundation. You can win, but only if you: "
-            f"(1) Nail your target user (go vertical, not horizontal), (2) Prove unit economics work "
-            f"(one customer pays for CAC in <6mo), (3) Build 1-2 features that competitors don't have. "
-            f"Validate PMF in next 30 days with real users."
+            f"✅ SOLID FOUNDATION ({int(score)}/100): Real traction exists. You have: positioning + features + users. "
+            f"Strategic priorities: (1) Vertical focus — which user segment is most engaged? (2) Monetization — test willingness to pay, "
+            f"(3) Network effects — can users help each other? Build community around your strongest module."
         )
     elif score >= 60:
         return (
-            f"🟡 VIABLE WITH WORK ({int(score)}/100): Market opportunity exists but positioning is weak. "
-            f"Before building: (1) Interview 20 potential users — does your headline resonate? If <60% say 'I need this', pivot. "
-            f"(2) Identify ONE specific user type (not 'everyone'). (3) Build MVP for that one user type. "
-            f"If early traction >30% retention week 1, then scale."
+            f"🟡 GOOD START ({int(score)}/100): Product has potential but unfocused. "
+            f"Analysis: You're doing many things (which is good for learning) but diluting brand. Next steps: "
+            f"(1) Measure engagement per module — which ONE drives the most value/retention? (2) Go deep on that. "
+            f"(3) Position brand around the winning module. (4) Add monetization there. Other modules become secondary."
         )
     elif score >= 50:
         return (
-            f"⚠️ HIGH RISK ({int(score)}/100): Idea has gaps. Recommend: (1) Validate demand before building. "
-            f"Run 20-30 customer interviews OR build landing page + ads to test willingness-to-try (target: 5%+ click-through). "
-            f"(2) Clarify positioning — currently too vague. (3) Identify what makes you defensible vs. incumbents. "
-            f"If validation passes, revisit."
+            f"⚠️ NEEDS FOCUS ({int(score)}/100): Multiple modules but unclear which one matters most. "
+            f"Risk: You're spread thin. Recommend: (1) Data audit — which feature/module has highest retention + DAU? "
+            f"(2) Interview top 5 power users — why do they use it? What's irreplaceable? (3) Cut bottom 50% of features. "
+            f"(4) Focus 90% of marketing + product on the winning use case."
         )
     else:
         return (
-            f"❌ STOP ({int(score)}/100): Multiple red flags. Gaps: unclear positioning + weak feature set + unproven market. "
-            f"Recommend: (1) Pivot to an adjacent market where you have unfair advantage, OR (2) Validate demand rigorously "
-            f"before investing further. "
-            f"What problem are you UNIQUELY positioned to solve that nobody else can?"
+            f"🔴 CRITICAL: Product lacks clear value prop or traction. "
+            f"Urgent: (1) Talk to users — what keeps them using it? What would make them leave? "
+            f"(2) Audit metrics: which module/feature has highest engagement? (3) Kill everything else. "
+            f"(4) Rebrand around the winning insight. Right now you're invisible because you do everything poorly instead of one thing well."
         )
 
 
@@ -219,134 +218,141 @@ def _enhanced_fallback_assessment(analysis: dict) -> dict:
     description = analysis.get("description", "")
     ctas = analysis.get("ctas", [])
 
-    # === REAL ANALYSIS BASED ON ACTUAL DATA ===
+    # === ANALYSIS FOR EXISTING, LIVE PRODUCTS ===
+    # Focus: positioning clarity + feature depth + user signal strength
 
-    # 1. VALUE PROP CLARITY (0-100)
-    idea_score = 40
+    # 1. POSITIONING CLARITY (how well does the headline explain the product?)
+    idea_score = 50  # Start middle for existing products
     if value_prop:
         vp_len = len(value_prop)
-        if vp_len > 80:  # Detailed value prop
-            idea_score += 35
-        elif vp_len > 40:  # Decent positioning
-            idea_score += 25
-        else:  # Too brief
+        # Clear positioning signals
+        if vp_len > 60:  # Detailed, specific
+            idea_score += 30
+        elif vp_len > 30:  # Reasonable
+            idea_score += 15
+        else:
+            idea_score += 5  # Too brief but might have sub-heading
+
+        # Clarity keywords
+        if any(kw in value_prop.lower() for kw in ["help", "for", "your", "everyday", "assistant", "save", "manage"]):
             idea_score += 10
 
-        # Bonus for specific language
-        if any(keyword in value_prop.lower() for keyword in ["solve", "help", "enable", "automate", "increase", "decrease"]):
-            idea_score += 15
+    if description and len(description) > 200:
+        idea_score += 5  # Rich description = mature product
 
-    if description and len(description) > 100:
-        idea_score += 10  # Has real description
-
-    # 2. MARKET POTENTIAL (based on feature depth & pricing strategy)
-    potential_score = 40
+    # 2. PRODUCT DEPTH (breadth of capabilities)
+    potential_score = 50  # Start middle
     feature_count = len(features)
 
-    if feature_count >= 8:
-        potential_score += 30  # Rich feature set
-    elif feature_count >= 5:
+    if feature_count >= 10:
+        potential_score += 30  # Multiple modules/features
+    elif feature_count >= 6:
         potential_score += 20
     elif feature_count >= 3:
         potential_score += 10
 
-    # Pricing signals market maturity
-    if pricing in ["paid", "Paid", "B2B"]:
-        potential_score += 20  # Monetization strategy
+    # Monetization signal (existing products should show revenue model)
+    if pricing in ["Paid", "B2B"]:
+        potential_score += 15  # Clear paid model
     elif pricing == "Freemium":
-        potential_score += 15  # Growth + revenue model
+        potential_score += 10  # Freemium (growth + future revenue)
+    # Free is OK for existing products (bootstrap/early stage)
 
-    # 3. DESIGN QUALITY (based on positioning clarity & CTA count)
-    design_score = 40
-    if len(value_prop) > 50:  # Clear positioning suggests design thinking
-        design_score += 20
-
+    # 3. MARKET SIGNAL (CTA presence = user traction/engagement)
+    design_score = 50
     if len(ctas) >= 2:
-        design_score += 20  # Multiple CTAs = thought-out UX
+        design_score += 25  # Multiple CTAs = active userbase
     elif len(ctas) == 1:
-        design_score += 10
+        design_score += 15
 
-    # 4. EXECUTION RISK (complexity signals)
+    if len(value_prop) > 40:
+        design_score += 10  # Clear UX
+
+    # 4. EXECUTION MATURITY (complexity + feature breadth signal)
     risk_score = 70  # Start neutral
 
-    risk_keywords = ["ai", "ml", "machine learning", "blockchain", "crypto", "real-time", "distributed"]
-    complexity_words = sum(1 for f in features if any(kw in f.lower() for kw in risk_keywords))
-    risk_score -= min(20, complexity_words * 5)  # More complex features = higher risk
+    # Complex features are OK for existing products (they're already built)
+    # Risk is about maintenance/scaling, not development risk
+    complexity_keywords = ["ai", "ml", "real-time", "integration", "api"]
+    has_complexity = sum(1 for f in features if any(kw in f.lower() for kw in complexity_keywords))
 
-    if "api" in value_prop.lower() or "integration" in value_prop.lower():
-        risk_score -= 5  # Integration complexity
+    if has_complexity > 3:
+        risk_score += 15  # Sophisticated product = lower risk (already de-risked)
+    elif has_complexity > 0:
+        risk_score += 5
 
-    # Calculate overall weighted score
-    overall = (idea_score * 0.35 + potential_score * 0.30 + design_score * 0.20 + risk_score * 0.15)
-    overall = max(25, min(100, overall))  # Clamp 25-100
+    # Multiple features signal good execution
+    if feature_count >= 8:
+        risk_score += 10  # Teams that ship many features are competent
 
-    # === DEEP ANALYSIS & IMPROVEMENTS ===
+    # Calculate overall: existing product (higher baseline, no harsh penalties)
+    overall = (idea_score * 0.30 + potential_score * 0.35 + design_score * 0.20 + risk_score * 0.15)
+    overall = max(40, min(100, overall))  # Clamp 40-100 for existing products
+
+    # === IMPROVEMENTS FOR EXISTING PRODUCTS ===
+    # Focus: what's working, what to optimize, growth opportunities
 
     improvements = []
 
-    # Improvement 1: Value Proposition - Depth Analysis
+    # Insight 1: Positioning Clarity
     if len(value_prop) < 30:
-        improvements.append(f"🎯 CRITICAL: Headline '{value_prop}' is too vague. Users won't understand WHO it's for or WHAT problem you solve. Rewrite as: '[For X user] [Product name] helps you [specific outcome] in [timeframe/way]'")
-    elif len(value_prop) < 50:
-        improvements.append(f"⚠️ Headline '{value_prop}' lacks specificity. Add: target user type + quantified outcome (e.g., 'helps managers save 5 hours/week' not just 'manage tasks')")
-    elif len(value_prop) > 150:
-        improvements.append(f"📝 Headline is long ({len(value_prop)} chars) — break into main claim + benefit bullets. Users won't read a paragraph.")
+        improvements.append(f"📝 Headline is vague ('{value_prop}'). For existing products, clarity matters. Rewrite to be specific: 'Your everyday [job/outcome]' or 'AI assistant for [specific user]'")
+    elif len(value_prop) > 100:
+        improvements.append(f"📝 Headline is wordy ({len(value_prop)} chars). Shorten to <60 chars. Users decide in 2 seconds. Test on your most engaged users: does it resonate?")
     else:
-        improvements.append(f"✓ Headline '{value_prop[:40]}...' is reasonable. Validate with 3 target users: Does it immediately make sense? Would they click?")
+        improvements.append(f"✓ Positioning is clear enough ('{value_prop[:50]}...'). Next: A/B test against benefit-focused alternative. Which converts better?")
 
-    # Improvement 2: Feature Depth - Beyond Just Count
-    if feature_count == 0:
-        improvements.append("🔧 CRITICAL: No features listed. Users can't evaluate if this solves their problem. Add: top 5 capabilities (focus on outcomes, not tech)")
-    elif feature_count < 3:
-        improvements.append(f"🔧 Only {feature_count} feature(s) — too minimal to validate market need. Competitors in this space have 8-12. Either: (a) expand MVP scope or (b) position as 'focused tool' with deep UX")
-    elif feature_count < 5:
-        improvements.append(f"🔧 {feature_count} features is lean but risky. Missing likely: analytics/reporting, integrations, or customization. Add the #1 request from early users.")
-    elif feature_count < 8:
-        improvements.append(f"✓ {feature_count} features is solid MVP. Next step: Measure which features drive retention + engagement. Double down on top 2.")
+    # Insight 2: Feature/Module Analysis
+    if feature_count >= 8:
+        improvements.append(f"🎯 {feature_count} modules is strong (means real product depth). OPPORTUNITY: Identify which 1-2 modules drive 80% of retention. Go deeper there. Make those modules industry-leading, cut or simplify the rest.")
+    elif feature_count >= 5:
+        improvements.append(f"✓ {feature_count} features is solid. NEXT: Audit usage metrics per feature. Which one has highest DAU + retention? Make that your flagship. Build brand around it.")
     else:
-        improvements.append(f"✓ {feature_count} features shows maturity. Risk: feature creep. Map each to a real user job. Cut bottom 30%.")
+        improvements.append(f"⚠️ {feature_count} features might be limiting. Are you underselling the product? Check: are there capabilities not listed? If yes, add them to homepage. If no, consider expanding product or going deeper on core features.")
 
-    # Improvement 3: Social Proof - Quantified Impact
-    if not description or len(description) < 50:
-        improvements.append("👥 CRITICAL: No evidence of traction shown. Add: user count, revenue, retention rate, or testimonials with results (e.g., '2,000+ users', '92% still active after 1 year')")
-    elif len(description) < 150:
-        improvements.append("👥 Description exists but too thin. Add specifics: Who uses it? What's the typical outcome? (e.g., 'Used by 500+ design agencies to cut project time 40%')")
+    # Insight 3: Market Traction Signals
+    if len(ctas) >= 2:
+        improvements.append(f"✓ {len(ctas)} CTAs show product engagement. OPTIMIZATION: Test which CTA converts best (join vs. demo vs. learn). Double down on winner. Measure conversion rate per CTA.")
+    elif len(ctas) == 1:
+        improvements.append(f"💡 Single CTA. OPPORTUNITY: Add secondary action (e.g., 'See Demo' alongside 'Join'). Measure: do people prefer trying first or joining blind? Build roadmap around top choice.")
+
+    # Insight 4: Social Proof & Credibility
+    if description and len(description) > 200:
+        improvements.append(f"✓ Description is rich. NEXT: Add quantified traction (users, companies, retention, NPS). E.g., '10k+ daily active users' or '92% retention after 1 month'. This is what converts.")
+    elif description:
+        improvements.append(f"💡 Description exists but thin. ADD: Proof points. What metric best shows product value? (DAU, retention %, testimonial NPS, time saved, $$ saved per user?). Lead with that.")
     else:
-        improvements.append("👥 Has description. Critical now: Add credibility markers — testimonials with real names/photos, press mentions, or quantified results (not generic praise)")
+        improvements.append(f"🔴 No description/social proof visible. CRITICAL for growth: Add 1-2 quantified wins (user count, engagement stat, customer testimonial with metric). This is how users evaluate.")
 
-    # === DEEP PIVOTS (strategic repositioning if current positioning weak) ===
+    # === GROWTH OPPORTUNITIES FOR EXISTING PRODUCTS ===
 
     pivots = []
 
-    # Revenue Model Pivots
+    # Growth Opportunity 1: Revenue/Monetization
     if pricing == "Free":
-        pivots.append("💰 PIVOT 1 — Revenue Model: Free is fine for traction (first 6mo), but you must test willingness-to-pay by month 9. Run pricing experiments: freemium tier (Pro) at $15-30/mo targeting power users, or land-and-expand (free → teams → enterprise).")
-    elif pricing == "Paid" and feature_count < 5:
-        pivots.append("💰 PIVOT 1 — Revenue Model: Paid pricing on limited features = high churn risk. Either: (a) add 2-3 more critical features first, or (b) switch to free + optional premium tier to reduce buyer hesitation.")
-    elif pricing == "Freemium":
-        pivots.append("💰 PIVOT 1 — Revenue Model: Freemium is smart. Critical now: Ensure free tier has enough value to prove concept (users get 70% of core job done). Premium should be 'nice-to-have' not 'required'.")
-
-    # Market Positioning Pivots
-    if len(value_prop) < 50:
-        pivots.append("🎯 PIVOT 2 — Market Clarity: Current positioning is too broad. Pick ONE of these angles and own it deeply: (a) a specific job (e.g., 'content scheduling'), (b) a specific user type (e.g., 'solopreneurs'), (c) a specific outcome (e.g., 'save 10 hours/week'). Go narrow before going wide.")
-    elif "for everyone" in value_prop.lower() or "all" in value_prop.lower():
-        pivots.append("🎯 PIVOT 2 — Market Focus: Horizontal positioning ('for everyone') is hard. Pick: 1 vertical (e.g., marketing agencies) OR 1 job (e.g., project scheduling) and dominate that first. 80% of revenue will come from one user type — find it fast.")
+        pivots.append("💰 GROWTH 1 — Monetization: Product is free. Path forward: (1) Identify your power users (10% most engaged). (2) Test premium tier targeting them ($10-30/mo). (3) What would they pay for? Ask directly. (4) Build that feature, charge for it.")
+    elif pricing == "Paid":
+        pivots.append("💰 GROWTH 1 — Expansion Revenue: You're charging. Opportunity: (1) Audit power users — do they share/invite? (2) Add team/enterprise pricing (5-10x base). (3) Test: 'Teams' tier with admin controls. (4) Measure: % of users who go premium. Target: >5%.")
     else:
-        pivots.append("🎯 PIVOT 2 — Market Validation: Test if your positioning resonates with real users. Survey 20 users: Is the headline immediately clear? Would they recommend? If <70% say yes, reposition.")
+        pivots.append("💰 GROWTH 1 — Revenue Model: Current model is freemium. Test: (1) Which features do paying users use most? (2) Build premium tier around those. (3) Premium should feel 'premium' — not just ad-free, but genuinely better. (4) Measure LTV:CAC ratio.")
 
-    # Feature/Product Pivots
-    if feature_count < 3:
-        pivots.append("🔧 PIVOT 3 — Product Depth: You're too minimal. Benchmark top 3 competitors — what do they have that you don't? Prioritize: (a) integrations (Zapier, Slack, etc.), (b) analytics/reporting, (c) mobile support. Pick the #1 request from users.")
-    elif feature_count > 12:
-        pivots.append("🔧 PIVOT 3 — Product Focus: You have feature bloat. Which feature drives 80% of user retention? Double down there. Cut or remove bottom 5 features. Specialization > generalization at this stage.")
+    # Growth Opportunity 2: Market/Vertical Expansion
+    if feature_count >= 8:
+        pivots.append("🎯 GROWTH 2 — Vertical Dominance: With multiple modules, you can own a vertical. Which user segment (job/company/geography) gets the MOST value? Pick that segment, own it. Build case studies, testimonials, community. Then expand to adjacent verticals.")
     else:
-        pivots.append("🔧 PIVOT 3 — Product-Market Fit: You have reasonable feature depth. Now: measure usage. Which 2-3 features do power users rely on? Build workflows around those. Cut everything else.")
+        pivots.append("🎯 GROWTH 2 — Market Expansion: Build one capability until it's best-in-class. Then expand. Current strategy (many features) is smart for learning but hard to market. Pick the feature that excites you most. Make it legendary.")
 
-    # GTM Pivots
-    if not ctas or len(ctas) == 0:
-        pivots.append("📢 PIVOT 4 — Go-to-Market: No conversion path visible. Add clear CTA: 'Start Free' or 'Join 5,000+ Users'. Test urgency: 'Limited beta spots' or '7-day free trial'. Measure: are sign-ups happening? If not, reposition.")
+    # Growth Opportunity 3: Network Effects / Community
+    if len(ctas) >= 2:
+        pivots.append("👥 GROWTH 3 — Community: You have active users (multiple CTAs). Opportunity: Build social layer. Can users connect? Share tips? Build community around your core use case. This creates lock-in + viral growth.")
     else:
-        pivots.append(f"📢 PIVOT 4 — Go-to-Market: You have {len(ctas)} CTA(s). Test which converts best. A/B test: 'Start Free' vs 'See Demo' vs 'Join Beta'. Pick the top converter, double down.")
+        pivots.append("👥 GROWTH 3 — Engagement: Low CTA presence suggests engagement potential. What keeps users coming back? Build features around that. Social (share results), gamification (streaks), or community (ask + answer).")
+
+    # Growth Opportunity 4: Enterprise / B2B
+    if pricing != "B2B":
+        pivots.append("🏢 GROWTH 4 — Enterprise Expansion: Consumer product working? Consider B2B angle. Which company type would benefit most? (e.g., if consumer app, would teams/companies pay more?). Build enterprise features: admin panel, team management, reporting, SSO.")
+    else:
+        pivots.append("🏢 GROWTH 4 — Scale B2B: You're B2B-focused. Next: (1) Build partnerships with resellers/consultants. (2) Create certifications or training programs. (3) Partner with adjacent B2B products. (4) Measure: CAC, LTV, expansion revenue per account.")
 
     # === RISKS (real execution challenges) ===
 
