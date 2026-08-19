@@ -151,6 +151,14 @@ def fetch_and_analyze_url(url: str, app_name: str = None) -> dict:
 
 def generate_framework_assessment(analysis: dict) -> dict:
     """
+    Simple, direct assessment:
+    1. What is it?
+    2. What's winning?
+    3. What needs work?
+    4. What's next?
+    """
+    return _simple_assessment(analysis)
+    """
     Apply the FrameWork assessment.
     Using enhanced fallback that analyzes actual scraped data.
     """
@@ -164,6 +172,111 @@ def generate_framework_assessment(analysis: dict) -> dict:
 
     # If anything fails, use basic fallback (guaranteed to work)
     return _fallback_assessment(analysis)
+
+
+def _simple_assessment(analysis: dict) -> dict:
+    """
+    Back to basics: answer 4 simple questions.
+    """
+    title = analysis.get("title", "Unknown App")
+    value_prop = analysis.get("value_prop", "")
+    features = analysis.get("features", [])
+    description = analysis.get("description", "")
+    ctas = analysis.get("ctas", [])
+    pricing = analysis.get("pricing_model", "Free")
+
+    # 1. WHAT IS IT?
+    what_is_it = f"Product: {title}"
+    if value_prop:
+        what_is_it += f"\nMission: {value_prop}"
+    if description:
+        what_is_it += f"\nAbout: {description[:200]}..."
+
+    # 2. WHAT'S WINNING? (identify strong points)
+    winning = []
+
+    if len(features) >= 5:
+        winning.append(f"✅ Feature depth: {len(features)} modules/features built. Shows serious product")
+    if value_prop and len(value_prop) > 40:
+        winning.append(f"✅ Clear positioning: '{value_prop[:60]}...' is understandable")
+    if len(ctas) >= 2:
+        winning.append(f"✅ Active engagement: {len(ctas)} calls-to-action show users are converting")
+    if pricing != "Free":
+        winning.append(f"✅ Monetization: {pricing} model shows revenue thinking")
+    if description and len(description) > 150:
+        winning.append(f"✅ Market narrative: Rich description suggests real user understanding")
+
+    if not winning:
+        winning.append("⚠️ Need to assess: What makes this better than alternatives?")
+
+    # 3. WHAT NEEDS IMPROVEMENT?
+    improvements = []
+
+    if len(value_prop) < 30:
+        improvements.append(f"📝 Headline too vague ('{value_prop}'). Users don't immediately understand what this does.")
+
+    if len(features) < 3:
+        improvements.append(f"🔧 Only {len(features)} feature(s) listed. Either expand or better showcase what you have.")
+
+    if len(ctas) == 0:
+        improvements.append(f"📢 No clear call-to-action. Add 'Join', 'Try Now', or 'Learn More' button.")
+
+    if not description or len(description) < 100:
+        improvements.append(f"👥 Missing social proof. Add: user count, testimonials, or results achieved.")
+
+    if len(features) > 12:
+        improvements.append(f"🎯 Too many features ({len(features)}). Pick top 3-5 and promote those heavily.")
+
+    if not improvements:
+        improvements.append("✓ Foundation is solid. Next: measure what users actually value.")
+
+    # 4. WHAT'S NEXT?
+    next_steps = []
+
+    if len(features) >= 5:
+        next_steps.append("📊 Measure: Which feature has highest engagement/retention? Double down on that.")
+    else:
+        next_steps.append("🔧 Build: Add 2-3 more core features before heavy marketing.")
+
+    if pricing == "Free":
+        next_steps.append("💰 Monetization: Test willingness-to-pay. Add premium tier with high-value features.")
+
+    if len(description) < 100:
+        next_steps.append("👥 Traction: Get real users. Add testimonials and usage stats to homepage.")
+
+    next_steps.append("🎯 Focus: Pick ONE use case that excites you most. Make that legendary.")
+
+    # Score (simple: 1-100 based on completeness)
+    score = 50  # Start middle
+    if value_prop and len(value_prop) > 40:
+        score += 15
+    if len(features) >= 5:
+        score += 15
+    if description and len(description) > 100:
+        score += 10
+    if len(ctas) >= 2:
+        score += 10
+    if pricing != "Free":
+        score += 10
+
+    return {
+        "score": min(100, score),
+        "what_is_it": what_is_it,
+        "winning": winning,
+        "needs_improvement": improvements,
+        "next_steps": next_steps,
+        "verdict": {
+            "summary": f"{'🚀 Strong foundation' if score >= 75 else '🟡 Good start' if score >= 60 else '⚠️ Needs work'} ({score}/100)",
+            "confidence": 85  # High confidence in basic analysis
+        },
+        "idea_validation": {"score": (score // 2), "reasoning": "Positioning clarity"},
+        "market_potential": {"score": (score // 2), "reasoning": "Feature depth"},
+        "design_quality": {"score": (score // 2), "reasoning": "UX signals"},
+        "execution_risk": 70,
+        "improvements": [f"• {i}" for i in improvements],
+        "pivots": next_steps,
+        "risks": []
+    }
 
 
 def _generate_deep_verdict(score: float, idea_score: int, potential_score: int, feature_count: int, pricing: str, value_prop: str, has_traction: bool = True) -> str:
