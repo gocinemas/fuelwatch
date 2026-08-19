@@ -93,18 +93,28 @@ def fetch_and_analyze_url(url: str, app_name: str = None) -> dict:
 def generate_framework_assessment(analysis: dict) -> dict:
     """
     Apply the FrameWork assessment.
-    Using simple, bulletproof assessment.
+    Using hard-coded valid assessment (debugging).
     """
-    try:
-        # Try enhanced fallback first
-        result = _enhanced_fallback_assessment(analysis)
-        if result and result.get("score"):
-            return result
-    except Exception as e:
-        print(f"[framework_assessment] Enhanced fallback error: {e}")
-
-    # If anything fails, use basic fallback (guaranteed to work)
-    return _fallback_assessment(analysis)
+    # Hard-coded valid assessment to test if frontend works
+    return {
+        "score": 72,
+        "idea_validation": {"score": 75, "reasoning": "Clear value proposition"},
+        "potential": {"score": 70, "reasoning": "Good market opportunity"},
+        "design_quality": {"score": 70, "reasoning": "Professional design"},
+        "execution_risk": 70,
+        "verdict": {
+            "worth_pursuing": True,
+            "confidence": 72,
+            "reason": "Strong signals across dimensions. High confidence this is worth building."
+        },
+        "improvements": ["Clarify target audience in headline", "Add social proof from early users", "Emphasize unique differentiation"],
+        "pivots": ["Consider B2B enterprise model", "Focus on specific vertical first", "Build data/intelligence layer"],
+        "risks": [
+            {"category": "Market", "severity": "MEDIUM", "description": "Competitive landscape is crowded but niche underserved"},
+            {"category": "Execution", "severity": "MEDIUM", "description": "Distribution requires specific GTM strategy"}
+        ],
+        "research_sources": {}
+    }
 
 
 def _enhanced_fallback_assessment(analysis: dict) -> dict:
