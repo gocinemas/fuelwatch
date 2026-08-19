@@ -93,114 +93,189 @@ def fetch_and_analyze_url(url: str, app_name: str = None) -> dict:
 def generate_framework_assessment(analysis: dict) -> dict:
     """
     Apply the FrameWork assessment.
-    Using hard-coded valid assessment (debugging).
+    Using enhanced fallback that analyzes actual scraped data.
     """
-    # Hard-coded valid assessment to test if frontend works
-    return {
-        "score": 72,
-        "idea_validation": {"score": 75, "reasoning": "Clear value proposition"},
-        "market_potential": {"score": 70, "reasoning": "Good market opportunity"},
-        "design_quality": {"score": 70, "reasoning": "Professional design"},
-        "execution_risk": 70,
-        "verdict": {
-            "worth_pursuing": True,
-            "confidence": 72,
-            "reason": "Strong signals across dimensions. High confidence this is worth building."
-        },
-        "improvements": ["Clarify target audience in headline", "Add social proof from early users", "Emphasize unique differentiation"],
-        "pivots": ["Consider B2B enterprise model", "Focus on specific vertical first", "Build data/intelligence layer"],
-        "risks": [
-            {"category": "Market", "severity": "MEDIUM", "description": "Competitive landscape is crowded but niche underserved"},
-            {"category": "Execution", "severity": "MEDIUM", "description": "Distribution requires specific GTM strategy"}
-        ],
-        "research_sources": {}
-    }
+    try:
+        # Try enhanced fallback first (analyzes real data)
+        result = _enhanced_fallback_assessment(analysis)
+        if result and result.get("score"):
+            return result
+    except Exception as e:
+        print(f"[framework_assessment] Enhanced fallback error: {e}")
+
+    # If anything fails, use basic fallback (guaranteed to work)
+    return _fallback_assessment(analysis)
 
 
 def _enhanced_fallback_assessment(analysis: dict) -> dict:
     """
-    Enhanced fallback assessment - more personalized than basic.
-    Analyzes specific app details to generate custom insights.
+    Enhanced fallback assessment - analyzes REAL scraped data.
+    Provides specific, actionable recommendations based on what's actually on the page.
     """
     title = analysis.get("title", "Unknown")
     value_prop = analysis.get("value_prop", "")
     features = analysis.get("features", [])
     pricing = analysis.get("pricing_model", "unknown")
+    description = analysis.get("description", "")
+    ctas = analysis.get("ctas", [])
 
-    # Custom scoring based on app data
-    idea_score = 60
-    if value_prop and len(value_prop) > 20:
-        idea_score += 20
-    if "revolutionary" not in value_prop.lower():
-        idea_score += 10  # Bonus for avoiding hype
+    # === REAL ANALYSIS BASED ON ACTUAL DATA ===
 
-    potential_score = 60
+    # 1. VALUE PROP CLARITY (0-100)
+    idea_score = 40
+    if value_prop:
+        vp_len = len(value_prop)
+        if vp_len > 80:  # Detailed value prop
+            idea_score += 35
+        elif vp_len > 40:  # Decent positioning
+            idea_score += 25
+        else:  # Too brief
+            idea_score += 10
+
+        # Bonus for specific language
+        if any(keyword in value_prop.lower() for keyword in ["solve", "help", "enable", "automate", "increase", "decrease"]):
+            idea_score += 15
+
+    if description and len(description) > 100:
+        idea_score += 10  # Has real description
+
+    # 2. MARKET POTENTIAL (based on feature depth & pricing strategy)
+    potential_score = 40
     feature_count = len(features)
-    potential_score += min(30, feature_count * 3)  # More features = higher potential
-    if pricing in ["paid", "freemium"]:
-        potential_score += 15
 
-    design_score = 60
-    if len(value_prop) > 30:  # Detailed positioning suggests good design
-        design_score += 15
+    if feature_count >= 8:
+        potential_score += 30  # Rich feature set
+    elif feature_count >= 5:
+        potential_score += 20
+    elif feature_count >= 3:
+        potential_score += 10
 
-    risk_score = 70
-    if "ai" in value_prop.lower() or "ml" in value_prop.lower():
-        risk_score -= 15  # ML = higher complexity
-    if "blockchain" in value_prop.lower() or "crypto" in value_prop.lower():
-        risk_score -= 20  # Regulatory risk
+    # Pricing signals market maturity
+    if pricing in ["paid", "Paid", "B2B"]:
+        potential_score += 20  # Monetization strategy
+    elif pricing == "Freemium":
+        potential_score += 15  # Growth + revenue model
 
-    overall = (idea_score * 0.3 + potential_score * 0.3 + design_score * 0.2 + risk_score * 0.2)
+    # 3. DESIGN QUALITY (based on positioning clarity & CTA count)
+    design_score = 40
+    if len(value_prop) > 50:  # Clear positioning suggests design thinking
+        design_score += 20
 
-    # Generate personalized improvements based on analysis
-    improvements = [
-        f"Strengthen positioning: '{value_prop[:50]}...' needs clarity vs competitors",
-        f"Expand feature set: Currently {feature_count} features identified, benchmark top 5 competitors",
-        "Add quantified social proof (user count, growth rate, testimonials)"
-    ]
+    if len(ctas) >= 2:
+        design_score += 20  # Multiple CTAs = thought-out UX
+    elif len(ctas) == 1:
+        design_score += 10
 
-    # Generate personalized pivots
-    pivots = []
-    if pricing == "free":
-        pivots.append("🎯 Consider freemium model with premium tier (higher revenue potential)")
+    # 4. EXECUTION RISK (complexity signals)
+    risk_score = 70  # Start neutral
+
+    risk_keywords = ["ai", "ml", "machine learning", "blockchain", "crypto", "real-time", "distributed"]
+    complexity_words = sum(1 for f in features if any(kw in f.lower() for kw in risk_keywords))
+    risk_score -= min(20, complexity_words * 5)  # More complex features = higher risk
+
+    if "api" in value_prop.lower() or "integration" in value_prop.lower():
+        risk_score -= 5  # Integration complexity
+
+    # Calculate overall weighted score
+    overall = (idea_score * 0.35 + potential_score * 0.30 + design_score * 0.20 + risk_score * 0.15)
+    overall = max(25, min(100, overall))  # Clamp 25-100
+
+    # === SPECIFIC, ACTIONABLE RECOMMENDATIONS ===
+
+    improvements = []
+
+    # Improvement 1: Value prop clarity
+    if len(value_prop) < 50:
+        improvements.append(f"📝 Headline too short ('{value_prop}'): Expand to explain WHO it's for + WHAT problem it solves (target: 60-100 chars)")
+    elif len(value_prop) > 150:
+        improvements.append(f"📝 Headline too long ({len(value_prop)} chars): Simplify core claim first. Add detail in sub-heading.")
     else:
-        pivots.append("🎯 Consider free tier to drive adoption and upsell premium")
+        improvements.append(f"📝 Headline strength: '{value_prop[:50]}...' is clear. Test A/B against a benefit-focused alternative.")
 
-    pivots.extend([
-        "🎯 Identify specific user segment to dominate (vertical focus > horizontal)",
-        "🎯 Build network effects or data moat (defensibility)"
-    ])
+    # Improvement 2: Feature completeness
+    if feature_count < 5:
+        improvements.append(f"🔧 Feature set sparse ({feature_count} features listed). Competitors likely have 8-12. Add missing: integration options, analytics, customization")
+    elif feature_count >= 8:
+        improvements.append(f"🔧 Strong feature count ({feature_count}). Next: Add 'what you get' ROI/timeline (e.g., 'Setup in 15 min', '10x faster')")
 
-    # Personalized risks
-    risks = [
-        {"category": "Market", "severity": "HIGH" if potential_score < 60 else "MEDIUM",
-         "description": f"Market saturation in {title} category. Differentiation required."},
-        {"category": "Execution", "severity": "HIGH" if risk_score < 60 else "MEDIUM",
-         "description": f"Technical complexity may require specialized team for {title}"},
-        {"category": "Product", "severity": "MEDIUM",
-         "description": f"Feature parity with competitors required. {len(features)} current features may not be enough."}
-    ]
+    # Improvement 3: Social proof gap
+    if not description or len(description) < 100:
+        improvements.append("👥 No social proof visible (users, testimonials, case studies). Add 1-2 quantified wins (e.g., '5,000+ businesses', '40% time saved')")
+    else:
+        improvements.append("👥 Has description. Add specific user testimonials with metrics (avoid generic praise)")
+
+    # === PIVOTS (market repositioning strategies) ===
+
+    pivots = []
+
+    if pricing == "Free":
+        pivots.append("💰 Free model limits revenue. Test freemium tier (Pro/Teams) targeting power users at $10-50/mo")
+    elif pricing == "Paid" and feature_count < 5:
+        pivots.append("💰 Limited features + paid pricing = high churn risk. Add free tier to drive adoption, paywall later")
+
+    # Market-specific pivots
+    if "admin" in value_prop.lower() or "management" in value_prop.lower():
+        pivots.append("🎯 B2B admin tools need vertical focus. Target SMBs in 1 industry (e.g., agencies, clinics, gyms) vs. generic")
+    elif "consumer" not in value_prop.lower() and "personal" not in value_prop.lower():
+        pivots.append("🎯 B2B positioning unclear. Nail the job title/company size that gets 80% value (e.g., 'for freelance designers' not 'for all creators')")
+
+    if feature_count > 15:
+        pivots.append("🎯 Feature bloat risk. Focus: Pick top 3 jobs-to-be-done, cut everything else. Depth > breadth in early stage.")
+
+    if not ctas or len(ctas) == 0:
+        pivots.append("🎯 No clear conversion path. Add: 'Start Free', 'See Demo', 'Join Beta' — test urgency (limited spots, pricing deadline)")
+
+    # === RISKS (real execution challenges) ===
+
+    risks = []
+
+    # Market risk
+    market_risk_severity = "HIGH" if potential_score < 50 else "MEDIUM" if potential_score < 70 else "LOW"
+    if market_risk_severity == "HIGH":
+        risks.append({"category": "Market", "severity": "HIGH",
+                     "description": f"Weak market signals for '{title}'. Validate with 10-20 cold calls before building."})
+    elif market_risk_severity == "MEDIUM":
+        risks.append({"category": "Market", "severity": "MEDIUM",
+                     "description": f"'{title}' market exists but likely crowded. Differentiation (vertical focus, pricing, features) required to win."})
+
+    # Execution risk
+    if risk_score < 50:
+        risks.append({"category": "Execution", "severity": "HIGH",
+                     "description": "High technical complexity (AI/ML/crypto). Need specialized team + 6-12 month runway."})
+    elif risk_score < 65:
+        risks.append({"category": "Execution", "severity": "MEDIUM",
+                     "description": f"Moderate complexity. {feature_count} features to build/maintain. Aim for MVP with top 3 only."})
+
+    # Product-market fit risk
+    if feature_count < 3:
+        risks.append({"category": "PMF", "severity": "HIGH",
+                     "description": "Too minimal to validate market need. Users can't evaluate value with so few features."})
+    else:
+        risks.append({"category": "PMF", "severity": "MEDIUM",
+                     "description": f"With {feature_count} features, you can test PMF. Monitor: user retention (day 7, day 30), feature usage, NPS."})
 
     return {
         "score": int(overall),
         "idea_validation": {
             "score": idea_score,
-            "reasoning": f"Value prop identified: '{value_prop[:60]}...'" if value_prop else "Positioning needs clarity"
+            "reasoning": f"Positioning clarity: {len(value_prop)} chars. {('✓ Clear' if len(value_prop) > 50 else '✗ Needs expansion')}"
         },
         "market_potential": {
             "score": potential_score,
-            "reasoning": f"{feature_count} core features identified. Pricing: {pricing}"
+            "reasoning": f"{feature_count} features + {pricing.lower()} pricing. {'✓ Monetizable' if pricing != 'Free' else '⚠️ Revenue model TBD'}"
         },
         "design_quality": {
             "score": design_score,
-            "reasoning": "Design positioning detected"
+            "reasoning": f"{len(ctas)} CTAs visible. {('✓ Clear path' if len(ctas) >= 2 else '✗ Add clarity')}"
         },
         "execution_risk": risk_score,
         "verdict": {
-            "worth_pursuing": overall > 70,
-            "confidence": int(50 + (idea_score / 2)),
-            "reason": f"Score: {int(overall)}/100. " +
-                     ("Strong market fit signals." if overall > 70 else "Consider pivoting or refining positioning." if overall > 60 else "High risk. Significant changes needed.")
+            "worth_pursuing": overall > 65,
+            "confidence": int(min(90, idea_score + 10)),
+            "reason": f"{int(overall)}/100: " +
+                     ("✅ Strong signals. Pursue with vertical focus." if overall > 75 else
+                      "🟡 Viable with fixes. Address value prop + feature gaps." if overall > 60 else
+                      "❌ High risk. Validate market demand first. Consider pivot.")
         },
         "improvements": improvements,
         "pivots": pivots,
