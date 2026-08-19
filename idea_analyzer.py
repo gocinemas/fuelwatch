@@ -99,7 +99,7 @@ def generate_framework_assessment(analysis: dict) -> dict:
     return {
         "score": 72,
         "idea_validation": {"score": 75, "reasoning": "Clear value proposition"},
-        "potential": {"score": 70, "reasoning": "Good market opportunity"},
+        "market_potential": {"score": 70, "reasoning": "Good market opportunity"},
         "design_quality": {"score": 70, "reasoning": "Professional design"},
         "execution_risk": 70,
         "verdict": {
@@ -187,7 +187,7 @@ def _enhanced_fallback_assessment(analysis: dict) -> dict:
             "score": idea_score,
             "reasoning": f"Value prop identified: '{value_prop[:60]}...'" if value_prop else "Positioning needs clarity"
         },
-        "potential": {
+        "market_potential": {
             "score": potential_score,
             "reasoning": f"{feature_count} core features identified. Pricing: {pricing}"
         },
