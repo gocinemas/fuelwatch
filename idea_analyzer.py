@@ -201,39 +201,39 @@ def _generate_deep_verdict(score: float, idea_score: int, potential_score: int, 
 
     else:
         # EXISTING PRODUCT WITH TRACTION MODE
-    if score >= 80:
-        return (
-            f"🚀 STRONG PRODUCT ({int(score)}/100): Clear positioning + multiple modules working + real users. "
-            f"Next: (1) Measure what drives retention (which modules?), (2) Identify your power users + what they value most, "
-            f"(3) Double down on that use case. Growth opportunity: expand the winning vertical/feature into enterprise/B2B."
-        )
-    elif score >= 70:
-        return (
-            f"✅ SOLID FOUNDATION ({int(score)}/100): Real traction exists. You have: positioning + features + users. "
-            f"Strategic priorities: (1) Vertical focus — which user segment is most engaged? (2) Monetization — test willingness to pay, "
-            f"(3) Network effects — can users help each other? Build community around your strongest module."
-        )
-    elif score >= 60:
-        return (
-            f"🟡 GOOD START ({int(score)}/100): Product has potential but unfocused. "
-            f"Analysis: You're doing many things (which is good for learning) but diluting brand. Next steps: "
-            f"(1) Measure engagement per module — which ONE drives the most value/retention? (2) Go deep on that. "
-            f"(3) Position brand around the winning module. (4) Add monetization there. Other modules become secondary."
-        )
-    elif score >= 50:
-        return (
-            f"⚠️ NEEDS FOCUS ({int(score)}/100): Multiple modules but unclear which one matters most. "
-            f"Risk: You're spread thin. Recommend: (1) Data audit — which feature/module has highest retention + DAU? "
-            f"(2) Interview top 5 power users — why do they use it? What's irreplaceable? (3) Cut bottom 50% of features. "
-            f"(4) Focus 90% of marketing + product on the winning use case."
-        )
-    else:
-        return (
-            f"🔴 CRITICAL: Product lacks clear value prop or traction. "
-            f"Urgent: (1) Talk to users — what keeps them using it? What would make them leave? "
-            f"(2) Audit metrics: which module/feature has highest engagement? (3) Kill everything else. "
-            f"(4) Rebrand around the winning insight. Right now you're invisible because you do everything poorly instead of one thing well."
-        )
+        if score >= 80:
+            return (
+                f"🚀 STRONG PRODUCT ({int(score)}/100): Clear positioning + multiple modules working + real users. "
+                f"Next: (1) Measure what drives retention (which modules?), (2) Identify your power users + what they value most, "
+                f"(3) Double down on that use case. Growth opportunity: expand the winning vertical/feature into enterprise/B2B."
+            )
+        elif score >= 70:
+            return (
+                f"✅ SOLID FOUNDATION ({int(score)}/100): Real traction exists. You have: positioning + features + users. "
+                f"Strategic priorities: (1) Vertical focus — which user segment is most engaged? (2) Monetization — test willingness to pay, "
+                f"(3) Network effects — can users help each other? Build community around your strongest module."
+            )
+        elif score >= 60:
+            return (
+                f"🟡 GOOD START ({int(score)}/100): Product has potential but unfocused. "
+                f"Analysis: You're doing many things (which is good for learning) but diluting brand. Next steps: "
+                f"(1) Measure engagement per module — which ONE drives the most value/retention? (2) Go deep on that. "
+                f"(3) Position brand around the winning module. (4) Add monetization there. Other modules become secondary."
+            )
+        elif score >= 50:
+            return (
+                f"⚠️ NEEDS FOCUS ({int(score)}/100): Multiple modules but unclear which one matters most. "
+                f"Risk: You're spread thin. Recommend: (1) Data audit — which feature/module has highest retention + DAU? "
+                f"(2) Interview top 5 power users — why do they use it? What's irreplaceable? (3) Cut bottom 50% of features. "
+                f"(4) Focus 90% of marketing + product on the winning use case."
+            )
+        else:
+            return (
+                f"🔴 CRITICAL: Product lacks clear value prop or traction. "
+                f"Urgent: (1) Talk to users — what keeps them using it? What would make them leave? "
+                f"(2) Audit metrics: which module/feature has highest engagement? (3) Kill everything else. "
+                f"(4) Rebrand around the winning insight. Right now you're invisible because you do everything poorly instead of one thing well."
+            )
 
 
 def _detect_traction(analysis: dict) -> dict:
