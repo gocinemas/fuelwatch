@@ -17,14 +17,14 @@ import library as lib
 
 def fetch_and_analyze_url(url: str, app_name: str = None) -> dict:
     """
-    Fetch a URL and extract key information about the app.
+    Fetch a URL and extract key information about the app — going DEEP.
 
-    Returns structured analysis with:
-    - positioning (value prop, headline, subheading)
-    - features (list of key features)
-    - design_quality (visual design assessment)
-    - target_audience (who it's for)
-    - pricing_model (free/paid/freemium)
+    Extracts:
+    - positioning (value prop, headline, all visible text)
+    - features (from lists, cards, sections, bold text)
+    - description (meta, og:description, first paragraphs)
+    - design signals (CTAs, structure)
+    - pricing_model
     """
     try:
         # Fetch the page
@@ -37,52 +37,111 @@ def fetch_and_analyze_url(url: str, app_name: str = None) -> dict:
         html = response.text
         soup = BeautifulSoup(html, 'html.parser')
 
-        # Extract metadata
+        # === EXTRACT TITLE ===
         title = soup.find('title')
         title_text = title.string if title else app_name or "Unknown"
 
+        # === EXTRACT DESCRIPTION (multiple sources) ===
+        description = ""
         og_description = soup.find('meta', property='og:description')
-        description = og_description.get('content', '') if og_description else ""
+        if og_description:
+            description = og_description.get('content', '')
 
-        # Extract key content (headers, buttons, value props)
+        # Fallback: get first meaningful paragraph
+        if not description or len(description) < 50:
+            for tag in soup.find_all(['p', 'div']):
+                text = tag.get_text(strip=True)
+                if text and len(text) > 80 and len(text) < 500:
+                    description = text
+                    break
+
+        # === EXTRACT VALUE PROP (headline) ===
         h1 = soup.find('h1')
         h1_text = h1.get_text(strip=True) if h1 else ""
 
         h2 = soup.find('h2')
         h2_text = h2.get_text(strip=True) if h2 else ""
 
-        # Extract CTA buttons (usually indicate core action)
-        buttons = soup.find_all(['button', 'a'], class_=lambda x: x and 'btn' in x.lower())
-        ctas = [btn.get_text(strip=True) for btn in buttons[:3]]
-
-        # Look for feature lists
+        # === EXTRACT FEATURES (DEEP SCAN) ===
         features = []
-        feature_sections = soup.find_all(['ul', 'ol'])
-        for section in feature_sections[:3]:  # First 3 lists
+
+        # Method 1: Lists (ul/ol)
+        for section in soup.find_all(['ul', 'ol']):
             items = section.find_all('li')
-            for item in items[:5]:  # First 5 items per list
+            for item in items:
                 text = item.get_text(strip=True)
-                if text and len(text) > 10:  # Skip short items
+                if text and len(text) > 8 and len(text) < 200:
                     features.append(text)
 
-        # Look for pricing info
+        # Method 2: Cards/divs with class patterns (feature-*, item, card, etc.)
+        for div in soup.find_all('div'):
+            classes = div.get('class', [])
+            if any(pattern in str(classes).lower() for pattern in ['feature', 'item', 'card', 'module', 'capability', 'benefit']):
+                text = div.get_text(strip=True)
+                if text and 10 < len(text) < 200 and text not in features:
+                    features.append(text)
+
+        # Method 3: Bold/strong text (often used for feature names)
+        for strong in soup.find_all(['strong', 'b']):
+            text = strong.get_text(strip=True)
+            if text and 5 < len(text) < 80 and text not in features:
+                features.append(text)
+
+        # Method 4: Section headings (h3, h4) that describe features
+        for heading in soup.find_all(['h3', 'h4']):
+            text = heading.get_text(strip=True)
+            if text and len(text) > 8 and len(text) < 100 and text not in features:
+                features.append(text)
+
+        # Method 5: Look for "What you get" or similar sections
+        for section in soup.find_all(['section', 'div']):
+            section_text = section.get_text(strip=True).lower()
+            if any(phrase in section_text for phrase in ['features', 'capabilities', 'modules', 'what you get', 'includes']):
+                # Extract items in this section
+                items = section.find_all(['li', 'div', 'span'])
+                for item in items[:10]:
+                    text = item.get_text(strip=True)
+                    if 8 < len(text) < 150 and text not in features:
+                        features.append(text)
+
+        # Deduplicate and clean
+        features = list(dict.fromkeys(features))  # Remove dupes, keep order
+        features = [f for f in features if len(f) > 8 and f not in [h1_text, h2_text, title_text]]  # Remove noise
+        features = features[:15]  # Top 15 features
+
+        # === EXTRACT CTA BUTTONS ===
+        ctas = []
+        for btn in soup.find_all(['button', 'a']):
+            classes = btn.get('class', [])
+            if any(pattern in str(classes).lower() for pattern in ['btn', 'button', 'cta']):
+                text = btn.get_text(strip=True)
+                if text and 2 < len(text) < 50:
+                    ctas.append(text)
+
+        ctas = list(dict.fromkeys(ctas))[:5]  # Dedupe, top 5
+
+        # === DETECT PRICING MODEL ===
         pricing_text = html.lower()
         pricing_model = "Free"
-        if "pricing" in pricing_text or "paid" in pricing_text:
+        if "pricing" in pricing_text or "pro" in pricing_text or "premium" in pricing_text:
             pricing_model = "Freemium"
-        if "enterprise" in pricing_text or "contact us" in pricing_text:
+        if "enterprise" in pricing_text or "contact sales" in pricing_text or "custom pricing" in pricing_text:
             pricing_model = "B2B"
+        if "subscribe" in pricing_text or "$" in pricing_text:
+            pricing_model = "Paid"
 
         return {
             "title": title_text,
-            "description": description,
+            "description": description[:500] if description else "",  # First 500 chars
             "value_prop": h1_text,
             "subheading": h2_text,
             "ctas": ctas,
-            "features": features[:8],  # Top 8 features
+            "features": features,
+            "num_features": len(features),
             "pricing_model": pricing_model,
             "url": url,
-            "scraped_at": datetime.now().isoformat()
+            "scraped_at": datetime.now().isoformat(),
+            "html_length": len(html)
         }
 
     except Exception as e:
