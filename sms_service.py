@@ -89,6 +89,40 @@ def idea_landing():
     response.headers['X-Framework-Version'] = '1.0'
     return response
 
+@app.route("/api/idea/debug/<path:url>", methods=["GET"])
+def api_idea_debug(url):
+    """Debug endpoint: see exactly what was scraped from a URL."""
+    try:
+        from idea_analyzer import fetch_and_analyze_url
+
+        # Ensure URL has protocol
+        if not url.startswith("http"):
+            url = "https://" + url
+
+        analysis = fetch_and_analyze_url(url)
+
+        return jsonify({
+            "status": "ok",
+            "url": url,
+            "scraped": analysis,
+            "summary": {
+                "title": analysis.get("title", ""),
+                "value_prop_length": len(analysis.get("value_prop", "")),
+                "num_features": len(analysis.get("features", [])),
+                "features_found": analysis.get("features", []),
+                "num_ctas": len(analysis.get("ctas", [])),
+                "ctas_found": analysis.get("ctas", []),
+                "pricing_model": analysis.get("pricing_model", "Unknown"),
+                "description_length": len(analysis.get("description", ""))
+            }
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "trace": traceback.format_exc()
+        }), 500
+
 @app.route("/api/idea/test", methods=["GET"])
 def api_idea_test():
     """Debug endpoint to test assessment generation."""
