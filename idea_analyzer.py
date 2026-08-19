@@ -166,11 +166,41 @@ def generate_framework_assessment(analysis: dict) -> dict:
     return _fallback_assessment(analysis)
 
 
-def _generate_deep_verdict(score: float, idea_score: int, potential_score: int, feature_count: int, pricing: str, value_prop: str) -> str:
+def _generate_deep_verdict(score: float, idea_score: int, potential_score: int, feature_count: int, pricing: str, value_prop: str, has_traction: bool = True) -> str:
     """
-    For EXISTING, LIVE products: Strategic assessment on what's working, next opportunities.
-    NOT validation for early-stage ideas.
+    Adaptive verdict: Different based on traction status.
+    - With traction: Growth/optimization advice
+    - No traction: Validation/positioning advice
     """
+    if not has_traction:
+        # EARLY STAGE / NEW IDEA MODE
+        if score >= 75:
+            return (
+                f"🚀 STRONG IDEA ({int(score)}/100): Clear positioning + good features. "
+                f"NEXT: Talk to 20 potential users — does your value prop resonate? "
+                f"Build MVP, measure: 30%+ week-1 retention = signal to scale."
+            )
+        elif score >= 60:
+            return (
+                f"🟡 VIABLE ({int(score)}/100): Idea has legs but positioning needs clarity. "
+                f"VALIDATE FIRST: (1) Interview 20 potential users about your headline. "
+                f"(2) If <70% understand it immediately, rewrite. (3) Build MVP. (4) Measure retention."
+            )
+        elif score >= 50:
+            return (
+                f"⚠️ RISKY ({int(score)}/100): Multiple gaps (positioning + features). "
+                f"BEFORE building: Run 30 customer interviews. Validate real demand. "
+                f"If <5 people say 'I'd pay for this', pivot or kill."
+            )
+        else:
+            return (
+                f"❌ HOLD ({int(score)}/100): Needs significant rethinking. "
+                f"Gaps: unclear positioning + weak feature set. What problem are YOU uniquely "
+                f"positioned to solve? Rewrite positioning, then validate with users."
+            )
+
+    else:
+        # EXISTING PRODUCT WITH TRACTION MODE
     if score >= 80:
         return (
             f"🚀 STRONG PRODUCT ({int(score)}/100): Clear positioning + multiple modules working + real users. "
@@ -206,10 +236,81 @@ def _generate_deep_verdict(score: float, idea_score: int, potential_score: int, 
         )
 
 
+def _detect_traction(analysis: dict) -> dict:
+    """
+    Detect if product has traction signals.
+    Returns: {has_traction: bool, signals: [list], confidence: 0-100}
+    """
+    signals = []
+    traction_score = 0
+
+    description = (analysis.get("description", "") + analysis.get("value_prop", "")).lower()
+    full_text = description
+
+    # Signal 1: User/customer count
+    import re
+    user_patterns = [
+        r'(\d+[kK])\+?\s*(users|customers|companies|teams)',
+        r'(\d+)\+?\s*(million|thousand|hundred)\s*(users|customers)',
+        r'over\s*(\d+[kK])\s*(users|people)',
+    ]
+    for pattern in user_patterns:
+        if re.search(pattern, full_text):
+            signals.append("User count mentioned")
+            traction_score += 25
+            break
+
+    # Signal 2: Growth/retention metrics
+    if any(metric in full_text for metric in ["%", "retention", "growth", "active", "engagement", "dau", "mau"]):
+        signals.append("Engagement metrics visible")
+        traction_score += 15
+
+    # Signal 3: Testimonials/social proof
+    if any(phrase in full_text for phrase in ["customer says", "testimonial", "users love", "rated", "review", "feedback", "★", "5 star", "recommended"]):
+        signals.append("Social proof/testimonials")
+        traction_score += 20
+
+    # Signal 4: Press/media mentions
+    if any(phrase in full_text for phrase in ["featured in", "press", "media", "news", "podcast", "article", "publication", "mention", "times", "forbes", "techcrunch"]):
+        signals.append("Press mentions")
+        traction_score += 20
+
+    # Signal 5: Customer logos/case studies
+    if any(phrase in full_text for phrase in ["case study", "customer story", "industry leaders", "trusted by", "used by", "powered by"]):
+        signals.append("Case studies/logos")
+        traction_score += 15
+
+    # Signal 6: Revenue/paid customers
+    if any(phrase in full_text for phrase in ["revenue", "profitable", "paid", "subscription", "customers pay", "annual revenue"]):
+        signals.append("Revenue signal")
+        traction_score += 25
+
+    # Signal 7: Funding/investment
+    if any(phrase in full_text for phrase in ["funded", "investment", "seed", "series", "raised", "venture"]):
+        signals.append("Funding/investment")
+        traction_score += 20
+
+    # Signal 8: Launch/anniversary
+    if any(phrase in full_text for phrase in ["since", "founded", "launched", "year", "anniversary", "2020", "2021", "2022", "2023", "2024", "2025", "2026"]):
+        signals.append("Established timeframe")
+        traction_score += 5
+
+    has_traction = traction_score >= 30 or len(signals) >= 2
+
+    return {
+        "has_traction": has_traction,
+        "signals": signals,
+        "score": min(100, traction_score),
+        "confidence": len(signals) * 20  # 20 points per signal
+    }
+
+
 def _enhanced_fallback_assessment(analysis: dict) -> dict:
     """
-    Enhanced fallback assessment - analyzes REAL scraped data.
-    Provides specific, actionable recommendations based on what's actually on the page.
+    Enhanced fallback assessment - adapts based on traction.
+
+    If product has traction → Growth/optimization advice
+    If new idea → Validation/positioning advice
     """
     title = analysis.get("title", "Unknown")
     value_prop = analysis.get("value_prop", "")
@@ -218,11 +319,27 @@ def _enhanced_fallback_assessment(analysis: dict) -> dict:
     description = analysis.get("description", "")
     ctas = analysis.get("ctas", [])
 
-    # === ANALYSIS FOR EXISTING, LIVE PRODUCTS ===
-    # Focus: positioning clarity + feature depth + user signal strength
+    # Detect traction to choose analysis mode
+    traction = _detect_traction(analysis)
+    has_traction = traction["has_traction"]
+
+    # Store traction data in analysis for later use
+    analysis["_traction"] = traction
+    analysis["_has_traction"] = has_traction
+
+    # === ADAPTIVE ANALYSIS: TRACTION vs. NEW IDEA ===
+
+    if has_traction:
+        # MODE: EXISTING PRODUCT WITH USERS
+        # Focus: positioning clarity + feature depth + growth opportunities
+        analysis_mode = "product"
+    else:
+        # MODE: NEW IDEA / EARLY STAGE
+        # Focus: market fit + positioning clarity + feature completeness
+        analysis_mode = "idea"
 
     # 1. POSITIONING CLARITY (how well does the headline explain the product?)
-    idea_score = 50  # Start middle for existing products
+    idea_score = 50 if has_traction else 40  # Start higher for products with traction
     if value_prop:
         vp_len = len(value_prop)
         # Clear positioning signals
@@ -399,9 +516,11 @@ def _enhanced_fallback_assessment(analysis: dict) -> dict:
         },
         "execution_risk": risk_score,
         "verdict": {
-            "worth_pursuing": overall > 60,
-            "confidence": int(min(95, 40 + (overall * 0.55))),  # More nuanced confidence
-            "reason": _generate_deep_verdict(overall, idea_score, potential_score, feature_count, pricing, value_prop)
+            "worth_pursuing": overall > (60 if has_traction else 65),
+            "confidence": int(min(95, 40 + (overall * 0.55))),
+            "reason": _generate_deep_verdict(overall, idea_score, potential_score, feature_count, pricing, value_prop, has_traction),
+            "analysis_mode": "EXISTING PRODUCT" if has_traction else "NEW IDEA",
+            "traction_signals": traction.get("signals", [])
         },
         "improvements": improvements,
         "pivots": pivots,
