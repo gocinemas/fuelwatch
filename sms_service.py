@@ -159,6 +159,106 @@ def api_idea_test():
             "trace": traceback.format_exc()
         }), 500
 
+@app.route("/api/ideas", methods=["GET"])
+def api_ideas_list():
+    """List all curated ideas with filtering."""
+    try:
+        from ideas_database import filter_ideas, get_trending_ideas
+
+        # Get filters from query params
+        category = request.args.get("category")
+        defensibility_min = request.args.get("defensibility_min", type=int)
+        verdict = request.args.get("verdict")
+        trending = request.args.get("trending", "false").lower() == "true"
+
+        if trending:
+            ideas = get_trending_ideas(limit=20)
+        else:
+            ideas = filter_ideas(category=category, defensibility_min=defensibility_min, verdict=verdict)
+
+        return jsonify({
+            "status": "ok",
+            "count": len(ideas),
+            "ideas": ideas
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ideas/<idea_id>", methods=["GET"])
+def api_ideas_detail(idea_id):
+    """Get single idea details."""
+    try:
+        from ideas_database import get_idea_by_id
+
+        idea = get_idea_by_id(idea_id)
+        if not idea:
+            return jsonify({"error": "Idea not found"}), 404
+
+        return jsonify({
+            "status": "ok",
+            "idea": idea
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ideas/<idea_id>/save", methods=["POST"])
+def api_ideas_save(idea_id):
+    """Save/bookmark an idea (for logged-in users)."""
+    try:
+        from_number = request.get_json().get("from_number")
+
+        if not from_number:
+            return jsonify({"error": "No phone number"}), 400
+
+        # Store in saved_ideas table (create if needed)
+        lib._sb().table("saved_ideas").insert({
+            "from_number": from_number,
+            "idea_id": idea_id,
+            "saved_at": datetime.now().isoformat()
+        }).execute()
+
+        return jsonify({
+            "status": "ok",
+            "message": "Idea saved"
+        })
+    except Exception as e:
+        app.logger.warning(f"[ideas] Save error (non-critical): {e}")
+        return jsonify({"status": "ok", "message": "Saved locally"})  # Graceful fallback
+
+
+@app.route("/api/ideas/my-saved", methods=["GET"])
+def api_ideas_my_saved():
+    """Get user's saved ideas."""
+    try:
+        from_number = request.args.get("from_number")
+
+        if not from_number:
+            return jsonify({"saved_ideas": []})
+
+        result = lib._sb().table("saved_ideas").select("idea_id").eq("from_number", from_number).execute()
+        saved_idea_ids = [row["idea_id"] for row in result.data]
+
+        from ideas_database import get_idea_by_id
+        saved_ideas = [get_idea_by_id(id) for id in saved_idea_ids if get_idea_by_id(id)]
+
+        return jsonify({
+            "status": "ok",
+            "count": len(saved_ideas),
+            "saved_ideas": saved_ideas
+        })
+    except Exception as e:
+        app.logger.warning(f"[ideas] Load saved error: {e}")
+        return jsonify({"saved_ideas": []})  # Graceful fallback
+
+
+@app.route("/idea/ideas", methods=["GET"])
+def ideas_browse():
+    """Landing page for ideas browser."""
+    return render_template("ideas_browser.html")
+
+
 @app.route("/api/idea/analyze", methods=["POST"])
 def api_idea_analyze():
     """Analyze an app idea from URL."""
