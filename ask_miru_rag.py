@@ -123,19 +123,28 @@ class MiruRAG:
             variants.add(no_wa[1:])  # Without +
         else:
             variants.add(no_wa)  # Without +
-            variants.add(f"+{no_wa}")  # With +
+            if no_wa:  # Only add + version if phone is non-empty
+                variants.add(f"+{no_wa}")  # With +
 
         # Also try with whatsapp: prefix + variations
         no_plus = no_wa.lstrip("+")
-        variants.add(f"whatsapp:{no_plus}")
-        variants.add(f"whatsapp:+{no_plus}")
+        if no_plus:
+            variants.add(f"whatsapp:{no_plus}")
+            variants.add(f"whatsapp:+{no_plus}")
 
-        # Remove any empty strings
-        self.phone_variants = [v for v in variants if v and v.strip()]
+        # Remove any empty strings and duplicates
+        self.phone_variants = sorted(list(set(v for v in variants if v and v.strip())))
+
+        # Debug logging
+        if len(self.phone_variants) == 0:
+            # Fallback: at least include the original
+            self.phone_variants = [self.phone_original] if self.phone_original else []
 
     def query(self, question: str) -> Dict[str, Any]:
         """
         Main query interface. Returns structured result with data + metadata.
+
+        ALWAYS returns a valid response dict with "answer" field, never throws.
 
         Returns:
             {
@@ -146,26 +155,34 @@ class MiruRAG:
                 "context": {...}  # For follow-ups
             }
         """
-        q_lower = question.lower()
+        try:
+            q_lower = question.lower()
 
-        # Extract entities
-        merchant = EntityExtractor.extract_merchant(question)
-        time_qual = EntityExtractor.extract_time_qualifier(question)
-        item = EntityExtractor.extract_item(question)
+            # Extract entities
+            merchant = EntityExtractor.extract_merchant(question)
+            time_qual = EntityExtractor.extract_time_qualifier(question)
+            item = EntityExtractor.extract_item(question)
 
-        # Route to appropriate handler
-        if any(w in q_lower for w in ["what", "did i", "did you", "have i", "what items"]):
-            # Question about purchases/items
-            return self._query_receipts(merchant, item, time_qual, question)
-        elif any(w in q_lower for w in ["how much", "spent", "cost", "budget"]):
-            return self._query_spending(merchant, time_qual, question)
-        elif any(w in q_lower for w in ["when", "date", "time"]):
-            return self._query_dates(merchant, time_qual, question)
-        else:
+            # Route to appropriate handler
+            if any(w in q_lower for w in ["what", "did i", "did you", "have i", "what items"]):
+                # Question about purchases/items
+                return self._query_receipts(merchant, item, time_qual, question)
+            elif any(w in q_lower for w in ["how much", "spent", "cost", "budget"]):
+                return self._query_spending(merchant, time_qual, question)
+            elif any(w in q_lower for w in ["when", "date", "time"]):
+                return self._query_dates(merchant, time_qual, question)
+            else:
+                return {
+                    "answer": "I can help with: spending, receipts, items you bought, and patterns.",
+                    "source": "system",
+                    "confidence": 1.0,
+                }
+        except Exception as e:
+            # Emergency fallback: ALWAYS return something with an answer
             return {
-                "answer": "I can help with: spending, receipts, items you bought, and patterns.",
-                "source": "system",
-                "confidence": 1.0,
+                "answer": f"Sorry, I encountered an error processing that query: {str(e)[:50]}",
+                "source": "error",
+                "confidence": 0.0,
             }
 
     def _query_receipts(
@@ -179,6 +196,16 @@ class MiruRAG:
                 self.context_history.append({"type": "receipt", "merchant": merchant, "items": wa_result.get("items")})
                 return wa_result
 
+            # If wa_saves explicitly searched for merchant and found nothing, don't fall back
+            if merchant and wa_result.get("reason"):
+                return {
+                    "answer": f"I didn't find {merchant} in your receipts.",
+                    "data": None,
+                    "source": "database",
+                    "confidence": 1.0,
+                    "found": False,
+                }
+
             # 2. FALLBACK to receipts table
             rcpt_result = self._query_receipts_table(merchant, item, time_qual)
             if rcpt_result.get("found"):
@@ -186,8 +213,13 @@ class MiruRAG:
                 return rcpt_result
 
             # 3. NO DATA FOUND - return clear message, no hallucination
+            if merchant:
+                msg = f"I didn't find {merchant} in your receipts."
+            else:
+                msg = "I didn't find receipt data for that query."
+
             return {
-                "answer": f"I didn't find receipt data for {merchant or 'this merchant'}.",
+                "answer": msg,
                 "data": None,
                 "source": "database",
                 "confidence": 1.0,
@@ -206,9 +238,14 @@ class MiruRAG:
 
             query = rows
 
-            # Filter by merchant if specified
+            # Filter by merchant if specified (STRICT matching when merchant is requested)
             if merchant:
+                # Case-insensitive search: title ILIKE '%{merchant}%'
                 query = query.ilike("title", f"%{merchant}%")
+                # Store flag: if merchant was explicitly requested, we should NOT return other merchants
+                requested_merchant = merchant.lower()
+            else:
+                requested_merchant = None
 
             # Filter by time
             if time_qual == "today":
@@ -221,6 +258,13 @@ class MiruRAG:
             rows = query.order("created_at", desc=True).limit(5).execute().data or []
 
             if not rows:
+                # If merchant was explicitly requested and not found, return clear "not found"
+                if requested_merchant:
+                    return {
+                        "found": False,
+                        "data": None,
+                        "reason": f"No receipts found for {requested_merchant}"
+                    }
                 return {"found": False, "data": None}
 
             # Process results
@@ -272,6 +316,9 @@ class MiruRAG:
                 "phone", phone_variants_plain
             )
 
+            # Store if merchant was explicitly requested (for error messaging)
+            requested_merchant = merchant.lower() if merchant else None
+
             if merchant:
                 query = query.ilike("merchant", f"%{merchant}%")
 
@@ -282,6 +329,12 @@ class MiruRAG:
             rows = query.order("shop_date", desc=True).limit(5).execute().data or []
 
             if not rows:
+                # If merchant was explicitly requested and not found, return clear "not found"
+                if requested_merchant:
+                    return {
+                        "found": False,
+                        "reason": f"No receipts found for {requested_merchant}"
+                    }
                 return {"found": False}
 
             receipt = rows[0]
