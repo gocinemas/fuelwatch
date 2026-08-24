@@ -17723,15 +17723,28 @@ def api_home_ask():
     q_lower = question.strip().lower()
 
     # ── NEW: Try RAG-based Ask Miru (data-first retrieval, no hallucination) ──
+    rag_processed = False
     try:
         from ask_miru_rag import MiruRAG
         rag = MiruRAG(from_number, lib._sb())
         result = rag.query(question)
-        if result.get("answer") and result.get("source") != "system":
-            app.logger.info(f"[ask] RAG answered ({result.get('source')}): {question[:50]}")
-            return jsonify({"answer": result.get("answer")})
+        rag_processed = True  # Mark that RAG attempted to process this
+
+        # Return if RAG found an answer
+        # Accept any answer EXCEPT when it's a receipt/personal query we should handle differently
+        if result.get("answer"):
+            # Skip system source ONLY if it's a personal/receipt query (let fallback handlers try)
+            is_personal_q = any(w in q_lower for w in ["receipt", "did i", "what did i", "when did i",
+                                                        "bought", "shop", "tesco", "waitrose", "kokoro"])
+            if result.get("source") == "system" and is_personal_q:
+                # System can't help with personal queries, let fallback handlers try
+                pass
+            else:
+                app.logger.info(f"[ask] RAG answered ({result.get('source')}): {question[:50]}")
+                return jsonify({"answer": result.get("answer")})
     except Exception as e:
         app.logger.error(f"[ask] RAG query failed: {e}")
+        rag_processed = True  # Mark that RAG was attempted (even if it failed)
 
     # ── LOCATION EXTRACTION — learn where user is from conversation ──
     # Extract "at Costa", "in Tesco", etc. and store for next 30 mins
@@ -17967,7 +17980,12 @@ def api_home_ask():
                     return jsonify({"answer": answer})
 
     # ── EARLY RETURN: Receipt queries (what did i buy in X) ───────────────────
-    if is_personal and from_number:
+    # SKIP old handlers if RAG already tried — avoid conflicting results
+    is_receipt_query = any(w in q_lower for w in ["receipt", "bought", "buy", "order", "did i", "what did i",
+                                                    "when did i", "shop", "shopped", "tesco", "waitrose",
+                                                    "sainsbury", "costa", "kokoro", "at ", "in ", "from "])
+
+    if is_personal and from_number and not (rag_processed and is_receipt_query):
         import re as _re_rcpt
         import datetime as _rcpt_dt
         import json as _rcpt_json

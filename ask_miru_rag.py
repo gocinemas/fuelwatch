@@ -171,6 +171,9 @@ class MiruRAG:
                 return self._query_spending(merchant, time_qual, question)
             elif any(w in q_lower for w in ["when", "date", "time"]):
                 return self._query_dates(merchant, time_qual, question)
+            elif merchant:
+                # If a merchant name is mentioned alone (e.g., "kokoro"), treat as receipt query
+                return self._query_receipts(merchant, None, None, question)
             else:
                 return {
                     "answer": "I can help with: spending, receipts, items you bought, and patterns.",
