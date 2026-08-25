@@ -17916,7 +17916,7 @@ let _savesAll = [];
     var dl = document.getElementById("brief-dateline");
     if (dl) dl.textContent = days[now.getDay()] + ", " + now.getDate() + " " + months[now.getMonth()];
 
-    _briefInitModeToggle();
+    // _briefInitModeToggle(); // DISABLED — using automatic commute window filtering instead
     if (typeof _briefLoadSavedEvents === "function") _briefLoadSavedEvents();
 
     // Reset to shimmer state
