@@ -15887,9 +15887,10 @@ def api_home_brief():
             _rc_fact += f" — {_rc_summary}"
         facts.append(_rc_fact)
 
-    # WFH today — suppress commute content from narrative
-    _wfh_today = (prefs.get("wfh_mode") == "wfh" and
-                  prefs.get("wfh_date") == now.strftime("%Y-%m-%d"))
+    # WFH today — DISABLED (UX debt removed)
+    # _wfh_today = (prefs.get("wfh_mode") == "wfh" and
+    #               prefs.get("wfh_date") == now.strftime("%Y-%m-%d"))
+    _wfh_today = False  # Always False — feature removed
 
     # Trains: show anytime (unless weekend or WFH day)
     if day_type not in ("weekend",) and not bank_holiday_today and not _wfh_today:
