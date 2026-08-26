@@ -12231,6 +12231,50 @@ def api_v2_prefs_post():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/onboarding/complete", methods=["POST"])
+def api_onboarding_complete():
+    """Save onboarding selections: postcode + module preferences."""
+    try:
+        body = request.get_json(force=True, silent=True) or {}
+        token = request.args.get("token", "").strip()
+        from_number = _v2_resolve(token)
+
+        if not from_number:
+            return jsonify({"error": "token required"}), 401
+
+        postcode = body.get("postcode", "").strip().upper()
+        modules_enabled = body.get("modules_enabled", {})
+
+        if not postcode:
+            return jsonify({"error": "postcode required"}), 400
+
+        # Save postcode to v2_prefs
+        lib._sb().table("ma_details").upsert({
+            "device_id": from_number,
+            "type": "v2_prefs",
+            "data": {"postcode": postcode}
+        }).execute()
+
+        # Save module preferences
+        lib._sb().table("ma_details").upsert({
+            "device_id": from_number,
+            "type": "modules_enabled",
+            "data": modules_enabled
+        }).execute()
+
+        app.logger.info(f"[onboarding] Completed for {from_number}: postcode={postcode}, modules={modules_enabled}")
+
+        return jsonify({
+            "status": "ok",
+            "postcode": postcode,
+            "modules_enabled": modules_enabled
+        })
+
+    except Exception as e:
+        app.logger.error(f"[onboarding] Error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/v2/recurring", methods=["GET"])
 def api_v2_recurring_get():
     """Return all recurring activities for the user, sorted by weekday then time."""

@@ -163,6 +163,84 @@ def add_school():
         return jsonify({"error": str(e)}), 500
 
 
+DEFAULT_MODULES = {
+    "myarea": True,
+    "commute": True,
+    "school": False,
+    "spend": True,
+    "saves": True,
+    "library": True,
+}
+
+
+@bp.route('/modules', methods=['GET'])
+def get_modules():
+    """Get user's enabled/disabled modules (Smart Home Screen)."""
+    token = request.args.get('token', '').strip()
+    from_number = _get_user_id(token)
+
+    if not from_number:
+        return jsonify({"error": "unauthorized"}), 401
+
+    try:
+        from sms_service import lib
+
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "modules_enabled").limit(1).execute().data or []
+
+        saved = rows[0].get("data") or {} if rows else {}
+        modules = {**DEFAULT_MODULES, **saved}
+
+        return jsonify({"modules_enabled": modules})
+    except Exception as e:
+        logger.error(f"[onboarding] Modules get error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route('/modules', methods=['POST'])
+def save_modules():
+    """Save user's enabled/disabled modules (Settings screen)."""
+    token = request.args.get('token', '').strip()
+    from_number = _get_user_id(token)
+
+    if not from_number:
+        return jsonify({"error": "unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    new_modules = body.get("modules_enabled", body)
+
+    if not isinstance(new_modules, dict):
+        return jsonify({"error": "modules_enabled must be an object"}), 400
+
+    # Only accept known module keys, coerced to bool
+    updates = {k: bool(v) for k, v in new_modules.items() if k in DEFAULT_MODULES}
+
+    try:
+        from sms_service import lib
+
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "modules_enabled").limit(1).execute().data or []
+
+        if rows:
+            merged = {**DEFAULT_MODULES, **(rows[0].get("data") or {}), **updates}
+            sb.table("ma_details").update({"data": merged}).eq("id", rows[0]["id"]).execute()
+        else:
+            merged = {**DEFAULT_MODULES, **updates}
+            sb.table("ma_details").insert({
+                "device_id": from_number,
+                "type": "modules_enabled",
+                "label": "user_modules",
+                "data": merged,
+            }).execute()
+
+        logger.info(f"[onboarding] Modules saved for {from_number}: {merged}")
+        return jsonify({"ok": True, "modules_enabled": merged})
+    except Exception as e:
+        logger.error(f"[onboarding] Modules save error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @bp.route('/schools', methods=['GET'])
 def get_schools():
     """Get user's schools."""

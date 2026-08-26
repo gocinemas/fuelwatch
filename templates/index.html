@@ -688,62 +688,122 @@
 <body class="min-h-screen">
 
   <!-- Onboarding Modal -->
+  <!-- NEW COMPREHENSIVE ONBOARDING - USER CONTROLS ALL MODULES -->
   <div id="onboarding-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;padding:20px;overflow-y:auto">
-    <div style="max-width:500px;margin:40px auto;background:var(--surface);border-radius:16px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="max-width:500px;width:100%;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px">
 
-      <!-- Step 1: Welcome -->
+      <!-- STEP 1: Welcome & Tagline -->
       <div id="onboarding-step-1" class="onboarding-step">
-        <h2 style="font-size:28px;font-weight:700;margin-bottom:12px;color:var(--text)">Welcome to Miru 👁</h2>
-        <p style="font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.6">Let's set up your personalized brief in just a few steps.</p>
-        <button onclick="_onboardingNext(1)" style="width:100%;padding:12px;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:14px">Let's Go →</button>
-        <button onclick="_onboardingSkip()" style="width:100%;padding:12px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:12px;font-weight:600;cursor:pointer;font-size:14px;margin-top:8px">Skip for now</button>
+        <div style="font-size:56px;margin-bottom:12px;text-align:center">🚀</div>
+        <h2 style="font-size:28px;font-weight:900;margin-bottom:8px;color:var(--text);text-align:center">Welcome to Miru</h2>
+        <p style="font-size:15px;color:var(--muted);margin-bottom:28px;line-height:1.7;text-align:center">Your personal AI assistant that knows what matters to you right now. Get smart briefs about your day, delivered whenever you need them.</p>
+
+        <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:20px;border-left:3px solid var(--accent)">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:4px">How it works</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.6">1. Pick what matters to you<br>2. We'll gather real-time info<br>3. Get daily smart briefs</div>
+        </div>
+
+        <button onclick="_onboardingNext(1)" style="width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:15px;margin-bottom:8px">Continue →</button>
+        <button onclick="_onboardingSkip()" style="width:100%;padding:12px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:12px;font-weight:600;cursor:pointer;font-size:14px">Skip for now</button>
       </div>
 
-      <!-- Step 2: Preferences -->
+      <!-- STEP 2: Postcode (ONLY Required) -->
       <div id="onboarding-step-2" class="onboarding-step" style="display:none">
-        <h2 style="font-size:24px;font-weight:700;margin-bottom:20px;color:var(--text)">Your Commute</h2>
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Train from (optional)</label>
-          <input id="onboarding-train-from" type="text" placeholder="e.g., SUR, WAT, LDN" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;font-size:14px;box-sizing:border-box">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div style="font-size:20px">📍</div>
+          <h3 style="font-size:20px;font-weight:700;color:var(--text);margin:0">Where are you?</h3>
         </div>
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Train to (optional)</label>
-          <input id="onboarding-train-to" type="text" placeholder="e.g., WAT, LDN" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;font-size:14px;box-sizing:border-box">
-        </div>
-        <div style="margin-bottom:24px">
-          <label style="display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Fuel postcode (optional)</label>
-          <input id="onboarding-fuel-postcode" type="text" placeholder="e.g., KT15" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;font-size:14px;box-sizing:border-box">
-        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Your postcode helps us show local weather, train times, nearby places, and community info</p>
+
+        <input id="onboarding-postcode" type="text" placeholder="e.g., SW1A 1AA"
+          style="width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;font-size:15px;box-sizing:border-box;margin-bottom:20px;text-transform:uppercase;background:var(--bg);color:var(--text)"
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter') _onboardingNext(2)">
+
         <div style="display:flex;gap:8px">
-          <button onclick="_onboardingNext(2)" style="flex:1;padding:12px;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:14px">Next →</button>
-          <button onclick="_onboardingPrev()" style="flex:1;padding:12px;background:var(--border);color:var(--text);border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:14px">Back</button>
+          <button onclick="_onboardingNext(2)" style="flex:1;padding:12px;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:14px">Next →</button>
+          <button onclick="_onboardingPrev()" style="flex:1;padding:12px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:12px;font-weight:600;cursor:pointer;font-size:14px">Back</button>
         </div>
       </div>
 
-      <!-- Step 3: Features -->
+      <!-- STEP 3: Pick Modules (All Optional + Explained) -->
       <div id="onboarding-step-3" class="onboarding-step" style="display:none">
-        <h2 style="font-size:24px;font-weight:700;margin-bottom:20px;color:var(--text)">Notifications</h2>
-        <div style="display:flex;align-items:center;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:12px;cursor:pointer" onclick="document.getElementById('onboarding-morning-push').checked = !document.getElementById('onboarding-morning-push').checked">
-          <input id="onboarding-morning-push" type="checkbox" style="width:18px;height:18px;cursor:pointer">
-          <label style="flex:1;margin-left:12px;cursor:pointer;font-size:14px;color:var(--text)">
-            <div style="font-weight:600">Morning brief</div>
-            <div style="font-size:12px;color:var(--muted)">Get your brief daily at 7am</div>
-          </label>
-        </div>
-        <div style="display:flex;align-items:center;margin-bottom:24px;padding:12px;background:var(--bg);border-radius:12px;cursor:pointer" onclick="document.getElementById('onboarding-school-alerts').checked = !document.getElementById('onboarding-school-alerts').checked">
-          <input id="onboarding-school-alerts" type="checkbox" style="width:18px;height:18px;cursor:pointer">
-          <label style="flex:1;margin-left:12px;cursor:pointer;font-size:14px;color:var(--text)">
-            <div style="font-weight:600">School alerts</div>
-            <div style="font-size:12px;color:var(--muted)">Get notified about school updates</div>
-          </label>
-        </div>
+        <h3 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px">What matters to you?</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Pick what you want. You can always change this later in Settings.</p>
+
+        <!-- My Area -->
+        <label style="display:flex;gap:12px;padding:14px;background:var(--bg);border-radius:12px;cursor:pointer;margin-bottom:10px;border:1px solid var(--border);transition:all 0.2s">
+          <input id="onboarding-module-myarea" type="checkbox" checked style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:2px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px">📍 My Area</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">See local weather, train times, nearby restaurants, GP surgeries, shops, and community events</div>
+            <div style="font-size:11px;color:var(--accent);margin-top:6px;font-weight:600">Example: "Rainy today, Victoria line delayed 8 mins"</div>
+          </div>
+        </label>
+
+        <!-- Commute -->
+        <label style="display:flex;gap:12px;padding:14px;background:var(--bg);border-radius:12px;cursor:pointer;margin-bottom:10px;border:1px solid var(--border);transition:all 0.2s">
+          <input id="onboarding-module-commute" type="checkbox" checked style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:2px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px">🚄 Commute</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">Get real-time train times, delays, and strike alerts for your daily commute route</div>
+            <div style="font-size:11px;color:var(--accent);margin-top:6px;font-weight:600">Example: "8:42 from SUR to WAT on time"</div>
+          </div>
+        </label>
+
+        <!-- School (OFF by default - NOT FORCED) -->
+        <label style="display:flex;gap:12px;padding:14px;background:var(--bg);border-radius:12px;cursor:pointer;margin-bottom:10px;border:1px solid var(--border);transition:all 0.2s">
+          <input id="onboarding-module-school" type="checkbox" style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:2px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px">🏫 School Comms</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">Alerts from your kids' schools (closures, events, permission slips, pick-up times)</div>
+            <div style="font-size:11px;color:var(--accent);margin-top:6px;font-weight:600">Example: "Stanns Heath: PE trip permission due by Friday"</div>
+          </div>
+        </label>
+
+        <!-- Spend -->
+        <label style="display:flex;gap:12px;padding:14px;background:var(--bg);border-radius:12px;cursor:pointer;margin-bottom:10px;border:1px solid var(--border);transition:all 0.2s">
+          <input id="onboarding-module-spend" type="checkbox" checked style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:2px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px">💷 Spending</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">Clip receipts, track spending by category, and see your weekly/monthly breakdown</div>
+            <div style="font-size:11px;color:var(--accent);margin-top:6px;font-weight:600">Example: "£342 this week: Tesco £89, Coffee £12, Fuel £34"</div>
+          </div>
+        </label>
+
+        <!-- Saves -->
+        <label style="display:flex;gap:12px;padding:14px;background:var(--bg);border-radius:12px;cursor:pointer;margin-bottom:10px;border:1px solid var(--border);transition:all 0.2s">
+          <input id="onboarding-module-saves" type="checkbox" checked style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:2px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px">⭐ Saves & Clippings</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">Save links, articles, restaurants, events, and anything you want to remember later</div>
+            <div style="font-size:11px;color:var(--accent);margin-top:6px;font-weight:600">Example: "Save that recipe, restaurant link, or article to revisit"</div>
+          </div>
+        </label>
+
+        <!-- Library -->
+        <label style="display:flex;gap:12px;padding:14px;background:var(--bg);border-radius:12px;cursor:pointer;margin-bottom:20px;border:1px solid var(--border);transition:all 0.2s">
+          <input id="onboarding-module-library" type="checkbox" checked style="width:20px;height:20px;cursor:pointer;flex-shrink:0;margin-top:2px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px">📚 Library</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">Keep a personal library of books you've read, articles you love, and things you want to read</div>
+            <div style="font-size:11px;color:var(--accent);margin-top:6px;font-weight:600">Example: "Track reading, write reviews, organize by topic"</div>
+          </div>
+        </label>
+
         <div style="display:flex;gap:8px">
-          <button onclick="_onboardingFinish()" style="flex:1;padding:12px;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:14px">Finish ✓</button>
-          <button onclick="_onboardingPrev()" style="flex:1;padding:12px;background:var(--border);color:var(--text);border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:14px">Back</button>
+          <button onclick="_onboardingFinish()" style="flex:1;padding:12px;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:14px">Let's Go 🚀</button>
+          <button onclick="_onboardingPrev()" style="flex:1;padding:12px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:12px;font-weight:600;cursor:pointer;font-size:14px">Back</button>
         </div>
       </div>
     </div>
   </div>
+
+  <style>
+  .onboarding-step { animation: slideIn 0.3s ease-out; }
+  @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  #onboarding-modal label:has(input:checked) { border-color: var(--accent) !important; background: linear-gradient(135deg, var(--bg) 0%, rgba(79, 70, 229, 0.05) 100%) !important; }
+  </style>
 
   <!-- Header -->
   <header id="app-header">
@@ -2345,12 +2405,12 @@
 
         <!-- Small tools: 3-col grid -->
         <div id="brief-tools-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-          <button onclick="showScreen('school')" class="tool-card-sm">
+          <button id="tool-card-school" onclick="showScreen('school')" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">🏫</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">School</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Letters &amp; events</div>
           </button>
-          <button onclick="_pillNav('saves')" class="tool-card-sm">
+          <button id="tool-card-saves" onclick="_pillNav('saves')" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">📌</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Clippings</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Saved items</div>
@@ -2365,7 +2425,7 @@
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Research</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Any postcode</div>
           </button>
-          <button onclick="window.location.href = '/library'" class="tool-card-sm">
+          <button id="tool-card-library" onclick="window.location.href = '/library'" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">📚</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Library</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Docs &amp; notes</div>
@@ -3136,6 +3196,13 @@
           </div>
           <span style="font-size:12px;color:var(--muted);flex-shrink:0">Edit ›</span>
         </button>
+      </div>
+
+      <!-- ── MODULES ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Modules</div>
+      <div style="font-size:12px;color:var(--muted);margin:-4px 0 10px">Choose what shows up on your home screen. Changes save instantly.</div>
+      <div id="setup-modules-list" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px">
+        <!-- Populated by _setupLoadModules() -->
       </div>
 
       <!-- ── YOUR COMMUTE ── -->
@@ -4079,6 +4146,7 @@
         });
     }
     if (name === "school")  { schoolCheckPin(); }
+    if (name === "setup")   { _setupLoadModules(); }
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
     if (name === "ai-watch")  { try { _aiwRenderBookmarks(); } catch(e){} _aiwLoadCo(_aiwV); }
@@ -5658,6 +5726,148 @@
     var cookiePc = m ? decodeURIComponent(m[1]) : "";
     if (cookiePc) { localStorage.setItem("miru_postcode", cookiePc); return cookiePc; }
     return "";
+  }
+
+  // ── Smart Home Screen: user module preferences ─────────────────────────────
+  // window._miruModulesEnabled is null until loaded (treat as "unknown → show"),
+  // then becomes an object like {myarea:true, commute:true, school:false, spend:true, saves:true, library:true}
+  window._miruModulesEnabled = null;
+
+  function _moduleEnabled(key) {
+    // Default to visible while settings haven't loaded yet, or for unknown keys — avoids flicker/false hides.
+    if (!window._miruModulesEnabled) return true;
+    var v = window._miruModulesEnabled[key];
+    return v !== false;
+  }
+
+  function _loadModuleSettings(cb) {
+    var token = _miruPhone();
+    if (!token) { window._miruModulesEnabled = null; if (cb) cb(); return; }
+    fetch("/api/user/modules?token=" + encodeURIComponent(token))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        window._miruModulesEnabled = (d && d.modules_enabled) || null;
+        _applyModuleVisibility();
+        if (cb) cb();
+      })
+      .catch(function(e) {
+        console.warn("[modules] load failed", e);
+        if (cb) cb();
+      });
+  }
+
+  function _applyModuleVisibility() {
+    // Static home-screen elements that map 1:1 to a module — hide the ones the user turned off.
+    var map = {
+      "school-home-card": "school",
+      "tool-card-school": "school",
+      "tool-card-library": "library",
+      "tool-card-saves": "saves",
+    };
+    Object.keys(map).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (!_moduleEnabled(map[id])) el.style.display = "none";
+    });
+    // Commute/Spend cards are re-rendered by _briefInit's async fetch — re-check after render.
+    if (!_moduleEnabled("commute")) {
+      var cc = document.getElementById("brief-commute-card-container");
+      if (cc) cc.innerHTML = "";
+    }
+    if (!_moduleEnabled("spend")) {
+      var sc = document.getElementById("brief-spend-card-container");
+      if (sc) sc.innerHTML = "";
+    }
+  }
+
+  // ── Settings → Modules section ──────────────────────────────────────────────
+  var _MODULE_DEFS = [
+    { key: "myarea",  emoji: "📍", name: "My Area",            desc: "Local weather, train times, nearby places, and community info" },
+    { key: "commute",  emoji: "🚄", name: "Commute",            desc: "Real-time train times, delays, and strike alerts for your daily route" },
+    { key: "school",   emoji: "🏫", name: "School Comms",       desc: "Alerts from your kids' schools — closures, events, permission slips" },
+    { key: "spend",    emoji: "💷", name: "Spending",           desc: "Clip receipts and track your weekly/monthly spend breakdown" },
+    { key: "saves",    emoji: "⭐", name: "Saves & Clippings",  desc: "Links, articles, restaurants, and events you've saved to revisit" },
+    { key: "library",  emoji: "📚", name: "Library",            desc: "Books you've read, want to read, and reading notes" },
+  ];
+
+  function _setupLoadModules() {
+    var listEl = document.getElementById("setup-modules-list");
+    if (!listEl) return;
+    var token = _miruPhone();
+    if (!token) {
+      listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:var(--muted);text-align:center">Link your phone number above to manage modules.</div>';
+      return;
+    }
+    listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:var(--muted);text-align:center">Loading…</div>';
+    fetch("/api/user/modules?token=" + encodeURIComponent(token))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        window._miruModulesEnabled = (d && d.modules_enabled) || {};
+        _setupRenderModules();
+      })
+      .catch(function(e) {
+        console.error("[modules] load failed", e);
+        listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:var(--error-text);text-align:center">Couldn\'t load modules. Try again.</div>';
+      });
+  }
+
+  function _setupRenderModules() {
+    var listEl = document.getElementById("setup-modules-list");
+    if (!listEl) return;
+    var enabled = window._miruModulesEnabled || {};
+    listEl.innerHTML = _MODULE_DEFS.map(function(m, i) {
+      var isOn = enabled[m.key] !== false;
+      var borderStyle = i < _MODULE_DEFS.length - 1 ? "border-bottom:1px solid var(--border);" : "";
+      return '<div style="display:flex;align-items:center;gap:12px;padding:14px 15px;' + borderStyle + '">'
+        + '<div style="font-size:22px;flex-shrink:0">' + m.emoji + '</div>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + m.name + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4">' + m.desc + '</div>'
+        + '</div>'
+        + '<button type="button" id="module-toggle-' + m.key + '" onclick="_setupToggleModule(\'' + m.key + '\')" '
+        + 'aria-pressed="' + isOn + '" '
+        + 'style="flex-shrink:0;width:44px;height:26px;border-radius:99px;border:none;cursor:pointer;position:relative;padding:0;'
+        + 'background:' + (isOn ? '#25d366' : 'var(--border)') + ';transition:background .15s">'
+        + '<span style="position:absolute;top:3px;left:' + (isOn ? '21px' : '3px') + ';width:20px;height:20px;border-radius:50%;background:#fff;'
+        + 'box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s"></span>'
+        + '</button>'
+        + '</div>';
+    }).join("");
+  }
+
+  function _setupToggleModule(key) {
+    var enabled = window._miruModulesEnabled || {};
+    var wasOn = enabled[key] !== false;
+    var nowOn = !wasOn;
+    enabled[key] = nowOn;
+    window._miruModulesEnabled = enabled;
+    _setupRenderModules();
+    _applyModuleVisibility();
+
+    var token = _miruPhone();
+    if (!token) return;
+
+    var body = {};
+    body[key] = nowOn;
+    fetch("/api/user/modules?token=" + encodeURIComponent(token), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modules_enabled: body }),
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d && d.modules_enabled) {
+          window._miruModulesEnabled = d.modules_enabled;
+        }
+      })
+      .catch(function(e) {
+        console.error("[modules] save failed", e);
+        // Revert on failure
+        enabled[key] = wasOn;
+        window._miruModulesEnabled = enabled;
+        _setupRenderModules();
+        _applyModuleVisibility();
+      });
   }
 
   // ── Identity bar (persistent phone + postcode) ─────────────────────────────
@@ -17385,7 +17595,9 @@ let _savesAll = [];
   };
 
   document.addEventListener("DOMContentLoaded", function() {
-    if (_schoolWA() || _miruPhone()) _schoolHomeLoad();
+    _loadModuleSettings(function() {
+      if ((_schoolWA() || _miruPhone()) && _moduleEnabled("school")) _schoolHomeLoad();
+    });
   });
 
   /* ── Home hero card live data ────────────────────────────────────────────── */
@@ -17910,6 +18122,7 @@ let _savesAll = [];
   }
 
   function _briefInit(forceRefresh) {
+    if (!window._miruModulesEnabled) _loadModuleSettings();
     var now = new Date();
     var days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
     var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -19413,7 +19626,7 @@ let _savesAll = [];
     }
 
     // Spend card → render into right sidebar (between Live Now and Tools)
-    if (spend && spend.total > 0) {
+    if (spend && spend.total > 0 && _moduleEnabled("spend")) {
       var breakdownHtml = "";
       var pieChartHtml = "";
       var colors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#f7b801"];  // vibrant: coral, teal, sky, gold
@@ -19721,7 +19934,7 @@ let _savesAll = [];
       return leg.type === "commute";
     }) : [];
     console.log('[commute-debug] commuteLegs found:', commuteLegs.length);
-    if (commuteLegs.length > 0) {
+    if (commuteLegs.length > 0 && _moduleEnabled("commute")) {
       var commuteRows = commuteLegs.map(function(leg) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
           + '<div><div style="font-size:13px;font-weight:600;color:var(--text)">' + leg.school + '</div>'
@@ -27634,35 +27847,45 @@ document.addEventListener('keydown', function(e) {
 
   async function _onboardingFinish() {
     const token = _miruPhone() || localStorage.getItem("miru_saves_token") || "";
-    if (!token) return;
+    const postcode = document.getElementById("onboarding-postcode").value.trim().toUpperCase();
 
-    const trainFrom = document.getElementById("onboarding-train-from").value.trim().toUpperCase();
-    const trainTo = document.getElementById("onboarding-train-to").value.trim().toUpperCase();
-    const fuelPostcode = document.getElementById("onboarding-fuel-postcode").value.trim().toUpperCase();
-    const morningPush = document.getElementById("onboarding-morning-push").checked;
-    const schoolAlerts = document.getElementById("onboarding-school-alerts").checked;
+    if (!token || !postcode) {
+      alert("Please enter your postcode");
+      return;
+    }
+
+    // Collect module selections
+    const modules = {
+      myarea: document.getElementById("onboarding-module-myarea").checked,
+      commute: document.getElementById("onboarding-module-commute").checked,
+      school: document.getElementById("onboarding-module-school").checked,
+      spend: document.getElementById("onboarding-module-spend").checked,
+      saves: document.getElementById("onboarding-module-saves").checked,
+      library: document.getElementById("onboarding-module-library").checked,
+    };
 
     try {
-      const resp = await fetch(`/api/user/prefs?token=${encodeURIComponent(token)}`, {
+      const resp = await fetch(`/api/onboarding/complete?token=${encodeURIComponent(token)}`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
-          train_from: trainFrom,
-          train_to: trainTo,
-          fuel_postcode: fuelPostcode,
-          morning_push: morningPush,
-          school_alerts: schoolAlerts,
+          postcode: postcode,
+          modules_enabled: modules,
         }),
       });
 
       if (resp.ok) {
         document.getElementById("onboarding-modal").style.display = "none";
-        console.log('[onboarding] ✓ Setup complete');
-        // Refresh home to show new preferences
+        localStorage.setItem("onboarding_completed", "1");
+        console.log('[onboarding] ✓ Setup complete - modules:', modules);
         showHome();
+      } else {
+        console.error('[onboarding] Save failed:', resp.status);
+        alert("Error saving preferences. Please try again.");
       }
     } catch (e) {
       console.error('[onboarding] Save error:', e);
+      alert("Error saving preferences. Please try again.");
     }
   }
 

@@ -91,6 +91,26 @@ Write 1-2 sentences max. State facts only. NO suggestions, NO inferences, NO opi
             # POST-VALIDATION: Remove any inferred sentences
             text = NarrativeGenerator._validate_output(text)
 
+            # REJECT if narrative is just day/time info (useless)
+            # e.g., "Wednesday evening. Thursday tomorrow." or "Tuesday afternoon."
+            text_lower = text.lower()
+            days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+            times = ["morning", "afternoon", "evening", "night", "today", "tomorrow"]
+            is_just_datetime = all(
+                any(day in text_lower for day in days) or
+                any(time in text_lower for time in times)
+                for _ in [1]  # Always true, just for structure
+            ) and not any(
+                word in text_lower for word in [
+                    "train", "£", "school", "rain", "sunny", "event", "coffee", "lunch",
+                    "meeting", "deadline", "flight", "appointment", "birthday", "open",
+                    "closed", "cancelled", "delayed", "due", "available", "free"
+                ]
+            )
+            if is_just_datetime:
+                logger.warning(f"[validate] Rejected useless datetime-only narrative: {text}")
+                return ""
+
             logger.debug(f"Generated narrative: {text[:100]}...")
             return text
 
