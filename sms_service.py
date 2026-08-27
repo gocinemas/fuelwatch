@@ -13522,11 +13522,19 @@ def _v2_fetch_rated_places(postcode: str, min_rating: float = 4.6) -> list:
                         dist_km = haversine_km(lat, lon, plat, plon)
                         dist_mi = dist_km / 1.60934
 
+                        _open_now = None
+                        _oh = result.get("opening_hours")
+                        if isinstance(_oh, dict) and "open_now" in _oh:
+                            _open_now = bool(_oh.get("open_now"))
+
                         rated_places.append({
                             "name": name,
                             "type": place_type,
                             "rating": round(rating, 1),
                             "distance_mi": round(dist_mi, 1),
+                            "distance_km": round(dist_km, 2),
+                            "open_now": _open_now,
+                            "review_count": result.get("user_ratings_total"),
                         })
             except Exception:
                 continue
@@ -13543,6 +13551,300 @@ def _v2_fetch_rated_places(postcode: str, min_rating: float = 4.6) -> list:
     except Exception as e:
         app.logger.debug(f"[rated-places] {postcode}: {e}")
         return []
+
+
+_nearby_shop_cache: dict = {}
+
+def _v2_fetch_nearby_shop(postcode: str) -> dict:
+    """Nearest open supermarket/shop for the 'Near You Right Now' local lane.
+    Lightweight single Google nearbysearch call, no rating filter (unlike
+    _v2_fetch_rated_places) since shops matter for proximity + opening hours,
+    not star rating. Cached in-process for 30 min — same cost-control pattern
+    as get_weather()'s _weather_cache — to avoid a Places API call on every
+    home-brief fetch for the same postcode."""
+    if not postcode:
+        return {}
+    _key = postcode.strip().upper()
+    _cached = _nearby_shop_cache.get(_key)
+    if _cached and (time.time() - _cached["ts"]) < 1800:
+        return _cached["v"]
+    try:
+        ll = postcode_to_latlon(postcode)
+        if not ll:
+            return {}
+        lat, lon = ll
+        gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY")
+                  or os.environ.get("GOOGLE_PLACES_KEY")
+                  or os.environ.get("GOOGLE_MAPS_KEY")
+                  or os.environ.get("GOOGLE_API_KEY", ""))
+        if not gm_key:
+            return {}
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={"location": f"{lat},{lon}", "radius": 2000, "type": "supermarket", "key": gm_key},
+            timeout=5,
+        )
+        if r.status_code != 200:
+            return {}
+        best = None
+        for result in r.json().get("results", []):
+            name = result.get("name", "")
+            geo = result.get("geometry", {}).get("location", {})
+            plat, plon = geo.get("lat"), geo.get("lng")
+            if not name or not plat or not plon:
+                continue
+            dist_km = haversine_km(lat, lon, plat, plon)
+            _oh = result.get("opening_hours")
+            open_now = bool(_oh.get("open_now")) if isinstance(_oh, dict) and "open_now" in _oh else None
+            cand = {
+                "name": name,
+                "distance_mi": round(dist_km / 1.60934, 1),
+                "distance_km": round(dist_km, 2),
+                "open_now": open_now,
+            }
+            if best is None or cand["distance_km"] < best["distance_km"]:
+                best = cand
+        result = best or {}
+        _nearby_shop_cache[_key] = {"ts": time.time(), "v": result}
+        return result
+    except Exception as e:
+        app.logger.debug(f"[nearby-shop] {postcode}: {e}")
+        return {}
+
+
+def _v2_build_dining_lane(rated_places: list, place_saves: list) -> list:
+    """Top-3 dining cards for the Evening 'Dining Tonight' lane.
+    Blends Google-rated restaurants/cafes (rating + distance) with a short
+    personal blurb pulled from the user's own saved clippings when the names match."""
+    try:
+        candidates = [p for p in (rated_places or [])
+                      if p.get("type") in ("restaurant", "cafe")
+                      and (p.get("distance_km") is None or p.get("distance_km") <= 2.0)]
+        candidates = sorted(candidates, key=lambda x: -(x.get("rating") or 0))
+
+        def _blurb_for(name: str) -> str:
+            n = (name or "").lower()
+            for s in (place_saves or []):
+                title = (s.get("title") or "").lower()
+                if not title:
+                    continue
+                # Strip the leading emoji from save titles before matching
+                bare = " ".join(title.split()[1:]) if title.split() and not title.split()[0].isalnum() else title
+                if bare and (bare in n or n in bare):
+                    summary = (s.get("summary") or "").strip()
+                    return summary[:90] if summary else ""
+            return ""
+
+        out = []
+        matched_names = set()
+        for p in candidates[:3]:
+            out.append({
+                "name": p["name"],
+                "cuisine": p.get("type", "restaurant"),
+                "rating": p.get("rating"),
+                "review_count": p.get("review_count"),
+                "distance_mi": p.get("distance_mi"),
+                "distance_km": p.get("distance_km"),
+                "open_now": p.get("open_now"),
+                "blurb": _blurb_for(p["name"]),
+                "source": "google",
+            })
+            matched_names.add(p["name"].lower())
+
+        # Fill remaining slots (or provide the whole lane) from the user's own saved
+        # dining clippings when Google data is thin/unavailable — real personal signal,
+        # not a placeholder.
+        if len(out) < 3:
+            for s in (place_saves or []):
+                if len(out) >= 3:
+                    break
+                title = (s.get("title") or "").strip()
+                if not title:
+                    continue
+                bare = " ".join(title.split()[1:]) if title.split() else title
+                if not bare or bare.lower() in matched_names:
+                    continue
+                out.append({
+                    "name": bare,
+                    "cuisine": (s.get("category") or "Dining"),
+                    "rating": None,
+                    "review_count": None,
+                    "distance_mi": None,
+                    "distance_km": None,
+                    "open_now": None,
+                    "blurb": (s.get("summary") or "")[:90],
+                    "source": "save",
+                })
+                matched_names.add(bare.lower())
+        return out[:3]
+    except Exception:
+        return []
+
+
+def _v2_build_local_top3(rated_places: list, nearby_shop: dict, hour: int) -> list:
+    """Proactive 'Near You Right Now' top-3 — coffee / food / shopping, driven by
+    real Google-rated places + real opening-hours signal (no synthetic entries)."""
+    try:
+        cafes = sorted([p for p in (rated_places or []) if p.get("type") == "cafe"],
+                        key=lambda x: -(x.get("rating") or 0))
+        restaurants = sorted([p for p in (rated_places or []) if p.get("type") == "restaurant"],
+                              key=lambda x: -(x.get("rating") or 0))
+        out = []
+        if cafes:
+            top = cafes[0]
+            out.append({
+                "slot": "coffee", "emoji": "☕",
+                "label": "Coffee break" if hour >= 14 else "Coffee now",
+                "name": top["name"], "rating": top.get("rating"),
+                "distance_mi": top.get("distance_mi"), "distance_km": top.get("distance_km"),
+                "open_now": top.get("open_now"),
+            })
+        if restaurants:
+            top = restaurants[0]
+            if hour < 11:
+                label = "Breakfast spot"
+            elif hour < 15:
+                label = "Lunch soon"
+            elif hour < 18:
+                label = "Afternoon bite"
+            else:
+                label = "Dinner nearby"
+            out.append({
+                "slot": "food", "emoji": "🍽️", "label": label,
+                "name": top["name"], "rating": top.get("rating"),
+                "distance_mi": top.get("distance_mi"), "distance_km": top.get("distance_km"),
+                "open_now": top.get("open_now"),
+            })
+        if nearby_shop and nearby_shop.get("name"):
+            out.append({
+                "slot": "shopping", "emoji": "🏪", "label": "Shopping",
+                "name": nearby_shop["name"], "rating": None,
+                "distance_mi": nearby_shop.get("distance_mi"), "distance_km": nearby_shop.get("distance_km"),
+                "open_now": nearby_shop.get("open_now"),
+            })
+        return out[:3]
+    except Exception:
+        return []
+
+
+def _v2_build_entertainment_lane(event_saves: list, rated_places: list) -> list:
+    """Evening 'Entertainment' lane — the user's own saved events/tickets first
+    (real, dated), topped up with nearby highly-rated bars/venues when there's
+    nothing saved. Never fabricates showtimes."""
+    try:
+        out = []
+        for s in (event_saves or [])[:3]:
+            title = (s.get("title") or "").strip()
+            if not title:
+                continue
+            bare = " ".join(title.split()[1:]) if title.split() else title
+            out.append({
+                "type": "event",
+                "emoji": "🎫",
+                "name": bare or title,
+                "summary": (s.get("summary") or "")[:90],
+                "date": (s.get("created_at") or "")[:10],
+            })
+        if len(out) < 3:
+            venues = sorted([p for p in (rated_places or []) if p.get("type") == "bar"],
+                             key=lambda x: -(x.get("rating") or 0))
+            for v in venues:
+                if len(out) >= 3:
+                    break
+                out.append({
+                    "type": "venue",
+                    "emoji": "🍸",
+                    "name": v["name"],
+                    "rating": v.get("rating"),
+                    "distance_mi": v.get("distance_mi"),
+                    "distance_km": v.get("distance_km"),
+                    "open_now": v.get("open_now"),
+                })
+        return out[:3]
+    except Exception:
+        return []
+
+
+def _v2_build_tomorrow_data(weather: dict, ctx: dict, tf: str, tt: str, now) -> dict:
+    """Night-mode 'Tomorrow's Prep' card — real weather forecast, the next scheduled
+    departure on the user's saved route, tomorrow's school events, and rule-based
+    packing hints. Every field is either real data or omitted (no placeholders)."""
+    try:
+        from datetime import timedelta as _td
+        tomorrow_date = now.date() + _td(days=1)
+        tomorrow_iso = tomorrow_date.isoformat()
+        data = {
+            "date_label": tomorrow_date.strftime("%A, %-d %B"),
+            "date_iso": tomorrow_iso,
+        }
+
+        # Weather
+        wx_tomorrow = (weather or {}).get("tomorrow") or {}
+        if wx_tomorrow:
+            data["weather"] = {
+                "icon": wx_tomorrow.get("icon"),
+                "desc": wx_tomorrow.get("desc"),
+                "high": wx_tomorrow.get("high"),
+                "low": wx_tomorrow.get("low"),
+                "rain_chance": wx_tomorrow.get("rain_chance"),
+            }
+
+        # Commute — next scheduled departure on the saved route (real-time feed,
+        # so it reflects "next train" rather than a guaranteed tomorrow-morning slot)
+        if tf and tt:
+            trains = ctx.get("trains") or {}
+            deps = trains.get("departures") or []
+            if deps:
+                data["commute"] = {
+                    "route": f"{tf} → {tt}",
+                    "next_departure": deps[0].get("departs"),
+                    "status": deps[0].get("status"),
+                }
+
+        # School — tomorrow's events + holiday status
+        school_ctx = ctx.get("school") or {}
+        tomorrow_events = [e for e in (school_ctx.get("upcoming") or []) if e.get("event_date") == tomorrow_iso]
+        try:
+            tomorrow_holiday = _surrey_holiday_status(tomorrow_date)
+        except Exception:
+            tomorrow_holiday = {}
+        if school_ctx.get("schools"):
+            data["school"] = {
+                "events": [
+                    {"child_name": e.get("child_name", ""), "title": e.get("event_title", "")}
+                    for e in tomorrow_events[:3]
+                ],
+                "is_holiday": bool(tomorrow_holiday.get("on_holiday")) if tomorrow_holiday else False,
+                "holiday_name": tomorrow_holiday.get("label") if tomorrow_holiday else None,
+            }
+
+        # Packing hints — rule-based off real forecast numbers only
+        hints = []
+        rain_chance = wx_tomorrow.get("rain_chance")
+        low = wx_tomorrow.get("low")
+        high = wx_tomorrow.get("high")
+        code = wx_tomorrow.get("code")
+        if isinstance(rain_chance, (int, float)) and rain_chance >= 40:
+            hints.append({"emoji": "☂️", "text": f"Umbrella — {int(rain_chance)}% chance of rain"})
+        if isinstance(low, (int, float)) and low < 5:
+            hints.append({"emoji": "🧥", "text": "Warm coat — cold start"})
+        elif isinstance(low, (int, float)) and low < 12:
+            hints.append({"emoji": "🧥", "text": "Light jacket"})
+        if isinstance(code, int) and code <= 1 and isinstance(high, (int, float)) and high >= 18:
+            hints.append({"emoji": "🕶️", "text": "Sunglasses — clear and bright"})
+        if hints:
+            data["packing"] = hints
+
+        # Day overview — real calendar count for tomorrow only (no fabricated email counts)
+        cal = (ctx.get("calendar") or []) + (ctx.get("ms_calendar") or [])
+        tomorrow_meetings = [c for c in cal if (c.get("date") or "") == tomorrow_iso]
+        if tomorrow_meetings:
+            data["meeting_count"] = len(tomorrow_meetings)
+
+        return data
+    except Exception as e:
+        app.logger.debug(f"[tomorrow-data] {e}")
+        return {}
 
 
 def _v2_fetch_recent_capture(from_number: str) -> dict:
@@ -14251,7 +14553,7 @@ def _v2_fetch_weather(postcode: str) -> dict:
             params={
                 "latitude": lat, "longitude": lon,
                 "current": "temperature_2m,weathercode,windspeed_10m",
-                "daily": "temperature_2m_max,temperature_2m_min,weathercode",
+                "daily": "temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max",
                 "timezone": "Europe/London",
             },
             timeout=5,
@@ -14279,6 +14581,7 @@ def _v2_fetch_weather(postcode: str) -> dict:
         temps_max = daily.get("temperature_2m_max", [])
         temps_min = daily.get("temperature_2m_min", [])
         weather_codes = daily.get("weathercode", [])
+        rain_chances = daily.get("precipitation_probability_max", [])
         dates = daily.get("time", [])
 
         for i in range(min(7, len(dates))):
@@ -14287,10 +14590,17 @@ def _v2_fetch_weather(postcode: str) -> dict:
                 wx_icon = WEATHER_ICONS.get(wx_code, "❓")
                 forecast_7day.append({
                     "day": i,
+                    "date": dates[i] if i < len(dates) else None,
                     "icon": wx_icon,
+                    "code": wx_code,
+                    "desc": WEATHER_CODES.get(wx_code, ""),
                     "high": round(temps_max[i]) if temps_max[i] is not None else None,
                     "low": round(temps_min[i]) if temps_min[i] is not None else None,
+                    "rain_chance": rain_chances[i] if i < len(rain_chances) and rain_chances[i] is not None else None,
                 })
+
+        # Convenience block for "tomorrow" (index 1) — powers the night-mode Tomorrow Preview card
+        tomorrow = forecast_7day[1] if len(forecast_7day) > 1 else {}
 
         return {
             "temp": temp, "desc": desc, "wind": wind,
@@ -14300,6 +14610,7 @@ def _v2_fetch_weather(postcode: str) -> dict:
             "temp_max": round(temp_max) if temp_max else None,
             "temp_min": round(temp_min) if temp_min else None,
             "forecast_7day": forecast_7day,
+            "tomorrow": tomorrow,
         }
     except Exception as e:
         app.logger.warning(f"[weather] Fetch failed for postcode '{postcode}': {e}")
@@ -15729,6 +16040,10 @@ def api_home_brief():
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
+            # Rated places (Google ratings + distance) — powers Dining lane, Local Top 3,
+            # and Entertainment lane fallback. Cache-first inside _v2_fetch_rated_places.
+            futures["rated_places"] = pool.submit(_v2_fetch_rated_places, _area_pc)
+            futures["nearby_shop"]  = pool.submit(_v2_fetch_nearby_shop, _area_pc)
             # Lunch suggestions now on-demand only (not in auto-brief)
             # This removes unnecessary Places API calls
         if has_location:
@@ -15999,6 +16314,15 @@ def api_home_brief():
     except Exception as e:
         app.logger.warning(f"[brief-categorize] Failed to categorize saves: {e}")
         # Use empty categorization, don't break the brief
+
+    # ── Time-mode lane data — Dining / Entertainment / Tomorrow Prep / Local Top 3 ──
+    # Built from real fetched data only (rated_places, saves, weather, trains, school,
+    # calendar) — every field is either real or omitted, never a placeholder.
+    _rated_places = ctx.get("rated_places", [])
+    dining_data = _v2_build_dining_lane(_rated_places, place_saves)
+    entertainment_data = _v2_build_entertainment_lane(event_saves, _rated_places)
+    local_top3_data = _v2_build_local_top3(_rated_places, ctx.get("nearby_shop", {}), hour)
+    tomorrow_data = _v2_build_tomorrow_data(weather, ctx, _tf, _tt, now)
 
     # Learned patterns from location signals — surface in brief prompt
     _learned_departure = prefs.get("learned_departure_hour")
@@ -17547,6 +17871,10 @@ def api_home_brief():
         "car_at_service":  _car_at_service,
         "intelligence":    ctx.get("intelligence", {}),  # Agentic insights (fuel, spend, location, etc.)
         "spend":           ctx.get("spend", {}),  # Monthly spend breakdown + total
+        "dining_data":         dining_data,          # Evening lane — top 3 dining cards w/ ratings
+        "entertainment_data":  entertainment_data,    # Evening lane — saved events + nearby venues
+        "local_top3_data":     local_top3_data,       # Morning/Daytime lane — coffee/food/shopping near you
+        "tomorrow_data":       tomorrow_data,          # Night lane — weather/commute/school/packing for tomorrow
     }
 
     # Add last receipt (merchant, total, date) to spend card

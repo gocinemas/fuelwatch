@@ -102,6 +102,9 @@
       --info-text: #1e40af;
       --receipt-bg: #faf9f4;
       --receipt-border: #e5e5e0;
+      --entertain-bg: #f5f3ff;
+      --entertain-border: #ddd6fe;
+      --entertain-text: #6d28d9;
     }
 
     /* Light theme */
@@ -129,6 +132,9 @@
       --info-text: #1e40af;
       --receipt-bg: #faf9f4;
       --receipt-border: #e5e5e0;
+      --entertain-bg: #f5f3ff;
+      --entertain-border: #ddd6fe;
+      --entertain-text: #6d28d9;
     }
 
     /* Dark theme */
@@ -156,6 +162,9 @@
       --info-text: #60a5fa;
       --receipt-bg: #1f1f1f;
       --receipt-border: #333333;
+      --entertain-bg: #2e1065;
+      --entertain-border: #4c1d95;
+      --entertain-text: #c4b5fd;
     }
 
     /* System dark */
@@ -184,6 +193,9 @@
         --info-text: #60a5fa;
         --receipt-bg: #1f1f1f;
         --receipt-border: #333333;
+        --entertain-bg: #2e1065;
+        --entertain-border: #4c1d95;
+        --entertain-text: #c4b5fd;
       }
     }
 
@@ -328,6 +340,83 @@
       border-bottom: 2px solid var(--border);
       text-align: left !important; width: 100% !important;
     }
+
+    /* ══ New lane cards: Dining, Entertainment, Tomorrow Prep, Local Top 3 ══ */
+    @keyframes miru-lane-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .miru-lane-fade { animation: miru-lane-in .35s ease both; }
+    .miru-lane-fade:nth-child(2) { animation-delay: .05s; }
+    .miru-lane-fade:nth-child(3) { animation-delay: .1s; }
+
+    .miru-card-row {
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; padding: 12px; min-height: 44px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; cursor: pointer; text-align: left;
+      font-family: inherit; transition: background .15s ease, border-color .15s ease, transform .1s ease;
+    }
+    .miru-card-row:hover { background: var(--bg); border-color: var(--subtle); }
+    .miru-card-row:active { transform: scale(.99); }
+
+    .miru-card-badge {
+      width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 19px;
+    }
+
+    .miru-card-title {
+      font-size: 13px; font-weight: 800; color: var(--text);
+      line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .miru-card-sub {
+      font-size: 11px; color: var(--muted); margin-top: 2px;
+      display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+    }
+    .miru-card-stars { color: #f59e0b; letter-spacing: -1px; font-size: 11px; }
+    .miru-card-dist { color: var(--muted); font-weight: 600; flex-shrink: 0; white-space: nowrap; }
+    .miru-card-blurb {
+      font-size: 11.5px; color: var(--muted); font-style: italic; margin-top: 3px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .miru-open-pill {
+      font-size: 9.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+      padding: 1.5px 6px; border-radius: 99px; flex-shrink: 0;
+    }
+    .miru-open-pill.open   { background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); }
+    .miru-open-pill.closed { background: var(--error-bg);   color: var(--error-text);   border: 1px solid var(--error-border); }
+    .miru-card-arrow { font-size: 16px; color: var(--muted); flex-shrink: 0; }
+
+    /* Tomorrow Prep — richer info-card, calm blue accent */
+    #lane-tomorrow-card {
+      background: linear-gradient(135deg, var(--info-bg) 0%, var(--surface) 65%);
+      border: 1px solid var(--info-border); border-radius: 18px; padding: 16px;
+    }
+    .miru-tmrw-head {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+      margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--info-border);
+    }
+    .miru-tmrw-date { font-size: 15px; font-weight: 900; color: var(--text); }
+    .miru-tmrw-wx { font-size: 13px; font-weight: 700; color: var(--info-text); white-space: nowrap; }
+    .miru-tmrw-section { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; }
+    .miru-tmrw-section + .miru-tmrw-section { border-top: 1px dashed var(--info-border); }
+    .miru-tmrw-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; margin-top: 1px; }
+    .miru-tmrw-label { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+    .miru-tmrw-body { font-size: 12.5px; color: var(--text); line-height: 1.5; }
+    .miru-tmrw-chip {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+      background: var(--surface); border: 1px solid var(--info-border); color: var(--text);
+      border-radius: 99px; padding: 3px 9px; margin: 2px 4px 0 0;
+    }
+
+    /* Local Top 3 — compact 3-slot proactive row list, green accent */
+    .miru-local-slot .miru-card-badge { background: var(--success-bg); }
+
+    /* Dining — warm accent */
+    .miru-dining-card .miru-card-badge { background: var(--warning-bg); }
+
+    /* Entertainment — vibrant accent */
+    .miru-entertain-card .miru-card-badge { background: var(--entertain-bg); }
     #app-header .inner {
       max-width: 480px; margin: 0 auto;
       display: flex; align-items: center; justify-content: space-between;
@@ -2361,6 +2450,13 @@
         <div id="brief-context-cards" style="display:none;flex-direction:column;gap:10px;margin-bottom:14px"></div>
       </div>
 
+      <!-- ══ LANE: Tomorrow's Prep — night only (21:00–05:00). Weather/commute/school/packing ══ -->
+      <!-- for tomorrow, built entirely from real fetched data — see _renderTomorrowCard(). -->
+      <div id="lane-tomorrow" style="display:none;margin-bottom:14px" class="miru-lane-fade">
+        <div class="home-lane-header">📅 Tomorrow's Prep</div>
+        <div id="lane-tomorrow-card"></div>
+      </div>
+
       <!-- ══ LANE: Evening wind-down (9pm–5am only) — recommendation #4 ══ -->
       <div id="lane-evening" style="display:none;margin-bottom:14px">
         <div class="home-lane-header">🌙 Evening</div>
@@ -2382,6 +2478,12 @@
             <span style="font-size:16px;color:var(--muted)">›</span>
           </button>
         </div>
+      </div>
+
+      <!-- ══ LANE: Near You Right Now — morning + daytime only. Proactive coffee/food/shopping ══ -->
+      <div id="lane-local-top3" style="display:none;margin-bottom:14px" class="miru-lane-fade">
+        <div class="home-lane-header">📍 Near You Right Now</div>
+        <div id="lane-local-top3-body" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
 
       <!-- ══ LANE: Getting Around — trains, drive times, My Local (hidden after 9pm) ══ -->
@@ -2420,6 +2522,18 @@
       <div id="brief-commute-card-container" style="margin-bottom:12px"></div>
 
       </div><!-- /lane-getting-around -->
+
+      <!-- ══ LANE: Dining Tonight — evening only (5pm–9pm). Top 3 restaurants, ratings + distance ══ -->
+      <div id="lane-dining" style="display:none;margin-bottom:14px" class="miru-lane-fade">
+        <div class="home-lane-header">🍽️ Dining Tonight</div>
+        <div id="lane-dining-body" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <!-- ══ LANE: Entertainment — evening only. Saved events + nearby venues ══ -->
+      <div id="lane-entertainment" style="display:none;margin-bottom:14px" class="miru-lane-fade">
+        <div class="home-lane-header">🎬 Entertainment</div>
+        <div id="lane-entertainment-body" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
 
       <!-- ══ LANE: Money — spend + saves (hidden after 9pm, per MIRU_STEERING night rule) ══ -->
       <div id="lane-money" style="display:none;margin-bottom:4px">
@@ -5930,9 +6044,28 @@
     return h >= 21 || h < 5;
   }
 
+  // 4-way time-of-day bucket driving the home lanes — mirrors the server's time_mode
+  // (morning_commute/daytime/evening_leisure/night/goodnight) collapsed to the 4 the
+  // design calls for: "morning" | "daytime" | "evening" | "night".
+  function _homeLanesTimeBucket() {
+    var tm = window._briefData && window._briefData.time_mode;
+    if (!tm) {
+      var h = (window._briefData && typeof window._briefData.response_time_hour === "number")
+        ? window._briefData.response_time_hour : new Date().getHours();
+      tm = (5 <= h && h < 10) ? "morning_commute" : (10 <= h && h < 17) ? "daytime"
+         : (17 <= h && h < 21) ? "evening_leisure" : "night";
+    }
+    if (tm === "morning_commute") return "morning";
+    if (tm === "daytime") return "daytime";
+    if (tm === "evening_leisure") return "evening";
+    return "night"; // covers "night" and "goodnight"
+  }
+
   function _homeLanesApply() {
     var isNight = _homeLanesIsNight();
     window._briefIsNightMode = isNight;
+    var bucket = _homeLanesTimeBucket();
+    window._briefTimeBucket = bucket;
 
     // Module Awareness (#6) — a lane with no enabled module inside it is hidden outright,
     // regardless of time of day.
@@ -5952,36 +6085,266 @@
       laneUrgent.style.display = hasUrgentContent ? "block" : "none";
     }
 
-    // 🌙 Evening — only lane shown in place of Getting Around / Money after 9pm
+    // 🌙 Evening wind-down (night bucket only) — saves + sleep playlist
     var laneEvening = document.getElementById("lane-evening");
-    if (laneEvening) laneEvening.style.display = (isNight && savesOn) ? "block" : "none";
+    if (laneEvening) laneEvening.style.display = (bucket === "night" && savesOn) ? "block" : "none";
     var eveSavesSub = document.getElementById("lane-evening-saves-sub");
     if (eveSavesSub && window._briefData && Array.isArray(window._briefData.evening_saves)) {
       var n = window._briefData.evening_saves.length;
       eveSavesSub.textContent = n ? (n + " new since you last checked") : "Articles & shows you clipped";
     }
 
-    // 🚗 Getting Around — trains/drive times/My Local. Hidden after 9pm (MIRU_STEERING:
-    // "Trains — hide, Drive times — hide" at night) and hidden if the myarea+commute modules
-    // are both off.
-    var laneGetting = document.getElementById("lane-getting-around");
-    if (laneGetting) {
-      laneGetting.style.display = (!isNight && (maOn || commuteOn)) ? "block" : "none";
+    // 📅 Tomorrow's Prep — night bucket only
+    var laneTomorrow = document.getElementById("lane-tomorrow");
+    if (laneTomorrow) {
+      var hasTomorrow = window._briefData && window._briefData.tomorrow_data &&
+        Object.keys(window._briefData.tomorrow_data).length > 1; // more than just date_label/date_iso
+      laneTomorrow.style.display = (bucket === "night" && hasTomorrow) ? "block" : "none";
     }
 
-    // 💷 Money — spend + saves. Hidden after 9pm (steering: only weather/saves shown at night)
-    // and hidden if spend module is off (saves still lives in the Evening lane at night).
+    // 📍 Near You Right Now — morning + daytime only, real proactive nearby data
+    var laneLocalTop3 = document.getElementById("lane-local-top3");
+    if (laneLocalTop3) {
+      var hasLocal = window._briefData && Array.isArray(window._briefData.local_top3_data) &&
+        window._briefData.local_top3_data.length > 0;
+      laneLocalTop3.style.display = ((bucket === "morning" || bucket === "daytime") && maOn && hasLocal) ? "block" : "none";
+    }
+
+    // 🚗 Getting Around — trains/drive times/My Local. Morning + daytime only now that
+    // Evening has its own Dining/Entertainment lanes and Night has Tomorrow's Prep.
+    var laneGetting = document.getElementById("lane-getting-around");
+    if (laneGetting) {
+      var showGetting = (bucket === "morning" || bucket === "daytime") && (maOn || commuteOn);
+      laneGetting.style.display = showGetting ? "block" : "none";
+    }
+
+    // 🍽️ Dining Tonight — evening bucket only
+    var laneDining = document.getElementById("lane-dining");
+    if (laneDining) {
+      var hasDining = window._briefData && Array.isArray(window._briefData.dining_data) &&
+        window._briefData.dining_data.length > 0;
+      laneDining.style.display = (bucket === "evening" && maOn && hasDining) ? "block" : "none";
+    }
+
+    // 🎬 Entertainment — evening bucket only
+    var laneEntertain = document.getElementById("lane-entertainment");
+    if (laneEntertain) {
+      var hasEnt = window._briefData && Array.isArray(window._briefData.entertainment_data) &&
+        window._briefData.entertainment_data.length > 0;
+      laneEntertain.style.display = (bucket === "evening" && hasEnt) ? "block" : "none";
+    }
+
+    // 💷 Money — spend + saves. Daytime bucket only (steering: only weather/saves shown at
+    // night; evening now leads with Dining/Entertainment) and hidden if spend module is off.
     var laneMoney = document.getElementById("lane-money");
     if (laneMoney) {
-      laneMoney.style.display = (!isNight && spendOn) ? "block" : "none";
+      laneMoney.style.display = (bucket === "daytime" && spendOn) ? "block" : "none";
     }
 
     // 🧰 More Tools — always available as an access point, but individual tiles inside it
     // are still hidden per-module by _applyModuleVisibility()'s id map.
     var laneTools = document.getElementById("lane-tools");
     if (laneTools) laneTools.style.display = "block";
+
+    // Render the new lane bodies now that visibility is settled.
+    if (typeof _renderLocalTop3 === "function")     _renderLocalTop3();
+    if (typeof _renderDiningLane === "function")    _renderDiningLane();
+    if (typeof _renderEntertainmentLane === "function") _renderEntertainmentLane();
+    if (typeof _renderTomorrowCard === "function")  _renderTomorrowCard();
   }
   window._homeLanesApply = _homeLanesApply;
+
+  // ── New lane renderers: Dining, Entertainment, Tomorrow Prep, Local Top 3 ──────────
+  function _miruEsc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function _miruStars(rating) {
+    if (typeof rating !== "number") return "";
+    var full = Math.round(rating);
+    var out = "";
+    for (var i = 0; i < 5; i++) out += (i < full) ? "★" : "☆";
+    return out;
+  }
+  function _miruDist(item) {
+    if (!item) return "";
+    if (typeof item.distance_km === "number") return item.distance_km.toFixed(1) + "km";
+    if (typeof item.distance_mi === "number") return item.distance_mi.toFixed(1) + "mi";
+    return "";
+  }
+  function _miruOpenPill(openNow) {
+    if (openNow === true)  return '<span class="miru-open-pill open">Open now</span>';
+    if (openNow === false) return '<span class="miru-open-pill closed">Closed</span>';
+    return "";
+  }
+  function _miruViewPlace(name) {
+    var pc = (typeof _miruPostcode === "function") ? (_miruPostcode() || "") : "";
+    var q = encodeURIComponent(name + (pc ? (" " + pc) : " UK"));
+    window.open("https://www.google.com/maps/search/?api=1&query=" + q, "_blank", "noopener");
+  }
+  window._miruViewPlace = _miruViewPlace;
+
+  // 🍽️ Dining Tonight — top-3 restaurant/cafe cards, Google rating + distance + a
+  // personal blurb pulled from the user's own saved clippings when it matches.
+  function _renderDiningLane() {
+    var body = document.getElementById("lane-dining-body");
+    if (!body) return;
+    var items = (window._briefData && window._briefData.dining_data) || [];
+    body.innerHTML = items.map(function(it) {
+      var starsHtml = it.rating ? '<span class="miru-card-stars">' + _miruStars(it.rating) + "</span> " + it.rating.toFixed(1) : "";
+      var dist = _miruDist(it);
+      var subParts = [];
+      if (starsHtml) subParts.push('<span>' + starsHtml + "</span>");
+      if (dist) subParts.push('<span class="miru-card-dist">· ' + dist + "</span>");
+      subParts.push(_miruOpenPill(it.open_now));
+      return (
+        '<button class="miru-card-row miru-dining-card" onclick="_miruViewPlace(' + JSON.stringify(it.name) + ')">' +
+          '<div class="miru-card-badge">🍽️</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="miru-card-title">' + _miruEsc(it.name) + "</div>" +
+            '<div class="miru-card-sub">' + subParts.join(" ") + "</div>" +
+            (it.blurb ? '<div class="miru-card-blurb">“' + _miruEsc(it.blurb) + '”</div>' : "") +
+          "</div>" +
+          '<span class="miru-card-arrow">›</span>' +
+        "</button>"
+      );
+    }).join("");
+  }
+  window._renderDiningLane = _renderDiningLane;
+
+  // 🎬 Entertainment — saved events first (real, dated), nearby rated venues as fallback.
+  function _renderEntertainmentLane() {
+    var body = document.getElementById("lane-entertainment-body");
+    if (!body) return;
+    var items = (window._briefData && window._briefData.entertainment_data) || [];
+    body.innerHTML = items.map(function(it) {
+      if (it.type === "event") {
+        return (
+          '<button class="miru-card-row miru-entertain-card" onclick="_pillNav(\'saves\')">' +
+            '<div class="miru-card-badge">' + (it.emoji || "🎫") + "</div>" +
+            '<div style="flex:1;min-width:0">' +
+              '<div class="miru-card-title">' + _miruEsc(it.name) + "</div>" +
+              (it.summary ? '<div class="miru-card-sub">' + _miruEsc(it.summary) + "</div>" : '<div class="miru-card-sub">Saved event</div>') +
+            "</div>" +
+            '<span class="miru-card-arrow">›</span>' +
+          "</button>"
+        );
+      }
+      var subParts = [];
+      if (typeof it.rating === "number") subParts.push('<span class="miru-card-stars">' + _miruStars(it.rating) + "</span> " + it.rating.toFixed(1));
+      var dist = _miruDist(it);
+      if (dist) subParts.push('<span class="miru-card-dist">· ' + dist + "</span>");
+      subParts.push(_miruOpenPill(it.open_now));
+      return (
+        '<button class="miru-card-row miru-entertain-card" onclick="_miruViewPlace(' + JSON.stringify(it.name) + ')">' +
+          '<div class="miru-card-badge">' + (it.emoji || "🍸") + "</div>" +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="miru-card-title">' + _miruEsc(it.name) + "</div>" +
+            '<div class="miru-card-sub">' + subParts.join(" ") + "</div>" +
+          "</div>" +
+          '<span class="miru-card-arrow">›</span>' +
+        "</button>"
+      );
+    }).join("");
+  }
+  window._renderEntertainmentLane = _renderEntertainmentLane;
+
+  // 📍 Near You Right Now — coffee / food / shopping, one real card each.
+  function _renderLocalTop3() {
+    var body = document.getElementById("lane-local-top3-body");
+    if (!body) return;
+    var items = (window._briefData && window._briefData.local_top3_data) || [];
+    body.innerHTML = items.map(function(it) {
+      var subParts = [];
+      if (typeof it.rating === "number") subParts.push('<span class="miru-card-stars">' + _miruStars(it.rating) + "</span> " + it.rating.toFixed(1));
+      var dist = _miruDist(it);
+      if (dist) subParts.push('<span class="miru-card-dist">· ' + dist + "</span>");
+      subParts.push(_miruOpenPill(it.open_now));
+      return (
+        '<button class="miru-card-row miru-local-slot" onclick="_miruViewPlace(' + JSON.stringify(it.name) + ')">' +
+          '<div class="miru-card-badge">' + (it.emoji || "📍") + "</div>" +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:10px;font-weight:800;color:var(--success-text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px">' + _miruEsc(it.label) + "</div>" +
+            '<div class="miru-card-title">' + _miruEsc(it.name) + "</div>" +
+            '<div class="miru-card-sub">' + subParts.join(" ") + "</div>" +
+          "</div>" +
+          '<span class="miru-card-arrow">›</span>' +
+        "</button>"
+      );
+    }).join("");
+  }
+  window._renderLocalTop3 = _renderLocalTop3;
+
+  // 📅 Tomorrow's Prep — weather + next scheduled departure + school + packing hints,
+  // shown only at night. Every section is omitted if the underlying data is missing.
+  function _renderTomorrowCard() {
+    var el = document.getElementById("lane-tomorrow-card");
+    if (!el) return;
+    var d = (window._briefData && window._briefData.tomorrow_data) || {};
+    if (!d.date_label) { el.innerHTML = ""; return; }
+
+    var wx = d.weather || {};
+    var wxHtml = wx.desc
+      ? (wx.icon || "") + " " + (typeof wx.high === "number" && typeof wx.low === "number" ? (wx.low + "–" + wx.high + "°C") : "") + " · " + _miruEsc(wx.desc)
+      : "";
+
+    var sections = [];
+
+    if (d.commute) {
+      sections.push(
+        '<div class="miru-tmrw-section"><div class="miru-tmrw-icon">🚆</div><div style="flex:1;min-width:0">' +
+        '<div class="miru-tmrw-label">Commute</div>' +
+        '<div class="miru-tmrw-body">' + _miruEsc(d.commute.route) +
+          (d.commute.next_departure ? "<br>Next train " + _miruEsc(d.commute.next_departure) + (d.commute.status ? " · " + _miruEsc(d.commute.status) : "") : "") +
+        "</div></div></div>"
+      );
+    }
+
+    if (d.packing && d.packing.length) {
+      var chips = d.packing.map(function(p) {
+        return '<span class="miru-tmrw-chip">' + (p.emoji || "") + " " + _miruEsc(p.text) + "</span>";
+      }).join("");
+      sections.push(
+        '<div class="miru-tmrw-section"><div class="miru-tmrw-icon">🎒</div><div style="flex:1;min-width:0">' +
+        '<div class="miru-tmrw-label">What to pack</div>' +
+        '<div class="miru-tmrw-body">' + chips + "</div></div></div>"
+      );
+    }
+
+    if (d.school) {
+      var schoolBits = [];
+      if (d.school.is_holiday) {
+        schoolBits.push((d.school.holiday_name ? _miruEsc(d.school.holiday_name) : "School holiday") + " — no school run");
+      } else if (d.school.events && d.school.events.length) {
+        schoolBits = d.school.events.map(function(e) {
+          return (e.child_name ? _miruEsc(e.child_name) + ": " : "") + _miruEsc(e.title);
+        });
+      } else {
+        schoolBits.push("Normal school day");
+      }
+      sections.push(
+        '<div class="miru-tmrw-section"><div class="miru-tmrw-icon">🏫</div><div style="flex:1;min-width:0">' +
+        '<div class="miru-tmrw-label">School</div>' +
+        '<div class="miru-tmrw-body">' + schoolBits.join("<br>") + "</div></div></div>"
+      );
+    }
+
+    if (d.meeting_count) {
+      sections.push(
+        '<div class="miru-tmrw-section"><div class="miru-tmrw-icon">🎯</div><div style="flex:1;min-width:0">' +
+        '<div class="miru-tmrw-label">Day overview</div>' +
+        '<div class="miru-tmrw-body">' + d.meeting_count + (d.meeting_count === 1 ? " meeting" : " meetings") + " scheduled</div></div></div>"
+      );
+    }
+
+    el.innerHTML =
+      '<div class="miru-tmrw-head"><div class="miru-tmrw-date">' + _miruEsc(d.date_label) + "</div>" +
+        (wxHtml ? '<div class="miru-tmrw-wx">' + wxHtml + "</div>" : "") +
+      "</div>" +
+      (sections.length ? sections.join("") : '<div class="miru-tmrw-body" style="color:var(--muted)">Nothing extra to prep for tomorrow.</div>');
+  }
+  window._renderTomorrowCard = _renderTomorrowCard;
 
   // ── Settings → Modules section ──────────────────────────────────────────────
   var _MODULE_DEFS = [
