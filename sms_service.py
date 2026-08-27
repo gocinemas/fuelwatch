@@ -326,6 +326,89 @@ def api_idea_analyze():
         app.logger.error(traceback.format_exc())
         return jsonify({"error": str(e), "status": "error"}), 500
 
+@app.route("/api/idea/chat", methods=["POST"])
+def api_idea_chat():
+    """Chat-based app validation using Groq."""
+    try:
+        data = request.get_json() or {}
+        url = data.get("url", "").strip()
+        message = data.get("message", "").strip()
+        history = data.get("history", [])
+
+        if not url or not url.startswith("http"):
+            return jsonify({"error": "Invalid URL"}), 400
+
+        if not message:
+            return jsonify({"error": "Empty message"}), 400
+
+        # Build conversation history for Groq
+        messages = [
+            {
+                "role": "system",
+                "content": f"""You are an expert app validator and product strategist. You're helping a founder validate their app at {url}.
+
+Your role:
+1. Ask targeted diagnostic questions about: product features, target users, current metrics, acquisition channels, revenue model, main blockers
+2. Listen carefully to their answers and ask follow-up questions
+3. Provide specific, actionable feedback based on what they tell you
+4. Help them identify their biggest opportunities and risks
+5. Suggest quick wins they can execute in the next 90 days
+6. Be encouraging but honest - if something isn't working, say so with solutions
+
+Keep responses concise (2-3 sentences max). Ask one question at a time. Be conversational, not robotic."""
+            }
+        ]
+
+        # Add chat history
+        for msg in history:
+            messages.append({
+                "role": msg.get("role", "user"),
+                "content": msg.get("text", "")
+            })
+
+        # Add current user message
+        messages.append({
+            "role": "user",
+            "content": message
+        })
+
+        # Call Groq
+        response = requests.post(
+            "https://api.groq.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "mixtral-8x7b-32768",
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": 300
+            },
+            timeout=30
+        )
+
+        if response.status_code != 200:
+            app.logger.error(f"[idea-chat] Groq error: {response.status_code} {response.text}")
+            return jsonify({"error": f"Validation service error: {response.status_code}"}), 500
+
+        result = response.json()
+        reply = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+        if not reply:
+            return jsonify({"error": "No response from validator"}), 500
+
+        return jsonify({
+            "status": "ok",
+            "response": reply
+        })
+
+    except Exception as e:
+        import traceback
+        app.logger.error(f"[idea-chat] Exception: {e}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({"error": str(e), "status": "error"}), 500
+
 @app.route("/api/idea/report/<report_id>", methods=["GET"])
 def api_idea_report(report_id):
     """Fetch a saved idea report."""

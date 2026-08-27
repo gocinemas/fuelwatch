@@ -475,69 +475,77 @@
         <div class="hero">
             <div class="logo">🚀 FrameWork</div>
             <h1>Deep App Idea Validator</h1>
-            <p class="subtitle">Research any app's market potential in 2-5 minutes. Framework analysis based on Reddit demand, competitive landscape, and multi-dimensional scoring.</p>
+            <p class="subtitle">Get smart feedback on your app. Quick analysis or chat-based validation with diagnostic questions.</p>
         </div>
 
         <div class="error" id="errorBox"></div>
 
         <div class="input-section">
-            <input type="url" id="urlInput" placeholder="https://example.com" value="https://">
-            <button onclick="analyzeApp()">Analyze</button>
+            <input type="url" id="urlInput" placeholder="https://birdiepulse.app" value="https://">
+            <button onclick="initializeTool()">Validate</button>
         </div>
 
-        <!-- Progress -->
-        <div class="progress-section" id="progressSection">
-            <div class="phase" id="phase1">
-                <div class="phase-label">
-                    <span class="phase-icon">
-                        <span class="spinner"></span>
-                        <span class="checkmark">✓</span>
-                    </span>
-                    Phase 1: Scraping App
-                </div>
-                <div class="progress-bar"><div class="progress-fill"></div></div>
-                <div class="phase-detail" id="phase1-detail">Extracting positioning, features, design...</div>
-            </div>
-
-            <div class="phase" id="phase2">
-                <div class="phase-label">
-                    <span class="phase-icon">
-                        <span class="spinner"></span>
-                        <span class="checkmark">✓</span>
-                    </span>
-                    Phase 2: Market Research
-                </div>
-                <div class="progress-bar"><div class="progress-fill"></div></div>
-                <div class="phase-detail" id="phase2-detail">Analyzing Reddit demand, competitors, trends...</div>
-            </div>
-
-            <div class="phase" id="phase3">
-                <div class="phase-label">
-                    <span class="phase-icon">
-                        <span class="spinner"></span>
-                        <span class="checkmark">✓</span>
-                    </span>
-                    Phase 3: Framework Scoring
-                </div>
-                <div class="progress-bar"><div class="progress-fill"></div></div>
-                <div class="phase-detail" id="phase3-detail">Scoring across 4 dimensions...</div>
-            </div>
-
-            <div class="phase" id="phase4">
-                <div class="phase-label">
-                    <span class="phase-icon">
-                        <span class="spinner"></span>
-                        <span class="checkmark">✓</span>
-                    </span>
-                    Phase 4: Generating Report
-                </div>
-                <div class="progress-bar"><div class="progress-fill"></div></div>
-                <div class="phase-detail" id="phase4-detail">Creating analysis and recommendations...</div>
-            </div>
+        <!-- Tabs -->
+        <div class="tabs" id="tabsContainer" style="display:none;">
+            <button class="tab active" onclick="switchTab('analyzer')">Quick Analysis</button>
+            <button class="tab" onclick="switchTab('chatbot')">Validation Chat</button>
         </div>
 
-        <!-- Results -->
-        <div class="results" id="resultsSection">
+        <!-- Analyzer Tab -->
+        <div class="tab-content active" id="analyzer-tab">
+            <!-- Progress -->
+            <div class="progress-section" id="progressSection">
+                <div class="phase" id="phase1">
+                    <div class="phase-label">
+                        <span class="phase-icon">
+                            <span class="spinner"></span>
+                            <span class="checkmark">✓</span>
+                        </span>
+                        Phase 1: Scraping App
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill"></div></div>
+                    <div class="phase-detail" id="phase1-detail">Extracting positioning, features, design...</div>
+                </div>
+
+                <div class="phase" id="phase2">
+                    <div class="phase-label">
+                        <span class="phase-icon">
+                            <span class="spinner"></span>
+                            <span class="checkmark">✓</span>
+                        </span>
+                        Phase 2: Market Research
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill"></div></div>
+                    <div class="phase-detail" id="phase2-detail">Analyzing Reddit demand, competitors, trends...</div>
+                </div>
+
+                <div class="phase" id="phase3">
+                    <div class="phase-label">
+                        <span class="phase-icon">
+                            <span class="spinner"></span>
+                            <span class="checkmark">✓</span>
+                        </span>
+                        Phase 3: Framework Scoring
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill"></div></div>
+                    <div class="phase-detail" id="phase3-detail">Scoring across 4 dimensions...</div>
+                </div>
+
+                <div class="phase" id="phase4">
+                    <div class="phase-label">
+                        <span class="phase-icon">
+                            <span class="spinner"></span>
+                            <span class="checkmark">✓</span>
+                        </span>
+                        Phase 4: Generating Report
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill"></div></div>
+                    <div class="phase-detail" id="phase4-detail">Creating analysis and recommendations...</div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="results" id="resultsSection">
             <!-- Summary Card -->
             <div class="summary-card">
                 <div class="score-circle" id="scoreCircle" style="--score: 65%;">
@@ -591,6 +599,22 @@
                 <div class="section-title">⚠️ Risks to Watch</div>
                 <div class="cards-grid" id="risksGrid"></div>
             </div>
+            </div>
+        </div>
+
+        <!-- Chatbot Tab -->
+        <div class="tab-content" id="chatbot-tab">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">
+                        <div class="message-bubble">👋 Hi! I'm your app validator. Tell me about your app and I'll ask targeted questions to help you find your biggest opportunities and blockers.</div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <textarea class="chat-input" id="chatInput" placeholder="Type your message..." rows="2"></textarea>
+                    <button class="chat-send" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -601,6 +625,48 @@
             { id: 'phase3', duration: 1500 },
             { id: 'phase4', duration: 1000 },
         ];
+
+        let currentAppUrl = '';
+        let chatHistory = [];
+
+        function initializeTool() {
+            const url = document.getElementById('urlInput').value;
+            if (!url || url === "https://") {
+                showError("Please enter a valid URL");
+                return;
+            }
+
+            currentAppUrl = url;
+            document.getElementById('tabsContainer').style.display = 'flex';
+            switchTab('analyzer');
+            analyzeApp();
+        }
+
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+
+            // Initialize chatbot if switching to chat
+            if (tab === 'chatbot' && chatHistory.length === 0) {
+                initializeChatbot();
+            }
+        }
+
+        function initializeChatbot() {
+            chatHistory = [];
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="message system">
+                    <div class="message-bubble">👋 Hi! I'm analyzing <strong>${new URL(currentAppUrl).hostname}</strong>. Let me ask you some targeted questions to understand where you're stuck and what your best opportunities are.</div>
+                </div>
+            `;
+            // First diagnostic question
+            addMessage('assistant', "First, help me understand your product. What does your app do, and who is your primary user?");
+        }
 
         async function analyzeApp() {
             const url = document.getElementById('urlInput').value;
@@ -744,8 +810,76 @@
         }
 
         document.getElementById('urlInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') analyzeApp();
+            if (e.key === 'Enter') initializeTool();
         });
+
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+
+        function addMessage(role, text) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${role}`;
+            messageEl.innerHTML = `<div class="message-bubble">${text}</div>`;
+            messagesDiv.appendChild(messageEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            chatHistory.push({ role, text });
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            addMessage('user', message);
+            input.value = '';
+
+            // Show typing indicator
+            const messagesDiv = document.getElementById('chatMessages');
+            const typingEl = document.createElement('div');
+            typingEl.className = 'message assistant';
+            typingEl.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            messagesDiv.appendChild(typingEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            try {
+                const response = await fetch('/api/idea/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: currentAppUrl,
+                        message: message,
+                        history: chatHistory.slice(0, -1) // Exclude the user message we just added
+                    })
+                });
+
+                typingEl.remove();
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || "Chat failed");
+                }
+
+                addMessage('assistant', data.response);
+
+            } catch (error) {
+                console.error("Chat error:", error);
+                typingEl.remove();
+                addMessage('assistant', `❌ Error: ${error.message}`);
+            }
+        }
     </script>
 </body>
 </html>
