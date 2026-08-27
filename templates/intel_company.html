@@ -606,20 +606,10 @@
                     console.error('❌ No company name in response');
                     showError('No data found for ' + company);
                 } else {
-                    console.log('✅ Got company data, fetching leadership & hiring...');
-                    // Fetch leadership and hiring data (may still be loading)
-                    const leadershipData = await leadershipRes.json();
-                    const hiringData = await hiringRes.json();
-                    console.log('✅ Got all data, displaying...');
-
-                    // Combine all data
-                    const allData = {
-                        ...companyData,
-                        leadership: leadershipData,
-                        hiring: hiringData
-                    };
-
-                    displayResults(allData);
+                    console.log('✅ Got company data, redirecting to Intel...');
+                    // Redirect to Intel company intelligence page
+                    window.location.href = `https://intel.humanagency.co/intelligence/${encodeURIComponent(companyData.name)}`;
+                    return;
                 }
             } catch (error) {
                 console.error('❌ Catch error:', error);
@@ -642,8 +632,8 @@
         }
 
         function searchCompanyByName(companyName) {
-            companyInput.value = companyName;
-            searchCompany();
+            // Redirect to Intel company intelligence page
+            window.location.href = `https://intel.humanagency.co/intelligence/${encodeURIComponent(companyName)}`;
         }
 
         function displayResults(data) {
