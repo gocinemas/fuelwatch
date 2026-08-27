@@ -13157,6 +13157,228 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
         return {}
 
 
+def _v2_fetch_spend_this_week(from_number: str) -> dict:
+    """Rolling 7-day receipt spend + a trailing weekly average (prior ~4 weeks),
+    for BUDGET_CONSCIOUS mode detection. Fail-safe — returns zeros on any error,
+    never fabricates a figure."""
+    from datetime import date as _swd, timedelta as _swtd
+    try:
+        today = _swd.today()
+        week_start = (today - _swtd(days=6)).isoformat()   # rolling 7 days incl. today
+        hist_start = (today - _swtd(days=34)).isoformat()  # ~5 weeks of history for the average
+
+        rows = lib._sb().table("wa_saves").select("summary,title,created_at") \
+            .eq("from_number", from_number) \
+            .gte("created_at", hist_start) \
+            .ilike("title", "🧾%") \
+            .execute().data or []
+
+        def _amt(r):
+            m = re.search(r'£([\d,]+\.?\d*)', (r.get("summary") or "") + (r.get("title") or ""))
+            if not m:
+                return 0.0
+            try:
+                return float(m.group(1).replace(",", ""))
+            except ValueError:
+                return 0.0
+
+        this_week = 0.0
+        weekly_totals: dict = {}  # ISO date of Monday-of-week -> total, for the average
+        for r in rows:
+            created = (r.get("created_at") or "")[:10]
+            if not created:
+                continue
+            amt = _amt(r)
+            if amt <= 0:
+                continue
+            if created >= week_start:
+                this_week += amt
+            try:
+                d = _swd.fromisoformat(created)
+            except ValueError:
+                continue
+            wk_key = (d - _swtd(days=d.weekday())).isoformat()
+            weekly_totals[wk_key] = weekly_totals.get(wk_key, 0.0) + amt
+
+        cur_wk_key = (today - _swtd(days=today.weekday())).isoformat()
+        prior_weeks = [v for k, v in weekly_totals.items() if k != cur_wk_key]
+        avg_week = round(sum(prior_weeks) / len(prior_weeks), 2) if prior_weeks else 0.0
+
+        return {"this_week": round(this_week, 2), "avg_week": avg_week}
+    except Exception:
+        return {"this_week": 0.0, "avg_week": 0.0}
+
+
+def _v2_fetch_postcode_change_date(from_number: str, postcode: str) -> str | None:
+    """Track when the user's current postcode was first seen, via a single tracked
+    row in ma_details (type='v2_postcode_track'). Returns the ISO date the CURRENT
+    postcode started, or None if we can't determine it (fail-safe — the caller then
+    treats the location as not-new rather than guessing). First-ever visit for a
+    user is treated as a fresh location (today)."""
+    if not from_number or not postcode:
+        return None
+    try:
+        from datetime import date as _pcd
+        today_iso = _pcd.today().isoformat()
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "v2_postcode_track").limit(1).execute().data or []
+        if not rows:
+            try:
+                lib._sb().table("ma_details").insert({
+                    "device_id": from_number, "type": "v2_postcode_track",
+                    "data": {"postcode": postcode, "changed_at": today_iso},
+                }).execute()
+            except Exception:
+                pass
+            return today_iso
+        data = rows[0].get("data") or {}
+        tracked_pc = (data.get("postcode") or "").strip().upper()
+        changed_at = data.get("changed_at") or today_iso
+        if tracked_pc != postcode.strip().upper():
+            changed_at = today_iso
+            try:
+                lib._sb().table("ma_details").update({
+                    "data": {"postcode": postcode, "changed_at": today_iso}
+                }).eq("device_id", from_number).eq("type", "v2_postcode_track").execute()
+            except Exception:
+                pass
+        return changed_at
+    except Exception:
+        return None
+
+
+def _v2_fetch_upcoming_events(ctx: dict, now, days: int = 7) -> int:
+    """Count of the user's own real events (saved 🎫 clippings + calendar entries)
+    within the next N days. Never fabricated — purely a count over already-fetched
+    ctx data, so it's free (no extra network call)."""
+    try:
+        from datetime import timedelta as _uetd
+        cutoff_s = (now.date() + _uetd(days=days)).isoformat()
+        today_s = now.date().isoformat()
+        count = 0
+        for s in (ctx.get("saves") or []):
+            title = (s.get("title") or "")
+            cat = (s.get("category") or "").lower()
+            if "🎫" in title or cat in ("event", "events"):
+                count += 1
+        for c in (ctx.get("calendar") or []) + (ctx.get("ms_calendar") or []):
+            d = (c.get("date") or "")
+            if d and today_s <= d <= cutoff_s:
+                count += 1
+        for pe in (ctx.get("personal_events") or []):
+            d = (pe.get("date") or pe.get("event_date") or "").split("T")[0]
+            if d and today_s <= d <= cutoff_s:
+                count += 1
+        return count
+    except Exception:
+        return 0
+
+
+def _detect_mode(hour: int, wday: int, spend_this_week: float, spend_avg_week: float,
+                  postcode_is_new: bool, upcoming_events_count: int) -> tuple:
+    """Priority-ordered mode detection (first match wins). wday: 0=Mon .. 6=Sun.
+
+    Note on ordering vs. the original spec: PREP_MODE (Sunday 18:00-23:59) is a
+    strict subset of WEEKEND_LEISURE's window (Sat/Sun 17:00-23:59), so checking
+    WEEKEND_LEISURE first would make PREP_MODE unreachable dead code. PREP_MODE is
+    checked first as the more specific rule — the standard resolution for two
+    priority rules whose windows fully overlap — so both stay reachable exactly as
+    each mode's own description intends."""
+    # 1. SLEEP_MODE — universal, always applies first
+    if hour >= 21 or hour < 5:
+        return "SLEEP_MODE", "Late — winding down"
+    # 2. EXPLORING — new/changed postcode overrides time-based modes
+    if postcode_is_new:
+        return "EXPLORING", "New location"
+    # 3. PREP_MODE — Sunday evening (more specific than WEEKEND_LEISURE, see docstring)
+    if wday == 6 and 18 <= hour <= 23:
+        return "PREP_MODE", "Sunday evening — week ahead"
+    # 4. WEEKEND_LEISURE
+    if wday in (5, 6) and 17 <= hour <= 23:
+        return "WEEKEND_LEISURE", "Weekend evening"
+    # 5. SOCIAL_MODE — Fri/Sat evening with real upcoming plans
+    if wday in (4, 5) and hour >= 17 and upcoming_events_count > 0:
+        return "SOCIAL_MODE", "Social weekend — plans ahead"
+    # 6. COMMUTE_FOCUS
+    if wday in (0, 1, 2, 3, 4) and 5 <= hour <= 10:
+        return "COMMUTE_FOCUS", "Workday morning — commute"
+    # 7. BUDGET_CONSCIOUS — overrides remaining time-based modes
+    if spend_avg_week > 0 and spend_this_week > spend_avg_week * 1.8:
+        return "BUDGET_CONSCIOUS", "Spend up sharply this week"
+    # 8. WORK_MODE
+    if wday in (0, 1, 2, 3, 4) and 10 <= hour <= 17:
+        return "WORK_MODE", "Workday"
+    # 9. DEFAULT — fallback for any other time
+    return "WORK_MODE", "Default"
+
+
+_MODE_CONFIDENCE = {
+    "SLEEP_MODE": 0.95, "EXPLORING": 0.9, "PREP_MODE": 0.85,
+    "WEEKEND_LEISURE": 0.85, "SOCIAL_MODE": 0.8, "COMMUTE_FOCUS": 0.9,
+    "BUDGET_CONSCIOUS": 0.75, "WORK_MODE": 0.7,
+}
+
+
+def _v2_infer_home_mode(from_number: str, postcode: str, ctx: dict, now) -> dict:
+    """V2 inferential home mode — infers what the user actually needs right now
+    (WEEKEND_LEISURE / EXPLORING / BUDGET_CONSCIOUS / COMMUTE_FOCUS / WORK_MODE /
+    PREP_MODE / SOCIAL_MODE / SLEEP_MODE) instead of a fixed time-of-day template.
+    Fail-safe throughout: any missing signal degrades gracefully rather than
+    raising, and the whole function falls back to WORK_MODE on any error so the
+    home page is never left blank."""
+    try:
+        hour = now.hour
+        wday = now.weekday()  # 0=Mon .. 6=Sun
+
+        spend_wk = {"this_week": 0.0, "avg_week": 0.0}
+        postcode_is_new = False
+        upcoming_events = 0
+        try:
+            if from_number:
+                spend_wk = _v2_fetch_spend_this_week(from_number) or spend_wk
+        except Exception:
+            pass
+        try:
+            if from_number and postcode:
+                _changed_at = _v2_fetch_postcode_change_date(from_number, postcode)
+                if _changed_at:
+                    from datetime import date as _mdate, timedelta as _mtd
+                    postcode_is_new = (_mdate.today() - _mdate.fromisoformat(_changed_at)) <= _mtd(days=7)
+        except Exception:
+            pass
+        try:
+            upcoming_events = _v2_fetch_upcoming_events(ctx, now, days=7)
+        except Exception:
+            pass
+
+        mode, reason = _detect_mode(
+            hour=hour, wday=wday,
+            spend_this_week=spend_wk.get("this_week", 0.0),
+            spend_avg_week=spend_wk.get("avg_week", 0.0),
+            postcode_is_new=postcode_is_new,
+            upcoming_events_count=upcoming_events,
+        )
+
+        return {
+            "mode":       mode,
+            "reason":     reason,
+            "confidence": _MODE_CONFIDENCE.get(mode, 0.5),
+            "signals": {
+                "hour": hour, "weekday": wday,
+                "spend_this_week": spend_wk.get("this_week", 0.0),
+                "spend_avg_week":  spend_wk.get("avg_week", 0.0),
+                "postcode_is_new": postcode_is_new,
+                "upcoming_events": upcoming_events,
+            },
+        }
+    except Exception as e:
+        try:
+            app.logger.warning(f"[infer-mode] {e}")
+        except Exception:
+            pass
+        return {"mode": "WORK_MODE", "reason": "Default (inference error)", "confidence": 0.3, "signals": {}}
+
+
 def _v2_fetch_today_activity(from_number: str) -> list:
     """Receipts from the last 8 hours — tells us what the user did today."""
     import datetime as _tadt
@@ -15994,6 +16216,17 @@ def api_home_brief():
         result["school_holiday"] = _school_holiday_now
         result["is_night_mode"]  = _is_night_mode
         result["response_time_hour"] = _cur_hour
+        # Mode inference is always recomputed fresh (never cached) — it depends on
+        # current time-of-day / weekday even when the rest of the brief is cached.
+        try:
+            _infer_pc = (postcode or prefs.get("fuel_postcode") or "").strip().upper()
+            _inferred = _v2_infer_home_mode(from_number, _infer_pc, ctx, now)
+        except Exception:
+            _inferred = {"mode": "WORK_MODE", "reason": "Default (inference error)", "confidence": 0.3, "signals": {}}
+        result["inferred_mode"] = _inferred["mode"]
+        result["mode_reason"]   = _inferred.get("reason")
+        result["mode_confidence"] = _inferred.get("confidence")
+        result["mode_signals"]  = _inferred.get("signals")
         return jsonify(result)
 
     ctx: dict = {}
@@ -17837,10 +18070,23 @@ def api_home_brief():
     # Detect major events (eclipses, bank holidays, etc)
     _major_events = _detect_major_events(now.date())
 
+    # V2 inferential home mode — infers WEEKEND_LEISURE / EXPLORING / BUDGET_CONSCIOUS /
+    # COMMUTE_FOCUS / WORK_MODE / PREP_MODE / SOCIAL_MODE / SLEEP_MODE from real context
+    # instead of a fixed time-of-day template. Fail-safe (never blocks the brief response).
+    try:
+        _infer_pc = (postcode or fuel_pc or "").strip().upper()
+        _inferred = _v2_infer_home_mode(from_number, _infer_pc, ctx, now)
+    except Exception:
+        _inferred = {"mode": "WORK_MODE", "reason": "Default (inference error)", "confidence": 0.3, "signals": {}}
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
         "events":       _major_events,  # Major events like eclipses, bank holidays
+        "inferred_mode":   _inferred["mode"],       # NEW: intent-based home mode (see _v2_infer_home_mode)
+        "mode_reason":     _inferred.get("reason"),
+        "mode_confidence": _inferred.get("confidence"),
+        "mode_signals":    _inferred.get("signals"),
         "suggestions":  {  # Proactive suggestions based on time + location
             "wines": categorized_saves.get("wines", [])[:3],
             "restaurants": categorized_saves.get("restaurants", [])[:3],

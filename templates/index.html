@@ -2261,6 +2261,8 @@
           <div id="brief-status-line" style="display:none;font-size:11px;color:var(--muted);margin-bottom:6px"></div>
           <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Your Brief</div>
           <div id="brief-dateline" style="font-size:14px;color:var(--text);margin-top:3px;font-weight:600"></div>
+          <!-- Inferred home mode badge (debug/QA aid) — set by _homeLanesApply() from server's inferred_mode -->
+          <div id="mode-indicator" style="display:none;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--muted);margin-top:3px;text-transform:uppercase"></div>
           <!-- Weather section: current + forecast grid -->
           <div id="brief-weather-wrapper" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:5px 8px 4px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
             <!-- Grid: current weather + day names in row 1, rest of forecast below -->
@@ -6061,85 +6063,126 @@
     return "night"; // covers "night" and "goodnight"
   }
 
+  // Human-readable labels for the mode-indicator badge.
+  var _HOME_MODE_LABELS = {
+    WEEKEND_LEISURE:  "Weekend Leisure",
+    EXPLORING:        "Exploring",
+    BUDGET_CONSCIOUS: "Budget-Conscious",
+    COMMUTE_FOCUS:    "Commute Focus",
+    WORK_MODE:        "Work Mode",
+    PREP_MODE:        "Week Prep",
+    SOCIAL_MODE:      "Social",
+    SLEEP_MODE:       "Wind-Down",
+  };
+
+  // The backend infers a mode (see _v2_infer_home_mode in sms_service.py) and sends it as
+  // inferred_mode. If it's missing (older cached response, offline, etc.) fall back to the
+  // legacy 4-way time bucket collapsed to its closest equivalent mode, so lanes never go blank.
+  function _homeEffectiveMode() {
+    var m = window._briefData && window._briefData.inferred_mode;
+    if (m && _HOME_MODE_LABELS[m]) return m;
+    var bucket = _homeLanesTimeBucket();
+    if (bucket === "morning") return "COMMUTE_FOCUS";
+    if (bucket === "daytime") return "WORK_MODE";
+    if (bucket === "evening") return "WEEKEND_LEISURE";
+    return "SLEEP_MODE";
+  }
+
   function _homeLanesApply() {
     var isNight = _homeLanesIsNight();
     window._briefIsNightMode = isNight;
     var bucket = _homeLanesTimeBucket();
     window._briefTimeBucket = bucket;
 
+    // Inferential intent-based mode (#: replaces the old fixed time-of-day template).
+    // See MIRU home-page inference engine — backend infers what the user actually needs
+    // right now (WEEKEND_LEISURE / EXPLORING / BUDGET_CONSCIOUS / COMMUTE_FOCUS / WORK_MODE /
+    // PREP_MODE / SOCIAL_MODE / SLEEP_MODE) instead of a plain morning/daytime/evening/night bucket.
+    var mode = _homeEffectiveMode();
+    window._briefInferredMode = mode;
+
+    var modeBadge = document.getElementById("mode-indicator");
+    if (modeBadge) {
+      var label = _HOME_MODE_LABELS[mode] || mode;
+      modeBadge.textContent = label + " mode";
+      modeBadge.title = (window._briefData && window._briefData.mode_reason) || "";
+      modeBadge.style.display = "block";
+    }
+
     // Module Awareness (#6) — a lane with no enabled module inside it is hidden outright,
-    // regardless of time of day.
+    // regardless of mode.
     var maOn      = (typeof _moduleEnabled === "function") ? _moduleEnabled("myarea")  : true;
     var commuteOn = (typeof _moduleEnabled === "function") ? _moduleEnabled("commute") : true;
     var spendOn   = (typeof _moduleEnabled === "function") ? _moduleEnabled("spend")   : true;
     var savesOn   = (typeof _moduleEnabled === "function") ? _moduleEnabled("saves")   : true;
     var schoolOn  = (typeof _moduleEnabled === "function") ? _moduleEnabled("school")  : true;
 
-    // 🔥 Live Now — school/commute context cards (score ≥ 80). Always available if the
-    // rendered content has anything in it; night-mode already strips trains/commute out of
-    // brief-context-cards itself (see _briefRenderContextCards), so just gate on content.
-    var laneUrgent = document.getElementById("lane-urgent");
-    var ctxCards   = document.getElementById("brief-context-cards");
-    if (laneUrgent) {
-      var hasUrgentContent = ctxCards && ctxCards.innerHTML.trim().length > 0 && (schoolOn || commuteOn);
-      laneUrgent.style.display = hasUrgentContent ? "block" : "none";
-    }
+    // Real-data presence checks — a lane only ever renders when it has genuine content
+    // (No Fabrication Rule: never show an empty/templated lane just because a mode "calls for" it).
+    var hasUrgentContent = false;
+    var ctxCards = document.getElementById("brief-context-cards");
+    if (ctxCards) hasUrgentContent = ctxCards.innerHTML.trim().length > 0 && (schoolOn || commuteOn);
+    var hasTomorrow = !!(window._briefData && window._briefData.tomorrow_data &&
+      Object.keys(window._briefData.tomorrow_data).length > 1); // more than just date_label/date_iso
+    var hasLocal = !!(window._briefData && Array.isArray(window._briefData.local_top3_data) &&
+      window._briefData.local_top3_data.length > 0);
+    var hasDining = !!(window._briefData && Array.isArray(window._briefData.dining_data) &&
+      window._briefData.dining_data.length > 0);
+    var hasEnt = !!(window._briefData && Array.isArray(window._briefData.entertainment_data) &&
+      window._briefData.entertainment_data.length > 0);
 
-    // 🌙 Evening wind-down (night bucket only) — saves + sleep playlist
+    // Mode → lane mapping. Each entry only requests a lane; the hasX / *On guards below still
+    // gate on real data and enabled modules, so a mode never forces an empty lane onto the page.
+    var _MODE_LANES = {
+      WEEKEND_LEISURE:  { dining: true, entertainment: true, evening: true, tomorrow: true },
+      SOCIAL_MODE:      { dining: true, entertainment: true, tomorrow: true },
+      EXPLORING:        { local: true, dining: true, entertainment: true, evening: true },
+      PREP_MODE:        { tomorrow: true, getting: true },
+      SLEEP_MODE:       { evening: true, tomorrow: true },
+      COMMUTE_FOCUS:    { getting: true, local: true, urgent: true },
+      BUDGET_CONSCIOUS: { money: true, local: true, urgent: true },
+      WORK_MODE:        { local: true, money: true, getting: true, urgent: true },
+    };
+    var want = _MODE_LANES[mode] || _MODE_LANES.WORK_MODE;
+
+    // 🔥 Live Now — school/commute context cards (score ≥ 80).
+    var laneUrgent = document.getElementById("lane-urgent");
+    if (laneUrgent) laneUrgent.style.display = (want.urgent && hasUrgentContent) ? "block" : "none";
+
+    // 🌙 Evening wind-down — saves + sleep playlist
     var laneEvening = document.getElementById("lane-evening");
-    if (laneEvening) laneEvening.style.display = (bucket === "night" && savesOn) ? "block" : "none";
+    if (laneEvening) laneEvening.style.display = (want.evening && savesOn) ? "block" : "none";
     var eveSavesSub = document.getElementById("lane-evening-saves-sub");
     if (eveSavesSub && window._briefData && Array.isArray(window._briefData.evening_saves)) {
       var n = window._briefData.evening_saves.length;
       eveSavesSub.textContent = n ? (n + " new since you last checked") : "Articles & shows you clipped";
     }
 
-    // 📅 Tomorrow's Prep — night bucket only
+    // 📅 Tomorrow's Prep — weather/commute/school/packing for tomorrow
     var laneTomorrow = document.getElementById("lane-tomorrow");
-    if (laneTomorrow) {
-      var hasTomorrow = window._briefData && window._briefData.tomorrow_data &&
-        Object.keys(window._briefData.tomorrow_data).length > 1; // more than just date_label/date_iso
-      laneTomorrow.style.display = (bucket === "night" && hasTomorrow) ? "block" : "none";
-    }
+    if (laneTomorrow) laneTomorrow.style.display = (want.tomorrow && hasTomorrow) ? "block" : "none";
 
-    // 📍 Near You Right Now — morning + daytime only, real proactive nearby data
+    // 📍 Near You Right Now — proactive nearby data (coffee/food/shopping; also stands in for
+    // Top-Rated Places / coffee spots / quick lunch reference depending on mode)
     var laneLocalTop3 = document.getElementById("lane-local-top3");
-    if (laneLocalTop3) {
-      var hasLocal = window._briefData && Array.isArray(window._briefData.local_top3_data) &&
-        window._briefData.local_top3_data.length > 0;
-      laneLocalTop3.style.display = ((bucket === "morning" || bucket === "daytime") && maOn && hasLocal) ? "block" : "none";
-    }
+    if (laneLocalTop3) laneLocalTop3.style.display = (want.local && maOn && hasLocal) ? "block" : "none";
 
-    // 🚗 Getting Around — trains/drive times/My Local. Morning + daytime only now that
-    // Evening has its own Dining/Entertainment lanes and Night has Tomorrow's Prep.
+    // 🚗 Getting Around — trains/drive times/My Local
     var laneGetting = document.getElementById("lane-getting-around");
-    if (laneGetting) {
-      var showGetting = (bucket === "morning" || bucket === "daytime") && (maOn || commuteOn);
-      laneGetting.style.display = showGetting ? "block" : "none";
-    }
+    if (laneGetting) laneGetting.style.display = (want.getting && (maOn || commuteOn)) ? "block" : "none";
 
-    // 🍽️ Dining Tonight — evening bucket only
+    // 🍽️ Dining Tonight — top 3 restaurants, ratings + distance
     var laneDining = document.getElementById("lane-dining");
-    if (laneDining) {
-      var hasDining = window._briefData && Array.isArray(window._briefData.dining_data) &&
-        window._briefData.dining_data.length > 0;
-      laneDining.style.display = (bucket === "evening" && maOn && hasDining) ? "block" : "none";
-    }
+    if (laneDining) laneDining.style.display = (want.dining && maOn && hasDining) ? "block" : "none";
 
-    // 🎬 Entertainment — evening bucket only
+    // 🎬 Entertainment — saved events + nearby venues
     var laneEntertain = document.getElementById("lane-entertainment");
-    if (laneEntertain) {
-      var hasEnt = window._briefData && Array.isArray(window._briefData.entertainment_data) &&
-        window._briefData.entertainment_data.length > 0;
-      laneEntertain.style.display = (bucket === "evening" && hasEnt) ? "block" : "none";
-    }
+    if (laneEntertain) laneEntertain.style.display = (want.entertainment && hasEnt) ? "block" : "none";
 
-    // 💷 Money — spend + saves. Daytime bucket only (steering: only weather/saves shown at
-    // night; evening now leads with Dining/Entertainment) and hidden if spend module is off.
+    // 💷 Money — spend + savings comparison (stands in for Savings Opportunities / This Week
+    // Summary in BUDGET_CONSCIOUS) — hidden if spend module is off.
     var laneMoney = document.getElementById("lane-money");
-    if (laneMoney) {
-      laneMoney.style.display = (bucket === "daytime" && spendOn) ? "block" : "none";
-    }
+    if (laneMoney) laneMoney.style.display = (want.money && spendOn) ? "block" : "none";
 
     // 🧰 More Tools — always available as an access point, but individual tiles inside it
     // are still hidden per-module by _applyModuleVisibility()'s id map.
