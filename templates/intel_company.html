@@ -581,43 +581,8 @@
             const company = companyInput.value.trim();
             if (!company) return;
 
-            loading.classList.add('show');
-            results.classList.remove('show');
-            emptyState.style.display = 'none';
-            errorMessage.classList.remove('show');
-
-            try {
-                console.log('🔍 Searching for company:', company);
-                // Fetch all three data types in parallel
-                const [companyRes, leadershipRes, hiringRes] = await Promise.all([
-                    fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`),
-                    fetch(`/api/leadership/intelligence?name=${encodeURIComponent(company)}`),
-                    fetch(`/api/hiring-signals?name=${encodeURIComponent(company)}`)
-                ]);
-
-                console.log('📡 Response statuses:', companyRes.status, leadershipRes.status, hiringRes.status);
-                const companyData = await companyRes.json();
-                console.log('📦 Company data:', companyData);
-
-                if (companyData.error) {
-                    console.error('❌ API Error:', companyData.error);
-                    showError(companyData.error, companyData.suggestion);
-                } else if (!companyData.name) {
-                    console.error('❌ No company name in response');
-                    showError('No data found for ' + company);
-                } else {
-                    console.log('✅ Got company data, redirecting to Intel...');
-                    // Redirect to Intel company intelligence page
-                    window.location.href = `https://intel.humanagency.co/intelligence/${encodeURIComponent(companyData.name)}`;
-                    return;
-                }
-            } catch (error) {
-                console.error('❌ Catch error:', error);
-                showError('Failed to fetch company data. Please try again.');
-                console.error(error);
-            } finally {
-                loading.classList.remove('show');
-            }
+            // Immediately redirect to Intel company intelligence page
+            window.location.href = `https://intel.humanagency.co/intelligence/${encodeURIComponent(company)}`;
         }
 
         function showError(message, suggestion = null) {
