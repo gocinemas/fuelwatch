@@ -293,11 +293,38 @@
     input, select, textarea { font-size: 16px !important; font-family: inherit; }
 
     /* Header */
-    #app-header {
+    #app-sticky-wrap {
       position: sticky; top: 0; z-index: 50;
+    }
+    #app-header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       padding: calc(13px + env(safe-area-inset-top)) 16px 13px;
+    }
+    /* My Area header — persistent location anchor, part of #app-sticky-wrap so it never scrolls away */
+    #myarea-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
+      display: flex; align-items: center; gap: 6px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      white-space: nowrap;
+    }
+    #myarea-header::-webkit-scrollbar { display: none; }
+    #myarea-header .mah-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 99px;
+      padding: 4px 10px; font-size: 11px; font-weight: 700; color: var(--text);
+      cursor: pointer; flex-shrink: 0; transition: all .15s;
+    }
+    #myarea-header .mah-chip:hover { border-color: var(--text); }
+    #myarea-header .mah-pc { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+    /* Labelled lanes — recommendation #2 */
+    .home-lane-header {
+      font-size: 10px; font-weight: 800; color: var(--muted);
+      letter-spacing: .08em; text-transform: uppercase;
+      margin-bottom: 8px;
     }
     #app-header .inner {
       max-width: 480px; margin: 0 auto;
@@ -805,6 +832,8 @@
   #onboarding-modal label:has(input:checked) { border-color: var(--accent) !important; background: linear-gradient(135deg, var(--bg) 0%, rgba(79, 70, 229, 0.05) 100%) !important; }
   </style>
 
+  <!-- Sticky wrap — header + identity + My Area anchor stay pinned together, never scroll away -->
+  <div id="app-sticky-wrap">
   <!-- Header -->
   <header id="app-header">
     <div class="inner">
@@ -857,6 +886,17 @@
       </button>
     </div>
   </div>
+
+  <!-- My Area header — weather + nearest station + MP, populated by _myAreaHeaderRender().
+       Postcode itself lives in the identity bar above, which is now part of this same sticky
+       wrap — so it's already a persistent anchor; this row adds the extra local context. -->
+  <div id="myarea-header" style="display:none">
+    <span class="mah-chip mah-pc" onclick="_idOpenModal('postcode')" id="mah-pc-chip">📍 —</span>
+    <span class="mah-chip" onclick="_myAreaHeaderWeatherTap()" id="mah-wx-chip" style="display:none"></span>
+    <span class="mah-chip" onclick="showScreen('trains')" id="mah-station-chip" style="display:none"></span>
+    <span class="mah-chip" onclick="showScreen('myarea')" id="mah-mp-chip" style="display:none"></span>
+  </div>
+  </div><!-- /app-sticky-wrap -->
 
   <!-- Details modal (phone + postcode) -->
   <div id="id-modal-overlay" onclick="if(event.target===this)_idModalClose()"
@@ -2312,8 +2352,39 @@
       </div><!-- /brief-col-main -->
       <div id="brief-col-side">
 
-      <!-- Context cards — school, spend, saves, trains rendered by _briefRenderContextCards -->
-      <div id="brief-context-cards" style="display:none;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+      <!-- ══ LANE: Urgent (priority score 80+ — school event today, active commute) ══ -->
+      <div id="lane-urgent" style="display:none;margin-bottom:4px">
+        <div class="home-lane-header">🔥 Live Now</div>
+        <!-- Context cards — school, spend, saves, trains rendered by _briefRenderContextCards -->
+        <div id="brief-context-cards" style="display:none;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+      </div>
+
+      <!-- ══ LANE: Evening wind-down (9pm–5am only) — recommendation #4 ══ -->
+      <div id="lane-evening" style="display:none;margin-bottom:14px">
+        <div class="home-lane-header">🌙 Evening</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onclick="_pillNav('saves')" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;cursor:pointer;text-align:left;font-family:inherit">
+            <span style="font-size:22px;flex-shrink:0">📌</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Your saves</div>
+              <div id="lane-evening-saves-sub" style="font-size:11px;color:var(--muted);margin-top:1px">Articles &amp; shows you clipped</div>
+            </div>
+            <span style="font-size:16px;color:var(--muted)">›</span>
+          </button>
+          <button onclick="showScreen('music')" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;cursor:pointer;text-align:left;font-family:inherit">
+            <span style="font-size:22px;flex-shrink:0">🎵</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Sleep playlist</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Wind down before bed</div>
+            </div>
+            <span style="font-size:16px;color:var(--muted)">›</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ══ LANE: Getting Around — trains, drive times, My Local (hidden after 9pm) ══ -->
+      <div id="lane-getting-around" style="display:none;margin-bottom:4px">
+        <div class="home-lane-header">🚗 Getting Around</div>
 
       <!-- Location-aware section — near you right now -->
       <div id="brief-location-section" style="display:none;margin-bottom:14px">
@@ -2342,6 +2413,24 @@
         <div id="brief-location-err" style="display:none;font-size:13px;color:var(--muted);padding:12px 0"></div>
         <div id="brief-nearby-results" style="display:none;flex-direction:column;gap:8px;margin-top:10px"></div>
       </div>
+
+      <!-- My Commute card container — rendered by JavaScript -->
+      <div id="brief-commute-card-container" style="margin-bottom:12px"></div>
+
+      </div><!-- /lane-getting-around -->
+
+      <!-- ══ LANE: Money — spend + saves (hidden after 9pm, per MIRU_STEERING night rule) ══ -->
+      <div id="lane-money" style="display:none;margin-bottom:4px">
+        <div class="home-lane-header">💷 Money</div>
+
+      <!-- Spend card container — rendered by JavaScript -->
+      <div id="brief-spend-card-container" style="margin-bottom:12px"></div>
+
+      </div><!-- /lane-money -->
+
+      <!-- ══ LANE: More Tools — icon grid, gated per-module ══ -->
+      <div id="lane-tools" style="margin-bottom:4px">
+        <div class="home-lane-header">🧰 More Tools</div>
 
       <!-- Tools — LIVE NOW widget rows + small grid -->
       <div id="brief-tools-wrap" style="margin-bottom:16px">
@@ -2443,11 +2532,7 @@
         </div>
       </div>
 
-      <!-- My Commute card container — rendered by JavaScript -->
-      <div id="brief-commute-card-container" style="margin-bottom:12px"></div>
-
-      <!-- Spend card container — rendered by JavaScript -->
-      <div id="brief-spend-card-container" style="margin-bottom:12px"></div>
+      </div><!-- /lane-tools -->
 
       <!-- Weekend snippet: Receipt-style card (shown after LIVE NOW) -->
       <div id="weekend-snippet" style="display:none;margin-bottom:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:14px;font-size:13px">
@@ -2455,6 +2540,35 @@
           🎉 Weekend Out
         </div>
         <div id="snippet-content" style="color:var(--text);line-height:1.7;font-family:monospace;font-size:12px;display:grid;gap:6px"></div>
+      </div>
+
+      <!-- ══ LANE: Explore — collapsed by default. Separate products (Intel, AI World) live here, ══ -->
+      <!-- ══ not mixed into the daily Miru brief — recommendation #5.                              ══ -->
+      <div id="lane-explore" style="margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+        <button onclick="_exploreLaneToggle()" style="width:100%;background:none;border:none;padding:13px 16px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;font-family:inherit">
+          <span style="font-size:12px;font-weight:800;color:var(--text);flex:1">📊 Explore Intelligence &amp; AI World</span>
+          <span id="lane-explore-chevron" style="font-size:12px;color:var(--muted);transition:transform .2s">▾</span>
+        </button>
+        <div id="lane-explore-body" style="display:none;padding:0 12px 12px;flex-direction:column;gap:8px">
+          <a href="https://intel.humanagency.co" target="_blank" rel="noopener"
+            style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:14px;text-decoration:none">
+            <span style="font-size:22px;flex-shrink:0">🧠</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:800;color:#fff">Intel</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:1px">Brand &amp; company intelligence</div>
+            </div>
+            <span style="font-size:14px;color:rgba(255,255,255,.5)">↗</span>
+          </a>
+          <a href="https://ai.humanagency.co" target="_blank" rel="noopener"
+            style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:14px;text-decoration:none">
+            <span style="font-size:22px;flex-shrink:0">🤖</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:800;color:#fff">AI World</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:1px">AI literacy &amp; tools</div>
+            </div>
+            <span style="font-size:14px;color:rgba(255,255,255,.5)">↗</span>
+          </a>
+        </div>
       </div>
 
       <!-- WhatsApp — compact showcase card -->
@@ -5778,7 +5892,94 @@
       var sc = document.getElementById("brief-spend-card-container");
       if (sc) sc.innerHTML = "";
     }
+    if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
+    if (typeof _homeLanesApply === "function") _homeLanesApply();
   }
+
+  // ── Home lanes: priority scoring + night-mode wind-down + module gating ────
+  // Recommendations #1, #2, #4, #6 — MIRU_STEERING.md "Priority Scoring System"
+  var _MIRU_PRIORITY_SCORES = {
+    school:   90,  // School event — school configured + event today
+    commute:  85,  // Active commute — weekday 6-10am + saved commute
+    delivery: 70,  // Delivery today — arrives within 24h
+    spend:    60,  // Spend anomaly — 1.5-2x weekly average
+    calendar: 50,  // Calendar event — next 2 hours
+    weather:  40,  // Weather alert — severe only
+    recurring: 30, // Recurring activity — regular pattern
+  };
+  window._MIRU_PRIORITY_SCORES = _MIRU_PRIORITY_SCORES;
+
+  function _exploreLaneToggle() {
+    var body = document.getElementById("lane-explore-body");
+    var chev = document.getElementById("lane-explore-chevron");
+    if (!body) return;
+    var open = body.style.display !== "none";
+    body.style.display = open ? "none" : "flex";
+    if (chev) chev.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
+  }
+
+  function _homeLanesIsNight() {
+    // Prefer the server-computed flag (correct even if the device clock is wrong);
+    // fall back to local hour so lanes still respond before the first fetch completes.
+    if (window._briefData && typeof window._briefData.is_night_mode === "boolean") {
+      return window._briefData.is_night_mode;
+    }
+    var h = new Date().getHours();
+    return h >= 21 || h < 5;
+  }
+
+  function _homeLanesApply() {
+    var isNight = _homeLanesIsNight();
+    window._briefIsNightMode = isNight;
+
+    // Module Awareness (#6) — a lane with no enabled module inside it is hidden outright,
+    // regardless of time of day.
+    var maOn      = (typeof _moduleEnabled === "function") ? _moduleEnabled("myarea")  : true;
+    var commuteOn = (typeof _moduleEnabled === "function") ? _moduleEnabled("commute") : true;
+    var spendOn   = (typeof _moduleEnabled === "function") ? _moduleEnabled("spend")   : true;
+    var savesOn   = (typeof _moduleEnabled === "function") ? _moduleEnabled("saves")   : true;
+    var schoolOn  = (typeof _moduleEnabled === "function") ? _moduleEnabled("school")  : true;
+
+    // 🔥 Live Now — school/commute context cards (score ≥ 80). Always available if the
+    // rendered content has anything in it; night-mode already strips trains/commute out of
+    // brief-context-cards itself (see _briefRenderContextCards), so just gate on content.
+    var laneUrgent = document.getElementById("lane-urgent");
+    var ctxCards   = document.getElementById("brief-context-cards");
+    if (laneUrgent) {
+      var hasUrgentContent = ctxCards && ctxCards.innerHTML.trim().length > 0 && (schoolOn || commuteOn);
+      laneUrgent.style.display = hasUrgentContent ? "block" : "none";
+    }
+
+    // 🌙 Evening — only lane shown in place of Getting Around / Money after 9pm
+    var laneEvening = document.getElementById("lane-evening");
+    if (laneEvening) laneEvening.style.display = (isNight && savesOn) ? "block" : "none";
+    var eveSavesSub = document.getElementById("lane-evening-saves-sub");
+    if (eveSavesSub && window._briefData && Array.isArray(window._briefData.evening_saves)) {
+      var n = window._briefData.evening_saves.length;
+      eveSavesSub.textContent = n ? (n + " new since you last checked") : "Articles & shows you clipped";
+    }
+
+    // 🚗 Getting Around — trains/drive times/My Local. Hidden after 9pm (MIRU_STEERING:
+    // "Trains — hide, Drive times — hide" at night) and hidden if the myarea+commute modules
+    // are both off.
+    var laneGetting = document.getElementById("lane-getting-around");
+    if (laneGetting) {
+      laneGetting.style.display = (!isNight && (maOn || commuteOn)) ? "block" : "none";
+    }
+
+    // 💷 Money — spend + saves. Hidden after 9pm (steering: only weather/saves shown at night)
+    // and hidden if spend module is off (saves still lives in the Evening lane at night).
+    var laneMoney = document.getElementById("lane-money");
+    if (laneMoney) {
+      laneMoney.style.display = (!isNight && spendOn) ? "block" : "none";
+    }
+
+    // 🧰 More Tools — always available as an access point, but individual tiles inside it
+    // are still hidden per-module by _applyModuleVisibility()'s id map.
+    var laneTools = document.getElementById("lane-tools");
+    if (laneTools) laneTools.style.display = "block";
+  }
+  window._homeLanesApply = _homeLanesApply;
 
   // ── Settings → Modules section ──────────────────────────────────────────────
   var _MODULE_DEFS = [
@@ -5889,7 +6090,69 @@
         if (pcLbl && label) pcLbl.textContent = `${pc} · ${label}`;
       });
     }
+    if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
   }
+
+  // ── My Area header — sticky location anchor (postcode + weather + nearest station + MP) ──
+  // Recommendation #3: postcode never scrolls away. Lives in #app-sticky-wrap alongside the
+  // header + identity bar. Weather/station come from the already-fetched brief context (no
+  // extra API calls); MP comes from the existing /api/mp endpoint, cached 24h client-side.
+  function _myAreaHeaderRender() {
+    var bar = document.getElementById("myarea-header");
+    if (!bar) return;
+    var pc = _miruPostcode();
+    // Module Awareness (recommendation #6): hidden entirely if user disabled My Area, or has no postcode yet
+    if (!pc || (typeof _moduleEnabled === "function" && !_moduleEnabled("myarea"))) {
+      bar.style.display = "none";
+      return;
+    }
+    bar.style.display = "flex";
+
+    var pcChip = document.getElementById("mah-pc-chip");
+    if (pcChip) pcChip.textContent = "📍 " + pc;
+
+    var ctx = window._briefData && window._briefData.context;
+
+    // Weather chip
+    var wxChip = document.getElementById("mah-wx-chip");
+    var wx = ctx && ctx.weather;
+    if (wxChip) {
+      if (wx && wx.temp !== undefined) {
+        var icon = (typeof _wCode === "function") ? _wCode(wx.code || 0) : "🌤️";
+        wxChip.textContent = icon + " " + Math.round(wx.temp) + "°C";
+        wxChip.style.display = "inline-flex";
+      } else {
+        wxChip.style.display = "none";
+      }
+    }
+
+    // Nearest station chip — reuses the home departure station already resolved for the commute card
+    var stChip = document.getElementById("mah-station-chip");
+    if (stChip) {
+      var stationName = ctx && ctx.trains && ctx.trains.from;
+      var commuteOn = (typeof _moduleEnabled === "function") ? _moduleEnabled("commute") : true;
+      if (stationName && commuteOn) {
+        stChip.textContent = "🚉 " + stationName;
+        stChip.style.display = "inline-flex";
+      } else {
+        stChip.style.display = "none";
+      }
+    }
+
+    // MP chip — cached 24h, keyed by postcode
+    var mpChip = document.getElementById("mah-mp-chip");
+    if (mpChip) {
+      mpChip.textContent = "🏛️ MP";
+      mpChip.style.display = "inline-flex";
+      if (typeof _maFetchCached === "function") {
+        _maFetchCached("mp_header_" + pc, "/api/mp?postcode=" + encodeURIComponent(pc), 86400, function(d) {
+          if (d && d.name && !d.error) mpChip.textContent = "🏛️ " + d.name;
+        });
+      }
+    }
+  }
+  function _myAreaHeaderWeatherTap() { showHome(); }
+  window._myAreaHeaderRender = _myAreaHeaderRender;
 
   function _idOpenModal(focusField) {
     document.getElementById("id-modal-phone").value = _miruPhone() || "";
@@ -18360,6 +18623,10 @@ let _savesAll = [];
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
 
+          // Lanes: night-mode wind-down + module gating + My Area header (recommendations #2, #3, #4, #6)
+          if (typeof _homeLanesApply === "function") _homeLanesApply();
+          if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
+
           // Load and render weekly summary
           (async function() {
             try {
@@ -18382,6 +18649,9 @@ let _savesAll = [];
           clearTimeout(_briefTimeoutId);
           if (shimmer) shimmer.style.display = "none";
           if (briefText) { briefText.textContent = "Couldn't load your brief — check your connection."; briefText.style.display = "block"; }
+          // Fall back to local-time lane visibility since the server flag never arrived.
+          if (typeof _homeLanesApply === "function") _homeLanesApply();
+          if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
           _briefRequestLocation();
         });
     }

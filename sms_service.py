@@ -15499,6 +15499,10 @@ def api_home_brief():
     # Goodnight hours (23:00–05:00) and GPS requests are never served from cache
     _cur_hour = _dt.now(_LDN).hour
     _is_goodnight_hour = _cur_hour >= 23 or _cur_hour < 5
+    # Wind-down mode (MIRU_STEERING.md "Night (9pm+)" rule) — computed fresh from
+    # server time on every response (not cached) so a brief cached just before 9pm
+    # never serves a stale is_night_mode:false after the boundary.
+    _is_night_mode = _cur_hour >= 21 or _cur_hour < 5
     force_refresh = request.args.get("refresh", "") == "1" or _is_goodnight_hour or has_location
 
     # Send current hour to frontend so it uses server time instead of browser time
@@ -15590,6 +15594,8 @@ def api_home_brief():
         result["context"]        = ctx
         result["active_trip"]    = _active_trip_early
         result["school_holiday"] = _school_holiday_now
+        result["is_night_mode"]  = _is_night_mode
+        result["response_time_hour"] = _cur_hour
         return jsonify(result)
 
     ctx: dict = {}
@@ -17532,6 +17538,7 @@ def api_home_brief():
 
     result["today_events"] = _final_cal
     result["response_time_hour"] = _response_time_hour  # Include server hour so frontend can use correct time
+    result["is_night_mode"] = _is_night_mode  # 9pm-5am wind-down — frontend hides commute/spend lanes, shows saves/leisure
 
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
