@@ -372,15 +372,15 @@ Keep responses concise (2-3 sentences max). Ask one question at a time. Be conve
             "content": message
         })
 
-        # Call Groq
+        # Call Groq (use /openai/v1 endpoint that works)
         response = requests.post(
-            "https://api.groq.com/v1/chat/completions",
+            "https://api.groq.com/openai/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": "mixtral-8x7b-32768",
+                "model": "llama-3.1-8b-instant",
                 "messages": messages,
                 "temperature": 0.7,
                 "max_tokens": 300
