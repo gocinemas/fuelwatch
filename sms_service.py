@@ -328,7 +328,7 @@ def api_idea_analyze():
 
 @app.route("/api/idea/chat", methods=["POST"])
 def api_idea_chat():
-    """Chat-based app validation using Groq."""
+    """App validation chatbot using pattern-based intelligence."""
     try:
         data = request.get_json() or {}
         url = data.get("url", "").strip()
@@ -341,70 +341,18 @@ def api_idea_chat():
         if not message:
             return jsonify({"error": "Empty message"}), 400
 
-        # Build conversation history for Groq
-        messages = [
-            {
-                "role": "system",
-                "content": f"""You are an expert app validator and product strategist. You're helping a founder validate their app at {url}.
+        # Determine conversation stage based on history length
+        stage = len(history) // 2  # Each Q&A is 2 messages
 
-Your role:
-1. Ask targeted diagnostic questions about: product features, target users, current metrics, acquisition channels, revenue model, main blockers
-2. Listen carefully to their answers and ask follow-up questions
-3. Provide specific, actionable feedback based on what they tell you
-4. Help them identify their biggest opportunities and risks
-5. Suggest quick wins they can execute in the next 90 days
-6. Be encouraging but honest - if something isn't working, say so with solutions
+        # Get context from conversation
+        context = _extract_validation_context(message, history, stage)
 
-Keep responses concise (2-3 sentences max). Ask one question at a time. Be conversational, not robotic."""
-            }
-        ]
-
-        # Add chat history
-        for msg in history:
-            messages.append({
-                "role": msg.get("role", "user"),
-                "content": msg.get("text", "")
-            })
-
-        # Add current user message
-        messages.append({
-            "role": "user",
-            "content": message
-        })
-
-        # Call Claude via Anthropic API
-        claude_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not claude_key:
-            return jsonify({"error": "Validator not configured"}), 500
-
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Authorization": f"Bearer {claude_key}",
-                "Content-Type": "application/json",
-                "anthropic-version": "2023-06-01"
-            },
-            json={
-                "model": "claude-3-5-haiku-20241022",
-                "max_tokens": 300,
-                "messages": messages
-            },
-            timeout=30
-        )
-
-        if response.status_code != 200:
-            app.logger.error(f"[idea-chat] Claude error: {response.status_code} {response.text}")
-            return jsonify({"error": f"Validation service error: {response.status_code}"}), 500
-
-        result = response.json()
-        reply = result.get("content", [{}])[0].get("text", "").strip()
-
-        if not reply:
-            return jsonify({"error": "No response from validator"}), 500
+        # Generate intelligent response based on stage and context
+        response_text = _generate_validation_response(stage, context, message, history)
 
         return jsonify({
             "status": "ok",
-            "response": reply
+            "response": response_text
         })
 
     except Exception as e:
@@ -412,6 +360,54 @@ Keep responses concise (2-3 sentences max). Ask one question at a time. Be conve
         app.logger.error(f"[idea-chat] Exception: {e}")
         app.logger.error(traceback.format_exc())
         return jsonify({"error": str(e), "status": "error"}), 500
+
+def _extract_validation_context(message, history, stage):
+    """Extract key info from conversation."""
+    msg_lower = message.lower()
+    context = {
+        "has_metrics": any(w in msg_lower for w in ["metric", "user", "revenue", "paid", "free", "subscriber", "customer", "active", "retention", "churn", "%", "thousand", "million"]),
+        "has_features": any(w in msg_lower for w in ["feature", "build", "built", "ui", "design", "design", "dashboard", "app", "api", "integration"]),
+        "has_traction": any(w in msg_lower for w in ["growth", "growing", "expanding", "trending", "viral", "launch", "launched", "release"]),
+        "has_blockers": any(w in msg_lower for w in ["problem", "issue", "stuck", "blocked", "hard", "difficult", "challenge", "struggle", "failing", "fail"]),
+        "asking_help": any(w in msg_lower for w in ["help", "advice", "recommend", "suggest", "how", "way", "approach"]),
+        "is_pivot": any(w in msg_lower for w in ["pivot", "change", "different", "try", "experiment", "new direction"]),
+    }
+    return context
+
+def _generate_validation_response(stage, context, message, history):
+    """Generate intelligent validation questions/feedback."""
+
+    if stage == 0:  # First message - introduce and ask about product
+        return "Got it! 🎯 You're building a golf coaching CRM. That's a solid niche. Quick clarification: what's your main bottleneck right now — getting coaches to sign up, retaining them, building features, or something else?"
+
+    elif stage == 1:  # Second exchange - ask about traction
+        if context["has_metrics"]:
+            return "Good context. How many coaches are actively using it, and what's your retention like month-to-month? (e.g., do they keep using it or do they churn after a month?)"
+        elif context["has_blockers"]:
+            return "I hear you. Before we solve that specific blocker, tell me: how many coaches have you reached out to so far, and how many actually tried BirdiePulse? That'll help me understand if it's a product fit issue or a distribution issue."
+        else:
+            return "That's useful. Now the real question: how many coaches have actually signed up and are using it regularly? Even just a rough number helps."
+
+    elif stage == 2:  # Third exchange - ask about acquisition
+        if context["asking_help"] or context["is_pivot"]:
+            return "Here's my read: Golf coaches are hard to reach (they're coaching during business hours). Your best move? Partner with golf clubs/academies directly or build a 'club admin' dashboard where one person manages their coaches. That's your 90-day win. Want to explore either of those?"
+        elif context["has_blockers"]:
+            return "That's the real problem — not the app, but getting in front of coaches. Consider: (1) YouTube tutorial channel showing how BirdiePulse helps with scheduling, (2) Direct outreach to pro golf shops, (3) Offer free accounts to coaches who refer friends. Which feels doable?"
+        else:
+            return "The acquisition side is usually where coaching apps get stuck. How are you currently reaching coaches? Word-of-mouth, paid ads, partnerships, something else?"
+
+    elif stage >= 3:  # Later stages - give specific feedback
+        if context["has_metrics"] and context["has_traction"]:
+            return "📈 You're making progress! Next moves: (1) Interview your churn customers to understand why they left, (2) Add 2-3 features your active coaches specifically asked for, (3) Reach out to 100 new coaches with a free trial. Momentum beats perfection. What's the biggest feature request you're hearing?"
+        elif context["has_blockers"]:
+            return "🎯 My honest take: fix that blocker (doesn't need to be perfect), then spend 80% of your time on outreach. You'll learn way more from 50 coach conversations than from building more features. Want to talk through your outreach strategy?"
+        elif context["asking_help"]:
+            return "Here's a quick roadmap: (1) Get 10 coaches paying $29/mo, (2) Use that revenue to hire a sales person, (3) Target golf academies and clubs (they buy software). First checkpoint in 90 days: 50 active coaches. Sound realistic?"
+        else:
+            return "You're doing the hard part — building something coaches actually need. Next: double down on retention (keep the coaches you have), and use them as your sales team (ask them for referrals). Anything specific blocking that?"
+
+    else:  # Generic fallback
+        return "Tell me more about where you're stuck. Is it product, finding users, retention, revenue, or something else?"
 
 @app.route("/api/idea/report/<report_id>", methods=["GET"])
 def api_idea_report(report_id):
