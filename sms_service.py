@@ -17379,10 +17379,29 @@ def api_home_brief():
     )
 
     if is_minimal:
-        smart_brief = _build_super_smart_brief(ctx, prefs, hour, dow, _school_holiday_now, _loc_classification, weather, now, _active_trip_early, None)
-        if len(smart_brief) > len(brief_text.strip()):  # Only use if it's actually better
-            brief_text = smart_brief
-        app.logger.info(f"[brief] Using smart fallback: {brief_text[:60]}...")
+        # Try NarrativeGenerator first (proper AI narrative)
+        try:
+            from miru.brief import NarrativeGenerator
+            app.logger.info(f"[brief] Attempting NarrativeGenerator with {len(facts)} facts...")
+            narrative = NarrativeGenerator.generate(
+                facts=facts,
+                mode="out",  # Use neutral mode
+                dow=dow,
+                tod=tod,
+                kids=kids,
+            )
+            if narrative and len(narrative.strip()) > 10:
+                brief_text = narrative
+                app.logger.info(f"[brief] NarrativeGenerator success: {brief_text[:60]}...")
+            else:
+                # Fallback to smart brief if narrative is empty
+                raise Exception("NarrativeGenerator returned empty")
+        except Exception as ng_err:
+            app.logger.warning(f"[brief] NarrativeGenerator failed: {ng_err}, using smart fallback...")
+            smart_brief = _build_super_smart_brief(ctx, prefs, hour, dow, _school_holiday_now, _loc_classification, weather, now, _active_trip_early, None)
+            if len(smart_brief) > len(brief_text.strip()):  # Only use if it's actually better
+                brief_text = smart_brief
+            app.logger.info(f"[brief] Using smart fallback: {brief_text[:60]}...")
 
     # Feedbin is web-dashboard only (not in brief)
 
