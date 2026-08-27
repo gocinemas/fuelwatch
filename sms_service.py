@@ -372,28 +372,32 @@ Keep responses concise (2-3 sentences max). Ask one question at a time. Be conve
             "content": message
         })
 
-        # Call Groq (use /openai/v1 endpoint that works)
+        # Call Claude via Anthropic API
+        claude_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not claude_key:
+            return jsonify({"error": "Validator not configured"}), 500
+
         response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
+            "https://api.anthropic.com/v1/messages",
             headers={
-                "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-                "Content-Type": "application/json"
+                "Authorization": f"Bearer {claude_key}",
+                "Content-Type": "application/json",
+                "anthropic-version": "2023-06-01"
             },
             json={
-                "model": "llama-3.1-8b-instant",
-                "messages": messages,
-                "temperature": 0.7,
-                "max_tokens": 300
+                "model": "claude-3-5-haiku-20241022",
+                "max_tokens": 300,
+                "messages": messages
             },
             timeout=30
         )
 
         if response.status_code != 200:
-            app.logger.error(f"[idea-chat] Groq error: {response.status_code} {response.text}")
+            app.logger.error(f"[idea-chat] Claude error: {response.status_code} {response.text}")
             return jsonify({"error": f"Validation service error: {response.status_code}"}), 500
 
         result = response.json()
-        reply = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        reply = result.get("content", [{}])[0].get("text", "").strip()
 
         if not reply:
             return jsonify({"error": "No response from validator"}), 500
