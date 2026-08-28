@@ -978,14 +978,15 @@
     </div>
   </div>
 
-  <!-- My Area header — weather + nearest station + MP, populated by _myAreaHeaderRender().
+  <!-- My Area header — weather + nearest station + train status, populated by _myAreaHeaderRender().
        Postcode itself lives in the identity bar above, which is now part of this same sticky
        wrap — so it's already a persistent anchor; this row adds the extra local context. -->
   <div id="myarea-header" style="display:none">
     <span class="mah-chip mah-pc" onclick="_idOpenModal('postcode')" id="mah-pc-chip">📍 —</span>
     <span class="mah-chip" onclick="_myAreaHeaderWeatherTap()" id="mah-wx-chip" style="display:none"></span>
     <span class="mah-chip" onclick="showScreen('trains')" id="mah-station-chip" style="display:none"></span>
-    <span class="mah-chip" onclick="showScreen('myarea')" id="mah-mp-chip" style="display:none"></span>
+    <span class="mah-chip" onclick="showScreen('trains')" id="mah-train-status-chip" style="display:none"></span>
+    <span class="mah-chip" onclick="_bannerTap()" id="mah-banner-chip" style="display:none;max-width:200px;overflow:hidden;text-overflow:ellipsis"></span>
   </div>
   </div><!-- /app-sticky-wrap -->
 
@@ -6501,10 +6502,10 @@
     if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
   }
 
-  // ── My Area header — sticky location anchor (postcode + weather + nearest station + MP) ──
+  // ── My Area header — sticky location anchor (postcode + weather + nearest station + train status) ──
   // Recommendation #3: postcode never scrolls away. Lives in #app-sticky-wrap alongside the
-  // header + identity bar. Weather/station come from the already-fetched brief context (no
-  // extra API calls); MP comes from the existing /api/mp endpoint, cached 24h client-side.
+  // header + identity bar. Weather/station/train status all come from the already-fetched
+  // brief context (window._briefData.context) — no extra API calls.
   function _myAreaHeaderRender() {
     var bar = document.getElementById("myarea-header");
     if (!bar) return;
@@ -6547,20 +6548,77 @@
       }
     }
 
-    // MP chip — cached 24h, keyed by postcode
-    var mpChip = document.getElementById("mah-mp-chip");
-    if (mpChip) {
-      mpChip.textContent = "🏛️ MP";
-      mpChip.style.display = "inline-flex";
-      if (typeof _maFetchCached === "function") {
-        _maFetchCached("mp_header_" + pc, "/api/mp?postcode=" + encodeURIComponent(pc), 86400, function(d) {
-          if (d && d.name && !d.error) mpChip.textContent = "🏛️ " + d.name;
-        });
+    // Train status badge — reads ctx.trains.departures[0].status
+    // No new API calls, already fetched data, safe to ship
+    var trainChip = document.getElementById("mah-train-status-chip");
+    if (trainChip) {
+      var trains = ctx && ctx.trains;
+      if (trains && trains.departures && trains.departures.length > 0) {
+        var status = trains.departures[0].status || "";
+        var icon = "🚆";
+        var display = "On time";
+
+        if (status.toLowerCase().includes("cancelled")) {
+          icon = "❌";
+          display = "Cancelled";
+        } else if (status.toLowerCase().includes("exp")) {
+          // Extract time from "Exp HH:MM"
+          var match = status.match(/(\d{1,2}):(\d{2})/);
+          display = match ? "Exp " + match[1] + ":" + match[2] : "Delayed";
+          icon = "⏰";
+        }
+
+        trainChip.textContent = icon + " " + display;
+        trainChip.style.display = "inline-flex";
+      } else {
+        trainChip.style.display = "none";
       }
     }
   }
   function _myAreaHeaderWeatherTap() { showHome(); }
   window._myAreaHeaderRender = _myAreaHeaderRender;
+
+  // ── Rotating contextual banner (mah-banner-chip) — school/holiday/calendar/bank-holiday/
+  // location/rain chips from d.banner_items, auto-rotating every 8s. Independent of trains. ──
+  var _bannerItems = [];
+  var _bannerIdx = 0;
+  var _bannerTimer = null;
+
+  function _renderBanner(items) {
+    var chip = document.getElementById("mah-banner-chip");
+    if (!chip) return;
+    _bannerItems = (Array.isArray(items) ? items : []).filter(function(it) { return it && it.text; });
+    if (_bannerTimer) { clearInterval(_bannerTimer); _bannerTimer = null; }
+    if (!_bannerItems.length) {
+      chip.style.display = "none";
+      return;
+    }
+    _bannerIdx = 0;
+    chip.style.display = "inline-flex";
+    _showBannerItem(0);
+    if (_bannerItems.length > 1) {
+      _bannerTimer = setInterval(function() {
+        _bannerIdx = (_bannerIdx + 1) % _bannerItems.length;
+        _showBannerItem(_bannerIdx);
+      }, 8000);
+    }
+  }
+
+  function _showBannerItem(i) {
+    var chip = document.getElementById("mah-banner-chip");
+    var item = _bannerItems[i];
+    if (!chip || !item) return;
+    chip.textContent = (item.emoji ? item.emoji + " " : "") + (item.text || "");
+  }
+
+  function _bannerTap() {
+    var item = _bannerItems[_bannerIdx];
+    var action = item && item.action;
+    if (action === "school") showScreen("school");
+    else if (action === "myarea") showScreen("myarea");
+    else showScreen("brief"); // "home" (and any unrecognised action) → brief is the home screen
+  }
+  window._renderBanner = _renderBanner;
 
   function _idOpenModal(focusField) {
     document.getElementById("id-modal-phone").value = _miruPhone() || "";
@@ -19034,6 +19092,7 @@ let _savesAll = [];
           // Lanes: night-mode wind-down + module gating + My Area header (recommendations #2, #3, #4, #6)
           if (typeof _homeLanesApply === "function") _homeLanesApply();
           if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
+          if (typeof _renderBanner === "function") _renderBanner(d.banner_items || []);
 
           // Load and render weekly summary
           (async function() {
@@ -19060,6 +19119,7 @@ let _savesAll = [];
           // Fall back to local-time lane visibility since the server flag never arrived.
           if (typeof _homeLanesApply === "function") _homeLanesApply();
           if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
+          if (typeof _renderBanner === "function") _renderBanner([]);
           _briefRequestLocation();
         });
     }
