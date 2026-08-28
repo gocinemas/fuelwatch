@@ -978,11 +978,10 @@
     </div>
   </div>
 
-  <!-- My Area header — weather + nearest station + train status, populated by _myAreaHeaderRender().
-       Postcode itself lives in the identity bar above, which is now part of this same sticky
-       wrap — so it's already a persistent anchor; this row adds the extra local context. -->
+  <!-- My Area header — weather + nearest station + train status + rotating banner.
+       Postcode + area name already in identity bar above (no duplication).
+       This row adds weather, trains, and contextual info. -->
   <div id="myarea-header" style="display:none">
-    <span class="mah-chip mah-pc" onclick="_idOpenModal('postcode')" id="mah-pc-chip">📍 —</span>
     <span class="mah-chip" onclick="_myAreaHeaderWeatherTap()" id="mah-wx-chip" style="display:none"></span>
     <span class="mah-chip" onclick="showScreen('trains')" id="mah-station-chip" style="display:none"></span>
     <span class="mah-chip" onclick="showScreen('trains')" id="mah-train-status-chip" style="display:none"></span>
@@ -6516,9 +6515,6 @@
       return;
     }
     bar.style.display = "flex";
-
-    var pcChip = document.getElementById("mah-pc-chip");
-    if (pcChip) pcChip.textContent = "📍 " + pc;
 
     var ctx = window._briefData && window._briefData.context;
 
