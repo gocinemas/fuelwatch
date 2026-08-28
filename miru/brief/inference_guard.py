@@ -1,7 +1,8 @@
 """InferenceGuard — validates facts before LLM (prevents hallucinations)."""
 
 from typing import List, Optional
-from ..core.types import BriefContext, DateFormatter, CurrencyFormatter
+from ..core.types import BriefContext
+from ..core.formatting import DateFormatter, CurrencyFormatter
 import logging
 
 logger = logging.getLogger(__name__)

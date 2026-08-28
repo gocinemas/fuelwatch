@@ -17651,11 +17651,18 @@ def api_home_brief():
     elif time_mode == "morning_commute":
         _dep_note = (f" (usually leaves around {_learned_departure}:00)"
                      if _learned_departure else "")
+        _bh_morning_note = (
+            " It's a long weekend if there's a bank holiday coming up — say so." if is_long_weekend else
+            " There's a bank holiday today." if bank_holiday_today else ""
+        )
         prompt_parts.append(
             f"{_loc_preamble}"
-            f"Write a sharp, practical 2-sentence morning brief for a UK commuter. "
-            f"It's {dow} morning{_dep_note}. "
-            f"Use weather, trains, calendar, fuel, spend facts if provided."
+            f"Write like Miru — a sharp, warm British friend texting a quick 2-3 sentence morning brief, "
+            f"not a fact dump. It's {dow} morning{_dep_note}.{_bh_morning_note} "
+            f"Use weather, trains, calendar, fuel, spend facts if provided. "
+            f"Celebrate a genuine win in the facts (spend down, on-time trains, good fuel price) briefly. "
+            f"Flag a genuine risk (delays, spend up, price spikes) plainly, without judgement. "
+            f"End with ONE short, practical recommendation grounded only in the facts. Address them as 'you'."
         )
     elif time_mode == "evening_leisure":
         outdoor_note = ""
@@ -17795,9 +17802,13 @@ def api_home_brief():
         _events_note = f"Events today: {len(_cal_events)} scheduled." if _cal_events else "ZERO events scheduled today — do NOT mention or invent any events."
         prompt_parts.append(
             f"{_loc_preamble}"
-            f"Write a natural 2-sentence brief for a UK user. It's {dow} {_tod_label}, {hour}:{now.minute:02d}. "
+            f"Write like Miru — a sharp, warm British friend texting a quick 2-3 sentence brief, not a "
+            f"fact dump. It's {dow} {_tod_label}, {hour}:{now.minute:02d}. "
             f"{_events_note} "
             f"Do NOT invent events, places, or activities. Only reference facts given below. "
+            f"Celebrate a genuine win in the facts (spend down, savings) briefly; flag a genuine risk "
+            f"(spend up, price spikes) plainly, without judgement — only if such a fact is present. "
+            f"End with ONE short, practical line grounded only in the facts. "
             f"Write to the user directly ('you') — not as an assistant ('I can...')."
         )
         if _sunny_outdoor and loc_str:
@@ -17963,13 +17974,20 @@ def api_home_brief():
             f"- Event + Weather: if it's rainy and there's a field trip, suggest waterproof jacket. "
             f"- Event + Time: mention how soon (e.g., 'in 2 hours'). "
             f"- Event + Location: include station/transit if it's a journey. "
+            f"- Spend/savings + day: a low or down spend is a genuine win worth naming warmly; a spend "
+            f"spike or price jump is worth flagging plainly, without judgement — pick at most one. "
+            f"- Friday/weekend + bank holiday: name it as a long weekend if the facts say so. "
             f"But ONLY if all those facts are above. NO invention. "
             f"DO NOT mention parents' work, meetings, or personal appointments — only school events for the kids. "
             f"NEVER invent locations, activities, or suggestions not in the facts. "
         )
         prompt_parts.append(
-            f"Subtle, personal, British English. Sound like you know them. "
-            f"No greetings, no bullet points, no 'Great news'. Under 55 words. "
+            f"TONE: Write like Miru — a sharp, warm British friend texting a quick brief, not a dashboard "
+            f"reading facts aloud. Sound like you know them, be optimistic and practical, never corporate. "
+            f"Weave 2-3 facts together with a bit of insight rather than listing them one by one. "
+            f"End with ONE short, practical recommendation or forward-looking line grounded only in the "
+            f"facts above — never invent one. Max 1-2 emoji. "
+            f"No greetings, no bullet points, no 'Great news'. 2-3 sentences, under 60 words. "
             f"STRICT: only mention things from the facts above. "
             + _location_rule
         )
@@ -18104,8 +18122,8 @@ def api_home_brief():
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                              "Content-Type": "application/json"},
-                    json={"model": "llama-3.3-70b-versatile", "max_tokens": 120,
-                          "temperature": 0.3,
+                    json={"model": "llama-3.3-70b-versatile", "max_tokens": 140,
+                          "temperature": 0.6,
                           "messages": [{"role": "user", "content": prompt}]},
                     timeout=10,
                 )
@@ -18587,6 +18605,29 @@ def api_home_brief_narrative():
         facts = validated_facts
         app.logger.info(f"[brief/narrative] Facts after validation: {len(facts)} (was {len(body.get('facts', []))})")
 
+        # Long-weekend / bank-holiday context — cheap, cached lookup (shared
+        # cache key with /api/home/brief) so we can tell Groq "this is a long
+        # weekend" instead of it having to guess from a bare date.
+        _nwday = now.weekday()  # Mon=0 … Sun=6
+        _is_weekend = _nwday >= 5
+        _is_bh_tomorrow = False
+        _is_long_weekend = False
+        try:
+            _nbh_cached = _v2_brief_cache.get("uk_bank_holidays", {})
+            if _nbh_cached and _nbh_cached.get("dates") and time.time() - _nbh_cached.get("ts", 0) < 86400:
+                _nbh_dates = _nbh_cached["dates"]
+            else:
+                _nbh_r = requests.get("https://www.gov.uk/bank-holidays.json", timeout=5)
+                _nbh_dates = {e["date"] for e in _nbh_r.json().get("england-and-wales", {}).get("events", [])}
+                _v2_brief_cache["uk_bank_holidays"] = {"ts": time.time(), "dates": _nbh_dates}
+            _ntom_s = (now.date() + __import__("datetime").timedelta(days=1)).isoformat()
+            _nmon_delta = (7 - _nwday) % 7 or 7
+            _nmon_s = (now.date() + __import__("datetime").timedelta(days=_nmon_delta)).isoformat()
+            _is_bh_tomorrow = _ntom_s in _nbh_dates
+            _is_long_weekend = (_nmon_s in _nbh_dates) and _nwday >= 4  # Fri/Sat/Sun before BH Monday
+        except Exception:
+            pass
+
         # Generate using new pipeline
         narrative = NarrativeGenerator.generate(
             facts=facts,
@@ -18594,6 +18635,9 @@ def api_home_brief_narrative():
             dow=dow,
             tod=tod,
             kids=kids,
+            is_weekend=_is_weekend,
+            is_bank_holiday_tomorrow=_is_bh_tomorrow,
+            is_long_weekend=_is_long_weekend,
         )
 
         # Sanitize output
@@ -18668,21 +18712,23 @@ def api_home_brief_narrative():
         night_constraint = "- NIGHT-TIME RULE: It is NIGHT/BEDTIME. NEVER mention or suggest going out, buying, shopping, or any purchases. Only mention rest, sleep, or morning plans if in facts.\n"
 
     prompt_parts.append(
-        "CRITICAL CONSTRAINTS (ZERO TOLERANCE FOR HALLUCINATIONS):\n"
+        "TONE: Write like Miru — a sharp, warm British friend texting a quick brief, not a dashboard. "
+        "Recognise context (Friday + bank holiday tomorrow = long weekend; a quiet day is worth calling easy). "
+        "Celebrate genuine wins in the facts (spend down, savings, good deals) briefly and warmly. "
+        "Flag genuine risks in the facts (spend up, price spikes) plainly, without judgement. "
+        "End with ONE short, practical recommendation or forward-looking line, grounded only in the facts. "
+        "Address the user directly as 'you'. Max 1-2 emoji.\n"
         + night_constraint +
-        "- ONLY mention EXACT facts provided. Do NOT add ANY information from your training data.\n"
-        "- Do NOT invent, infer, or extrapolate about ANY events, activities, or people's needs.\n"
-        "- Do NOT use words like 'should', 'probably', 'still', 'maybe', 'might', 'could' — only state facts.\n"
+        "GROUNDING (still zero tolerance for hallucination):\n"
+        "- ONLY reference facts explicitly provided. Do NOT add ANY information from your training data.\n"
+        "- Do NOT invent, infer, or extrapolate events, activities, or people's needs beyond the facts.\n"
         "- Do NOT mention children/people by name UNLESS explicitly in facts above.\n"
-        "- Do NOT create context about past, present, or future beyond what's explicitly stated.\n"
-        "- Do NOT suggest activities, purchases, or actions beyond exact facts provided.\n"
+        "- Do NOT suggest activities, purchases, or actions that are not grounded in the facts provided.\n"
         "- Do NOT mention events, plans, or people that are NOT in the facts list.\n"
-        "- Each fact is limited to: [Person] has [Exact Event Title] on [Date] — nothing more.\n"
         "- IMPORTANT: When mentioning both savings (from clipped deals) AND spending (receipts), SEPARATE them clearly.\n"
         "  Savings = money saved from deals you clipped. Spending = actual money spent (petrol/groceries/restaurants).\n"
-        "  Format: 'Good deals clipped: £X. You've spent: £Y on [categories].' — do NOT mix them in one sentence.\n"
-        "- Sound like a smart PA. Concise, British English, under 40 words.\n"
-        "- No greetings, no bullet points, no suggestions, no inferences.\n"
+        "- No greetings, no bullet points, no corporate phrases ('as you can see', 'please note').\n"
+        "- 2-3 sentences max. Output ONLY the brief text.\n"
         "- REPEAT: If it's not in the facts above, DO NOT MENTION IT."
     )
     prompt = " ".join(prompt_parts)
@@ -18718,10 +18764,27 @@ def api_home_brief_narrative():
             safe_text = saying
         return jsonify({"text": safe_text})
 
-    # DAYTIME: Facts only, no Groq creative writing
-    fact_text = "; ".join(str(f) for f in facts[:4]) if facts else "No updates today."
-    app.logger.info(f"[brief/narrative] FACTS ONLY (daytime): {fact_text[:80]}")
-    return jsonify({"text": fact_text})
+    # DAYTIME: ask Groq to write the personality-driven brief; fall back to
+    # raw facts only if the call fails (used to always skip Groq here).
+    fallback_text = "; ".join(str(f) for f in facts[:4]) if facts else "No updates today."
+    try:
+        _r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.3-70b-versatile", "max_tokens": 120,
+                  "temperature": 0.6,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=10,
+        )
+        _brief_text = _r.json()["choices"][0]["message"]["content"].strip()
+        if not _brief_text:
+            _brief_text = fallback_text
+    except Exception as _fbe:
+        app.logger.warning(f"[brief/narrative] fallback-pipeline groq error: {_fbe}")
+        _brief_text = fallback_text
+    app.logger.info(f"[brief/narrative] FALLBACK PIPELINE (daytime): {_brief_text[:80]}")
+    return jsonify({"text": _brief_text})
 
 
 @app.route("/api/recipe", methods=["POST"])
@@ -41291,6 +41354,7 @@ def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
             if from_number:
                 futures["school"] = pool.submit(_v2_fetch_school, from_number)
                 futures["spend"] = pool.submit(_v2_fetch_spend, from_number)
+                futures["savings"] = pool.submit(_v2_fetch_savings_summary, from_number)
                 futures["saves"] = pool.submit(_v2_fetch_saves, from_number)
                 futures["calendar"] = pool.submit(_v2_fetch_calendar, from_number)
                 futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
@@ -41352,13 +41416,59 @@ def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
 
         fuel = ctx.get("fuel", {})
         if fuel and fuel.get("price"):
-            facts.append(f"⛽ Fuel: {fuel['price']}p/L")
+            change = f" ({fuel['change']})" if fuel.get("change") else ""
+            facts.append(f"⛽ Fuel: {fuel['price']}p/L{change}")
+
+        # Spend/savings — this is where the wins-to-celebrate and risks-to-flag
+        # actually live, so it belongs in the WhatsApp push too, not just the web brief.
+        savings = ctx.get("savings")
+        if savings and isinstance(savings, dict) and savings.get("status") == "ok":
+            try:
+                total_pence = savings.get("total_spent_pence", 0)
+                variance = savings.get("week_variance_pence", 0)
+                variance_dir = savings.get("variance_direction", "→")
+                if total_pence > 0:
+                    total_gbp = total_pence / 100
+                    variance_gbp = abs(variance) / 100
+                    facts.append(f"💰 This week: £{total_gbp:.2f} ({variance_dir}£{variance_gbp:.2f} vs last week)")
+            except Exception:
+                pass
+
+        # Long-weekend / bank-holiday context — cheap cached lookup, shared
+        # cache key with the other brief endpoints.
+        _is_bh_tomorrow = False
+        _is_long_weekend = False
+        try:
+            _mbh_cached = _v2_brief_cache.get("uk_bank_holidays", {})
+            if _mbh_cached and _mbh_cached.get("dates") and time.time() - _mbh_cached.get("ts", 0) < 86400:
+                _mbh_dates = _mbh_cached["dates"]
+            else:
+                _mbh_r = requests.get("https://www.gov.uk/bank-holidays.json", timeout=5)
+                _mbh_dates = {e["date"] for e in _mbh_r.json().get("england-and-wales", {}).get("events", [])}
+                _v2_brief_cache["uk_bank_holidays"] = {"ts": time.time(), "dates": _mbh_dates}
+            _mtom_s = (now.date() + __import__("datetime").timedelta(days=1)).isoformat()
+            _mmon_delta = (7 - wday) % 7 or 7
+            _mmon_s = (now.date() + __import__("datetime").timedelta(days=_mmon_delta)).isoformat()
+            _is_bh_tomorrow = _mtom_s in _mbh_dates
+            _is_long_weekend = (_mmon_s in _mbh_dates) and wday >= 4
+        except Exception:
+            pass
+        if _is_long_weekend:
+            facts.append("🎉 Long weekend — bank holiday Monday coming up")
+        elif _is_bh_tomorrow:
+            facts.append("🏛️ Bank holiday tomorrow")
 
         brief_text = "You're all set for today."
         if facts:
             prompt_parts = [
-                f"Write a sharp, practical 2-sentence morning brief for a UK commuter. "
-                f"It's {dow} morning. Use weather, trains, calendar, fuel, spend facts if provided.",
+                "You are Miru — a sharp, warm British friend texting a quick morning brief. "
+                f"It's {dow} morning. Write 2-3 short, conversational sentences, not a fact dump. "
+                "Recognise context (e.g. a bank holiday tomorrow means a long weekend — say so). "
+                "Celebrate genuine wins in the facts (spend down, savings) briefly and warmly. "
+                "Flag genuine risks (spend up, price spikes, bad weather) plainly, without judgement. "
+                "End with ONE short, practical recommendation grounded only in the facts below. "
+                "Address them as 'you'. Max 1-2 emoji. No greetings, no bullet points. "
+                "Never invent a place, event, or number not in the facts.",
                 f"Facts: {'; '.join(facts)}."
             ]
             prompt = " ".join(prompt_parts)
@@ -41370,7 +41480,7 @@ def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
                     json={
                         "model": "llama-3.3-70b-versatile",
                         "max_tokens": 120,
-                        "temperature": 0.3,
+                        "temperature": 0.6,
                         "messages": [{"role": "user", "content": prompt}]
                     },
                     timeout=10
@@ -41509,6 +41619,291 @@ def cron_refresh_fuel_prices():
 
     except Exception as e:
         app.logger.error(f"[cron-fuel] Error: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ────────────────────────────────────────────────────────────────────────
+# PROACTIVE SPEND + FUEL ALERTS — turn Miru from dashboard into coach
+# Reuses the Phase 3 motivation layer (motivation_prefs, fuel_alerts) rather
+# than inventing a parallel prefs store. Opt-in: motivation_prefs.budget_alerts_enabled.
+# See migrations/phase5_spend_alerts.sql for the columns this relies on.
+# ────────────────────────────────────────────────────────────────────────
+
+_SPEND_ALERT_DEFAULT_DAILY_PENCE = 3000    # £30 — used when a user hasn't set daily_target_pence
+_SPEND_ALERT_DEFAULT_WEEKLY_PENCE = 15000  # £150 — used when a user hasn't set weekly_target_pence
+_FUEL_SPIKE_THRESHOLD_PPL = float(os.environ.get("FUEL_SPIKE_THRESHOLD_PPL", 2.0))  # pence/litre
+
+
+def _spend_alerts_fetch_today_pence(wa: str) -> int:
+    """Today's receipt spend for a WhatsApp number, in pence. Same extraction
+    pattern as _v2_fetch_spend_this_week / weekly_savings_summary.get_weekly_savings
+    (🧾-prefixed wa_saves clippings, £-amount regex, dedup by date+amount)."""
+    try:
+        today_iso = date.today().isoformat()
+        rows = lib._sb().table("wa_saves").select("summary,title,created_at") \
+            .eq("from_number", wa) \
+            .gte("created_at", today_iso) \
+            .ilike("title", "🧾%") \
+            .execute().data or []
+
+        seen = set()
+        total_pence = 0
+        for r in rows:
+            created = (r.get("created_at") or "")[:10]
+            if created != today_iso:
+                continue
+            m = re.search(r'£([\d,]+\.?\d*)', (r.get("summary") or "") + (r.get("title") or ""))
+            if not m:
+                continue
+            try:
+                amount = float(m.group(1).replace(",", ""))
+            except ValueError:
+                continue
+            if amount <= 0:
+                continue
+            merchant = (r.get("title") or "").replace("🧾", "").strip()
+            if merchant.startswith("Online:"):
+                continue
+            key = (created, round(amount, 2), merchant)
+            if key in seen:
+                continue
+            seen.add(key)
+            total_pence += int(round(amount * 100))
+        return total_pence
+    except Exception as e:
+        app.logger.error(f"[spend-alerts] today-spend fetch error for {wa}: {e}")
+        return 0
+
+
+def _cron_spend_daily_check(test_wa: str = None) -> dict:
+    """Daily budget check — intended for 21:00. Sends a WhatsApp when today's
+    spend has exceeded the user's daily target. At most one send per calendar
+    day per user (guarded by motivation_prefs.last_daily_alert_date)."""
+    sb = lib._sb()
+    today_iso = date.today().isoformat()
+
+    if test_wa:
+        prefs_rows = sb.table("motivation_prefs").select("*").eq("wa", test_wa).execute().data or []
+    else:
+        prefs_rows = sb.table("motivation_prefs").select("*") \
+            .eq("budget_alerts_enabled", True).execute().data or []
+
+    sent = skipped = errors = 0
+    for row in prefs_rows:
+        wa = row.get("wa")
+        if not wa:
+            continue
+        try:
+            if not test_wa and row.get("last_daily_alert_date") == today_iso:
+                skipped += 1
+                continue
+
+            today_pence = _spend_alerts_fetch_today_pence(wa)
+            if today_pence <= 0:
+                skipped += 1
+                continue
+
+            target_pence = row.get("daily_target_pence") or _SPEND_ALERT_DEFAULT_DAILY_PENCE
+            if today_pence <= target_pence:
+                skipped += 1
+                continue
+
+            spent_gbp = today_pence / 100
+            budget_gbp = target_pence / 100
+            msg = (
+                f"💸 Oops! You've spent £{spent_gbp:.2f} today (budget: £{budget_gbp:.2f})."
+            )
+            _wa_send_proactive(wa, msg)
+            sb.table("motivation_prefs").update({"last_daily_alert_date": today_iso}) \
+                .eq("wa", wa).execute()
+            sent += 1
+        except Exception as e:
+            app.logger.error(f"[spend-alerts] daily check error for {wa}: {e}")
+            errors += 1
+
+    return {"check": "daily", "sent": sent, "skipped": skipped, "errors": errors, "checked": len(prefs_rows)}
+
+
+def _cron_spend_weekly_pace_check(test_wa: str = None) -> dict:
+    """Weekly budget pace check — intended for Sunday 19:00. Projects the
+    week's spend-so-far to a full 7 days and warns if that projection clears
+    the user's weekly target. At most one send per ISO week (guarded by
+    motivation_prefs.last_weekly_pace_alert_date)."""
+    from weekly_savings_summary import get_weekly_savings
+    sb = lib._sb()
+    today = date.today()
+    today_iso = today.isoformat()
+    days_elapsed = today.weekday() + 1  # Monday=1 .. Sunday=7
+
+    if test_wa:
+        prefs_rows = sb.table("motivation_prefs").select("*").eq("wa", test_wa).execute().data or []
+    else:
+        prefs_rows = sb.table("motivation_prefs").select("*") \
+            .eq("budget_alerts_enabled", True).execute().data or []
+
+    sent = skipped = errors = 0
+    for row in prefs_rows:
+        wa = row.get("wa")
+        if not wa:
+            continue
+        try:
+            if not test_wa and row.get("last_weekly_pace_alert_date") == today_iso:
+                skipped += 1
+                continue
+
+            savings = get_weekly_savings(wa)
+            if savings.get("status") != "ok":
+                skipped += 1
+                continue
+
+            spent_pence = savings.get("total_spent_pence", 0)
+            if spent_pence <= 0:
+                skipped += 1
+                continue
+
+            target_pence = row.get("weekly_target_pence") or _SPEND_ALERT_DEFAULT_WEEKLY_PENCE
+            projected_pence = int(spent_pence / days_elapsed * 7)
+            if projected_pence <= target_pence:
+                skipped += 1
+                continue
+
+            msg = (
+                f"📊 On pace for £{projected_pence/100:.2f} spend this week "
+                f"(vs. £{target_pence/100:.2f} target). Budget conscious week ahead?"
+            )
+            _wa_send_proactive(wa, msg)
+            sb.table("motivation_prefs").update({"last_weekly_pace_alert_date": today_iso}) \
+                .eq("wa", wa).execute()
+            sent += 1
+        except Exception as e:
+            app.logger.error(f"[spend-alerts] weekly pace check error for {wa}: {e}")
+            errors += 1
+
+    return {"check": "weekly", "sent": sent, "skipped": skipped, "errors": errors, "checked": len(prefs_rows)}
+
+
+def _cron_fuel_spike_check(test_wa: str = None) -> dict:
+    """Fuel spike check — intended for every 2h. Reuses the fuel_alerts
+    registrations from the drop-alert feature (same postcode/fuel_type opt-in),
+    but tracks its own baseline columns (spike_*) so it doesn't interfere with
+    /api/fuel/check-drops, which overwrites last_price on every run.
+
+    'Yesterday's price' is approximated as the last price seen before the
+    baseline last rolled over to a new calendar day — the baseline rolls once
+    per day, on the first check of that day, using the previous day's final
+    reading."""
+    sb = lib._sb()
+    today_iso = date.today().isoformat()
+
+    if test_wa:
+        alerts = sb.table("fuel_alerts").select("*").eq("wa", test_wa).execute().data or []
+    else:
+        alerts = sb.table("fuel_alerts").select("*").execute().data or []
+
+    checked = sent = errors = 0
+    for alert in alerts:
+        wa = alert.get("wa")
+        pc = alert.get("postcode")
+        fuel = alert.get("fuel_type", "petrol")
+        if not wa or not pc:
+            continue
+        try:
+            price, station = _get_cheapest_fuel(pc, fuel)
+            if price is None:
+                continue
+            checked += 1
+
+            baseline_date = alert.get("spike_baseline_date")
+            baseline_price = alert.get("spike_baseline_price")
+            last_price = alert.get("spike_last_price")
+
+            update_fields = {"spike_last_price": price, "spike_last_price_date": today_iso}
+
+            if baseline_date != today_iso:
+                # New day — roll the baseline forward to yesterday's final reading
+                # (falls back to today's own price on the very first-ever check).
+                baseline_price = last_price if last_price is not None else price
+                update_fields["spike_baseline_price"] = baseline_price
+                update_fields["spike_baseline_date"] = today_iso
+
+            sb.table("fuel_alerts").update(update_fields).eq("id", alert["id"]).execute()
+
+            if baseline_price is None:
+                continue
+
+            spike = price - float(baseline_price)
+            if spike <= _FUEL_SPIKE_THRESHOLD_PPL:
+                continue
+            if not test_wa and alert.get("spike_last_alerted_date") == today_iso:
+                continue
+
+            fuel_label = "Petrol" if fuel.lower() in ("petrol", "unleaded") else "Diesel"
+            brand = station.get("brand", "") if station else ""
+            msg = (
+                f"⛽ Fuel alert: {brand or fuel_label} is {price:.1f}p "
+                f"(up from {float(baseline_price):.1f}p). Fill up if you can."
+            )
+            _wa_send_proactive(wa, msg)
+            sb.table("fuel_alerts").update({"spike_last_alerted_date": today_iso}) \
+                .eq("id", alert["id"]).execute()
+            sent += 1
+        except Exception as e:
+            app.logger.error(f"[spend-alerts] fuel spike check error for {wa}/{pc}: {e}")
+            errors += 1
+
+    return {"check": "fuel_spike", "sent": sent, "errors": errors, "checked": checked}
+
+
+def _cron_spend_alerts(check_type: str = "all", test_wa: str = None) -> dict:
+    """Dispatcher for the three proactive alert checks. check_type is one of
+    'daily', 'weekly', 'fuel_spike', or 'all' (default — runs every check that
+    was requested; the cron schedule below normally calls one type at a time)."""
+    results = []
+    if check_type in ("daily", "all"):
+        results.append(_cron_spend_daily_check(test_wa))
+    if check_type in ("weekly", "all"):
+        results.append(_cron_spend_weekly_pace_check(test_wa))
+    if check_type in ("fuel_spike", "all"):
+        results.append(_cron_fuel_spike_check(test_wa))
+    return {"success": True, "results": results}
+
+
+@app.route("/api/cron/spend-alerts", methods=["POST", "GET"])
+def cron_spend_alerts():
+    """Cron endpoint: proactive spend + fuel-spike alerts.
+
+    Schedule (wire up via cron-job.org / Railway cron, same as the other
+    /api/cron/* endpoints in this file):
+      - type=daily      → daily 21:00   (today's spend vs. daily budget)
+      - type=weekly     → Sunday 19:00  (week's pace vs. weekly budget)
+      - type=fuel_spike → every 2h      (nearest-station price vs. yesterday's)
+      - type=all (default) → runs whichever of the above have due data; safe
+        to call on any schedule, each sub-check is self-rate-limited.
+
+    Auth: X-Cron-Secret header, same convention as /cron/morning-briefs and
+    /api/cron/refresh-fuel.
+
+    Manual test: pass ?phone=whatsapp:+44... to target a single user, bypassing
+    the budget_alerts_enabled opt-in filter and the once-per-day/week guards.
+    """
+    cron_secret = request.headers.get("X-Cron-Secret", "")
+    expected_secret = os.environ.get("CRON_SECRET", "")
+    if not expected_secret or cron_secret != expected_secret:
+        app.logger.warning("[cron] Unauthorized spend-alerts request")
+        return jsonify({"error": "Unauthorized"}), 401
+
+    check_type = (request.args.get("type") or "all").strip().lower()
+    if check_type not in ("daily", "weekly", "fuel_spike", "all"):
+        return jsonify({"error": "type must be one of: daily, weekly, fuel_spike, all"}), 400
+
+    test_wa = (request.args.get("phone") or request.args.get("wa") or "").strip() or None
+
+    try:
+        result = _cron_spend_alerts(check_type, test_wa)
+        app.logger.info(f"[cron] spend-alerts type={check_type} result={result['results']}")
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"[cron] spend-alerts error: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
