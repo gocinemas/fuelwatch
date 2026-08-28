@@ -6612,6 +6612,8 @@
     var action = item && item.action;
     if (action === "school") showScreen("school");
     else if (action === "myarea") showScreen("myarea");
+    else if (action === "saves") { showScreen("saves"); if (typeof savesLoad === "function") savesLoad(); }
+    else if (action === "news") window.open("/feedbin", "_blank"); // no in-app screen — standalone dashboard
     else showScreen("brief"); // "home" (and any unrecognised action) → brief is the home screen
   }
   window._renderBanner = _renderBanner;
