@@ -74,6 +74,7 @@ def register_motivation_endpoints(app):
                 "family_goals": "family_goals_enabled",
                 "social_proof": "social_proof_enabled",
                 "time_saved": "time_saved_enabled",
+                "budget_alerts": "budget_alerts_enabled",
             }
 
             if feature not in feature_map:
