@@ -365,19 +365,37 @@ def _extract_validation_context(message, history, stage):
     """Extract key info from conversation."""
     msg_lower = message.lower()
     context = {
-        "has_metrics": any(w in msg_lower for w in ["metric", "user", "revenue", "paid", "free", "subscriber", "customer", "active", "retention", "churn", "%", "thousand", "million"]),
+        "has_metrics": any(w in msg_lower for w in ["metric", "user", "revenue", "paid", "free", "subscriber", "customer", "active", "retention", "churn", "%", "thousand", "million", "coaches", "signup"]),
         "has_features": any(w in msg_lower for w in ["feature", "build", "built", "ui", "design", "design", "dashboard", "app", "api", "integration"]),
         "has_traction": any(w in msg_lower for w in ["growth", "growing", "expanding", "trending", "viral", "launch", "launched", "release"]),
         "has_blockers": any(w in msg_lower for w in ["problem", "issue", "stuck", "blocked", "hard", "difficult", "challenge", "struggle", "failing", "fail"]),
         "asking_help": any(w in msg_lower for w in ["help", "advice", "recommend", "suggest", "how", "way", "approach"]),
         "is_pivot": any(w in msg_lower for w in ["pivot", "change", "different", "try", "experiment", "new direction"]),
+        "has_zero_users": any(w in msg_lower for w in ["none", "zero", "no one", "0 ", "nobody", "nada", "no users", "no coaches", "no customers"]),
+        "has_adoption_gap": any(w in msg_lower for w in ["ignore", "ignored", "ghost", "ghosted", "say they will", "promise", "promised", "will but", "say yes but", "nothing happens", "not converting", "conversion", "activation"]),
+        "retention_problem": any(w in msg_lower for w in ["leave", "left", "churn", "quit", "stop using", "cancel", "unsubscribe", "retention"]),
     }
     return context
 
 def _generate_validation_response(stage, context, message, history):
     """Generate intelligent validation questions/feedback."""
 
-    if stage == 0:  # First message - introduce and ask about product
+    # Handle critical adoption gap (coaches promise but ghost)
+    if context["has_adoption_gap"]:
+        if context["has_zero_users"]:
+            return "🚨 **This is THE blocker.** Coaches promise but don't follow through — that's a trust/friction problem, not a product problem. Here's your 90-day fix: (1) **Reduce friction**: Send them a 2-min setup video + link (not a long onboarding), (2) **Create urgency**: Offer month 1 free BUT they must log 1 lesson in-app to unlock it, (3) **Build proof**: When ONE coach actually uses it, ask them for a video testimonial + referral. Who's your most interested coach? Start with them."
+        else:
+            return "There it is — coaches ghost you. That's not a retention problem; it's an **adoption/activation problem**. They say yes but never actually use it. Fix: (1) Make first use frictionless (video walkthrough, 2 minutes max), (2) Send automated follow-up: day 1 'welcome', day 3 'here's a quick win', day 7 'one-click unsubscribe if not for you', (3) Offer first paid month free if they log 3 lessons. The goal: get them to experience ONE win in the app."
+
+    # Handle zero users
+    elif context["has_zero_users"]:
+        return "Okay, so it's purely a discovery/trust issue right now. 3 coaches interested but nothing? That's actually a good starting point. Before you scale: (1) Call those 3, ask WHY they haven't signed up yet (too busy, not convinced it's worth their time, technical friction?), (2) Fix whatever the #1 reason is, (3) Then re-pitch them. Once you have ONE real user (even free), everything else becomes easier. Can you get ONE of those 3 to actually try it this week?"
+
+    # Handle retention problem
+    elif context["retention_problem"]:
+        return "Churn is fixable but you need to know WHY they left. (1) Email your churned coaches: 'What one feature would make you come back?', (2) You'll probably hear the same thing 3x — build that ONE thing, (3) Reach back out saying 'We just built [feature]'. For the ones still using it: ask for referrals + testimonials. Focus on depth before breadth."
+
+    elif stage == 0:  # First message - introduce and ask about product
         return "Got it! 🎯 You're building a golf coaching CRM. That's a solid niche. Quick clarification: what's your main bottleneck right now — getting coaches to sign up, retaining them, building features, or something else?"
 
     elif stage == 1:  # Second exchange - ask about traction
@@ -399,12 +417,10 @@ def _generate_validation_response(stage, context, message, history):
     elif stage >= 3:  # Later stages - give specific feedback
         if context["has_metrics"] and context["has_traction"]:
             return "📈 You're making progress! Next moves: (1) Interview your churn customers to understand why they left, (2) Add 2-3 features your active coaches specifically asked for, (3) Reach out to 100 new coaches with a free trial. Momentum beats perfection. What's the biggest feature request you're hearing?"
-        elif context["has_blockers"]:
-            return "🎯 My honest take: fix that blocker (doesn't need to be perfect), then spend 80% of your time on outreach. You'll learn way more from 50 coach conversations than from building more features. Want to talk through your outreach strategy?"
         elif context["asking_help"]:
             return "Here's a quick roadmap: (1) Get 10 coaches paying $29/mo, (2) Use that revenue to hire a sales person, (3) Target golf academies and clubs (they buy software). First checkpoint in 90 days: 50 active coaches. Sound realistic?"
         else:
-            return "You're doing the hard part — building something coaches actually need. Next: double down on retention (keep the coaches you have), and use them as your sales team (ask them for referrals). Anything specific blocking that?"
+            return "You're building something coaches actually need — that's the hardest part done. Now: (1) Nail ONE workflow that coaches love (one must-have feature), (2) Use your engaged coaches as your sales team (ask for referrals + testimonials), (3) Reach out to golf academies saying 'We're built for teams like yours'. What's the ONE thing coaches keep asking for?"
 
     else:  # Generic fallback
         return "Tell me more about where you're stuck. Is it product, finding users, retention, revenue, or something else?"
@@ -14069,6 +14085,104 @@ def _v2_build_tomorrow_data(weather: dict, ctx: dict, tf: str, tt: str, now) -> 
         return {}
 
 
+def _v2_build_banner_items(school_upcoming: list, school_holiday: dict, calendar_events: list,
+                            bank_holiday_today: bool, bank_holiday_monday: bool,
+                            location_context: dict, weather: dict, now) -> list:
+    """Rotating contextual banner for the My Area header — short, high-signal chips
+    surfaced above the fold. Each item: {emoji, text, action, priority}. `action` is
+    one of "school" | "home" | "myarea" so the frontend can route a tap to the right
+    screen. Sorted highest-priority first (100 → 50). Every check is independently
+    guarded — a single bad signal never blocks the others or the brief response."""
+    items = []
+    try:
+        today_iso = now.date().isoformat()
+    except Exception:
+        return []
+
+    # School — today's event (priority 100)
+    try:
+        for ev in (school_upcoming or []):
+            if ev.get("event_date") != today_iso:
+                continue
+            title = (ev.get("event_title") or "").strip()
+            if not title:
+                continue
+            child = (ev.get("child_name") or "").strip()
+            text = f"{child}: {title}" if child else title
+            items.append({"emoji": "🎒", "text": text[:60], "action": "school", "priority": 100})
+            break
+    except Exception:
+        pass
+
+    # School holiday transitions (priority 95)
+    try:
+        sh = school_holiday or {}
+        if sh.get("ends_today"):
+            items.append({
+                "emoji": "🏫",
+                "text": f"Last day of {sh.get('label') or 'the holidays'} — back {sh.get('back_label') or 'soon'}",
+                "action": "school", "priority": 95,
+            })
+        elif sh.get("starts_tom"):
+            label = (sh.get("label") or "holidays").strip()
+            items.append({"emoji": "🎉", "text": f"{label[:1].upper()}{label[1:]} start tomorrow", "action": "school", "priority": 95})
+        elif sh.get("back_tom"):
+            items.append({"emoji": "🎒", "text": "Back to school tomorrow", "action": "school", "priority": 95})
+    except Exception:
+        pass
+
+    # Calendar — today's timed (non-all-day) event (priority 80)
+    try:
+        for ev in (calendar_events or []):
+            if ev.get("all_day"):
+                continue
+            ev_date = ev.get("date") or ""
+            if ev_date and ev_date != today_iso:
+                continue
+            title = (ev.get("title") or "").strip()
+            if not title:
+                continue
+            start = (ev.get("start") or "").strip()
+            text = f"{start} {title}".strip() if start else title
+            items.append({"emoji": "📅", "text": text[:60], "action": "home", "priority": 80})
+            break
+    except Exception:
+        pass
+
+    # Bank holiday (priority 70 today / 60 upcoming Monday)
+    try:
+        if bank_holiday_today:
+            items.append({"emoji": "🎌", "text": "Bank holiday today", "action": "home", "priority": 70})
+        elif bank_holiday_monday:
+            items.append({"emoji": "🎌", "text": "Bank holiday Monday", "action": "home", "priority": 60})
+    except Exception:
+        pass
+
+    # Location — nearby saved place (priority 65)
+    try:
+        lc = location_context or {}
+        if lc.get("context") == "nearby_save" and lc.get("save"):
+            items.append({"emoji": "📍", "text": f"Near {lc['save']}", "action": "myarea", "priority": 65})
+    except Exception:
+        pass
+
+    # Weather — rain alert for today (priority 50)
+    try:
+        forecast = (weather or {}).get("forecast_7day") or []
+        today_fc = forecast[0] if forecast else {}
+        rain = today_fc.get("rain_chance")
+        if isinstance(rain, (int, float)) and rain >= 50:
+            items.append({"emoji": "☔", "text": f"{int(rain)}% chance of rain today", "action": "myarea", "priority": 50})
+    except Exception:
+        pass
+
+    try:
+        items.sort(key=lambda x: -x.get("priority", 0))
+    except Exception:
+        pass
+    return items[:5]
+
+
 def _v2_fetch_recent_capture(from_number: str) -> dict:
     """Return the most recent photo save from the last 20 minutes, if any.
     Used to surface 'you just snapped this' context in the V2 brief."""
@@ -18075,6 +18189,17 @@ def api_home_brief():
     except Exception:
         _inferred = {"mode": "WORK_MODE", "reason": "Default (inference error)", "confidence": 0.3, "signals": {}}
 
+    # Rotating contextual banner — school/holiday/calendar/bank-holiday/location/rain chips
+    # for the My Area header. Fail-safe: never blocks the brief response.
+    try:
+        _banner_items = _v2_build_banner_items(
+            school_upcoming, _school_holiday_now, _cal_events,
+            bank_holiday_today, bank_holiday_monday,
+            _loc_classification, weather, now,
+        )
+    except Exception:
+        _banner_items = []
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
@@ -18121,6 +18246,7 @@ def api_home_brief():
         "entertainment_data":  entertainment_data,    # Evening lane — saved events + nearby venues
         "local_top3_data":     local_top3_data,       # Morning/Daytime lane — coffee/food/shopping near you
         "tomorrow_data":       tomorrow_data,          # Night lane — weather/commute/school/packing for tomorrow
+        "banner_items":        _banner_items,          # Rotating My Area header banner — school/calendar/bank holiday/rain chips
     }
 
     # Add last receipt (merchant, total, date) to spend card
