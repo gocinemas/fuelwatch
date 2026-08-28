@@ -361,6 +361,30 @@ def api_idea_chat():
         app.logger.error(traceback.format_exc())
         return jsonify({"error": str(e), "status": "error"}), 500
 
+def _generate_educational_response(stage, context, message, history, domain):
+    """Special validation logic for educational platforms (no user acquisition needed)."""
+
+    if stage == 0:  # First message
+        return f"Got it! 🎓 You're building an {domain}. For educational content, success looks different than typical apps. What's your main focus: content quality, reach, community engagement, or something else?"
+
+    elif stage == 1:  # Second exchange - ask about impact
+        if context["learning_impact"]:
+            return "Good — so you're seeing learning outcomes. Quick question: How do you know people are actually learning? (tests, projects, feedback, completion rates?) And how many learners so far?"
+        elif context["has_zero_users"]:
+            return "Starting from scratch with educational content is actually fine — quality > quantity at the start. Before scaling: (1) Get 10-20 people to go through your content, (2) Ask them: 'Did you learn? What was confusing?', (3) Fix the gaps. Then share more widely. Who's your first cohort?"
+        else:
+            return "That's a good start. For educational content, the real question is: Are people actually learning and retaining knowledge? How do you measure that?"
+
+    elif stage >= 2:  # Later stages
+        if context["no_monetization"] or "free" in message.lower():
+            return "Perfect — free educational content scales differently. Focus on: (1) **Quality**: Get expert feedback on your curriculum, (2) **Reach**: Build on platforms where learners already are (YouTube, GitHub, Reddit, Discord), (3) **Community**: Create a way for learners to connect and help each other. Impact > Revenue at this stage."
+        elif context["asking_help"]:
+            return "Here's your 90-day roadmap: (1) Get testimonials from 5 people who actually learned something (video or written), (2) Build a small community (Discord, Slack, forum) where learners help each other, (3) Create one 'showcase project' where learners can show off what they built. Then the growth happens via word-of-mouth from learners."
+        else:
+            return "Educational success is measured by learning outcomes, not just user count. Focus on: (1) Getting detailed feedback from learners about what's working/confusing, (2) Measuring actual learning (projects completed, tests passed, skills applied), (3) Building relationships with your learners so they become advocates. What's your biggest win so far?"
+
+    return "Tell me more about your educational content. What's your biggest challenge right now?"
+
 def _detect_app_domain(url, message, history):
     """Detect what type of app this is from URL or conversation."""
     # Extract domain from URL
@@ -386,6 +410,7 @@ def _detect_app_domain(url, message, history):
     msg_lower = (message + " " + " ".join(h.get("text", "") for h in history if isinstance(h, dict))).lower()
 
     keywords = {
+        "educational platform": ["learn", "educate", "teach", "course", "lesson", "knowledge", "tutorial", "training content", "educational", "school", "academy"],
         "golf coaching": ["coach", "golf", "lesson", "training"],
         "SaaS platform": ["saas", "platform", "enterprise", "business"],
         "mobile app": ["mobile", "ios", "android", "native"],
@@ -415,6 +440,8 @@ def _extract_validation_context(message, history, stage):
         "has_zero_users": any(w in msg_lower for w in ["none", "zero", "no one", "0 ", "nobody", "nada", "no users", "no coaches", "no customers"]),
         "has_adoption_gap": any(w in msg_lower for w in ["ignore", "ignored", "ghost", "ghosted", "say they will", "promise", "promised", "will but", "say yes but", "nothing happens", "not converting", "conversion", "activation"]),
         "retention_problem": any(w in msg_lower for w in ["leave", "left", "churn", "quit", "stop using", "cancel", "unsubscribe", "retention"]),
+        "learning_impact": any(w in msg_lower for w in ["learn", "learned", "understand", "knowledge", "skill", "improve", "progress", "comprehension"]),
+        "no_monetization": any(w in msg_lower for w in ["free", "nonprofit", "volunteer", "passion project", "no revenue", "not charging"]),
     }
     return context
 
@@ -423,6 +450,11 @@ def _generate_validation_response(stage, context, message, history, url=""):
 
     # Detect app domain from URL or message
     domain = _detect_app_domain(url, message, history)
+    is_educational = "educational" in domain.lower() or "learn" in domain.lower()
+
+    # EDUCATIONAL APP - different validation criteria
+    if is_educational:
+        return _generate_educational_response(stage, context, message, history, domain)
 
     # Handle critical adoption gap (people promise but ghost)
     if context["has_adoption_gap"]:
