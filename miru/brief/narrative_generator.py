@@ -25,11 +25,12 @@ class NarrativeGenerator:
     - No corporate-speak, no bullet points, no greetings
     """
 
-    # Same model used by the other brief prompts in sms_service.py — the
-    # smaller "llama-3.1-8b-instant" this used to call was returning non-200
-    # responses in production (likely deprecated/retired on Groq's side),
-    # which silently produced empty briefs since nothing here surfaced the error.
-    GROQ_MODEL = "llama-3.3-70b-versatile"
+    # This used to call "llama-3.1-8b-instant", then "llama-3.3-70b-versatile"
+    # — both are retired on Groq now (404 model_not_found in production logs).
+    # qwen/qwen3.8-27b is a verified-working drop-in: same OpenAI-style
+    # response shape, no hidden "reasoning" tokens eating the completion
+    # budget (unlike the openai/gpt-oss-* models on Groq's current lineup).
+    GROQ_MODEL = "qwen/qwen3.8-27b"
     MAX_TOKENS = 140
     TIMEOUT = 8
 
