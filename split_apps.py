@@ -55,8 +55,6 @@ miru_routes = {
     '/sms',
     '/saves-login',
     '/my-saves',
-    '/home-v2',
-    '/home-2026',
     '/commute-test',
     '/school',
     '/api/myarea',

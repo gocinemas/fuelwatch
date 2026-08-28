@@ -123,25 +123,40 @@ def register_motivation_endpoints(app):
     def cron_weekly_savings():
         """
         Cron job: Send weekly savings summaries (Sunday 18:00).
-        GET /api/cron/weekly-savings?token=DIGEST_TOKEN
+        Trigger via cron-job.org: GET /api/cron/weekly-savings?token=YOUR_DIGEST_TOKEN
+        (same DIGEST_TOKEN convention used by /api/school/digest, /api/wa-digest etc.)
 
         Fetches all users with weekly_summary_enabled, computes summaries, sends WhatsApp.
-        Also inserts savings_events rows for the week.
+        Also inserts savings_events rows for the week, and — when a user's spend dropped
+        by at least WEEKLY_SAVINGS_CELEBRATE_THRESHOLD_PENCE (default £20) vs last week —
+        fires a separate nudges.celebrate() ping (sent + logged) so the motivation layer
+        actually fires on real wins.
+
+        Manual test: GET /api/cron/weekly-savings?token=...&wa=whatsapp:+44...
+        (targets a single number, bypassing the weekly_summary_enabled opt-in filter)
         """
         import os
         token = request.args.get("token", "")
-        expected_token = os.environ.get("CRON_TOKEN", "miru-digest-2026")
+        expected_token = os.environ.get("DIGEST_TOKEN", "")
 
-        if token != expected_token:
+        if not expected_token or token != expected_token:
             return jsonify({"error": "Invalid token"}), 403
 
+        threshold_pence = int(os.environ.get("WEEKLY_SAVINGS_CELEBRATE_THRESHOLD_PENCE", 2000))  # £20
+
         try:
-            # Get all users with weekly_summary_enabled
-            users = lib._sb().table("motivation_prefs").select("wa") \
-                .eq("weekly_summary_enabled", True) \
-                .execute().data or []
+            # Manual test override: run for a single number regardless of opt-in
+            test_wa = request.args.get("wa") or request.args.get("user_id")
+            if test_wa:
+                users = [{"wa": test_wa}]
+            else:
+                # Get all users with weekly_summary_enabled
+                users = lib._sb().table("motivation_prefs").select("wa") \
+                    .eq("weekly_summary_enabled", True) \
+                    .execute().data or []
 
             sent = 0
+            celebrated = 0
             errors = 0
 
             for user_row in users:
@@ -150,31 +165,39 @@ def register_motivation_endpoints(app):
                     continue
 
                 try:
-                    # Get savings for the week
+                    # Get savings for the week (this week vs last week)
                     savings = get_weekly_savings(wa)
 
                     if savings.get('status') != 'ok':
                         continue
 
-                    # Format message
+                    # Format + send the regular weekly summary message
                     msg = format_weekly_message(savings)
-                    if not msg:
-                        continue
+                    if msg:
+                        if _wa_send_proactive(wa, msg):
+                            sent += 1
 
-                    # Send WhatsApp
-                    if _wa_send_proactive(wa, msg):
-                        sent += 1
+                            # Log event
+                            variance = savings.get('week_variance_pence', 0)
+                            lib._sb().table("savings_events").insert({
+                                "wa": wa,
+                                "event_type": "underspend_week",
+                                "amount_pence": abs(variance),
+                                "description": f"Weekly summary: spent £{savings['total_spent_pence']/100:.2f}"
+                            }).execute()
+                        else:
+                            errors += 1
 
-                        # Log event
-                        variance = savings.get('week_variance_pence', 0)
-                        lib._sb().table("savings_events").insert({
-                            "wa": wa,
-                            "event_type": "underspend_week",
-                            "amount_pence": abs(variance),
-                            "description": f"Weekly summary: spent £{savings['total_spent_pence']/100:.2f}"
-                        }).execute()
-                    else:
-                        errors += 1
+                    # Motivation nudge: a real win — spent significantly less than last week.
+                    # underspend > 0 means this week's spend is lower than last week's.
+                    underspend = -savings.get('week_variance_pence', 0)
+                    if underspend >= threshold_pence:
+                        celebration_msg = nudges.celebrate(
+                            {"type": "weekly_savings", "value": underspend},
+                            wa=wa
+                        )
+                        if celebration_msg:
+                            celebrated += 1
 
                 except Exception as e:
                     print(f"[weekly-savings] Error for {wa}: {e}")
@@ -183,8 +206,10 @@ def register_motivation_endpoints(app):
             return jsonify({
                 "status": "ok",
                 "sent": sent,
+                "celebrated": celebrated,
                 "errors": errors,
-                "total_users": len(users)
+                "total_users": len(users),
+                "threshold_pence": threshold_pence,
             })
 
         except Exception as e:

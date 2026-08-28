@@ -12,42 +12,111 @@ import re
 from datetime import datetime, time as datetime_time
 
 
-def celebrate(event: dict) -> str:
+def _send_whatsapp_message(wa: str, body: str) -> bool:
+    """
+    Send an outbound WhatsApp message via Twilio.
+    Self-contained (no import from sms_service) to avoid circular imports —
+    mirrors miru/motivation/endpoints.py::_wa_send_proactive.
+    """
+    from twilio.rest import Client
+    import os
+
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    twilio_whatsapp = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+
+    if not account_sid or not auth_token:
+        print("[nudges] Missing Twilio creds, cannot send celebration")
+        return False
+
+    try:
+        client = Client(account_sid, auth_token)
+        message = client.messages.create(from_=twilio_whatsapp, body=body, to=wa)
+        print(f"[nudges] Celebration sent to {wa}: {message.sid}")
+        return True
+    except Exception as e:
+        print(f"[nudges] Error sending celebration to {wa}: {e}")
+        return False
+
+
+def _log_achievement(wa: str, event: dict, msg: str) -> None:
+    """
+    Log a celebrated win to savings_events, for later gamification
+    (streaks, badges, leaderboards) and for the Monday brief callback.
+    """
+    try:
+        import library as lib
+
+        event_type = event.get('type') or 'celebration'
+        value = event.get('value', 0)
+
+        row = {
+            "wa": wa,
+            "event_type": "weekly_savings_win" if event_type == "weekly_savings" else event_type,
+            "description": msg,
+        }
+
+        if event_type == 'sustainability_action':
+            row["co2_grams"] = value
+        else:
+            row["amount_pence"] = value
+
+        lib._sb().table("savings_events").insert(row).execute()
+    except Exception as e:
+        print(f"[nudges] Error logging achievement for {wa}: {e}")
+
+
+def celebrate(event: dict, wa: str = None) -> str:
     """
     Generate celebration copy for a win event.
 
     event = {
-        'type': 'fuel_drop' | 'beat_target' | 'sustainability_action',
-        'value': amount in pence,
+        'type': 'fuel_drop' | 'beat_target' | 'sustainability_action' | 'weekly_savings',
+        'value': amount in pence (or grams CO2e for sustainability_action),
         'description': str
     }
+
+    If `wa` (a WhatsApp number, e.g. "whatsapp:+44...") is provided, the
+    celebration is also SENT via Twilio and LOGGED to savings_events for
+    later gamification. Without `wa`, this is a pure copy generator.
 
     Returns celebration message string or None.
     """
     event_type = event.get('type')
     value = event.get('value', 0)
 
+    msg = None
+
     if event_type == 'fuel_drop':
         # Fuel price drop
         value_gbp = value / 100
         if value_gbp < 0.5:
-            return f"⛽ Fuel down {value_gbp:.2f}p/L"
+            msg = f"⛽ Fuel down {value_gbp:.2f}p/L"
         elif value_gbp < 2:
-            return f"⛽ Nice! Fuel down £{value_gbp:.2f}"
+            msg = f"⛽ Nice! Fuel down £{value_gbp:.2f}"
         else:
-            return f"⛽ Great! Fuel dropped £{value_gbp:.2f}"
+            msg = f"⛽ Great! Fuel dropped £{value_gbp:.2f}"
 
     elif event_type == 'beat_target':
         # User beat their weekly target
         value_gbp = value / 100
-        return f"🎉 You beat your target by £{value_gbp:.2f}!"
+        msg = f"🎉 You beat your target by £{value_gbp:.2f}!"
+
+    elif event_type == 'weekly_savings':
+        # Sunday cron: user spent significantly less than last week
+        value_gbp = value / 100
+        msg = f"🎉 You saved £{value_gbp:.2f} this week! Keep it up."
 
     elif event_type == 'sustainability_action':
         # Sustainability win (TGTG, local shop, etc.)
         co2_kg = value / 1000  # value in grams
-        return f"🌱 Nice! That saved ~{co2_kg:.1f}kg CO2e"
+        msg = f"🌱 Nice! That saved ~{co2_kg:.1f}kg CO2e"
 
-    return None
+    if msg and wa:
+        _send_whatsapp_message(wa, msg)
+        _log_achievement(wa, event, msg)
+
+    return msg
 
 
 def nudge_cta(feature: str) -> str:

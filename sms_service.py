@@ -3237,14 +3237,14 @@ def my_saves():
     return render_template("my_saves.html")
 
 @app.route("/home-v2")
-def home_v2():
-    if request.args.get("preview") != "miru2026":
-        return "", 404
-    return render_template("home_v2.html")
+def home_v2_redirect():
+    """Redirect legacy home-v2 to unified home"""
+    return redirect("/", code=302)
 
 @app.route("/home-2026")
-def home_2026():
-    return render_template("home_2026_test.html")
+def home_2026_redirect():
+    """Redirect legacy home-2026 to unified home"""
+    return redirect("/", code=302)
 
 @app.route("/commute-test")
 def commute_test():
@@ -15104,6 +15104,24 @@ def _v2_fetch_savings_summary(from_number: str) -> dict:
         app.logger.error(f"[savings-summary] Error: {e}")
         return {"status": "error"}
 
+def _v2_fetch_monday_win(from_number: str) -> dict:
+    """
+    Fetch the most recent weekly-savings celebration logged by the Sunday
+    18:00 cron (miru/motivation/endpoints.py::cron_weekly_savings, via
+    nudges.celebrate) so the Monday brief can call back to last week's win.
+    """
+    try:
+        from datetime import datetime, timedelta
+        cutoff = (datetime.utcnow() - timedelta(days=2)).isoformat()
+        rows = lib._sb().table("savings_events").select("amount_pence,created_at") \
+            .eq("wa", from_number).eq("event_type", "weekly_savings_win") \
+            .gte("created_at", cutoff).order("created_at", desc=True).limit(1) \
+            .execute().data or []
+        return rows[0] if rows else {}
+    except Exception as e:
+        app.logger.warning(f"[monday-win] fetch failed: {e}")
+        return {}
+
 def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
     """Next 3 departures on the saved route using RTT calling_at filter."""
     # Map common London locations to their nearest rail stations
@@ -16514,6 +16532,7 @@ def api_home_brief():
             futures["school"]          = pool.submit(_v2_fetch_school, from_number)
             futures["spend"]           = pool.submit(_v2_fetch_spend, from_number)
             futures["savings"]         = pool.submit(_v2_fetch_savings_summary, from_number)
+            futures["monday_win"]      = pool.submit(_v2_fetch_monday_win, from_number)
             futures["saves"]           = pool.submit(_v2_fetch_saves, from_number)
             futures["deliveries"]      = pool.submit(_v2_fetch_deliveries, from_number)
             futures["gmail_accounts"]  = pool.submit(_v2_fetch_gmail_accounts, from_number)
@@ -16967,6 +16986,18 @@ def api_home_brief():
                 facts.append(savings_fact)
         except Exception as e:
             app.logger.warning(f"[brief] savings fact error: {e}")
+
+    # Monday callback — surface last week's win logged by the Sunday 18:00
+    # weekly-savings cron (nudges.celebrate). "This week" is barely started
+    # on a Monday so it's not shown above; this looks back at last week instead.
+    if now.weekday() == 0:  # Monday
+        _monday_win = ctx.get("monday_win")
+        if _monday_win and isinstance(_monday_win, dict) and _monday_win.get("amount_pence"):
+            try:
+                _win_gbp = int(_monday_win["amount_pence"]) / 100
+                facts.append(f"🎉 Last week was strong — you saved £{_win_gbp:.2f}. This week, let's keep it going.")
+            except Exception as e:
+                app.logger.warning(f"[brief] monday win fact error: {e}")
     # School holiday status — Surrey term dates + Gmail inset days
     _hs = school_data.get("holiday_status") if isinstance(school_data, dict) else None
     if _hs and kids:
