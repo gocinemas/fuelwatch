@@ -18643,8 +18643,12 @@ def api_home_brief_narrative():
         # Sanitize output
         narrative = OutputSanitizer.sanitize(narrative)
 
-        app.logger.info(f"[brief/narrative] ✅ NEW PIPELINE SUCCESS: {len(facts)} facts → {len(narrative)} chars")
-        return jsonify({"text": narrative})
+        if narrative:
+            app.logger.info(f"[brief/narrative] ✅ NEW PIPELINE SUCCESS: {len(facts)} facts → {len(narrative)} chars")
+            return jsonify({"text": narrative})
+        # Empty narrative (Groq call failed, timed out, or was rejected by validation) —
+        # fall through to the old pipeline below instead of returning blank text.
+        app.logger.warning("[brief/narrative] New pipeline returned empty narrative, falling back")
 
     except ImportError as e:
         app.logger.warning(f"[brief/narrative] ❌ New pipeline import error: {e}")
