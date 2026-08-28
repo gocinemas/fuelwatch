@@ -16,7 +16,9 @@ class OutputSanitizer:
     - No URLs unless whitelisted
     """
 
-    MAX_LENGTH = 200
+    # 200 was sized for the old "state facts only" one-liners; a 2-3 sentence
+    # narrative with personality/insight woven in genuinely needs more room.
+    MAX_LENGTH = 340
 
     @staticmethod
     def sanitize(text: str) -> str:
@@ -33,9 +35,19 @@ class OutputSanitizer:
 
         text = text.strip()
 
-        # Hard length limit
+        # Hard length limit — cut at the last sentence boundary within the
+        # limit if there is one, otherwise the last word boundary, so a
+        # truncated brief never ends mid-word.
         if len(text) > OutputSanitizer.MAX_LENGTH:
-            text = text[:OutputSanitizer.MAX_LENGTH - 3] + "..."
+            budget = OutputSanitizer.MAX_LENGTH - 1
+            window = text[:budget]
+            cut = max(window.rfind(". "), window.rfind("! "), window.rfind("? "))
+            if cut == -1:
+                cut = window.rfind(" ")
+            if cut > 0:
+                text = window[:cut].rstrip(" .,;:") + "…"
+            else:
+                text = window.rstrip() + "…"
 
         # Remove dangerous Unicode
         text = OutputSanitizer._clean_unicode(text)
