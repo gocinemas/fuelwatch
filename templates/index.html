@@ -978,15 +978,14 @@
     </div>
   </div>
 
-  <!-- My Area header — weather + nearest station + nearest useful place, populated by
-       _myAreaHeaderRender(). Postcode itself lives in the identity bar above, which is now
-       part of this same sticky wrap — so it's already a persistent anchor; this row adds
-       the extra local context. -->
+  <!-- My Area header — weather + nearest station + MP, populated by _myAreaHeaderRender().
+       Postcode itself lives in the identity bar above, which is now part of this same sticky
+       wrap — so it's already a persistent anchor; this row adds the extra local context. -->
   <div id="myarea-header" style="display:none">
     <span class="mah-chip mah-pc" onclick="_idOpenModal('postcode')" id="mah-pc-chip">📍 —</span>
     <span class="mah-chip" onclick="_myAreaHeaderWeatherTap()" id="mah-wx-chip" style="display:none"></span>
     <span class="mah-chip" onclick="showScreen('trains')" id="mah-station-chip" style="display:none"></span>
-    <span class="mah-chip" onclick="showScreen('myarea')" id="mah-useful-chip" style="display:none"></span>
+    <span class="mah-chip" onclick="showScreen('myarea')" id="mah-mp-chip" style="display:none"></span>
   </div>
   </div><!-- /app-sticky-wrap -->
 
@@ -6502,10 +6501,10 @@
     if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
   }
 
-  // ── My Area header — sticky location anchor (postcode + weather + nearest station +
-  // nearest useful place) ── Recommendation #3: postcode never scrolls away. Lives in
-  // #app-sticky-wrap alongside the header + identity bar. Weather/station/useful-place all
-  // come from the already-fetched brief context — no extra API calls.
+  // ── My Area header — sticky location anchor (postcode + weather + nearest station + MP) ──
+  // Recommendation #3: postcode never scrolls away. Lives in #app-sticky-wrap alongside the
+  // header + identity bar. Weather/station come from the already-fetched brief context (no
+  // extra API calls); MP comes from the existing /api/mp endpoint, cached 24h client-side.
   function _myAreaHeaderRender() {
     var bar = document.getElementById("myarea-header");
     if (!bar) return;
@@ -6548,18 +6547,15 @@
       }
     }
 
-    // Nearest useful place chip — swaps by time of day (coffee/lunch/dining/24hr shop),
-    // sourced from the brief's already-fetched rated_places (no extra API call, no
-    // fabrication): hidden entirely until the brief has returned a real place.
-    var upChip = document.getElementById("mah-useful-chip");
-    if (upChip) {
-      var up = ctx && ctx.nearest_useful_place;
-      if (up && up.name) {
-        var dist = (up.distance_km !== undefined && up.distance_km !== null) ? (" " + up.distance_km + "km") : "";
-        upChip.textContent = (up.type || "📍") + " " + up.name + dist;
-        upChip.style.display = "inline-flex";
-      } else {
-        upChip.style.display = "none";
+    // MP chip — cached 24h, keyed by postcode
+    var mpChip = document.getElementById("mah-mp-chip");
+    if (mpChip) {
+      mpChip.textContent = "🏛️ MP";
+      mpChip.style.display = "inline-flex";
+      if (typeof _maFetchCached === "function") {
+        _maFetchCached("mp_header_" + pc, "/api/mp?postcode=" + encodeURIComponent(pc), 86400, function(d) {
+          if (d && d.name && !d.error) mpChip.textContent = "🏛️ " + d.name;
+        });
       }
     }
   }

@@ -13949,46 +13949,6 @@ def _v2_build_local_top3(rated_places: list, nearby_shop: dict, hour: int) -> li
         return []
 
 
-def _v2_build_nearest_useful_place(rated_places: list, nearby_shop: dict, hour: int) -> dict:
-    """Nearest useful place for the sticky My Area header badge — swaps by time of day
-    so the badge always shows something actionable right now (coffee / lunch / dining /
-    24hr shop). Built from the same real Google-rated places + nearby-shop data as the
-    Local Top 3 lane — never a fabricated entry; returns {} when nothing qualifies."""
-    try:
-        def _pick(types, emoji, reason):
-            candidates = sorted(
-                [p for p in (rated_places or []) if p.get("type") in types],
-                key=lambda x: -(x.get("rating") or 0),
-            )
-            if not candidates:
-                return {}
-            top = candidates[0]
-            return {
-                "name": top["name"], "type": emoji,
-                "distance_km": top.get("distance_km"), "distance_mi": top.get("distance_mi"),
-                "rating": top.get("rating"), "open_now": top.get("open_now"),
-                "reason": reason,
-            }
-
-        if 5 <= hour < 10:
-            return _pick(("cafe",), "☕", "Top-rated coffee near you")
-        elif 10 <= hour < 17:
-            return _pick(("restaurant", "cafe"), "🍽️", "Top-rated lunch near you")
-        elif 17 <= hour < 21:
-            return _pick(("restaurant", "bar"), "🍽️", "Top-rated dining near you")
-        else:
-            if nearby_shop and nearby_shop.get("name"):
-                return {
-                    "name": nearby_shop["name"], "type": "🛒",
-                    "distance_km": nearby_shop.get("distance_km"), "distance_mi": nearby_shop.get("distance_mi"),
-                    "rating": None, "open_now": nearby_shop.get("open_now"),
-                    "reason": "Nearest shop",
-                }
-            return {}
-    except Exception:
-        return {}
-
-
 def _v2_build_entertainment_lane(event_saves: list, rated_places: list) -> list:
     """Evening 'Entertainment' lane — the user's own saved events/tickets first
     (real, dated), topped up with nearby highly-rated bars/venues when there's
@@ -16595,7 +16555,6 @@ def api_home_brief():
     dining_data = _v2_build_dining_lane(_rated_places, place_saves)
     entertainment_data = _v2_build_entertainment_lane(event_saves, _rated_places)
     local_top3_data = _v2_build_local_top3(_rated_places, ctx.get("nearby_shop", {}), hour)
-    nearest_useful_place = _v2_build_nearest_useful_place(_rated_places, ctx.get("nearby_shop", {}), hour)
     tomorrow_data = _v2_build_tomorrow_data(weather, ctx, _tf, _tt, now)
 
     # Learned patterns from location signals — surface in brief prompt
@@ -18161,7 +18120,6 @@ def api_home_brief():
         "dining_data":         dining_data,          # Evening lane — top 3 dining cards w/ ratings
         "entertainment_data":  entertainment_data,    # Evening lane — saved events + nearby venues
         "local_top3_data":     local_top3_data,       # Morning/Daytime lane — coffee/food/shopping near you
-        "nearest_useful_place": nearest_useful_place,  # Sticky header badge — nearest coffee/lunch/dining/shop for time of day
         "tomorrow_data":       tomorrow_data,          # Night lane — weather/commute/school/packing for tomorrow
     }
 
