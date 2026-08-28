@@ -348,7 +348,7 @@ def api_idea_chat():
         context = _extract_validation_context(message, history, stage)
 
         # Generate intelligent response based on stage and context
-        response_text = _generate_validation_response(stage, context, message, history)
+        response_text = _generate_validation_response(stage, context, message, history, url)
 
         return jsonify({
             "status": "ok",
@@ -360,6 +360,47 @@ def api_idea_chat():
         app.logger.error(f"[idea-chat] Exception: {e}")
         app.logger.error(traceback.format_exc())
         return jsonify({"error": str(e), "status": "error"}), 500
+
+def _detect_app_domain(url, message, history):
+    """Detect what type of app this is from URL or conversation."""
+    # Extract domain from URL
+    if url:
+        try:
+            domain = url.split("://")[1].split(".")[0] if "://" in url else url.split(".")[0]
+            # Map common domain names to app types
+            domain_map = {
+                "birdiepulse": "golf coaching app",
+                "notion": "note-taking tool",
+                "slack": "team communication platform",
+                "figma": "design tool",
+                "stripe": "payments processor",
+                "calendly": "scheduling app",
+                "zapier": "automation platform",
+                "airtable": "database tool",
+            }
+            return domain_map.get(domain.lower(), f"{domain} app")
+        except:
+            pass
+
+    # Detect from conversation
+    msg_lower = (message + " " + " ".join(h.get("text", "") for h in history if isinstance(h, dict))).lower()
+
+    keywords = {
+        "golf coaching": ["coach", "golf", "lesson", "training"],
+        "SaaS platform": ["saas", "platform", "enterprise", "business"],
+        "mobile app": ["mobile", "ios", "android", "native"],
+        "productivity tool": ["productivity", "task", "todo", "workflow", "calendar"],
+        "social network": ["social", "community", "network", "forum"],
+        "marketplace": ["marketplace", "buy", "sell", "payment", "transaction"],
+        "analytics tool": ["analytics", "dashboard", "data", "metrics", "report"],
+        "CRM": ["crm", "customer", "contact", "sales", "pipeline"],
+    }
+
+    for app_type, words in keywords.items():
+        if any(w in msg_lower for w in words):
+            return app_type
+
+    return "app"
 
 def _extract_validation_context(message, history, stage):
     """Extract key info from conversation."""
@@ -377,50 +418,53 @@ def _extract_validation_context(message, history, stage):
     }
     return context
 
-def _generate_validation_response(stage, context, message, history):
+def _generate_validation_response(stage, context, message, history, url=""):
     """Generate intelligent validation questions/feedback."""
 
-    # Handle critical adoption gap (coaches promise but ghost)
+    # Detect app domain from URL or message
+    domain = _detect_app_domain(url, message, history)
+
+    # Handle critical adoption gap (people promise but ghost)
     if context["has_adoption_gap"]:
         if context["has_zero_users"]:
-            return "🚨 **This is THE blocker.** Coaches promise but don't follow through — that's a trust/friction problem, not a product problem. Here's your 90-day fix: (1) **Reduce friction**: Send them a 2-min setup video + link (not a long onboarding), (2) **Create urgency**: Offer month 1 free BUT they must log 1 lesson in-app to unlock it, (3) **Build proof**: When ONE coach actually uses it, ask them for a video testimonial + referral. Who's your most interested coach? Start with them."
+            return f"🚨 **This is THE blocker.** Your {domain} promise to sign up but don't follow through — that's a trust/friction problem, not a product problem. Here's your 90-day fix: (1) **Reduce friction**: Send them a 2-min setup video + link (not a long onboarding), (2) **Create urgency**: Offer month 1 free BUT they must complete ONE key action in-app to unlock it, (3) **Build proof**: When ONE user actually uses it, ask them for a testimonial + referral. Who's your most interested user? Start with them."
         else:
-            return "There it is — coaches ghost you. That's not a retention problem; it's an **adoption/activation problem**. They say yes but never actually use it. Fix: (1) Make first use frictionless (video walkthrough, 2 minutes max), (2) Send automated follow-up: day 1 'welcome', day 3 'here's a quick win', day 7 'one-click unsubscribe if not for you', (3) Offer first paid month free if they log 3 lessons. The goal: get them to experience ONE win in the app."
+            return f"There it is — your users ghost you. That's not a retention problem; it's an **adoption/activation problem**. They say yes but never actually use it. Fix: (1) Make first use frictionless (video walkthrough, 2 minutes max), (2) Send automated follow-up: day 1 'welcome', day 3 'here's a quick win', day 7 'one-click unsubscribe if not for you', (3) Offer first paid month free if they complete 3 key actions. The goal: get them to experience ONE win in the app."
 
     # Handle zero users
     elif context["has_zero_users"]:
-        return "Okay, so it's purely a discovery/trust issue right now. 3 coaches interested but nothing? That's actually a good starting point. Before you scale: (1) Call those 3, ask WHY they haven't signed up yet (too busy, not convinced it's worth their time, technical friction?), (2) Fix whatever the #1 reason is, (3) Then re-pitch them. Once you have ONE real user (even free), everything else becomes easier. Can you get ONE of those 3 to actually try it this week?"
+        return f"Okay, so it's purely a discovery/trust issue right now. Interested users but no signups? That's actually a good starting point. Before you scale: (1) Call/DM your interested users, ask WHY they haven't signed up yet (too busy, not convinced it's worth their time, technical friction?), (2) Fix whatever the #1 reason is, (3) Then re-pitch them. Once you have ONE real user (even free), everything else becomes easier. Can you get ONE of them to actually try it this week?"
 
     # Handle retention problem
     elif context["retention_problem"]:
-        return "Churn is fixable but you need to know WHY they left. (1) Email your churned coaches: 'What one feature would make you come back?', (2) You'll probably hear the same thing 3x — build that ONE thing, (3) Reach back out saying 'We just built [feature]'. For the ones still using it: ask for referrals + testimonials. Focus on depth before breadth."
+        return f"Churn is fixable but you need to know WHY they left. (1) Email your churned users: 'What one feature would make you come back?', (2) You'll probably hear the same thing 3x — build that ONE thing, (3) Reach back out saying 'We just built [feature]'. For the ones still using it: ask for referrals + testimonials. Focus on depth before breadth."
 
     elif stage == 0:  # First message - introduce and ask about product
-        return "Got it! 🎯 You're building a golf coaching CRM. That's a solid niche. Quick clarification: what's your main bottleneck right now — getting coaches to sign up, retaining them, building features, or something else?"
+        return f"Got it! 🎯 You're building a {domain}. Quick clarification: what's your main bottleneck right now — getting users to sign up, retaining them, building features, or something else?"
 
     elif stage == 1:  # Second exchange - ask about traction
         if context["has_metrics"]:
-            return "Good context. How many coaches are actively using it, and what's your retention like month-to-month? (e.g., do they keep using it or do they churn after a month?)"
+            return "Good context. How many users are actively using it, and what's your retention like month-to-month? (e.g., do they keep using it or do they churn after a month?)"
         elif context["has_blockers"]:
-            return "I hear you. Before we solve that specific blocker, tell me: how many coaches have you reached out to so far, and how many actually tried BirdiePulse? That'll help me understand if it's a product fit issue or a distribution issue."
+            return "I hear you. Before we solve that specific blocker, tell me: how many users have you reached out to so far, and how many actually tried your product? That'll help me understand if it's a product fit issue or a distribution issue."
         else:
-            return "That's useful. Now the real question: how many coaches have actually signed up and are using it regularly? Even just a rough number helps."
+            return "That's useful. Now the real question: how many users have actually signed up and are using it regularly? Even just a rough number helps."
 
     elif stage == 2:  # Third exchange - ask about acquisition
         if context["asking_help"] or context["is_pivot"]:
-            return "Here's my read: Golf coaches are hard to reach (they're coaching during business hours). Your best move? Partner with golf clubs/academies directly or build a 'club admin' dashboard where one person manages their coaches. That's your 90-day win. Want to explore either of those?"
+            return f"Here's my read on your {domain}: Your main challenge is likely reaching your target users. Your best move? Find where they congregate (communities, forums, Discord, Slack groups, events) and build relationships there. OR partner with someone who already has access to them. That's your 90-day win. Which sounds more doable?"
         elif context["has_blockers"]:
-            return "That's the real problem — not the app, but getting in front of coaches. Consider: (1) YouTube tutorial channel showing how BirdiePulse helps with scheduling, (2) Direct outreach to pro golf shops, (3) Offer free accounts to coaches who refer friends. Which feels doable?"
+            return f"That's the real problem — not the product, but getting in front of your users. Consider: (1) Content/tutorials on YouTube/TikTok showing how your product solves their problem, (2) Direct outreach to power users or early adopters, (3) Ask your best users to refer friends. Which feels doable?"
         else:
-            return "The acquisition side is usually where coaching apps get stuck. How are you currently reaching coaches? Word-of-mouth, paid ads, partnerships, something else?"
+            return f"The acquisition side is usually where {domain}s get stuck. How are you currently reaching your target users? Word-of-mouth, paid ads, partnerships, content, something else?"
 
     elif stage >= 3:  # Later stages - give specific feedback
         if context["has_metrics"] and context["has_traction"]:
-            return "📈 You're making progress! Next moves: (1) Interview your churn customers to understand why they left, (2) Add 2-3 features your active coaches specifically asked for, (3) Reach out to 100 new coaches with a free trial. Momentum beats perfection. What's the biggest feature request you're hearing?"
+            return "📈 You're making progress! Next moves: (1) Interview your churn users to understand why they left, (2) Add 2-3 features your active users specifically asked for, (3) Reach out to 100 new potential users with a free trial. Momentum beats perfection. What's the biggest feature request you're hearing?"
         elif context["asking_help"]:
-            return "Here's a quick roadmap: (1) Get 10 coaches paying $29/mo, (2) Use that revenue to hire a sales person, (3) Target golf academies and clubs (they buy software). First checkpoint in 90 days: 50 active coaches. Sound realistic?"
+            return "Here's a quick roadmap: (1) Get 10 users paying monthly, (2) Use that revenue to hire a sales/outreach person, (3) Target the most valuable segment first. First checkpoint in 90 days: 50 active users. Sound realistic?"
         else:
-            return "You're building something coaches actually need — that's the hardest part done. Now: (1) Nail ONE workflow that coaches love (one must-have feature), (2) Use your engaged coaches as your sales team (ask for referrals + testimonials), (3) Reach out to golf academies saying 'We're built for teams like yours'. What's the ONE thing coaches keep asking for?"
+            return "You're building something your users actually need — that's the hardest part done. Now: (1) Nail ONE workflow that users love (one must-have feature), (2) Use your engaged users as your sales team (ask for referrals + testimonials), (3) Reach out to your target audience saying 'We're built for people like you'. What's the ONE thing users keep asking for?"
 
     else:  # Generic fallback
         return "Tell me more about where you're stuck. Is it product, finding users, retention, revenue, or something else?"
