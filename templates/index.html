@@ -6136,13 +6136,14 @@
     var mode = _homeEffectiveMode();
     window._briefInferredMode = mode;
 
-    var modeBadge = document.getElementById("mode-indicator");
-    if (modeBadge) {
-      var label = _HOME_MODE_LABELS[mode] || mode;
-      modeBadge.textContent = label + " mode";
-      modeBadge.title = (window._briefData && window._briefData.mode_reason) || "";
-      modeBadge.style.display = "block";
-    }
+    // Mode indicator badge — disabled for now (redundant/confusing display)
+    // var modeBadge = document.getElementById("mode-indicator");
+    // if (modeBadge) {
+    //   var label = _HOME_MODE_LABELS[mode] || mode;
+    //   modeBadge.textContent = label + " mode";
+    //   modeBadge.title = (window._briefData && window._briefData.mode_reason) || "";
+    //   modeBadge.style.display = "block";
+    // }
 
     // Module Awareness (#6) — a lane with no enabled module inside it is hidden outright,
     // regardless of mode.
@@ -6503,6 +6504,16 @@
         if (d && d.modules_enabled) {
           window._miruModulesEnabled = d.modules_enabled;
         }
+        // Refresh brief with new module prefs, then close settings to show updated home
+        if (typeof _briefInit === "function") {
+          _briefInit();
+        }
+        // Brief auto-refresh provides visual feedback; close settings after a short delay for smooth UX
+        setTimeout(function() {
+          if (typeof showHome === "function") {
+            showHome();
+          }
+        }, 200);
       })
       .catch(function(e) {
         console.error("[modules] save failed", e);
