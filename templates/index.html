@@ -2345,6 +2345,41 @@
         <!-- School summary link (if schools set up) -->
       </div>
 
+      <!-- Wins & Goals — streak, weekly digest, goals progress, badges, social proof -->
+      <div id="engagement-card" style="display:none;margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Your Progress</div>
+          <div id="engagement-streak-chip" style="display:none;font-size:11px;font-weight:800;color:#b45309;background:#fef3c7;border-radius:999px;padding:3px 10px;white-space:nowrap">🔥 —</div>
+        </div>
+
+        <!-- Weekly wins mini digest -->
+        <div id="engagement-wins" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px">
+          <div id="engagement-wins-body" style="font-size:13px;color:var(--text);line-height:1.7"></div>
+          <div id="engagement-tip" style="display:none;font-size:12px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"></div>
+        </div>
+
+        <!-- Social proof pill -->
+        <div id="engagement-social-proof" style="display:none;font-size:12px;font-weight:700;color:#0369a1;background:#e0f2fe;border-radius:12px;padding:8px 12px;margin-bottom:10px"></div>
+
+        <!-- Badges row -->
+        <div id="engagement-badges" style="display:none;gap:8px;margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px"></div>
+
+        <!-- Goals -->
+        <div id="engagement-goals-wrap">
+          <div id="engagement-goals-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+          <div id="engagement-goal-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
+            <input id="engagement-goal-title" type="text" placeholder="e.g. Takeaways under £100" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:8px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:13px;color:var(--muted)">£</span>
+              <input id="engagement-goal-target" type="number" inputmode="decimal" placeholder="100" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+              <button onclick="_engagementSubmitGoal()" style="background:#4f46e5;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Set goal</button>
+            </div>
+            <div id="engagement-goal-error" style="display:none;font-size:12px;color:#dc2626;margin-top:6px"></div>
+          </div>
+          <button id="engagement-add-goal-btn" onclick="_engagementToggleGoalForm()" style="font-size:12px;font-weight:700;color:#4f46e5;background:#eef2ff;border:none;border-radius:12px;padding:6px 12px;cursor:pointer">＋ Set a goal</button>
+        </div>
+      </div>
+
       <!-- Today section label + card -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div id="brief-today-label" style="display:none;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Today</div>
@@ -19104,6 +19139,19 @@ let _savesAll = [];
             }
           })();
 
+          // Load and render Wins & Goals (streak, digest, goals, badges, social proof)
+          (async function() {
+            try {
+              const wa = token;
+              if (!wa) return;
+              const r = await fetch(`/api/v2/engagement-summary?wa=${encodeURIComponent(wa)}`);
+              const eData = await r.json();
+              _engagementRenderCard(eData);
+            } catch (e) {
+              console.warn("Engagement summary load failed:", e);
+            }
+          })();
+
           // Last receipt moved to spend card (shown only there, not as separate card)
           // _briefLoadLastReceipt(); // DISABLED: now only in spend card
 
@@ -19714,6 +19762,160 @@ let _savesAll = [];
     }
 
     card.style.display = "block";
+  }
+
+  function _engagementRenderCard(data) {
+    var card = document.getElementById("engagement-card");
+    if (!card || !data || data.status !== "ok") { if (card) card.style.display = "none"; return; }
+
+    var wins = data.weekly_wins || {};
+    var goals = data.goals || [];
+    var social = data.social_proof || {};
+    var badges = data.badges || [];
+
+    // Streak chip
+    var streakChip = document.getElementById("engagement-streak-chip");
+    if (streakChip) {
+      if (wins.streak_weeks > 0) {
+        streakChip.textContent = "🔥 " + wins.streak_weeks + "-week streak";
+        streakChip.style.display = "inline-block";
+      } else {
+        streakChip.style.display = "none";
+      }
+    }
+
+    // Weekly wins mini digest
+    var winsBody = document.getElementById("engagement-wins-body");
+    if (winsBody) {
+      if (wins.status === "ok") {
+        var lines = [];
+        if (wins.saved_vs_last_week_pence > 0) {
+          lines.push("💰 You've saved £" + (wins.saved_vs_last_week_pence / 100).toFixed(2) + " vs last week");
+        } else if (wins.overspent_vs_last_week_pence > 0) {
+          lines.push("💳 £" + (wins.overspent_vs_last_week_pence / 100).toFixed(2) + " more than last week so far");
+        } else {
+          lines.push("💰 Spend is level with last week so far");
+        }
+        lines.push("📊 On budget " + wins.days_on_budget + "/" + wins.days_elapsed + " days this week");
+        if (wins.fuel_saved_pence > 0) {
+          lines.push("⛽ Fuel alerts saved £" + (wins.fuel_saved_pence / 100).toFixed(2) + " total");
+        }
+        winsBody.innerHTML = lines.map(function(l) { return "<div>" + l + "</div>"; }).join("");
+
+        var tipEl = document.getElementById("engagement-tip");
+        if (tipEl) {
+          if (wins.tip) { tipEl.textContent = "💡 " + wins.tip; tipEl.style.display = "block"; }
+          else { tipEl.style.display = "none"; }
+        }
+      } else {
+        winsBody.innerHTML = '<div style="color:var(--muted)">Log a receipt on WhatsApp to start tracking your week.</div>';
+        var tipEl2 = document.getElementById("engagement-tip");
+        if (tipEl2) tipEl2.style.display = "none";
+      }
+    }
+
+    // Social proof pill
+    var socialEl = document.getElementById("engagement-social-proof");
+    if (socialEl) {
+      if (social.status === "ok" && social.tier_label) {
+        socialEl.textContent = "📈 " + social.tier_label;
+        socialEl.style.display = "block";
+      } else {
+        socialEl.style.display = "none";
+      }
+    }
+
+    // Badges row
+    var badgesEl = document.getElementById("engagement-badges");
+    if (badgesEl) {
+      if (badges.length > 0) {
+        badgesEl.style.display = "flex";
+        badgesEl.innerHTML = badges.map(function(b) {
+          var desc = (b.desc || "").replace(/"/g, "&quot;");
+          return '<div title="' + desc + '" style="flex-shrink:0;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 12px;min-width:64px">' +
+            '<div style="font-size:20px">' + (b.emoji || "🏅") + '</div>' +
+            '<div style="font-size:10px;font-weight:700;color:var(--text);margin-top:2px;white-space:nowrap">' + (b.label || "") + '</div>' +
+          '</div>';
+        }).join("");
+      } else {
+        badgesEl.style.display = "none";
+      }
+    }
+
+    // Goals
+    var goalsList = document.getElementById("engagement-goals-list");
+    if (goalsList) {
+      goalsList.innerHTML = goals.map(function(g) {
+        var pct = Math.max(0, Math.min(100, g.progress_percent || 0));
+        var barColor = pct >= 100 ? "#16a34a" : "#4f46e5";
+        var current = (g.current_value || 0) / 100;
+        var target = (g.target_value || 0) / 100;
+        return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+            '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (g.title || "") + '</div>' +
+            '<div style="font-size:12px;font-weight:700;color:' + barColor + '">' + pct + '%</div>' +
+          '</div>' +
+          '<div style="height:6px;border-radius:99px;background:var(--bg);overflow:hidden">' +
+            '<div style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:99px"></div>' +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:6px">£' + current.toFixed(2) + ' of £' + target.toFixed(2) + (pct >= 100 ? ' — goal hit! 🎉' : '') + '</div>' +
+        '</div>';
+      }).join("");
+    }
+
+    card.style.display = "block";
+  }
+
+  function _engagementToggleGoalForm() {
+    var form = document.getElementById("engagement-goal-form");
+    var btn = document.getElementById("engagement-add-goal-btn");
+    if (!form) return;
+    var show = form.style.display === "none";
+    form.style.display = show ? "block" : "none";
+    if (btn) btn.style.display = show ? "none" : "inline-block";
+  }
+
+  function _engagementSubmitGoal() {
+    var wa = (typeof _miruPhone === "function") ? _miruPhone() : "";
+    var titleEl = document.getElementById("engagement-goal-title");
+    var targetEl = document.getElementById("engagement-goal-target");
+    var errEl = document.getElementById("engagement-goal-error");
+    var title = titleEl ? titleEl.value.trim() : "";
+    var target = targetEl ? parseFloat(targetEl.value) : 0;
+
+    if (errEl) errEl.style.display = "none";
+    if (!wa) {
+      if (errEl) { errEl.textContent = "Sign in with your phone number first."; errEl.style.display = "block"; }
+      return;
+    }
+    if (!title || !target || target <= 0) {
+      if (errEl) { errEl.textContent = "Add a title and a target amount."; errEl.style.display = "block"; }
+      return;
+    }
+
+    fetch("/api/v2/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wa: wa, title: title, target_value: target, period_days: 7 })
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.status === "ok") {
+          if (titleEl) titleEl.value = "";
+          if (targetEl) targetEl.value = "";
+          _engagementToggleGoalForm();
+          fetch("/api/v2/engagement-summary?wa=" + encodeURIComponent(wa))
+            .then(function(r) { return r.json(); })
+            .then(_engagementRenderCard)
+            .catch(function() {});
+        } else if (errEl) {
+          errEl.textContent = res.error || "Couldn't set goal.";
+          errEl.style.display = "block";
+        }
+      })
+      .catch(function() {
+        if (errEl) { errEl.textContent = "Couldn't set goal — try again."; errEl.style.display = "block"; }
+      });
   }
 
   function _briefFillSchoolSlot(ctx) {

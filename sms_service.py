@@ -78,6 +78,18 @@ apply_all_migrations()
 from miru.goals.endpoints import register_goals_endpoints
 register_goals_endpoints(app)
 
+# ── Phase 2: Engagement Loops (weekly wins digest, goals progress, social proof, badges) ──
+from miru.motivation.engagement_endpoints import register_engagement_endpoints
+register_engagement_endpoints(app)
+
+# Alias so the documented cron URL name also works, without duplicating the
+# send-and-log logic in miru/motivation/endpoints.py::cron_weekly_savings.
+app.add_url_rule(
+    "/api/cron/weekly-digest",
+    view_func=app.view_functions["cron_weekly_savings"],
+    methods=["GET"],
+)
+
 # ── FrameWork: App Idea Validator (Stealth) ──
 from idea_analyzer import generate_report
 

@@ -172,6 +172,15 @@ def register_motivation_endpoints(app):
                     if savings.get('status') != 'ok':
                         continue
 
+                    # Record this week's history row (streak, days-on-budget) —
+                    # one authoritative write per user per week, read back by
+                    # the web engagement-summary endpoint and future cron runs.
+                    try:
+                        from miru.motivation.engagement import record_weekly_win_event
+                        record_weekly_win_event(wa, savings)
+                    except Exception as e:
+                        print(f"[weekly-savings] record_weekly_win_event failed for {wa}: {e}")
+
                     # Format + send the regular weekly summary message
                     msg = format_weekly_message(savings)
                     if msg:
