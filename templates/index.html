@@ -2328,8 +2328,14 @@
       <!-- Section label -->
       <div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Your Brief</div>
 
-      <!-- Narrative card — shimmer while loading -->
-      <div id="brief-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:16px;padding:20px;margin-bottom:14px;min-height:88px">
+      <!-- Collapsed brief state — shown on page load (lazy load) -->
+      <div id="brief-collapsed" style="padding:16px;background:var(--surface);border-radius:16px;cursor:pointer;text-align:center;margin-bottom:14px;border:1px solid var(--border);transition:all 0.2s" onclick="_briefLazyLoad()">
+        <div style="font-size:14px;color:var(--text);font-weight:500">📄 Your brief</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Tap to read</div>
+      </div>
+
+      <!-- Narrative card — shimmer while loading (initially hidden) -->
+      <div id="brief-card" style="display:none;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:16px;padding:20px;margin-bottom:14px;min-height:88px">
         <div style="font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:10px">Miru · right now</div>
         <div id="brief-shimmer">
           <div style="height:13px;border-radius:12px;background:rgba(255,255,255,.18);margin-bottom:10px;width:80%"></div>
@@ -4119,7 +4125,8 @@
       history.replaceState(null, "", "/");
       if (bb) bb.classList.remove("visible");
       _pillUpdate("home");
-      if (typeof _briefInit === "function" && !_briefData) _briefInit();
+      // LAZY LOAD: Don't fetch brief on page load — wait for user tap
+      // if (typeof _briefInit === "function" && !_briefData) _briefInit();
       return;
     }
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -18894,6 +18901,15 @@ let _savesAll = [];
     }
   }
 
+  // LAZY LOAD: Fetch brief when user taps collapsed section
+  function _briefLazyLoad() {
+    var collapsed = document.getElementById("brief-collapsed");
+    if (collapsed) {
+      collapsed.innerHTML = '<div style="font-size:12px;color:var(--muted)">Loading your brief…</div>';
+    }
+    _briefInit();
+  }
+
   function _briefInit(forceRefresh) {
     if (!window._miruModulesEnabled) _loadModuleSettings();
     var now = new Date();
@@ -18901,6 +18917,12 @@ let _savesAll = [];
     var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     var dl = document.getElementById("brief-dateline");
     if (dl) dl.textContent = days[now.getDay()] + ", " + now.getDate() + " " + months[now.getMonth()];
+
+    // LAZY LOAD: Hide collapsed state, show brief card
+    var collapsed = document.getElementById("brief-collapsed");
+    var card = document.getElementById("brief-card");
+    if (collapsed) collapsed.style.display = "none";
+    if (card) card.style.display = "block";
 
     // _briefInitModeToggle(); // DISABLED — using automatic commute window filtering instead
     if (typeof _briefLoadSavedEvents === "function") _briefLoadSavedEvents();
