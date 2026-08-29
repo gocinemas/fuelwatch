@@ -2302,7 +2302,7 @@
       </div>
 
       <!-- Brief 2-col layout at ≥900px: left=narrative/chips, right=nearby+tools -->
-      <div id="brief-cols"><div id="brief-col-main">
+      <div id="brief-cols"><div id="brief-col-main" style="display:none">
 
       <!-- Location pill — shown when GPS resolves -->
       <div id="brief-location-label" style="display:none;font-size:11px;font-weight:700;color:#1d4ed8;background:var(--info-border);border-radius:99px;padding:4px 10px;margin-bottom:10px;letter-spacing:.02em"></div>
@@ -18905,6 +18905,13 @@ let _savesAll = [];
   // LAZY LOAD: Fetch brief when user taps collapsed section
   function _briefLazyLoad() {
     var collapsed = document.getElementById("brief-collapsed");
+    var briefMain = document.getElementById("brief-col-main");
+    if (collapsed) {
+      collapsed.style.display = "none";  // Hide the tap-to-read button
+    }
+    if (briefMain) {
+      briefMain.style.display = "block";  // Show the brief card
+    }
     if (collapsed) {
       collapsed.innerHTML = '<div style="font-size:12px;color:var(--muted)">Loading your brief…</div>';
     }
