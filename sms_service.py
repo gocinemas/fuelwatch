@@ -32645,6 +32645,8 @@ def api_school_edit():
         child_name = data.get("child_name", "").strip()
         school_name = data.get("school_name", "").strip()
         address = data.get("address", "").strip()
+        class_name = data.get("class_name", "").strip()
+        teacher_name = data.get("teacher_name", "").strip()
         emails = data.get("sender_emails", [])
 
         if not school_id:
@@ -32659,6 +32661,8 @@ def api_school_edit():
             "child_name": child_name,
             "school_name": school_name,
             "address": address,
+            "class_name": class_name,
+            "teacher_name": teacher_name,
             "sender_emails": emails if emails else []
         }).eq("id", school_id).execute()
 

@@ -402,6 +402,17 @@
       <input type="text" id="editSchoolAddress" placeholder="Auto-filled when you pick a school" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
     </div>
 
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+      <div>
+        <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Class/Year <span style="color: #9ca3af; font-weight: 400;">(optional)</span></label>
+        <input type="text" id="editClassName" placeholder="e.g. Year 5" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      </div>
+      <div>
+        <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Teacher <span style="color: #9ca3af; font-weight: 400;">(optional)</span></label>
+        <input type="text" id="editTeacherName" placeholder="e.g. Mr Smith" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      </div>
+    </div>
+
     <div style="margin-bottom: 16px;">
       <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">School Emails <span style="color: #9ca3af; font-weight: 400;">(optional)</span></label>
       <div id="editSchoolEmailsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
@@ -876,6 +887,8 @@
     document.getElementById('editChildName').value = school.child_name || '';
     document.getElementById('editSchoolName').value = school.school_name || '';
     document.getElementById('editSchoolAddress').value = school.address || '';
+    document.getElementById('editClassName').value = school.class_name || '';
+    document.getElementById('editTeacherName').value = school.teacher_name || '';
 
     // Populate email fields
     const container = document.getElementById('editSchoolEmailsContainer');
@@ -960,6 +973,8 @@
     const childName = document.getElementById('editChildName').value.trim();
     const schoolName = document.getElementById('editSchoolName').value.trim();
     const address = document.getElementById('editSchoolAddress').value.trim();
+    const className = document.getElementById('editClassName')?.value.trim() || '';
+    const teacherName = document.getElementById('editTeacherName')?.value.trim() || '';
 
     if (!childName || !schoolName) {
       alert('Please enter child name and school name');
@@ -993,6 +1008,8 @@
           child_name: childName,
           school_name: schoolName,
           address: address,
+          class_name: className,
+          teacher_name: teacherName,
           sender_emails: emails
         })
       });
