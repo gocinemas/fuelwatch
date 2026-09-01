@@ -557,7 +557,7 @@ JSON array:"""
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "mixtral-8x7b-32768",
+                    "model": "llama-3.2-70b-versatile",
                     "max_tokens": 2000,
                     "temperature": 0.5,
                     "messages": [
@@ -679,7 +679,7 @@ Example: [[{{"event_title":"School Trip to Brighton","event_type":"activity","ev
             return [[] for _ in batch_items]
 
         message = client.chat.completions.create(
-            model="mixtral-8x7b-32768",
+            model="llama-3.2-70b-versatile",
             max_tokens=1500,
             messages=[{"role": "user", "content": combined_prompt}]
         )
