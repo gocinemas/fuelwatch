@@ -280,6 +280,9 @@
     <p>Track school emails for Riaan & Inaaya. Set up Gmail scanning to get event alerts on WhatsApp.</p>
   </div>
 
+  <!-- Gmail Connection Section -->
+  <div id="gmailSection" style="margin-bottom: 32px;"></div>
+
   <button class="btn-add-school" onclick="redirectToSignup()">+ Add a School</button>
 
   <div class="schools-grid" id="schoolsGrid">
@@ -469,6 +472,49 @@
     }
   }
 
+  function renderGmailSection() {
+    const el = document.getElementById('gmailSection');
+    if (schools.length === 0) {
+      el.innerHTML = '';
+      return;
+    }
+
+    const needsGmail = schools.filter(s => !s.gmail_refresh_token || s.gmail_token_error);
+    const allConnected = needsGmail.length === 0;
+
+    if (allConnected) {
+      el.innerHTML = `
+        <div style="background: #fff; border-radius: 16px; border: 1.5px solid var(--gray-200); padding: 20px; margin-bottom: 24px; display: flex; gap: 16px; align-items: center;">
+          <div style="font-size: 32px;">📧</div>
+          <div style="flex: 1;">
+            <div style="font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 4px;">Gmail Connected</div>
+            <div style="font-size: 14px; color: var(--gray-600);">Miru is scanning your inbox for school emails every 6 hours.</div>
+          </div>
+          <div style="font-size: 12px; font-weight: 600; color: #10b981; background: #d1fae5; padding: 8px 12px; border-radius: 8px;">✓ Connected</div>
+        </div>`;
+    } else {
+      const buttons = needsGmail.map(s => {
+        return `<a href="${s.oauth_url || '#'}" style="display: inline-block; padding: 12px 20px; background: #1a1a2e; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; margin-right: 8px; margin-bottom: 8px;">
+          🔗 Connect Gmail${schools.length > 1 ? ` (${s.child_name})` : ''}
+        </a>`;
+      }).join('');
+
+      el.innerHTML = `
+        <div style="background: #fff; border-radius: 16px; border: 1.5px solid var(--gray-200); padding: 20px; margin-bottom: 24px; border-color: #fbbf24; background: #fffbeb;">
+          <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <div style="font-size: 32px;">📧</div>
+            <div style="flex: 1;">
+              <div style="font-size: 16px; font-weight: 700; color: #92400e; margin-bottom: 8px;">Gmail Not Connected</div>
+              <div style="font-size: 14px; color: #78350f; line-height: 1.6;">
+                Miru needs access to your Gmail to scan for school emails. Click below to connect — Miru only reads emails from the school addresses you've added.
+              </div>
+            </div>
+          </div>
+          <div>${buttons}</div>
+        </div>`;
+    }
+  }
+
   function renderSchools() {
     const grid = document.getElementById('schoolsGrid');
     const empty = document.getElementById('emptyState');
@@ -480,6 +526,7 @@
     }
 
     empty.style.display = 'none';
+    renderGmailSection();
     populateAddEventProfiles();
     grid.innerHTML = schools.map((s, i) => `
       <div class="school-card">
