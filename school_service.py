@@ -557,7 +557,7 @@ JSON array:"""
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "llama-3.3-70b-versatile",
+                    "model": "openai/gpt-oss-20b",
                     "max_tokens": 2000,
                     "temperature": 0.5,
                     "messages": [
@@ -679,7 +679,7 @@ Example: [[{{"event_title":"School Trip to Brighton","event_type":"activity","ev
             return [[] for _ in batch_items]
 
         message = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-20b",
             max_tokens=1500,
             messages=[{"role": "user", "content": combined_prompt}]
         )
