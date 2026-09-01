@@ -11684,6 +11684,67 @@ def api_v2_spend():
         return jsonify({"total": 0, "count": 0, "period": "", "breakdown": {}, "error": str(e)})
 
 
+@app.route("/api/v2/waitrose-weekly", methods=["GET"])
+def api_v2_waitrose_weekly():
+    """Get Waitrose spending for last 2 weeks, grouped by week."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"this_week": [], "last_week": [], "this_week_total": 0, "last_week_total": 0})
+
+    try:
+        from datetime import date, timedelta
+        import json
+
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())  # Monday
+        last_week_start = week_start - timedelta(days=7)
+
+        sb = lib._sb()
+
+        # Get Waitrose receipts for last 2 weeks
+        rows = sb.table("receipts").select("merchant,total,shop_date,items") \
+            .ilike("merchant", "%waitrose%") \
+            .gte("shop_date", last_week_start.isoformat()) \
+            .lte("shop_date", today.isoformat()) \
+            .order("shop_date", desc=True) \
+            .execute()
+
+        this_week = []
+        last_week = []
+        this_week_total = 0
+        last_week_total = 0
+
+        for row in rows.data if rows.data else []:
+            receipt_date = date.fromisoformat(row.get("shop_date", ""))
+            total = float(row.get("total", 0))
+            merchant = row.get("merchant", "Waitrose")
+
+            receipt_obj = {
+                "date": row.get("shop_date"),
+                "merchant": merchant,
+                "amount": total
+            }
+
+            if receipt_date >= week_start:
+                this_week.append(receipt_obj)
+                this_week_total += total
+            else:
+                last_week.append(receipt_obj)
+                last_week_total += total
+
+        return jsonify({
+            "this_week": this_week,
+            "last_week": last_week,
+            "this_week_total": round(this_week_total, 2),
+            "last_week_total": round(last_week_total, 2),
+            "period": f"Last 2 weeks (since {last_week_start.isoformat()})"
+        })
+    except Exception as e:
+        print(f"[waitrose-weekly] Error: {e}")
+        return jsonify({"this_week": [], "last_week": [], "this_week_total": 0, "last_week_total": 0, "error": str(e)})
+
+
 @app.route("/api/v2/receipts-timeline", methods=["GET"])
 def api_v2_receipts_timeline():
     """Get all receipts with items for timeline view (last N days)."""
