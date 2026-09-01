@@ -300,6 +300,46 @@
     </div>
     <div id="weekAheadGrid" style="display: grid; gap: 12px;"></div>
   </div>
+
+  <!-- Add Event Manually Section -->
+  <div id="addEventSection" style="margin-top: 32px;">
+    <div class="hero">
+      <h1>➕ Add Event</h1>
+      <p>Create a school event manually if email scanning is delayed</p>
+    </div>
+
+    <div id="addEventForm" style="background: #fff; border-radius: 16px; border: 1.5px solid var(--gray-200); padding: 20px;">
+      <div style="margin-bottom: 16px;">
+        <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">School</label>
+        <select id="addEventProfile" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+          <option value="">Select a school...</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Event Title</label>
+        <input type="text" id="addEventTitle" placeholder="e.g. Dance Show, Sports Day, Parent Evening" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <div>
+          <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Date</label>
+          <input type="date" id="addEventDate" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+        </div>
+        <div>
+          <label style="font-weight: 600; color: var(--primary); margin-bottom: 8px; display: block;">Time (optional)</label>
+          <input type="text" id="addEventTime" placeholder="e.g. 14:00 or 2-3 PM" style="width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 10px; font-family: inherit; font-size: 15px;">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button onclick="submitAddEvent()" style="flex: 1; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;">✅ Add Event</button>
+        <button onclick="clearAddEventForm()" style="flex: 1; padding: 12px; background: var(--gray-100); color: var(--primary); border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;">Clear</button>
+      </div>
+
+      <div id="addEventResult" style="display: none; margin-top: 12px; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600;"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Modal -->
@@ -440,6 +480,7 @@
     }
 
     empty.style.display = 'none';
+    populateAddEventProfiles();
     grid.innerHTML = schools.map((s, i) => `
       <div class="school-card">
         <div class="school-header">
@@ -1020,9 +1061,96 @@
     }
   }
 
+  // ── Add Event Functions ────────────────────────────────────────────────
+
+  function populateAddEventProfiles() {
+    const select = document.getElementById('addEventProfile');
+    select.innerHTML = '<option value="">Select a school...</option>';
+    schools.forEach(school => {
+      const option = document.createElement('option');
+      option.value = school.id;
+      option.textContent = `${school.child_name} — ${school.school_name}`;
+      select.appendChild(option);
+    });
+  }
+
+  async function submitAddEvent() {
+    const profileId = document.getElementById('addEventProfile').value.trim();
+    const title = document.getElementById('addEventTitle').value.trim();
+    const date = document.getElementById('addEventDate').value.trim();
+    const time = document.getElementById('addEventTime').value.trim();
+    const resultEl = document.getElementById('addEventResult');
+
+    if (!profileId) {
+      resultEl.style.background = '#fee2e2';
+      resultEl.style.color = '#991b1b';
+      resultEl.textContent = '❌ Please select a school';
+      resultEl.style.display = 'block';
+      return;
+    }
+
+    if (!title) {
+      resultEl.style.background = '#fee2e2';
+      resultEl.style.color = '#991b1b';
+      resultEl.textContent = '❌ Please enter an event title';
+      resultEl.style.display = 'block';
+      return;
+    }
+
+    resultEl.style.display = 'none';
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      let wa = params.get('wa') || localStorage.getItem('school_wa') || localStorage.getItem('miru_phone');
+
+      const res = await fetch('/api/school/events/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile_id: profileId,
+          wa: wa,
+          event_title: title,
+          event_date: date || null,
+          notes: time || null
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        resultEl.style.background = '#d1fae5';
+        resultEl.style.color = '#065f46';
+        resultEl.textContent = '✅ Event added! It will appear in your brief.';
+        resultEl.style.display = 'block';
+        clearAddEventForm();
+        // Reload events after a brief delay
+        setTimeout(loadWeekAhead, 1000);
+      } else {
+        resultEl.style.background = '#fee2e2';
+        resultEl.style.color = '#991b1b';
+        resultEl.textContent = '❌ ' + (data.error || 'Failed to add event');
+        resultEl.style.display = 'block';
+      }
+    } catch (e) {
+      console.error('Add event error:', e);
+      resultEl.style.background = '#fee2e2';
+      resultEl.style.color = '#991b1b';
+      resultEl.textContent = '❌ Network error: ' + e.message;
+      resultEl.style.display = 'block';
+    }
+  }
+
+  function clearAddEventForm() {
+    document.getElementById('addEventProfile').value = '';
+    document.getElementById('addEventTitle').value = '';
+    document.getElementById('addEventDate').value = '';
+    document.getElementById('addEventTime').value = '';
+    document.getElementById('addEventResult').style.display = 'none';
+  }
+
   // Load on page load
   (async () => {
     await loadSchools();
+    populateAddEventProfiles();
     // If editing a specific school (from Edit button), open edit modal
     const params = new URLSearchParams(window.location.search);
     const schoolId = params.get('id');
