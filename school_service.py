@@ -679,7 +679,7 @@ Example: [[{{"event_title":"School Trip to Brighton","event_type":"activity","ev
             return [[] for _ in batch_items]
 
         message = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="mixtral-8x7b-32768",
             max_tokens=1500,
             messages=[{"role": "user", "content": combined_prompt}]
         )
