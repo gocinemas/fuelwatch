@@ -634,43 +634,30 @@ def _groq_batch_parse_events(batch_items: list[tuple]) -> list[list[dict]]:
 
         all_prompts.append(f"[Email {i+1}] School: {school_name} | Year: {year_group} | Sent: {ref_str} ({weekday}) | Subject: {subject}")
 
-    combined_prompt = f"""Parse these {len(batch_items)} school emails and extract COMPREHENSIVE event data.
+    combined_prompt = f"""Extract school events from these {len(batch_items)} emails.
 
-For each email, extract:
-{{
-  "event_title": "Event name (max 10 words)",
-  "event_type": "activity|permission|deadline|newsletter|club|reminder|other",
-  "event_date": "ISO date (YYYY-MM-DD) or null",
-  "description": "2-3 sentence summary",
-  "action_needed": "What parent must do (e.g., 'Submit consent', 'Pay £25', 'Bring PE kit')",
-  "deadline": "ISO date when action is due (if different from event_date)",
-  "cost": "Numeric cost (e.g., 24.50) or null",
-  "cost_deadline": "ISO date payment is due",
-  "cost_includes": "What's included (e.g., 'Entry, transport, lunch')",
-  "location": "Simple location (e.g., 'Brighton Beach')",
-  "pickup_time": "HH:MM (e.g., '09:00') or null",
-  "return_time": "HH:MM when event ends or null",
-  "items_required": [
-    {{"item": "Item name", "deadline": "ISO date or null", "cost": "numeric or null"}}
-  ],
-  "permissions_needed": [
-    {{"type": "trip_consent|photo_consent|other", "deadline": "ISO date"}}
-  ],
-  "contacts": [
-    {{"role": "Trip lead|Organizer|Teacher", "name": "Name", "phone": "Number"}}
-  ],
-  "link_url": "URL to form or more info",
-  "recurring": {{"day_of_week": "Monday|Tuesday|...|null", "frequency": "weekly|monthly|etc"}}
-}}
+IMPORTANT: Extract ANY mention of dates, times, activities, deadlines, payments, or actions. Be generous - include everything that might be important for parents.
 
-Dates: "Thursday 8th May" → "2026-05-08". Extract costs from any mention ("£25", "25 pounds").
-For PE kit reminders, extract day-of-week and mark as recurring.
-Only include fields with actual data; omit nulls.
+For EACH email, return a JSON array with objects containing ONLY these fields that have data:
+- event_title (string): What is happening? (e.g., "PE Days", "School dinner ordering", "Trip overview")
+- event_date (string): When? Use format YYYY-MM-DD. If just a day mentioned, convert to 2026 date.
+- event_type (string): One of: activity, permission, deadline, payment, reminder, notification
+- action_needed (string): What must parent do?
+- cost (number): Any £ amount mentioned
+- description (string): 1-2 sentences
 
+EXAMPLE INPUT: "School dinner ordering for this term - please order by Friday 6th September"
+EXAMPLE OUTPUT: {{"event_title":"School dinner ordering","event_date":"2026-09-06","event_type":"payment","action_needed":"Order school dinners","description":"Order dinners for the term by Friday"}}
+
+EXAMPLE INPUT: "PE Days - your child wears PE kit on Monday and Thursday"
+EXAMPLE OUTPUT: {{"event_title":"PE Days","event_type":"reminder","action_needed":"Send PE kit on Monday and Thursday","description":"Wear PE kit on these days"}}
+
+Emails:
 {chr(10).join(all_prompts)}
 
-Return ONLY a JSON array of {len(batch_items)} arrays, one per email.
-Example: [[{{"event_title":"School Trip to Brighton","event_type":"activity","event_date":"2026-09-15","cost":24.50,"cost_deadline":"2026-09-10","location":"Brighton Beach","pickup_time":"09:00","items_required":[{{"item":"Packed lunch"}}]}}], [{{}}]]"""
+Return ONLY a JSON array of {len(batch_items)} arrays (one array per email). Each array contains objects for events found.
+Return [] for an email with no events.
+Example format: [[{{"event_title":"PE Days","event_date":"2026-09-02","event_type":"reminder"}}], [{{}}]]"""
 
     try:
         client = _get_groq_client()
