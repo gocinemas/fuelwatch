@@ -557,7 +557,7 @@ JSON array:"""
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "llama-3.1-8b-instant",
+                    "model": "mixtral-8x7b-32768",
                     "max_tokens": 2000,
                     "temperature": 0.5,
                     "messages": [
