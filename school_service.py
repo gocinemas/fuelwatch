@@ -557,7 +557,7 @@ JSON array:"""
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "openai/gpt-oss-20b",
+                    "model": "groq/compound",
                     "max_tokens": 2000,
                     "temperature": 0.5,
                     "messages": [
@@ -666,8 +666,8 @@ Example format: [[{{"event_title":"PE Days","event_date":"2026-09-02","event_typ
             return [[] for _ in batch_items]
 
         message = client.chat.completions.create(
-            model="openai/gpt-oss-20b",
-            max_tokens=1500,
+            model="groq/compound",
+            max_tokens=2000,
             messages=[{"role": "user", "content": combined_prompt}]
         )
         response_text = message.choices[0].message.content.strip()
