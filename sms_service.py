@@ -18744,16 +18744,24 @@ def api_home_brief_narrative():
 
     # Normalise saves to "Title (Category)" strings
     # IMPORTANT: Only include REAL saved items, never let Groq invent saves
+    # ⚠️ STRICT: Block wine/alcohol saves (Groq hallucinating brand names)
     saves_ctx = []
+    wine_keywords = ["wine", "beer", "alcohol", "cocktail", "whisky", "vodka", "gin", "rum", "brandy", "champagne", "prosecco"]
     for s in saves_raw[:4]:
         if isinstance(s, dict):
             t   = (s.get("title") or "").strip()
             cat = (s.get("category") or "").strip()
+            # Skip wine/alcohol to prevent hallucination
+            if any(w in t.lower() for w in wine_keywords):
+                continue
             # Only include if title exists AND is not generic/empty
             if t and len(t) > 5 and not t.startswith("Unnamed"):
                 saves_ctx.append(f"{t} ({cat})" if cat else t)
         elif s:
             s_str = str(s).strip()
+            # Skip wine/alcohol to prevent hallucination
+            if any(w in s_str.lower() for w in wine_keywords):
+                continue
             # Only include real, substantial saves
             if s_str and len(s_str) > 5 and not s_str.startswith("Unnamed"):
                 saves_ctx.append(s_str)
