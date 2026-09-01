@@ -11771,10 +11771,9 @@ def api_v2_receipts_timeline():
             .order("created_at", desc=True) \
             .execute().data or []
 
-        # Filter to only receipt-type items (either have 🧾 emoji OR title contains "Receipt" OR category is receipt)
-        wa_rows = [r for r in wa_rows if ("🧾" in r.get("title", "") or
-                                           "Receipt" in r.get("title", "") or
-                                           (r.get("category") and "receipt" in r.get("category", "").lower()))]
+        # Show ALL saves as potential receipts (no strict tag requirement)
+        # Users can send receipts without 🧾 emoji or "Receipt" tag
+        # wa_rows = all items from wa_saves table for this user
 
         # Get receipts from receipts table (PDF imports)
         phone_clean = from_number.replace("whatsapp:", "").strip()
