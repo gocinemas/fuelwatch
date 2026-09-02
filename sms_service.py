@@ -12841,12 +12841,7 @@ def _v2_check_auto_learn(from_number: str) -> dict | None:
 # Surrey CC term holiday periods — (start_iso, end_iso, label, back_iso)
 # Covers community/voluntary-controlled schools; academies may vary by ~1 day
 _SURREY_HOLIDAYS = [
-    ("2025-10-27", "2025-10-31", "autumn half term",  "2025-11-03"),
-    ("2025-12-20", "2026-01-04", "Christmas holidays", "2026-01-05"),
-    ("2026-02-16", "2026-02-20", "spring half term",  "2026-02-23"),
-    ("2026-03-28", "2026-04-13", "Easter holidays",   "2026-04-14"),
-    ("2026-05-25", "2026-05-29", "summer half term",  "2026-06-01"),
-    ("2026-07-23", "2026-09-02", "summer holidays",   "2026-09-03"),
+    # Fallback: hardcoded 2026-27 dates (used if database unavailable)
     ("2026-10-19", "2026-10-30", "autumn half term",  "2026-11-02"),
     ("2026-12-19", "2027-01-04", "Christmas holidays", "2027-01-05"),
     ("2027-02-15", "2027-02-19", "spring half term",  "2027-02-22"),
@@ -12856,7 +12851,45 @@ _SURREY_HOLIDAYS = [
 ]
 
 
-def _surrey_holiday_status(today_date):
+def _get_cached_school_holidays(school_name: str):
+    """Fetch cached school holidays from database.
+
+    Returns list of (start, end, label, back_date) tuples, or None if not found.
+    """
+    try:
+        if not school_name:
+            return None
+
+        sb = lib._sb()
+        result = sb.table("school_terms").select("data").eq("school_name", school_name).limit(1).execute().data
+
+        if result and result[0].get("data"):
+            data = result[0]["data"]
+            holidays = data.get("holidays", [])
+
+            # Convert from [{name, start, end}, ...] to [(start, end, name, back_date), ...]
+            # Note: scraped data doesn't have back_date, so we'll compute it as the next school day
+            tuples = []
+            for h in holidays:
+                start = h.get("start", "")
+                end = h.get("end", "")
+                name = h.get("name", "")
+                # Compute back_date as next day after end (school resumes)
+                if end:
+                    import datetime as _dt
+                    end_date = _dt.date.fromisoformat(end)
+                    back_date = (end_date + _dt.timedelta(days=1)).isoformat()
+                    tuples.append((start, end, name, back_date))
+
+            return tuples if tuples else None
+
+        return None
+    except Exception as e:
+        print(f"[holiday_status] Could not fetch from DB for {school_name}: {e}")
+        return None
+
+
+def _surrey_holiday_status(today_date, school_name: str = None):
     """Return current/imminent holiday info for today's date.
 
     Returns dict with keys:
@@ -12880,7 +12913,16 @@ def _surrey_holiday_status(today_date):
     today_s   = today_date.isoformat()
     tomorrow  = (today_date + _dt.timedelta(days=1)).isoformat()
 
-    for start, end, label, back in _SURREY_HOLIDAYS:
+    # Try to get holidays from cached database first (if school_name provided)
+    holidays_to_check = None
+    if school_name:
+        holidays_to_check = _get_cached_school_holidays(school_name)
+
+    # Fall back to hardcoded Surrey holidays
+    if not holidays_to_check:
+        holidays_to_check = _SURREY_HOLIDAYS
+
+    for start, end, label, back in holidays_to_check:
         if start <= today_s <= end:
             return {
                 "on_holiday": True,
@@ -12973,15 +13015,18 @@ def _v2_fetch_school(from_number: str) -> dict:
         recent   = (today - timedelta(days=14)).isoformat()
         today_s  = today.isoformat()
         tomorrow_s = (today + timedelta(days=1)).isoformat()
-        # Compute holiday status early — needed even if no school profiles registered
-        holiday_status = _surrey_holiday_status(today)
-        holiday_status["inset_days"] = []
         # Try both formats — profiles may be stored with or without "whatsapp:" prefix
         _fn_plain = from_number.replace("whatsapp:", "").strip()
         _fn_wa    = f"whatsapp:{_fn_plain}"
         profiles = lib._sb().table("school_profiles") \
                        .select("id,child_name,school_name,address") \
                        .in_("from_number", [_fn_plain, _fn_wa]).eq("active", True).execute().data or []
+
+        # Compute holiday status using first school if available, otherwise generic Surrey
+        _school_name_for_holidays = profiles[0].get("school_name") if profiles else None
+        holiday_status = _surrey_holiday_status(today, _school_name_for_holidays)
+        holiday_status["inset_days"] = []
+
         if not profiles:
             return {"schools": [], "upcoming": [], "recent": [], "events": [], "holiday_status": holiday_status}
         pids = [p["id"] for p in profiles]
@@ -16531,9 +16576,13 @@ def api_home_brief():
 
     now  = _dt.now(_LDN)
 
-    # School holiday status — pure date math, always computed regardless of DB
+    # School holiday status — try cached DB first, fall back to hardcoded Surrey dates
     import datetime as _shdt
-    _school_holiday_now = _surrey_holiday_status(_shdt.date.today())
+    # Try to use school name from user's profile, if available
+    _school_for_holiday_check = None
+    if prefs.get("primary_school"):
+        _school_for_holiday_check = prefs.get("primary_school")
+    _school_holiday_now = _surrey_holiday_status(_shdt.date.today(), _school_for_holiday_check)
 
     if cache_hit:
         result = dict(cached["data"])
