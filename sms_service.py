@@ -16629,13 +16629,17 @@ def api_home_brief():
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
         # Wait up to 8s for ALL futures collectively (not 8s each), then take whatever finished
+        import time as _timing
+        _start_wait = _timing.time()
         _done, _pending = _cf.wait(futures.values(), timeout=8)
+        _wait_time = _timing.time() - _start_wait
+        app.logger.warning(f"[brief-profile] Waited {_wait_time:.2f}s. Done: {len(_done)}, Pending: {len(_pending)}")
         for k, f in futures.items():
             if f in _done:
                 try: ctx[k] = f.result()
                 except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
             else:
-                app.logger.warning(f"[brief] {k}: timed out")
+                app.logger.warning(f"[brief-SLOW] {k}: TIMED OUT after {_wait_time:.2f}s")
     finally:
         pool.shutdown(wait=False)  # abandon any still-running threads
 
@@ -32357,6 +32361,19 @@ def school_auth_google():
             if not profile_id:
                 print(f"[school auth] no profile_id in response: {result.data}")
                 return redirect("/?screen=school&oauth_error=create_failed")
+
+            # Auto-scrape school term dates when school is added
+            try:
+                from school_term_scraper import SchoolTermScraper
+                print(f"[school] Scraping term dates for {name}...")
+                terms_data = SchoolTermScraper.scrape_school_terms(name)
+                if not terms_data.get("error"):
+                    SchoolTermScraper.store_terms_in_db(name, terms_data)
+                    print(f"[school] ✅ Terms cached for {name}")
+                else:
+                    print(f"[school] ⚠️ Could not scrape terms for {name}: {terms_data.get('error')}")
+            except Exception as scrape_err:
+                print(f"[school] Term scrape error (non-fatal): {scrape_err}")
         except Exception as profile_err:
             print(f"[school auth] profile creation failed: {profile_err}")
             import traceback
@@ -43114,3 +43131,51 @@ def api_feedbin_links():
     except Exception as e:
         app.logger.error(f"[feedbin-api] Error: {e}")
         return jsonify({"error": str(e), "links": []}), 200
+
+
+# ── SCHOOL TERM SCRAPER ENDPOINT ──────────────────────────────────────────
+@app.route("/api/school/scrape-terms", methods=["POST"])
+def api_school_scrape_terms():
+    """Scrape school websites for term dates and store in database"""
+    from school_term_scraper import SchoolTermScraper
+    
+    body = request.get_json(force=True, silent=True) or {}
+    school_name = body.get("school_name", "").strip()
+    
+    if not school_name:
+        return jsonify({"error": "school_name required"}), 400
+    
+    # Scrape the school
+    result = SchoolTermScraper.scrape_school_terms(school_name)
+    
+    if result.get("error"):
+        return jsonify(result), 400
+    
+    # Store in database
+    store_result = SchoolTermScraper.store_terms_in_db(school_name, result)
+    
+    return jsonify({
+        "scraped": result,
+        "stored": store_result
+    })
+
+
+@app.route("/api/school/terms", methods=["GET"])
+def api_school_get_terms():
+    """Retrieve cached school term dates from database"""
+    school_name = request.args.get("school", "").strip()
+    
+    if not school_name:
+        return jsonify({"error": "school parameter required"}), 400
+    
+    try:
+        result = lib._sb().table("school_terms").select("*").eq("school_name", school_name).limit(1).execute().data
+        
+        if result:
+            return jsonify(result[0])
+        else:
+            return jsonify({"status": "not_cached", "school": school_name}), 404
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
