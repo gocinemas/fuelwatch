@@ -34499,6 +34499,42 @@ def school_digest():
     return jsonify(result)
 
 
+@app.route("/api/school/debug-gmail")
+def api_school_debug_gmail():
+    """Debug Gmail connection status for schools (admin only)."""
+    wa = request.args.get("wa", "").strip()
+    school_name = request.args.get("school", "").strip()
+    clear_error = request.args.get("clear_error", "").lower() == "true"
+
+    if not wa:
+        return jsonify({"error": "wa required"}), 400
+
+    try:
+        if clear_error and school_name:
+            # Clear the error flag for a specific school
+            lib._sb().table("school_profiles").update({"gmail_token_error": False}).eq("from_number", wa).eq("school_name", school_name).execute()
+            print(f"[school/debug] Cleared gmail_token_error for {school_name}")
+
+        profiles = lib._sb().table("school_profiles").select("id,school_name,child_name,gmail_refresh_token,gmail_token_error").eq("from_number", wa).execute().data or []
+
+        debug_info = []
+        for p in profiles:
+            has_token = bool(p.get("gmail_refresh_token"))
+            has_error = bool(p.get("gmail_token_error"))
+            debug_info.append({
+                "school_name": p.get("school_name"),
+                "child_name": p.get("child_name"),
+                "has_token": has_token,
+                "has_error": has_error,
+                "gmail_connected": has_token and not has_error,
+                "token_length": len(p.get("gmail_refresh_token", "")) if has_token else 0
+            })
+
+        return jsonify({"wa": wa, "profiles": debug_info, "cleared": clear_error})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/list")
 def api_school_list():
     """List all schools for a user."""
