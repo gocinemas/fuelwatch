@@ -507,16 +507,19 @@ def _should_parse_email(subject: str, body: str) -> tuple[bool, str]:
 
     # PARSE: Keywords that indicate actual events
     parse_patterns = [
-        "trip", "visit", "excursion", "outing", "coach", "field trip",
-        "sports day", "sports match", "fixture", "game",
+        "trip", "visit", "excursion", "outing", "coach", "field trip", "trip overview",
+        "sports day", "sports match", "fixture", "game", "match",
         "assembly", "performance", "concert", "show", "play",
-        "parent evening", "parents evening", "open day",
+        "parent evening", "parents evening", "open day", "parent-teacher",
         "event", "event on", "event at",
-        "booking", "sign up", "sign-up", "registration",
-        "deadline", "due by", "closes on",
-        "permission", "consent", "form",
-        "club", "activity", "enrichment",
-        "cancelled", "postponed", "rescheduled",
+        "booking", "sign up", "sign-up", "registration", "register",
+        "deadline", "due by", "closes on", "due date",
+        "permission", "consent", "form", "consent form",
+        "club", "activity", "enrichment", "extra curricular", "extracurricular",
+        "class", "lesson",
+        "cancelled", "postponed", "rescheduled", "cancelled class", "postponed",
+        "music lesson", "violin", "piano", "dance", "drama",
+        "camp", "workshop", "training",
     ]
 
     for pattern in parse_patterns:
@@ -611,8 +614,10 @@ JSON array:"""
     if not groq_key:
         return []
 
-    # Truncate body to reduce token usage
-    body_truncated = body[:4000] if len(body) > 4000 else body
+    # Truncate body to reduce token usage + avoid 413 errors from large PDFs
+    # If body has extracted PDF content, truncate more aggressively
+    max_body_len = 2000 if "chars extracted" in body or len(body) > 8000 else 4000
+    body_truncated = body[:max_body_len] if len(body) > max_body_len else body
     prompt = prompt.replace(body, body_truncated)
 
     for attempt in range(3):
