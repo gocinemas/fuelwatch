@@ -479,10 +479,13 @@ def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) 
 # ── Groq event parsing ─────────────────────────────────────────────────────────
 
 def _groq_parse_events(subject: str, body: str, school_name: str, year_group: str,
-                       sent_date: str = "") -> list[dict]:
+                       sent_date: str = "", cached_term_dates: dict = None) -> list[dict]:
     """
     Extract events/reminders from school emails using Groq.
     Returns list of: {event_title, event_type, event_date, description, action_needed, deadline}
+
+    Args:
+        cached_term_dates: Optional dict with 'terms' and 'holidays' lists to reduce Groq token usage
     """
     # Use the email's actual send date for relative date resolution
     try:
@@ -499,13 +502,21 @@ def _groq_parse_events(subject: str, body: str, school_name: str, year_group: st
         days_map[d] = (ref + timedelta(days=delta if delta else 7)).isoformat()
     days_hint = "  ".join(f"this {d} = {v}" for d, v in days_map.items())
 
+    # Build term dates context from cached data if available
+    term_context = ""
+    if cached_term_dates:
+        holidays = cached_term_dates.get("holidays", [])
+        if holidays:
+            holiday_dates = "; ".join(f'{h.get("name")}: {h.get("start")} to {h.get("end")}' for h in holidays)
+            term_context = f"\n\nKNOWN TERM DATES: {holiday_dates}\n(Ignore generic term date emails — focus on SPECIFIC EVENTS, trips, deadlines, reminders)"
+
     system = (
         "You are a school communication parser. Extract all events, deadlines, reminders, "
         "and important dates from school emails. Return ONLY valid JSON, no markdown fences."
     )
     prompt = f"""School: {school_name}  Year group: {year_group}
 Email sent: {ref_str} ({weekday})
-Relative dates from send date: {days_hint}
+Relative dates from send date: {days_hint}{term_context}
 
 Email subject: {subject}
 Email body:
@@ -1225,7 +1236,18 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             # For single email, use Groq (primary)
             if len(batch) == 1:
                 msg_id, subject, body, sent_date, matched_profile = batch[0]
-                events = _groq_parse_events(subject, body, matched_profile["school_name"], matched_profile.get("year_group", ""), sent_date=sent_date)
+                # Fetch cached term dates to reduce Groq token usage
+                school_name = matched_profile["school_name"]
+                cached_terms = None
+                try:
+                    _sb = lib._sb()
+                    _term_data = _sb.table("school_terms").select("data").eq("school_name", school_name).limit(1).execute().data
+                    if _term_data and _term_data[0].get("data"):
+                        cached_terms = _term_data[0]["data"]
+                except Exception as e:
+                    print(f"[school] Could not fetch cached terms for {school_name}: {e}")
+
+                events = _groq_parse_events(subject, body, school_name, matched_profile.get("year_group", ""), sent_date=sent_date, cached_term_dates=cached_terms)
                 print(f"[school] Groq: {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
                 if events:
                     inserted = _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
@@ -1712,12 +1734,24 @@ def handle_wa_school(from_number: str, text: str) -> str:
         profile = next((p for p in profiles_all if p["id"] == target_pid), profiles_all[0])
 
         # Use Groq to parse the forwarded message — same pipeline as email
+        # Fetch cached term dates to reduce token usage
+        school_name = profile.get("school_name", "")
+        cached_terms = None
+        try:
+            _sb = lib._sb()
+            _term_data = _sb.table("school_terms").select("data").eq("school_name", school_name).limit(1).execute().data
+            if _term_data and _term_data[0].get("data"):
+                cached_terms = _term_data[0]["data"]
+        except Exception as e:
+            print(f"[school] Could not fetch cached terms for {school_name}: {e}")
+
         parsed = _groq_parse_events(
             subject=raw[:120],
             body=raw,
-            school_name=profile.get("school_name", ""),
+            school_name=school_name,
             year_group=profile.get("year_group", ""),
             sent_date=date.today().isoformat(),
+            cached_term_dates=cached_terms,
         )
 
         if parsed:
