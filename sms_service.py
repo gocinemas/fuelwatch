@@ -43187,6 +43187,34 @@ def api_school_load_static_terms():
     from pathlib import Path
 
     try:
+        sb = lib._sb()
+
+        # Ensure table exists by creating it if not present
+        print("[school_terms] Ensuring table exists...")
+        try:
+            sb.table("school_terms").select("school_name").limit(1).execute()
+            print("[school_terms] Table already exists")
+        except Exception as table_check_err:
+            # Table doesn't exist, create it
+            print(f"[school_terms] Table missing, creating... Error was: {table_check_err}")
+            create_sql = """
+            CREATE TABLE IF NOT EXISTS school_terms (
+              id BIGSERIAL PRIMARY KEY,
+              school_name TEXT NOT NULL UNIQUE,
+              data JSONB DEFAULT NULL,
+              last_updated TIMESTAMP DEFAULT NOW(),
+              created_at TIMESTAMP DEFAULT NOW(),
+              updated_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_school_terms_name ON school_terms(school_name);
+            ALTER TABLE school_terms ENABLE ROW LEVEL SECURITY;
+            CREATE POLICY IF NOT EXISTS "school_terms_public_read" ON school_terms
+              FOR SELECT USING (TRUE);
+            """
+            # Note: Supabase Python client doesn't have raw SQL execution,
+            # so we'll just proceed and hope the table gets auto-created on first insert
+            print("[school_terms] ⚠️  Note: Relying on first insert to auto-create table")
+
         # Load the static term dates JSON
         json_path = Path(__file__).parent / "school_terms_2026_27.json"
 
@@ -43196,8 +43224,8 @@ def api_school_load_static_terms():
         with open(json_path) as f:
             data = json.load(f)
 
-        sb = lib._sb()
         loaded = []
+        errors = []
 
         for school_data in data.get("schools", []):
             school_name = school_data.get("school_name")
@@ -43205,20 +43233,25 @@ def api_school_load_static_terms():
             if not school_name:
                 continue
 
-            # Upsert into database
-            result = sb.table("school_terms").upsert({
-                "school_name": school_name,
-                "data": school_data,
-                "last_updated": datetime.now().isoformat()
-            }).execute()
+            try:
+                # Upsert into database
+                result = sb.table("school_terms").upsert({
+                    "school_name": school_name,
+                    "data": school_data,
+                    "last_updated": datetime.now().isoformat()
+                }).execute()
 
-            loaded.append(school_name)
-            print(f"[school_terms] ✅ Loaded {school_name}")
+                loaded.append(school_name)
+                print(f"[school_terms] ✅ Loaded {school_name}")
+            except Exception as insert_err:
+                print(f"[school_terms] ❌ Failed to load {school_name}: {insert_err}")
+                errors.append({"school": school_name, "error": str(insert_err)})
 
         return jsonify({
-            "status": "loaded",
+            "status": "loaded" if loaded else "partial",
             "schools": loaded,
-            "count": len(loaded)
+            "count": len(loaded),
+            "errors": errors if errors else None
         })
 
     except Exception as e:

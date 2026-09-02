@@ -3,6 +3,7 @@ Apply database migrations on startup.
 Creates tables if they don't exist.
 """
 
+import os
 import library as lib
 
 
@@ -76,11 +77,57 @@ def apply_idea_reports_migration():
         return False
 
 
+def execute_sql_file(sql_path: str) -> bool:
+    """Execute a SQL file using psycopg2 if DATABASE_URL is available."""
+    try:
+        import psycopg2
+        from pathlib import Path
+
+        database_url = os.environ.get('DATABASE_URL')
+        if not database_url:
+            print(f"[migrations] ⚠️  DATABASE_URL not set, skipping {sql_path}")
+            return False
+
+        sql_file = Path(sql_path)
+        if not sql_file.exists():
+            print(f"[migrations] ❌ SQL file not found: {sql_path}")
+            return False
+
+        with open(sql_file) as f:
+            sql_content = f.read()
+
+        # Connect and execute
+        conn = psycopg2.connect(database_url)
+        cur = conn.cursor()
+        cur.execute(sql_content)
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        print(f"[migrations] ✅ Applied {sql_path}")
+        return True
+
+    except ImportError:
+        print(f"[migrations] ⚠️  psycopg2 not available, cannot apply {sql_path}")
+        return False
+    except Exception as e:
+        print(f"[migrations] ❌ Error applying {sql_path}: {e}")
+        return False
+
+
 def apply_all_migrations():
     """Apply all pending migrations."""
     print("[migrations] Applying pending migrations...")
 
-    # Apply idea_reports migration
+    # Apply idea_reports migration (legacy)
     apply_idea_reports_migration()
+
+    # Apply SQL file migrations if DATABASE_URL is available
+    from pathlib import Path
+    migrations_dir = Path(__file__).parent / "migrations"
+    if migrations_dir.exists():
+        sql_files = sorted(migrations_dir.glob("*.sql"))
+        for sql_file in sql_files:
+            execute_sql_file(str(sql_file))
 
     print("[migrations] Migration check complete")
