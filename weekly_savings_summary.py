@@ -46,12 +46,12 @@ def get_weekly_savings(from_number: str) -> dict:
 
         sb = lib._sb()
 
-        # Fetch this week's receipts
+        # Fetch this week's receipts — ALL receipts now, no 🧾 requirement
+        # (Clippings shows all saves, so savings should too)
         this_week_rows = sb.table("wa_saves").select("summary,title,category,id,created_at") \
             .eq("from_number", from_number) \
             .gte("created_at", week_start) \
             .lt("created_at", week_end) \
-            .ilike("title", "🧾%") \
             .execute().data or []
 
         # Fetch last week's receipts for comparison
@@ -59,7 +59,6 @@ def get_weekly_savings(from_number: str) -> dict:
             .eq("from_number", from_number) \
             .gte("created_at", last_week_start) \
             .lt("created_at", last_week_end) \
-            .ilike("title", "🧾%") \
             .execute().data or []
 
         # Helper: deduplicate and sum receipts for a list
