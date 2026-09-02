@@ -1,0 +1,56 @@
+{
+  "schools": [
+    {
+      "school_name": "Charters School",
+      "last_updated": "2026-09-02",
+      "terms": [
+        {"name": "Autumn 1", "start": "2026-09-02", "end": "2026-10-16"},
+        {"name": "Autumn 2", "start": "2026-10-27", "end": "2026-12-18"},
+        {"name": "Spring 1", "start": "2027-01-05", "end": "2027-02-12"},
+        {"name": "Spring 2", "start": "2027-02-22", "end": "2027-04-02"},
+        {"name": "Summer 1", "start": "2027-04-19", "end": "2027-05-28"},
+        {"name": "Summer 2", "start": "2027-06-07", "end": "2027-07-22"}
+      ],
+      "holidays": [
+        {"name": "summer holidays", "start": "2026-07-23", "end": "2026-09-01"},
+        {"name": "autumn half term", "start": "2026-10-19", "end": "2026-10-26"},
+        {"name": "christmas holidays", "start": "2026-12-19", "end": "2027-01-04"},
+        {"name": "spring half term", "start": "2027-02-15", "end": "2027-02-21"},
+        {"name": "easter holidays", "start": "2027-04-03", "end": "2027-04-18"},
+        {"name": "summer half term", "start": "2027-05-31", "end": "2027-06-06"}
+      ],
+      "inset_days": ["2026-09-02"]
+    },
+    {
+      "school_name": "New Haw Junior School",
+      "last_updated": "2026-09-02",
+      "terms": [
+        {"name": "Autumn 1", "start": "2026-09-02", "end": "2026-10-16"},
+        {"name": "Autumn 2", "start": "2026-10-27", "end": "2026-12-18"},
+        {"name": "Spring 1", "start": "2027-01-05", "end": "2027-02-12"},
+        {"name": "Spring 2", "start": "2027-02-22", "end": "2027-04-02"},
+        {"name": "Summer 1", "start": "2027-04-19", "end": "2027-05-28"},
+        {"name": "Summer 2", "start": "2027-06-07", "end": "2027-07-22"}
+      ],
+      "holidays": [
+        {"name": "summer holidays", "start": "2026-07-23", "end": "2026-09-01"},
+        {"name": "autumn half term", "start": "2026-10-19", "end": "2026-10-26"},
+        {"name": "christmas holidays", "start": "2026-12-19", "end": "2027-01-04"},
+        {"name": "spring half term", "start": "2027-02-15", "end": "2027-02-21"},
+        {"name": "easter holidays", "start": "2027-04-03", "end": "2027-04-18"},
+        {"name": "summer half term", "start": "2027-05-31", "end": "2027-06-06"}
+      ],
+      "inset_days": ["2026-09-02"]
+    },
+    {
+      "school_name": "Wentworth Dance School",
+      "last_updated": "2026-09-02",
+      "note": "Dance school - term dates typically follow school calendar"
+    },
+    {
+      "school_name": "Stepping Notes",
+      "last_updated": "2026-09-02",
+      "note": "Music school - term dates typically follow school calendar"
+    }
+  ]
+}

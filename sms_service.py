@@ -43164,18 +43164,66 @@ def api_school_scrape_terms():
 def api_school_get_terms():
     """Retrieve cached school term dates from database"""
     school_name = request.args.get("school", "").strip()
-    
+
     if not school_name:
         return jsonify({"error": "school parameter required"}), 400
-    
+
     try:
         result = lib._sb().table("school_terms").select("*").eq("school_name", school_name).limit(1).execute().data
-        
+
         if result:
             return jsonify(result[0])
         else:
             return jsonify({"status": "not_cached", "school": school_name}), 404
-            
+
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/school/load-static-terms", methods=["POST"])
+def api_school_load_static_terms():
+    """Load static 2026-27 Surrey term dates from JSON file into database"""
+    import json
+    from pathlib import Path
+
+    try:
+        # Load the static term dates JSON
+        json_path = Path(__file__).parent / "school_terms_2026_27.json"
+
+        if not json_path.exists():
+            return jsonify({"error": f"Term dates file not found: {json_path}"}), 404
+
+        with open(json_path) as f:
+            data = json.load(f)
+
+        sb = lib._sb()
+        loaded = []
+
+        for school_data in data.get("schools", []):
+            school_name = school_data.get("school_name")
+
+            if not school_name:
+                continue
+
+            # Upsert into database
+            result = sb.table("school_terms").upsert({
+                "school_name": school_name,
+                "data": school_data,
+                "last_updated": datetime.now().isoformat()
+            }).execute()
+
+            loaded.append(school_name)
+            print(f"[school_terms] ✅ Loaded {school_name}")
+
+        return jsonify({
+            "status": "loaded",
+            "schools": loaded,
+            "count": len(loaded)
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[school_terms] Error: {e}")
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
