@@ -476,6 +476,63 @@ def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) 
     return subject, body[:12000], sent_date
 
 
+# ── Smart email filtering (avoid Groq rate limits) ───────────────────────────
+
+def _should_parse_email(subject: str, body: str) -> tuple[bool, str]:
+    """
+    Decide if an email is worth sending to Groq for parsing.
+    Returns (should_parse: bool, reason: str)
+
+    Skips emails that are obviously NOT events (admin, procedures, etc.)
+    to avoid wasting Groq tokens and hitting rate limits.
+    """
+    text = (subject + " " + body).lower()
+
+    # SKIP: Admin/procedures (not events)
+    skip_patterns = [
+        "visitor procedures", "reception area", "school procedures",
+        "term dates", "term date", "holiday dates", "calendar",
+        "dinner ordering", "meal ordering", "menu",
+        "password", "login", "account", "arbor app", "parent portal",
+        "welcome to", "getting started", "help centre",
+        "consent form", "permission slip",  # Forms only, no event
+        "pe days",  # Generic schedule, not specific event
+        "timetable", "schedule", "curriculum",
+        "uniform", "dress code", "school dress",
+    ]
+
+    for pattern in skip_patterns:
+        if pattern in text:
+            return False, f"Skipped: {pattern}"
+
+    # PARSE: Keywords that indicate actual events
+    parse_patterns = [
+        "trip", "visit", "excursion", "outing", "coach", "field trip",
+        "sports day", "sports match", "fixture", "game",
+        "assembly", "performance", "concert", "show", "play",
+        "parent evening", "parents evening", "open day",
+        "event", "event on", "event at",
+        "booking", "sign up", "sign-up", "registration",
+        "deadline", "due by", "closes on",
+        "permission", "consent", "form",
+        "club", "activity", "enrichment",
+        "cancelled", "postponed", "rescheduled",
+    ]
+
+    for pattern in parse_patterns:
+        if pattern in text:
+            return True, f"Parse: {pattern}"
+
+    # If email has a specific date pattern + keyword, parse it
+    import re
+    date_pattern = r"(\d{1,2}(?:st|nd|rd|th)?[\s]*(january|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}/\d{1,2}))"
+    if re.search(date_pattern, text) and any(kw in text for kw in ["event", "activity", "club", "class"]):
+        return True, "Parse: date + event keyword"
+
+    # Default: don't parse (safer to miss than to waste tokens)
+    return False, "No event patterns found"
+
+
 # ── Groq event parsing ─────────────────────────────────────────────────────────
 
 def _groq_parse_events(subject: str, body: str, school_name: str, year_group: str,
@@ -1236,8 +1293,15 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             # For single email, use Groq (primary)
             if len(batch) == 1:
                 msg_id, subject, body, sent_date, matched_profile = batch[0]
-                # Fetch cached term dates to reduce Groq token usage
                 school_name = matched_profile["school_name"]
+
+                # FILTER: Check if email is worth parsing (avoid Groq rate limits)
+                should_parse, reason = _should_parse_email(subject, body)
+                if not should_parse:
+                    print(f"[school] {msg_id} subject={subject!r} → {reason}")
+                    continue
+
+                # Fetch cached term dates to reduce Groq token usage
                 cached_terms = None
                 try:
                     _sb = lib._sb()
