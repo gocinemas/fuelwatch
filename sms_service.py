@@ -7001,7 +7001,9 @@ def school_settings_get():
             return _cors(jsonify({"error": "not found"})), 404
         result = []
         for p in profiles:
-            gmail_connected = bool(p.get("gmail_refresh_token"))
+            has_token = bool(p.get("gmail_refresh_token"))
+            has_error = bool(p.get("gmail_token_error", False))
+            gmail_connected = has_token and not has_error
             result.append({
                 "id":              p["id"],
                 "child_name":      p.get("child_name", ""),
@@ -7010,8 +7012,8 @@ def school_settings_get():
                 "teacher_name":    p.get("teacher_name", ""),
                 "sender_emails":   p.get("sender_emails") or [],
                 "gmail_connected":    gmail_connected,
-                "gmail_token_error": bool(p.get("gmail_token_error")),
-                "oauth_url":         _school_oauth_url(p["id"]),
+                "gmail_token_error": has_error,
+                "oauth_url":         _school_oauth_url(p["id"]) if not gmail_connected else None,
             })
         return _cors(jsonify({"profiles": result}))
     except Exception as e:
@@ -7048,7 +7050,9 @@ def api_user_schools():
         profiles = school_service._get_profiles(from_number=phone)
         result = []
         for p in profiles:
-            gmail_connected = bool(p.get("gmail_refresh_token"))
+            has_token = bool(p.get("gmail_refresh_token"))
+            has_error = bool(p.get("gmail_token_error", False))
+            gmail_connected = has_token and not has_error
             result.append({
                 "id":              p["id"],
                 "child_name":      p.get("child_name", ""),
@@ -7057,8 +7061,8 @@ def api_user_schools():
                 "teacher_name":    p.get("teacher_name", ""),
                 "sender_emails":   p.get("sender_emails") or [],
                 "gmail_connected": gmail_connected,
-                "gmail_token_error": bool(p.get("gmail_token_error")),
-                "oauth_url":       _school_oauth_url(p["id"]),
+                "gmail_token_error": has_error,
+                "oauth_url":       _school_oauth_url(p["id"]) if not gmail_connected else None,
             })
         return _cors(jsonify({"profiles": result}))
     except Exception as e:
