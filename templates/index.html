@@ -22852,7 +22852,20 @@ let _savesAll = [];
     const waGroup = p.class_wa_group
       ? `<div style="margin-top:4px;font-size:12px;color:#059669">💬 ${p.class_wa_group}</div>`
       : "";
-    return `<div>${top}</div>${addr}${phone}${waGroup}`;
+
+    // Add school term dates if available
+    let termDates = "";
+    if (p.school_data && p.school_data.holidays) {
+      const holidays = p.school_data.holidays;
+      if (holidays.length > 0) {
+        const nextHoliday = holidays.find(h => h.end >= new Date().toISOString().split('T')[0]);
+        if (nextHoliday) {
+          termDates = `<div style="margin-top:6px;font-size:11px;color:#059669;background:#f0fdf4;padding:4px 8px;border-radius:6px">📅 ${nextHoliday.name}: ${nextHoliday.start.slice(5)} – ${nextHoliday.end.slice(5)}</div>`;
+        }
+      }
+    }
+
+    return `<div>${top}</div>${addr}${phone}${waGroup}${termDates}`;
   }
 
   function _schoolRenderSummaryCard(allEvents) {
