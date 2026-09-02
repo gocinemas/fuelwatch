@@ -43180,6 +43180,54 @@ def api_school_get_terms():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/admin/create-school-terms-table", methods=["POST"])
+def api_admin_create_school_terms_table():
+    """Admin: Create school_terms table using psycopg2 direct connection"""
+    import os
+
+    try:
+        import psycopg2
+
+        database_url = os.environ.get('DATABASE_URL')
+        if not database_url:
+            return jsonify({"error": "DATABASE_URL not set"}), 400
+
+        conn = psycopg2.connect(database_url)
+        cur = conn.cursor()
+
+        create_sql = """
+        CREATE TABLE IF NOT EXISTS public.school_terms (
+          id BIGSERIAL PRIMARY KEY,
+          school_name TEXT NOT NULL UNIQUE,
+          data JSONB DEFAULT NULL,
+          last_updated TIMESTAMP DEFAULT NOW(),
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_school_terms_name ON public.school_terms(school_name);
+
+        ALTER TABLE public.school_terms ENABLE ROW LEVEL SECURITY;
+
+        CREATE POLICY IF NOT EXISTS "school_terms_public_read" ON public.school_terms
+          FOR SELECT USING (TRUE);
+        """
+
+        cur.execute(create_sql)
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        print("[admin] ✅ school_terms table created")
+        return jsonify({"status": "table created", "table": "public.school_terms"})
+
+    except ImportError:
+        return jsonify({"error": "psycopg2 not installed"}), 500
+    except Exception as e:
+        print(f"[admin] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/load-static-terms", methods=["POST"])
 def api_school_load_static_terms():
     """Load static 2026-27 Surrey term dates from JSON file into database"""
