@@ -46,20 +46,49 @@ def get_weekly_savings(from_number: str) -> dict:
 
         sb = lib._sb()
 
-        # Fetch this week's receipts — ALL receipts now, no 🧾 requirement
-        # (Clippings shows all saves, so savings should too)
-        this_week_rows = sb.table("wa_saves").select("summary,title,category,id,created_at") \
+        # Fetch this week's receipts from BOTH wa_saves + receipts table
+        # wa_saves: WhatsApp manual entries, receipts table: PDF imports
+        this_week_wa = sb.table("wa_saves").select("summary,title,category,id,created_at") \
             .eq("from_number", from_number) \
             .gte("created_at", week_start) \
             .lt("created_at", week_end) \
             .execute().data or []
 
+        # Also fetch from receipts table (PDF imports) for this week
+        phone_clean = from_number.replace("whatsapp:", "").strip()
+        this_week_pdf = sb.table("receipts").select("merchant,total,shop_date,items,id") \
+            .eq("phone", phone_clean) \
+            .gte("shop_date", week_start[:10]) \
+            .lt("shop_date", week_end[:10]) \
+            .execute().data or []
+
+        # Convert PDF receipts to same format as wa_saves for processing
+        this_week_pdf_converted = [
+            {"title": r.get("merchant", ""), "summary": "", "category": "Other", "id": r.get("id"),
+             "created_at": r.get("shop_date"), "amount": r.get("total")}
+            for r in this_week_pdf
+        ]
+        this_week_rows = this_week_wa + this_week_pdf_converted
+
         # Fetch last week's receipts for comparison
-        last_week_rows = sb.table("wa_saves").select("summary,title,category,id,created_at") \
+        last_week_wa = sb.table("wa_saves").select("summary,title,category,id,created_at") \
             .eq("from_number", from_number) \
             .gte("created_at", last_week_start) \
             .lt("created_at", last_week_end) \
             .execute().data or []
+
+        last_week_pdf = sb.table("receipts").select("merchant,total,shop_date,items,id") \
+            .eq("phone", phone_clean) \
+            .gte("shop_date", last_week_start[:10]) \
+            .lt("shop_date", last_week_end[:10]) \
+            .execute().data or []
+
+        last_week_pdf_converted = [
+            {"title": r.get("merchant", ""), "summary": "", "category": "Other", "id": r.get("id"),
+             "created_at": r.get("shop_date"), "amount": r.get("total")}
+            for r in last_week_pdf
+        ]
+        last_week_rows = last_week_wa + last_week_pdf_converted
 
         # Helper: deduplicate and sum receipts for a list
         def sum_receipts(rows):
@@ -73,14 +102,24 @@ def get_weekly_savings(from_number: str) -> dict:
                 created = r.get("created_at", "")
                 date_key = created[:10]  # YYYY-MM-DD
 
-                # Extract amount
-                m = re.search(r'£([\d,]+\.?\d*)', r.get("summary", "") + r.get("title", ""))
-                if not m:
-                    continue
+                # Try to extract amount — first check for pre-parsed "amount" field (from receipts table)
+                amount = None
+                if r.get("amount"):
+                    try:
+                        amount = float(r.get("amount"))
+                    except (ValueError, TypeError):
+                        pass
 
-                try:
-                    amount = float(m.group(1).replace(",", ""))
-                except ValueError:
+                # If no direct amount, search in title/summary for £ symbol
+                if not amount:
+                    m = re.search(r'£([\d,]+\.?\d*)', r.get("summary", "") + r.get("title", ""))
+                    if m:
+                        try:
+                            amount = float(m.group(1).replace(",", ""))
+                        except ValueError:
+                            pass
+
+                if not amount:
                     continue
 
                 # Deduplicate by date + amount
