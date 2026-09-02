@@ -34355,11 +34355,14 @@ def api_school_events():
     horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
     try:
         profiles_raw = (lib._sb().table("school_profiles")
-                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group,gmail_refresh_token,sender_emails")
+                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group,gmail_refresh_token,gmail_token_error,sender_emails")
                     .eq("from_number", wa).eq("active", True).execute().data or [])
         profiles = []
         for p in profiles_raw:
-            gmail_connected = bool(p.pop("gmail_refresh_token", None))
+            has_token = bool(p.pop("gmail_refresh_token", None))
+            has_error = bool(p.pop("gmail_token_error", False))
+            # Gmail is connected only if: (1) has token AND (2) no error
+            gmail_connected = has_token and not has_error
             oauth_url = _school_oauth_url(p["id"]) if not gmail_connected else None
             p["gmail_connected"] = gmail_connected
             p["oauth_url"] = oauth_url
@@ -34393,6 +34396,17 @@ def api_school_events():
             pid = event.get("profile_id")
             if pid and pid in profile_map:
                 event["school_name"] = profile_map[pid]
+
+        # Enrich profiles with cached school term data
+        try:
+            for p in profiles:
+                school_name = p.get("school_name")
+                if school_name:
+                    term_data = lib._sb().table("school_terms").select("data").eq("school_name", school_name).limit(1).execute().data
+                    if term_data and term_data[0].get("data"):
+                        p["school_data"] = term_data[0]["data"]
+        except Exception as e:
+            print(f"[school/events] Could not fetch school term data: {e}")
 
         return jsonify({"events": all_events, "profiles": profiles, "last_synced": last_synced})
     except Exception as e:
