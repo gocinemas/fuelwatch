@@ -18464,20 +18464,15 @@ let _savesAll = [];
       // Hide ALL train displays (both this function and brief context cards)
       if (ph) { ph.style.display = "none"; }
       const trainNext = document.getElementById("home-train-next");
-      if (trainNext) { trainNext.style.display = "none"; }
-      const trainSub = document.getElementById("home-train-sub");
-      if (trainSub) { trainSub.style.display = "none"; }
-      // Also hide the train card in LIVE NOW section
-      const trainCard = document.querySelector('[class*="feat-card-train"]');
-      if (trainCard) { trainCard.style.display = "none"; }
-
-      // ALWAYS hide trains from home page — user doesn't want them
-      const trainNext = document.getElementById("home-train-next");
       const trainSub = document.getElementById("home-train-sub");
       const trainPlaceholder = document.getElementById("home-train-placeholder");
+      // Hide all train elements
       if (trainNext) trainNext.style.display = "none";
       if (trainSub) trainSub.style.display = "none";
       if (trainPlaceholder) trainPlaceholder.style.display = "none";
+      // Also hide the train card in LIVE NOW section
+      const trainCard = document.querySelector('[class*="feat-card-train"]');
+      if (trainCard) { trainCard.style.display = "none"; }
       return;
     }
 
