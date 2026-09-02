@@ -18809,6 +18809,8 @@ def api_home_brief_narrative():
         "- Do NOT mention children/people by name UNLESS explicitly in facts above.\n"
         "- Do NOT suggest activities, purchases, or actions that are not grounded in the facts provided.\n"
         "- Do NOT mention events, plans, or people that are NOT in the facts list.\n"
+        "- NEVER suggest fuel top-ups, shopping, or purchases — even if fuel price is mentioned.\n"
+        "- When stating spend numbers: use EXACT amounts (e.g., '£189'), never 'nearly' or 'about'.\n"
         "- IMPORTANT: When mentioning both savings (from clipped deals) AND spending (receipts), SEPARATE them clearly.\n"
         "  Savings = money saved from deals you clipped. Spending = actual money spent (petrol/groceries/restaurants).\n"
         "- No greetings, no bullet points, no corporate phrases ('as you can see', 'please note').\n"
