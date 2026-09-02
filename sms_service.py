@@ -12368,7 +12368,7 @@ def api_v2_prefs_post():
     # Accept prefs as nested {"prefs":{...}} or top-level keys in the same body
     PREF_KEYS = {"train_from", "train_to", "fuel_postcode", "commute_mode",
                  "bin_collection_day", "bin_types", "bin_types_a", "bin_types_b", "bin_rotation", "bin_rotation_week",
-                 "interests"}
+                 "interests", "show_spending", "show_school", "show_commute", "show_my_area", "show_saves"}
     new_prefs = body.get("prefs") or {k: v for k, v in body.items() if k in PREF_KEYS}
     if not isinstance(new_prefs, dict):
         return jsonify({"error": "prefs must be object"}), 400
@@ -17037,25 +17037,33 @@ def api_home_brief():
                 facts.append(f"Routine: {pattern_text}")
 
     # Savings summary (Phase 1b) — show weekly progress if available
+    # Respect the "Spending" toggle in prefs
+    show_spending = prefs.get("show_spending", True)  # Default to True for backward compatibility
+
     savings = ctx.get("savings")
-    if savings and isinstance(savings, dict) and savings.get("status") == "ok":
+    if show_spending and savings and isinstance(savings, dict):
         try:
-            total_pence = savings.get("total_spent_pence", 0)
-            variance = savings.get("week_variance_pence", 0)
-            variance_dir = savings.get("variance_direction", "→")
-            fuel_saved = savings.get("fuel_saved_pence", 0)
+            if savings.get("status") == "ok":
+                total_pence = savings.get("total_spent_pence", 0)
+                variance = savings.get("week_variance_pence", 0)
+                variance_dir = savings.get("variance_direction", "→")
+                fuel_saved = savings.get("fuel_saved_pence", 0)
 
-            if total_pence > 0:
-                total_gbp = total_pence / 100
-                variance_gbp = abs(variance) / 100
+                if total_pence > 0:
+                    total_gbp = total_pence / 100
+                    variance_gbp = abs(variance) / 100
 
-                # Build savings fact
-                savings_fact = f"💰 This week: £{total_gbp:.2f} ({variance_dir}£{variance_gbp:.2f} vs last week)"
-                if fuel_saved > 0:
-                    fuel_gbp = fuel_saved / 100
-                    savings_fact += f", fuel alerts saved £{fuel_gbp:.2f}"
+                    # Build savings fact with exact amounts (no "nearly")
+                    savings_fact = f"💰 This week: £{total_gbp:.2f} ({variance_dir}£{variance_gbp:.2f} vs last week)"
+                    if fuel_saved > 0:
+                        fuel_gbp = fuel_saved / 100
+                        savings_fact += f", fuel alerts saved £{fuel_gbp:.2f}"
 
-                facts.append(savings_fact)
+                    facts.append(savings_fact)
+            elif savings.get("status") == "no_data":
+                # Spending toggle is ON but no receipts found yet — show placeholder
+                app.logger.debug(f"[brief] Spending toggle ON but no receipts found for {from_number}")
+                facts.append("💰 No receipts logged yet this week")
         except Exception as e:
             app.logger.warning(f"[brief] savings fact error: {e}")
 
