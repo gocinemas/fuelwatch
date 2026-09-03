@@ -26051,7 +26051,9 @@ def _wa_doc_search(from_number: str, query: str) -> str:
                 print(f"[wa_doc_search] Returning: {not_found_msg}", flush=True)
                 return not_found_msg
 
-        # FALLBACK: Use Algolia for general document/save searches
+        # DO NOT FALL BACK TO ALGOLIA FOR ITEM SEARCHES - results are unreliable
+
+        # FALLBACK: Use Algolia for general document/save searches (NOT for item searches)
         save_hits = lib.saves_search(query, from_number=from_number, hits_per_page=6)
         doc_hits = lib.search_library(query, n=3)
 
