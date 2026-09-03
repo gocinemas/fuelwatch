@@ -16592,20 +16592,20 @@ def api_home_brief():
         result = dict(cached["data"])
         ctx = dict(result.get("context", {}))
         # Trains always fresh — fetch both directions in parallel then inject
-        _tc_futures = {}
-        if prefs.get("train_from") and prefs.get("train_to"):
-            _tcp = _cf.ThreadPoolExecutor(max_workers=2)
-            try:
-                tf, tt = prefs["train_from"], prefs["train_to"]
-                _tc_futures["trains"]      = _tcp.submit(_v2_fetch_trains, tf, tt)
-                _tc_futures["trains_home"] = _tcp.submit(_v2_fetch_trains, tt, tf)
-                _tc_done, _ = _cf.wait(_tc_futures.values(), timeout=6)
-                for _tk, _tf in _tc_futures.items():
-                    if _tf in _tc_done:
-                        try: ctx[_tk] = _tf.result() or {}
-                        except Exception: pass
-            finally:
-                _tcp.shutdown(wait=False)
+        # DISABLED: Removed train fetching (user prefers school comms summary)
+        # Instead, fetch school comms summary for brief
+        try:
+            if from_number:
+                school_summary = lib._sb().table("school_events").select("event_title,event_date,action_needed") \
+                    .eq("from_number", from_number) \
+                    .gte("event_date", _dt.date.today().isoformat()) \
+                    .order("event_date", desc=False) \
+                    .limit(3) \
+                    .execute().data or []
+                if school_summary:
+                    ctx["school_summary"] = school_summary
+        except Exception:
+            pass  # School summary optional
         result["context"]        = ctx
         result["active_trip"]    = _active_trip_early
         result["school_holiday"] = _school_holiday_now
