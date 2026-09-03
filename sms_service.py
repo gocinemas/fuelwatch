@@ -3167,36 +3167,6 @@ def index():
     return resp
 
 
-@app.route("/onboarding")
-def onboarding():
-    """Serve the smart onboarding wizard."""
-    # Check if user already has setup data
-    token = request.args.get('token', '').strip()
-    if token:
-        try:
-            from miru.routes.onboarding import _get_user_id
-            from_number = _get_user_id(token)
-            if from_number:
-                # Check if they've already completed setup
-                try:
-                    rows = lib._sb().table("ma_details").select("id") \
-                        .eq("device_id", from_number).eq("type", "onboarding_complete").limit(1).execute().data or []
-                    if rows:
-                        # Already set up, redirect to main app
-                        return redirect("/")
-                except:
-                    pass  # Continue to onboarding
-        except:
-            pass  # Continue to onboarding
-
-    app.logger.info(f"[onboarding] Serving onboarding wizard")
-    resp = make_response(render_template("onboarding.html"))
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
-    return resp
-
-
 @app.route("/weekend")
 def weekend_snippet_debug():
     """Debug endpoint: show weekend snippet data"""
@@ -4421,7 +4391,7 @@ def school_root():
 @app.route("/<company_slug>")
 def company_page(company_slug):
     # Skip reserved paths
-    if company_slug in ["add-receipt", "feedbin", "api", "sms", "call", "onboarding"]:
+    if company_slug in ["add-receipt", "feedbin", "api", "sms", "call"]:
         return "", 404
 
     brand_name = company_slug.replace("-", " ").title()
@@ -43541,3 +43511,34 @@ def api_school_load_static_terms():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+
+# ── ONBOARDING WIZARD (must be AFTER catch-all to override /<company_slug>) ─
+
+@app.route("/onboarding")
+def onboarding():
+    """Serve the smart onboarding wizard."""
+    # Check if user already has setup data
+    token = request.args.get('token', '').strip()
+    if token:
+        try:
+            from miru.routes.onboarding import _get_user_id
+            from_number = _get_user_id(token)
+            if from_number:
+                # Check if they've already completed setup
+                try:
+                    rows = lib._sb().table("ma_details").select("id") \
+                        .eq("device_id", from_number).eq("type", "onboarding_complete").limit(1).execute().data or []
+                    if rows:
+                        # Already set up, redirect to main app
+                        return redirect("/")
+                except:
+                    pass  # Continue to onboarding
+        except:
+            pass  # Continue to onboarding
+
+    app.logger.info(f"[onboarding] Serving onboarding wizard")
+    resp = make_response(render_template("onboarding.html"))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
