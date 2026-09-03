@@ -8679,6 +8679,18 @@ function _hcAdd() {
     const searchGen = ++_maSearchGen;
     function _guard(fn) { return (...args) => { if (_maSearchGen === searchGen) fn(...args); }; }
 
+    // Navigate to spend screen and optionally filter by date
+    function spendFilterByDate(isoDate) {
+      // Store the date filter in sessionStorage so spend screen can pick it up
+      if (isoDate) {
+        sessionStorage.setItem('spend_filter_date', isoDate);
+      }
+      // Navigate to spend screen
+      window.location.hash = '#/spend';
+      // Reload to trigger spend screen with filter
+      setTimeout(() => location.reload(), 100);
+    }
+
     function _maHideSpinner() {
       if (_maSearchGen !== searchGen) return;
       document.getElementById("myarea-loading").style.display = "none";
@@ -19839,7 +19851,20 @@ let _savesAll = [];
 
         var tipEl = document.getElementById("engagement-tip");
         if (tipEl) {
-          if (wins.tip) { tipEl.textContent = "💡 " + wins.tip; tipEl.style.display = "block"; }
+          if (wins.tip) {
+            // Tip can be a string (legacy) or dict with message + action_date
+            var tipMsg = typeof wins.tip === 'string' ? wins.tip : (wins.tip.message || '');
+            var tipHtml = "💡 " + tipMsg;
+
+            // Add clickable link if action_date is provided
+            if (typeof wins.tip === 'object' && wins.tip.action_date && wins.tip.action_type === 'spend_day') {
+              tipHtml = "💡 " + tipMsg.replace("Worth a look?", "") +
+                        ` <a href="javascript:void(0)" onclick="window.location.hash='spend';spendFilterByDate('${wins.tip.action_date}');" style="color:#667eea;text-decoration:underline;cursor:pointer;font-weight:600">View →</a>`;
+            }
+
+            tipEl.innerHTML = tipHtml;
+            tipEl.style.display = "block";
+          }
           else { tipEl.style.display = "none"; }
         }
       } else {

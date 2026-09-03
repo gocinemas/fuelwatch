@@ -122,15 +122,20 @@ def compute_days_on_budget(wa: str, week_start_iso: str, week_end_iso: str):
     return on_budget_days, days_elapsed, daily
 
 
-def _pick_tip(daily: dict, top_category: str) -> str:
+def _pick_tip(daily: dict, top_category: str) -> dict:
+    """Return tip with message and optional actionable date."""
     if daily:
         worst_day, worst_amt = max(daily.items(), key=lambda kv: kv[1])
         if worst_amt > 0:
             weekday = date.fromisoformat(worst_day).strftime("%A")
-            return f"Your {weekday} spend (£{worst_amt:.2f}) was your highest this week. Worth a look?"
+            return {
+                "message": f"Your {weekday} spend (£{worst_amt:.2f}) was your highest this week. Worth a look?",
+                "action_date": worst_day,  # ISO date string for link
+                "action_type": "spend_day"
+            }
     if top_category and top_category != "Other":
-        return f"{top_category} was your biggest category this week — worth keeping an eye on."
-    return "Keep logging receipts on WhatsApp to build your weekly picture."
+        return {"message": f"{top_category} was your biggest category this week — worth keeping an eye on."}
+    return {"message": "Keep logging receipts on WhatsApp to build your weekly picture."}
 
 
 def build_weekly_wins(wa: str) -> dict:
