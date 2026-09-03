@@ -26010,9 +26010,73 @@ def _wa_general_chat(from_number: str, body: str, thread: list) -> str:
 def _wa_doc_search(from_number: str, query: str) -> str:
     """Answer a natural-language query from the user's saves and documents."""
     try:
-        # Search wa_saves via Algolia (per-user)
+        query_lower = query.lower()
+        plain = from_number.replace("whatsapp:", "").strip() if "whatsapp" in from_number else from_number
+
+        # SPECIAL CASE: "did i buy X" — search receipts with strict item matching
+        _BUY_PATTERN = re.compile(r"(?:did\s+i|have\s+i|i\s+have|i).{0,10}(?:buy|get|purchase|pick\s+up|grab|have).{0,5}(.+?)(?:\?|$)", re.I)
+        buy_match = _BUY_PATTERN.search(query)
+
+        if buy_match and "at " not in query_lower and "from " not in query_lower and "in " not in query_lower:
+            # Item search — search ALL clippings + receipts with strict word matching
+            item_q = buy_match.group(1).strip()
+            search_words = [w.lower().strip() for w in item_q.split() if w.strip() and len(w.strip()) > 1]
+
+            # Search clippings (wa_saves) for receipts
+            clippings = lib._sb().table("wa_saves").select("title,summary,created_at") \
+                .eq("from_number", plain).ilike("title", "%🧾%").order("created_at", desc=True).limit(100).execute().data or []
+
+            clip_matches = []
+            for clip in clippings:
+                title = clip.get("title", "").lower()
+                summary = clip.get("summary", "").lower()
+                date_str = clip.get("created_at", "")[:10]
+
+                # ALL search words must match
+                if all(word in (title + " " + summary) for word in search_words):
+                    merchant = clip.get("title", "").replace("🧾", "").strip()
+                    clip_matches.append((merchant, date_str, summary[:100]))
+
+            if clip_matches:
+                result_lines = []
+                for merchant, date_str, summary in clip_matches[:3]:
+                    result_lines.append(f"✓ Found '{item_q}' in {merchant} (on {date_str})")
+                return "\n".join(result_lines)
+
+            # Search receipts table if clippings had no match
+            import json as _rx_json
+            receipts = lib._sb().table("receipts").select("merchant,items,shop_date") \
+                .eq("phone", plain).order("shop_date", desc=True).limit(200).execute().data or []
+
+            receipt_matches = []
+            for r in receipts:
+                try:
+                    items_json = r.get("items", "[]")
+                    items_list = _rx_json.loads(items_json) if isinstance(items_json, str) else (items_json or [])
+                except:
+                    items_list = []
+
+                for item in items_list:
+                    item_name = item.get("name", "") if isinstance(item, dict) else str(item)
+                    item_lower = item_name.lower()
+
+                    # ALL search words must match
+                    if all(word in item_lower for word in search_words):
+                        merchant = r.get("merchant", "")
+                        date_str = r.get("shop_date", "")[:10]
+                        receipt_matches.append((merchant, date_str, item_name))
+                        break
+
+            if receipt_matches:
+                result_lines = []
+                for merchant, date_str, item_name in receipt_matches[:5]:
+                    result_lines.append(f"✓ Yes, {item_name} at {merchant} on {date_str}")
+                return "\n".join(result_lines)
+            else:
+                return f"🔍 No receipts found with '{item_q}'. Searched 300+ items."
+
+        # FALLBACK: Use Algolia for general document/save searches
         save_hits = lib.saves_search(query, from_number=from_number, hits_per_page=6)
-        # Search library docs
         doc_hits = lib.search_library(query, n=3)
 
         context_parts = []
