@@ -260,3 +260,111 @@ def get_schools():
     except Exception as e:
         logger.error(f"[onboarding] Schools get error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route('/complete-wizard', methods=['POST'])
+def complete_wizard():
+    """Save complete onboarding wizard data."""
+    token = request.args.get('token', '').strip()
+    from_number = _get_user_id(token)
+
+    if not from_number:
+        return jsonify({"error": "unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+
+    try:
+        from sms_service import lib
+        import json
+
+        # Extract wizard data
+        postcode = (body.get("postcode") or "").strip().upper()
+        whatsapp = body.get("whatsapp") == "yes"
+        phone = (body.get("phone") or "").strip()
+        kids = body.get("kids") == "yes"
+        schools = body.get("schools", [])
+        commute = body.get("commute") == "yes"
+        station = (body.get("station") or "").strip()
+        spend = body.get("spend") == "yes"
+
+        # Validate required fields
+        if not postcode or not phone:
+            return jsonify({"error": "postcode and phone required"}), 400
+
+        sb = lib._sb()
+
+        # 1. Save preferences
+        prefs = {
+            "postcode": postcode,
+            "whatsapp_updates": whatsapp,
+            "phone": phone,
+            "commute": commute,
+            "station": station if commute else "",
+            "spend_tracking": spend,
+        }
+
+        sb.table("ma_details").upsert({
+            "device_id": from_number,
+            "type": "v2_prefs",
+            "label": "user_preferences",
+            "data": prefs,
+        }).execute()
+
+        # 2. Save schools if user has kids
+        if kids and schools:
+            for school_data in schools:
+                child_name = (school_data.get("child") or "").strip()
+                school_name = (school_data.get("school") or "").strip()
+
+                if child_name and school_name:
+                    # Check if this school already exists for this child
+                    existing = sb.table("school_profiles").select("id") \
+                        .eq("from_number", from_number) \
+                        .eq("child_name", child_name) \
+                        .eq("school_name", school_name).limit(1).execute().data or []
+
+                    if not existing:
+                        sb.table("school_profiles").insert({
+                            "from_number": from_number,
+                            "child_name": child_name,
+                            "school_name": school_name,
+                            "sender_emails": [],
+                        }).execute()
+
+        # 3. Enable relevant modules
+        modules = {
+            "myarea": True,
+            "school": kids,
+            "commute": commute,
+            "spend": spend,
+            "saves": True,
+            "library": True,
+        }
+
+        sb.table("ma_details").upsert({
+            "device_id": from_number,
+            "type": "modules_enabled",
+            "label": "user_modules",
+            "data": modules,
+        }).execute()
+
+        # 4. Mark onboarding as complete
+        sb.table("ma_details").upsert({
+            "device_id": from_number,
+            "type": "onboarding_complete",
+            "label": "setup_status",
+            "data": {"completed": True},
+        }).execute()
+
+        logger.info(f"[onboarding] Wizard complete for {from_number}: postcode={postcode}, kids={kids}, schools={len(schools)}")
+
+        return jsonify({
+            "ok": True,
+            "prefs": prefs,
+            "schools_added": len(schools) if kids else 0,
+            "modules": modules,
+        })
+
+    except Exception as e:
+        logger.error(f"[onboarding] Wizard save error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500

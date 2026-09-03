@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Miru</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      margin-bottom: 30px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #667eea;
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    .step-counter {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #1f2937;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="tel"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .radio-option {
+      flex: 1;
+      position: relative;
+    }
+
+    .radio-option input[type="radio"] {
+      display: none;
+    }
+
+    .radio-label {
+      display: block;
+      padding: 14px 16px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 600;
+      color: #6b7280;
+      transition: all 0.2s;
+    }
+
+    .radio-option input[type="radio"]:checked + .radio-label {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .btn-primary:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .schools-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .school-item {
+      padding: 12px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .school-item button {
+      background: #ef4444;
+      color: white;
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
+    .helper-text {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 8px;
+    }
+
+    .success-message {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .success-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .success-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 12px;
+    }
+
+    .whatsapp-link {
+      display: inline-block;
+      background: #25d366;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 20px;
+      transition: background 0.2s;
+    }
+
+    .whatsapp-link:hover {
+      background: #20ba5a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div id="setupForm">
+      <!-- Step 1: Postcode -->
+      <div class="step active" id="step1">
+        <div class="step-counter">Step 1 of 7</div>
+        <h1>Welcome to Miru 👋</h1>
+        <p class="subtitle">UK life assistant for fuel, school, spending & more</p>
+
+        <div class="form-group">
+          <label for="postcode">What's your postcode?</label>
+          <input type="text" id="postcode" placeholder="e.g., KT16 0DA" maxlength="8">
+          <p class="helper-text">We use this for weather, fuel prices, local info</p>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-primary" onclick="nextStep(1)">Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 2: WhatsApp Updates -->
+      <div class="step" id="step2">
+        <div class="step-counter">Step 2 of 7</div>
+        <h1>Get WhatsApp updates?</h1>
+        <p class="subtitle">Morning brief with fuel, school, weather & spending</p>
+
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="whatsapp-yes" name="whatsapp" value="yes">
+            <label for="whatsapp-yes" class="radio-label">Yes please 📱</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="whatsapp-no" name="whatsapp" value="no">
+            <label for="whatsapp-no" class="radio-label">Not now</label>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-secondary" onclick="prevStep()">Back</button>
+          <button class="btn-primary" onclick="nextStep(2)">Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Phone Number -->
+      <div class="step" id="step3">
+        <div class="step-counter">Step 3 of 7</div>
+        <h1>What's your phone number?</h1>
+        <p class="subtitle">For WhatsApp & notifications</p>
+
+        <div class="form-group">
+          <label for="phone">Phone number</label>
+          <input type="tel" id="phone" placeholder="+447700900000">
+          <p class="helper-text">Include country code (+44)</p>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-secondary" onclick="prevStep()">Back</button>
+          <button class="btn-primary" onclick="nextStep(3)">Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Kids in School? -->
+      <div class="step" id="step4">
+        <div class="step-counter">Step 4 of 7</div>
+        <h1>Do you have kids in school?</h1>
+        <p class="subtitle">We can track term dates, events & comms</p>
+
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="kids-yes" name="kids" value="yes">
+            <label for="kids-yes" class="radio-label">Yes 👧👦</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="kids-no" name="kids" value="no">
+            <label for="kids-no" class="radio-label">No</label>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-secondary" onclick="prevStep()">Back</button>
+          <button class="btn-primary" onclick="nextStep(4)">Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Schools (Conditional) -->
+      <div class="step" id="step5">
+        <div class="step-counter">Step 5 of 7</div>
+        <h1>Which schools?</h1>
+        <p class="subtitle">We'll track term dates & send alerts</p>
+
+        <div class="form-group">
+          <label for="schoolName">School name</label>
+          <input type="text" id="schoolName" placeholder="e.g., Charters School">
+        </div>
+
+        <div class="form-group">
+          <label for="childName">Child's name</label>
+          <input type="text" id="childName" placeholder="e.g., Riaan">
+        </div>
+
+        <div class="schools-list" id="schoolsList"></div>
+
+        <button class="btn-secondary" onclick="addSchool()" style="width: 100%;">+ Add another school</button>
+
+        <div class="button-group">
+          <button class="btn-secondary" onclick="prevStep()">Back</button>
+          <button class="btn-primary" onclick="nextStep(5)">Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 6: Commute -->
+      <div class="step" id="step6">
+        <div class="step-counter">Step 6 of 7</div>
+        <h1>Do you commute by train?</h1>
+        <p class="subtitle">We can track live departures</p>
+
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="commute-yes" name="commute" value="yes">
+            <label for="commute-yes" class="radio-label">Yes 🚆</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="commute-no" name="commute" value="no">
+            <label for="commute-no" class="radio-label">No</label>
+          </div>
+        </div>
+
+        <div class="form-group" id="stationGroup" style="display: none;">
+          <label for="station">Your local station</label>
+          <input type="text" id="station" placeholder="e.g., Longcross">
+        </div>
+
+        <div class="button-group">
+          <button class="btn-secondary" onclick="prevStep()">Back</button>
+          <button class="btn-primary" onclick="nextStep(6)">Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 7: Spending Tracking -->
+      <div class="step" id="step7">
+        <div class="step-counter">Step 7 of 7</div>
+        <h1>Track your spending?</h1>
+        <p class="subtitle">Monitor receipts, fuel, & weekly trends</p>
+
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="spend-yes" name="spend" value="yes">
+            <label for="spend-yes" class="radio-label">Yes 💰</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="spend-no" name="spend" value="no">
+            <label for="spend-no" class="radio-label">Not yet</label>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-secondary" onclick="prevStep()">Back</button>
+          <button class="btn-primary" onclick="completeSetup()">Finish Setup</button>
+        </div>
+      </div>
+
+      <!-- Success Screen -->
+      <div class="step" id="stepSuccess">
+        <div class="success-message">
+          <div class="success-icon">🎉</div>
+          <h1 class="success-title">You're all set!</h1>
+          <p class="subtitle">Miru is ready to help with your UK life.</p>
+
+          <p style="margin-top: 20px; color: #6b7280;">
+            <strong>Next step:</strong> Join the Miru WhatsApp group to stay updated
+          </p>
+
+          <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK" target="_blank" class="whatsapp-link">
+            👋 Join WhatsApp Group
+          </a>
+
+          <p style="margin-top: 20px; color: #9ca3af; font-size: 14px;">
+            Or explore Miru on the web:<br>
+            <a href="/" style="color: #667eea; text-decoration: none;">Go to Dashboard</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+    const totalSteps = 7;
+    const schools = [];
+    let isSaving = false;
+
+    // Get token from URL or localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('miru_token') || '';
+
+    function updateProgress() {
+      const progress = (currentStep / (totalSteps + 1)) * 100;
+      document.getElementById('progressFill').style.width = progress + '%';
+    }
+
+    function showStep(step) {
+      document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+      document.getElementById(`step${step}`).classList.add('active');
+      window.scrollTo(0, 0);
+      updateProgress();
+    }
+
+    function nextStep(step) {
+      // Validate current step
+      if (step === 1) {
+        const postcode = document.getElementById('postcode').value.trim();
+        if (!postcode) {
+          alert('Please enter your postcode');
+          return;
+        }
+      }
+
+      if (step === 2) {
+        if (!document.querySelector('input[name="whatsapp"]:checked')) {
+          alert('Please select an option');
+          return;
+        }
+      }
+
+      if (step === 3) {
+        const phone = document.getElementById('phone').value.trim();
+        if (!phone) {
+          alert('Please enter your phone number');
+          return;
+        }
+      }
+
+      if (step === 4) {
+        if (!document.querySelector('input[name="kids"]:checked')) {
+          alert('Please select an option');
+          return;
+        }
+        const hasKids = document.getElementById('kids-yes').checked;
+        if (!hasKids) {
+          currentStep = 6; // Skip schools, go to commute
+          showStep(6);
+          return;
+        }
+      }
+
+      if (step === 5) {
+        if (schools.length === 0) {
+          alert('Please add at least one school');
+          return;
+        }
+      }
+
+      if (step === 6) {
+        if (!document.querySelector('input[name="commute"]:checked')) {
+          alert('Please select an option');
+          return;
+        }
+      }
+
+      if (step === 7) {
+        if (!document.querySelector('input[name="spend"]:checked')) {
+          alert('Please select an option');
+          return;
+        }
+      }
+
+      currentStep++;
+      showStep(currentStep);
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        showStep(currentStep);
+      }
+    }
+
+    function addSchool() {
+      const schoolName = document.getElementById('schoolName').value.trim();
+      const childName = document.getElementById('childName').value.trim();
+
+      if (!schoolName || !childName) {
+        alert('Please enter school name and child name');
+        return;
+      }
+
+      schools.push({ school: schoolName, child: childName });
+      document.getElementById('schoolName').value = '';
+      document.getElementById('childName').value = '';
+      renderSchools();
+    }
+
+    function renderSchools() {
+      const list = document.getElementById('schoolsList');
+      list.innerHTML = schools.map((s, i) => `
+        <div class="school-item">
+          <div><strong>${s.school}</strong><br><small>${s.child}</small></div>
+          <button onclick="removeSchool(${i})" type="button" style="background: #ef4444; color: white; padding: 4px 12px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer;">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    function removeSchool(index) {
+      schools.splice(index, 1);
+      renderSchools();
+    }
+
+    // Show/hide station field based on commute selection
+    document.addEventListener('change', (e) => {
+      if (e.target.name === 'commute') {
+        const stationGroup = document.getElementById('stationGroup');
+        stationGroup.style.display = e.target.value === 'yes' ? 'block' : 'none';
+      }
+    });
+
+    async function completeSetup() {
+      if (isSaving) return;
+      isSaving = true;
+
+      // Collect all data
+      const data = {
+        postcode: document.getElementById('postcode').value.trim(),
+        whatsapp: document.querySelector('input[name="whatsapp"]:checked')?.value,
+        phone: document.getElementById('phone').value.trim(),
+        kids: document.querySelector('input[name="kids"]:checked')?.value,
+        schools: schools,
+        commute: document.querySelector('input[name="commute"]:checked')?.value,
+        station: document.getElementById('station').value.trim(),
+        spend: document.querySelector('input[name="spend"]:checked')?.value,
+      };
+
+      console.log('Setup data:', data);
+
+      try {
+        // Save to localStorage first
+        localStorage.setItem('miru_onboarding', JSON.stringify(data));
+
+        // Send to API if token is available
+        if (token) {
+          const response = await fetch(`/api/user/complete-wizard?token=${encodeURIComponent(token)}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+          });
+
+          const result = await response.json();
+          console.log('API response:', result);
+
+          if (!response.ok) {
+            console.error('API error:', result.error);
+            // Continue anyway - localStorage has the data
+          }
+        }
+
+        // Show success screen
+        currentStep = 'success';
+        showStep('Success');
+
+        // Redirect to main app after 3 seconds
+        setTimeout(() => {
+          window.location.href = '/?setup=complete';
+        }, 3000);
+
+      } catch (error) {
+        console.error('Setup error:', error);
+        alert('Error saving setup. Please try again.');
+        isSaving = false;
+      }
+    }
+
+    // Initialize
+    updateProgress();
+  </script>
+</body>
+</html>
