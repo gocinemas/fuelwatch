@@ -26017,6 +26017,8 @@ def _wa_doc_search(from_number: str, query: str) -> str:
         _BUY_PATTERN = re.compile(r"(?:did\s+i|have\s+i|i\s+have|i).{0,10}(?:buy|get|purchase|pick\s+up|grab|have).{0,5}(.+?)(?:\?|$)", re.I)
         buy_match = _BUY_PATTERN.search(query)
 
+        print(f"[wa_doc_search] Query: '{query}' | Match: {bool(buy_match)} | Captured: {buy_match.group(1) if buy_match else 'N/A'}", flush=True)
+
         if buy_match and "at " not in query_lower and "from " not in query_lower and "in " not in query_lower:
             # Item search — search ALL clippings + receipts with strict word matching
             item_q = buy_match.group(1).strip()
@@ -26067,13 +26069,17 @@ def _wa_doc_search(from_number: str, query: str) -> str:
                         receipt_matches.append((merchant, date_str, item_name))
                         break
 
+            print(f"[wa_doc_search] Item search: '{item_q}' | Words: {search_words} | Clipping matches: {len(clip_matches)} | Receipt matches: {len(receipt_matches)}", flush=True)
+
             if receipt_matches:
                 result_lines = []
                 for merchant, date_str, item_name in receipt_matches[:5]:
                     result_lines.append(f"✓ Yes, {item_name} at {merchant} on {date_str}")
                 return "\n".join(result_lines)
             else:
-                return f"🔍 No receipts found with '{item_q}'. Searched 300+ items."
+                not_found_msg = f"🔍 No receipts found with '{item_q}'. Searched 300+ items."
+                print(f"[wa_doc_search] Returning: {not_found_msg}", flush=True)
+                return not_found_msg
 
         # FALLBACK: Use Algolia for general document/save searches
         save_hits = lib.saves_search(query, from_number=from_number, hits_per_page=6)
