@@ -25989,7 +25989,10 @@ def _wa_doc_search(from_number: str, query: str) -> str:
 
         print(f"[wa_doc_search] Query: '{query}' | Match: {bool(buy_match)} | Captured: {buy_match.group(1) if buy_match else 'N/A'}", flush=True)
 
-        if buy_match and "at " not in query_lower and "from " not in query_lower and "in " not in query_lower:
+        # CRITICAL: For "did i buy" queries, NEVER fall back to Algolia
+        is_item_search = bool(buy_match and "at " not in query_lower and "from " not in query_lower and "in " not in query_lower)
+
+        if is_item_search:
             # Item search — search ALL clippings + receipts with strict word matching
             item_q = buy_match.group(1).strip()
             search_words = [w.lower().strip() for w in item_q.split() if w.strip() and len(w.strip()) > 1]
@@ -26051,9 +26054,12 @@ def _wa_doc_search(from_number: str, query: str) -> str:
                 print(f"[wa_doc_search] Returning: {not_found_msg}", flush=True)
                 return not_found_msg
 
-        # DO NOT FALL BACK TO ALGOLIA FOR ITEM SEARCHES - results are unreliable
+        # CRITICAL: If this was an item search, NEVER fall back to Algolia (even if reached here)
+        if is_item_search:
+            return f"🔍 No receipts found for that query."
 
         # FALLBACK: Use Algolia for general document/save searches (NOT for item searches)
+        print(f"[wa_doc_search] Using Algolia fallback for general search: '{query}'", flush=True)
         save_hits = lib.saves_search(query, from_number=from_number, hits_per_page=6)
         doc_hits = lib.search_library(query, n=3)
 
