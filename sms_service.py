@@ -19278,12 +19278,39 @@ def api_home_ask():
                 if not any(w in item_q for w in ["at ", "from ", "in ", " at", " from", " in"]):
                     try:
                         plain = from_number.replace("whatsapp:", "").strip()
-                        # Search receipts table for items (structured data)
+
+                        # FIRST: Search wa_saves clippings (🧾) for item keywords
+                        clipping_matches = lib._sb().table("wa_saves").select("title,summary,created_at") \
+                            .eq("from_number", plain).ilike("title", "%🧾%").order("created_at", desc=True).limit(100).execute().data or []
+
+                        clipping_results = []
+                        search_words = [w.lower().strip() for w in item_q.lower().split() if w.strip() and len(w.strip()) > 1]
+                        for clip in clipping_matches:
+                            title = clip.get("title", "").lower()
+                            summary = clip.get("summary", "").lower()
+                            date_str = clip.get("created_at", "")[:10]
+
+                            # Match if ALL search words found in title or summary
+                            if all(word in (title + " " + summary) for word in search_words):
+                                merchant = clip.get("title", "").replace("🧾", "").strip()
+                                clipping_results.append((merchant, date_str, summary[:100]))
+
+                        if clipping_results:
+                            result_lines = []
+                            for merchant, date_str, summary in clipping_results[:3]:
+                                result_lines.append(f"✓ Found '{item_q}' in {merchant} clipping (on {date_str})")
+                            answer = "\n".join(result_lines)
+                            app.logger.info(f"[ask] Item found in clippings: '{item_q}'")
+                            return jsonify({"answer": answer})
+
+                        # SECOND: Search receipts table for items (structured data)
                         import json as _item_json
                         all_receipts = lib._sb().table("receipts").select("merchant,items,shop_date,created_at") \
-                            .eq("phone", plain).order("shop_date", desc=True).limit(100).execute().data or []
+                            .eq("phone", plain).order("shop_date", desc=True).limit(200).execute().data or []  # Increased from 100 to 200
 
                         matching_receipts = []
+                        search_words = [w.strip() for w in item_q.lower().split() if w.strip() and len(w.strip()) > 1]
+
                         for r in all_receipts:
                             items_json = r.get("items", "[]")
                             try:
@@ -19291,10 +19318,13 @@ def api_home_ask():
                             except:
                                 items_list = []
 
-                            # Search for item in items array
+                            # Search for item in items array - must match all search words
                             for item in items_list:
                                 item_name = item.get("name", "") if isinstance(item, dict) else str(item)
-                                if item_q.lower() in item_name.lower():
+                                item_lower = item_name.lower()
+
+                                # Match ALL search words (case-insensitive word matching, not substring)
+                                if all(word in item_lower for word in search_words):
                                     merchant = r.get("merchant", "")
                                     date_str = r.get("shop_date", "") or r.get("created_at", "")[:10]
                                     matching_receipts.append((merchant, date_str, item_name))
@@ -19302,14 +19332,14 @@ def api_home_ask():
 
                         if matching_receipts:
                             result_lines = []
-                            for merchant, date_str, item_name in matching_receipts[:3]:
-                                result_lines.append(f"✓ Yes, you bought {item_name} at {merchant} on {date_str}")
+                            for merchant, date_str, item_name in matching_receipts[:5]:  # Show up to 5 matches
+                                result_lines.append(f"✓ Yes, {item_name} at {merchant} on {date_str}")
                             answer = "\n".join(result_lines)
-                            app.logger.info(f"[ask] Item found in receipts: {item_q}")
+                            app.logger.info(f"[ask] Item found in {len(matching_receipts)} receipts: '{item_q}'")
                             return jsonify({"answer": answer})
                         else:
-                            answer = f"I didn't find {item_q} in your receipt items."
-                            app.logger.info(f"[ask] Item not found in receipts: {item_q}")
+                            answer = f"🔍 No receipts found with '{item_q}'. Searched {len(all_receipts)} receipts."
+                            app.logger.info(f"[ask] Item not found in any receipts: '{item_q}'")
                             return jsonify({"answer": answer})
                     except Exception as e:
                         app.logger.debug(f"[ask] Item search error: {e}")

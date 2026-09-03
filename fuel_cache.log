@@ -4019,3 +4019,5 @@
 [2026-09-03 12:07:54] Refreshing fuel prices cache...
 ✗ Exception: HTTPSConnectionPool(host='www.fuel-finder.service.gov.uk', port=443): Max retries exceeded with url: /api/v1/oauth/generate_access_token (Caused by NameResolutionError("HTTPSConnection(host='www.fuel-finder.service.gov.uk', port=443): Failed to resolve 'www.fuel-finder.service.gov.uk' ([Errno 8] nodename nor servname provided, or not known)"))
 ✗ Could not get access_token
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
