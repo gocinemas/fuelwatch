@@ -4421,7 +4421,7 @@ def school_root():
 @app.route("/<company_slug>")
 def company_page(company_slug):
     # Skip reserved paths
-    if company_slug in ["add-receipt", "feedbin", "api", "sms", "call"]:
+    if company_slug in ["add-receipt", "feedbin", "api", "sms", "call", "onboarding"]:
         return "", 404
 
     brand_name = company_slug.replace("-", " ").title()
