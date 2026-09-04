@@ -25984,7 +25984,7 @@ def _wa_doc_search(from_number: str, query: str) -> str:
         plain = from_number.replace("whatsapp:", "").strip() if "whatsapp" in from_number else from_number
 
         # SPECIAL CASE: "did i buy X" — search receipts with strict item matching
-        _BUY_PATTERN = re.compile(r"(?:did\s+i|have\s+i|i\s+have|i).{0,10}(?:buy|get|purchase|pick\s+up|grab|have).{0,5}(.+?)(?:\?|$)", re.I)
+        _BUY_PATTERN = re.compile(r"(?:did\s+i|have\s+i|i\s+have|i)\s+(?:buy|get|purchase|pick\s+up|grab|have)\s+(.+?)(?:\?|$)", re.I)
         buy_match = _BUY_PATTERN.search(query)
 
         print(f"[wa_doc_search] Query: '{query}' | Match: {bool(buy_match)} | Captured: {buy_match.group(1) if buy_match else 'N/A'}", flush=True)
