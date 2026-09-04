@@ -108,6 +108,7 @@ import requests
 from groq import Groq
 
 import library as lib
+from groq_rate_limiter import rate_limited_groq_call, _groq_limiter
 
 # Lazy-initialize groq_client to avoid startup failures
 _groq_client = None
@@ -737,6 +738,13 @@ Example format: [[{{"event_title":"PE Days","event_date":"2026-09-02","event_typ
         if not client:
             print(f"[school] Groq API key not set, returning empty")
             return [[] for _ in batch_items]
+
+        # Apply rate limiting before making Groq call
+        # Estimate ~1500 tokens per email in batch
+        estimated_tokens = len(batch_items) * 1500
+        print(f"[school] Batch parse: {len(batch_items)} emails, ~{estimated_tokens} tokens. Checking rate limit...")
+
+        _groq_limiter.wait_if_needed(estimated_tokens)
 
         message = client.chat.completions.create(
             model="groq/compound",
