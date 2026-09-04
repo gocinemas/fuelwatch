@@ -1716,7 +1716,15 @@ def sms_reply():
     if any(x in body_lower for x in ["how much", "spent", "budget", "pace", "spending"]):
         try:
             from budget_tracker import get_budget_status, format_budget_report
-            status = get_budget_status(from_number)
+            # Parse period from query (this month, last month, etc.)
+            period = "this month"  # default
+            if "last month" in body_lower:
+                period = "last month"
+            elif "this quarter" in body_lower:
+                period = "this quarter"
+            elif "this year" in body_lower or "ytd" in body_lower:
+                period = "this year"
+            status = get_budget_status(from_number, period)
             if status:
                 resp.message(format_budget_report(status))
                 return str(resp)

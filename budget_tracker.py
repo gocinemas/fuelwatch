@@ -5,9 +5,13 @@ from datetime import datetime, timedelta
 from supabase import create_client
 import os
 
-def get_budget_status(phone: str) -> dict:
+def get_budget_status(phone: str, period: str = "this month") -> dict:
     """
-    Get user's budget status for current month
+    Get user's budget status for specified period
+
+    Args:
+        phone: User's phone number
+        period: "this month", "last month", "this quarter", etc.
 
     Returns:
         {
@@ -17,16 +21,34 @@ def get_budget_status(phone: str) -> dict:
             'average_monthly': 700,
             'status': 'on_pace' | 'overspending' | 'underspending',
             'pace_warning': 'You\'re on pace to spend £750 (avg: £700)',
-            'days_remaining': 21
+            'days_remaining': 21,
+            'period': 'this month' or 'last month'
         }
     """
     try:
         supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-        # Get current month's spending
+        # Parse period to determine date range
         now = datetime.now()
-        month_start = now.replace(day=1)
+        period_lower = period.lower()
 
+        if "last month" in period_lower:
+            # Last month: from 1st of last month to 1st of this month
+            month_start = now.replace(day=1)
+            first_of_last = month_start - timedelta(days=1)
+            month_start = first_of_last.replace(day=1)
+            period_label = "last month"
+        elif "this quarter" in period_lower:
+            # This quarter
+            quarter = (now.month - 1) // 3 + 1
+            month_start = datetime(now.year, (quarter-1)*3 + 1, 1)
+            period_label = "this quarter"
+        else:
+            # Default: this month
+            month_start = now.replace(day=1)
+            period_label = "this month"
+
+        # Get spending for the period
         data, _ = supabase.table("receipts").select("total").where(
             f"phone = '{phone}' AND shop_date >= '{month_start.isoformat()}' AND shop_date < '{now.isoformat()}'"
         ).execute()
@@ -64,8 +86,9 @@ def get_budget_status(phone: str) -> dict:
             'projected_total': round(projected_total, 2),
             'average_monthly': round(average_monthly, 2),
             'status': status,
-            'pace_warning': f"💰 You're on pace to spend £{projected_total:.0f} this month (your avg: £{average_monthly:.0f})",
-            'days_remaining': days_remaining
+            'pace_warning': f"💰 You're on pace to spend £{projected_total:.0f} {period_label} (your avg: £{average_monthly:.0f})",
+            'days_remaining': days_remaining,
+            'period': period_label
         }
     except Exception as e:
         print(f"[budget_tracker] Error: {e}")
