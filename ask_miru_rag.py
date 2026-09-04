@@ -258,7 +258,7 @@ class MiruRAG:
                 yesterday = (date.today() - timedelta(days=1)).isoformat()
                 query = query.gte("created_at", f"{yesterday}T00:00:00").lte("created_at", f"{yesterday}T23:59:59")
 
-            rows = query.order("created_at", desc=True).limit(5).execute().data or []
+            rows = query.order("created_at", desc=True).limit(50).execute().data or []  # Fetch more rows to filter by item
 
             if not rows:
                 # If merchant was explicitly requested and not found, return clear "not found"
@@ -269,6 +269,31 @@ class MiruRAG:
                         "reason": f"No receipts found for {requested_merchant}"
                     }
                 return {"found": False, "data": None}
+
+            # CRITICAL: If item is specified, filter receipts by item content
+            if item:
+                item_lower = item.lower()
+                item_words = [w.lower().strip() for w in item_lower.split() if w.strip() and len(w.strip()) > 1]
+
+                matching_receipts = []
+                for receipt in rows:
+                    summary = receipt.get("summary", "").lower()
+                    title = receipt.get("title", "").lower()
+                    # ALL search words must match in title or summary
+                    if all(word in (title + " " + summary) for word in item_words):
+                        matching_receipts.append(receipt)
+
+                # If no receipts match the item, return "not found"
+                if not matching_receipts:
+                    return {
+                        "answer": f"🔍 No receipts found with '{item}'.",
+                        "data": None,
+                        "source": "database",
+                        "confidence": 1.0,
+                        "found": False,
+                    }
+
+                rows = matching_receipts
 
             # Process results
             receipt = rows[0]  # Most recent
@@ -329,7 +354,7 @@ class MiruRAG:
                 today = date.today().isoformat()
                 query = query.gte("shop_date", today).lt("shop_date", (date.today() + timedelta(days=1)).isoformat())
 
-            rows = query.order("shop_date", desc=True).limit(5).execute().data or []
+            rows = query.order("shop_date", desc=True).limit(200).execute().data or []  # Fetch more to filter by item
 
             if not rows:
                 # If merchant was explicitly requested and not found, return clear "not found"
@@ -339,6 +364,41 @@ class MiruRAG:
                         "reason": f"No receipts found for {requested_merchant}"
                     }
                 return {"found": False}
+
+            # CRITICAL: If item is specified, filter receipts by item content
+            if item:
+                item_lower = item.lower()
+                item_words = [w.lower().strip() for w in item_lower.split() if w.strip() and len(w.strip()) > 1]
+
+                matching_receipts = []
+                for receipt in rows:
+                    try:
+                        items_json = receipt.get("items", "[]")
+                        items_list = json.loads(items_json) if isinstance(items_json, str) else (items_json or [])
+                    except:
+                        items_list = []
+
+                    # Check if ANY item in the receipt matches ALL search words
+                    for it in items_list:
+                        item_name = it.get("name", "") if isinstance(it, dict) else str(it)
+                        item_name_lower = item_name.lower()
+
+                        # ALL search words must match this item
+                        if all(word in item_name_lower for word in item_words):
+                            matching_receipts.append(receipt)
+                            break  # Found a match for this receipt, move to next
+
+                # If no receipts match the item, return "not found"
+                if not matching_receipts:
+                    return {
+                        "answer": f"🔍 No receipts found with '{item}'.",
+                        "data": None,
+                        "source": "database",
+                        "confidence": 1.0,
+                        "found": False,
+                    }
+
+                rows = matching_receipts
 
             receipt = rows[0]
             merchant_name = receipt.get("merchant", "")

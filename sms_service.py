@@ -30255,7 +30255,7 @@ def _whatsapp_reply_inner():
     # ── Document / receipt / warranty / book-note search ─────────────────────
     _DOC_Q = re.compile(
         r'\b(find|search|look up|show me)\b.{0,30}\b(save|saves|doc|docs|document|receipt|receipts|library|note|notes)\b'
-        r'|\b(when did i (buy|purchase)|did i buy|my receipt for|receipt for|how much (did i pay|was|is it)|what did i (buy|pay|spend))\b'
+        r'|\b(when did i (buy|purchase)|did i (buy|have)|my receipt for|receipt for|how much (did i pay|was|is it)|what did i (buy|pay|spend|have))\b'
         r'|\b(is .{1,40} (under )?warranty|warranty for|check (my )?warranty|when does .{1,40} warranty expire)\b'
         r'|\bwhat (did|does|is in) (my|the) (document|doc|letter|contract|agreement|receipt|note|lease)\b',
         re.I,
