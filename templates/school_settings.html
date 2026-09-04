@@ -490,7 +490,7 @@
       return;
     }
 
-    const needsGmail = schools.filter(s => !s.gmail_refresh_token || s.gmail_token_error);
+    const needsGmail = schools.filter(s => !s.gmail_connected);
     const allConnected = needsGmail.length === 0;
 
     if (allConnected) {
