@@ -32164,8 +32164,10 @@ def _web_client_secret():
 
 def _school_oauth_url(profile_id: str) -> str:
     import urllib.parse
+    cid = _web_client_id()
+    print(f"[oauth_url] client_id: {cid[:50] if cid else 'EMPTY'}", flush=True)
     params = {
-        "client_id":     _web_client_id(),
+        "client_id":     cid,
         "redirect_uri":  _SCHOOL_OAUTH_REDIRECT,
         "response_type": "code",
         "scope":         _SCHOOL_OAUTH_SCOPES,
@@ -32173,7 +32175,9 @@ def _school_oauth_url(profile_id: str) -> str:
         "prompt":        "consent",
         "state":         profile_id,
     }
-    return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    print(f"[oauth_url] generated URL length: {len(url)}, profile_id: {profile_id}", flush=True)
+    return url
 
 
 def _calendar_oauth_url(from_number: str) -> str:
