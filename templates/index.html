@@ -2312,7 +2312,7 @@
       <!-- COMMUTE CARD: trains & fuel as distinct sections -->
       <div id="brief-glance" style="display:none;flex-direction:column;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border:1px solid rgba(255,255,255,.1);border-radius:16px;margin-bottom:12px;overflow:hidden">
         <!-- Trains section -->
-        <button onclick="showScreen('trains')" style="display:none;align-items:center;gap:12px;width:100%;padding:14px;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.1);cursor:pointer;text-align:left;font-family:inherit;transition:background 0.2s">
+        <button onclick="showScreen('trains')" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.1);cursor:pointer;text-align:left;font-family:inherit;transition:background 0.2s">
           <span style="font-size:16px;flex-shrink:0">🚆</span>
           <span id="brief-glance-train" style="font-weight:700;color:#fff;font-size:13px;flex:1;word-break:break-word"></span>
           <span style="font-size:14px;color:rgba(255,255,255,.5);flex-shrink:0">›</span>
@@ -18961,8 +18961,7 @@ let _savesAll = [];
     var schoolRow = document.getElementById("tile-school-row");
     var glance    = document.getElementById("brief-glance");
     if (fuelSub)   { fuelSub.textContent  = "Cheapest near you"; fuelSub.style.color  = ""; fuelSub.style.fontWeight  = ""; }
-    // DISABLED: Trains removed from brief
-    if (trainSub)  { trainSub.parentElement.parentElement.style.display = "none"; }
+    if (trainSub)  { trainSub.textContent = "Live departures";   trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
     if (schoolRow) { schoolRow.style.display = "none"; }
     if (schoolSub) { schoolSub.textContent = ""; schoolSub.style.color = ""; schoolSub.style.fontWeight = ""; }
     if (glance)    { glance.style.display = "none"; }
