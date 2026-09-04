@@ -22994,9 +22994,19 @@ let _savesAll = [];
       const banner = document.getElementById("school-oauth-banner");
       const oauthLink = document.getElementById("school-oauth-link");
       const needsOauth = _schoolProfiles.find(p => !p.gmail_connected);
+      console.log("[school-oauth] needsOauth:", needsOauth, "oauth_url:", needsOauth?.oauth_url);
       if (needsOauth && banner) {
         banner.style.display = "block";
-        if (oauthLink && needsOauth.oauth_url) oauthLink.href = needsOauth.oauth_url;
+        if (oauthLink) {
+          if (needsOauth.oauth_url) {
+            oauthLink.href = needsOauth.oauth_url;
+            console.log("[school-oauth] Link set to:", needsOauth.oauth_url.slice(0, 80));
+          } else {
+            console.warn("[school-oauth] ❌ NO oauth_url returned from API");
+            oauthLink.style.opacity = "0.5";
+            oauthLink.title = "OAuth URL not available";
+          }
+        }
       } else if (banner) {
         banner.style.display = "none";
       }
