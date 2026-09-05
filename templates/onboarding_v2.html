@@ -218,6 +218,40 @@
       font-weight: 600;
       margin-left: 8px;
     }
+    .group-checkbox {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .group-checkbox:hover {
+      border-color: #667eea;
+      background: #f9fafb;
+    }
+    .group-checkbox input[type="checkbox"] {
+      margin-right: 12px;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .group-checkbox-content {
+      flex: 1;
+    }
+    .group-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: #1f2937;
+    }
+    .group-members {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
@@ -289,9 +323,9 @@
         </div>
       </div>
 
-      <!-- Step 4: WhatsApp OAuth -->
+      <!-- Step 4a: WhatsApp OAuth -->
       <div class="step" id="step4">
-        <div class="step-counter">Step 4 of 4</div>
+        <div class="step-counter">Step 4 of 5</div>
         <h1>Connect WhatsApp <span class="optional-badge">Optional</span></h1>
         <p class="subtitle">Monitor parent group chats for real-time updates</p>
 
@@ -307,7 +341,29 @@
 
         <div class="button-group">
           <button class="btn-secondary" onclick="prevStep()">Back</button>
-          <button class="btn-primary" onclick="completeSetup()">Finish Setup →</button>
+          <button class="btn-primary" id="step4NextBtn" onclick="nextStep(4)" disabled>Continue</button>
+        </div>
+      </div>
+
+      <!-- Step 4b: Select Groups -->
+      <div class="step" id="step4b">
+        <div class="step-counter">Step 4b of 5</div>
+        <h1>Which groups? 👥</h1>
+        <p class="subtitle">Select the school-related WhatsApp groups to monitor</p>
+
+        <div id="groupsList" style="margin-bottom: 24px;">
+          <div style="text-align: center; color: #9ca3af; padding: 20px;">
+            <p>Loading your groups...</p>
+          </div>
+        </div>
+
+        <p style="font-size: 12px; color: #9ca3af; margin-bottom: 20px;">
+          Only selected groups will send alerts to WhatsApp
+        </p>
+
+        <div class="button-group">
+          <button class="btn-secondary" onclick="prevStep()">Back</button>
+          <button class="btn-primary" onclick="nextStep(4)">Continue</button>
         </div>
       </div>
 
@@ -335,12 +391,46 @@
 
   <script>
     let currentStep = 1;
-    const totalSteps = 4;
+    const totalSteps = 5;
     let gmailConnected = false;
     let whatsappConnected = false;
+    let selectedGroups = [];
+    let allGroups = [];
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token') || localStorage.getItem('miru_token') || '';
+
+    async function fetchAndShowGroups() {
+      try {
+        const response = await fetch(`/api/whatsapp/groups?token=${encodeURIComponent(token)}`);
+        const data = await response.json();
+        allGroups = data.groups || [];
+
+        const groupsList = document.getElementById('groupsList');
+        if (allGroups.length === 0) {
+          groupsList.innerHTML = '<p style="color: #9ca3af;">No groups found. Make sure you\'re in school parent groups.</p>';
+          return;
+        }
+
+        groupsList.innerHTML = allGroups.map((group, idx) => `
+          <label class="group-checkbox">
+            <input type="checkbox" class="group-select" data-id="${group.id}" onchange="updateSelectedGroups()">
+            <div class="group-checkbox-content">
+              <div class="group-name">${group.name}</div>
+              <div class="group-members">${group.member_count || 0} members</div>
+            </div>
+          </label>
+        `).join('');
+      } catch (e) {
+        console.error('Failed to fetch groups:', e);
+        document.getElementById('groupsList').innerHTML = '<p style="color: #d32f2f;">Failed to load groups. Try again.</p>';
+      }
+    }
+
+    function updateSelectedGroups() {
+      selectedGroups = Array.from(document.querySelectorAll('.group-select:checked'))
+        .map(cb => cb.getAttribute('data-id'));
+    }
 
     function updateProgress() {
       const progress = (currentStep / (totalSteps + 1)) * 100;
@@ -349,13 +439,20 @@
 
     function showStep(step) {
       document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-      if (typeof step === 'number') {
-        document.getElementById(`step${step}`).classList.add('active');
-      } else {
-        document.getElementById(`step${step}`).classList.add('active');
+      const stepId = typeof step === 'number' ? `step${step}` : `step${step}`;
+      const el = document.getElementById(stepId);
+      if (el) {
+        el.classList.add('active');
       }
       window.scrollTo(0, 0);
       updateProgress();
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        showStep(currentStep);
+      }
     }
 
     function nextStep(step) {
@@ -386,15 +483,21 @@
         }
       }
 
+      if (step === 4) {
+        if (whatsappConnected) {
+          // WhatsApp connected, go to group selection
+          currentStep = 4;
+          showStep('4b');
+          fetchAndShowGroups();
+        } else {
+          // Skip WhatsApp, go to completion
+          completeSetup();
+        }
+        return;
+      }
+
       currentStep++;
       showStep(currentStep);
-    }
-
-    function prevStep() {
-      if (currentStep > 1) {
-        currentStep--;
-        showStep(currentStep);
-      }
     }
 
     async function connectGmail() {
@@ -457,6 +560,7 @@
         has_kids: hasKids,
         gmail_connected: gmailConnected,
         whatsapp_connected: whatsappConnected,
+        selected_groups: selectedGroups,
       };
 
       try {
@@ -470,9 +574,11 @@
 
         localStorage.setItem('miru_onboarding', JSON.stringify(data));
 
-        document.getElementById('whatsappStatus2').textContent = whatsappConnected
-          ? '✓ WhatsApp connected — monitoring groups'
+        const groupsText = selectedGroups.length > 0
+          ? `✓ WhatsApp connected — monitoring ${selectedGroups.length} group(s)`
           : '⚪ WhatsApp not connected (optional)';
+
+        document.getElementById('whatsappStatus2').textContent = groupsText;
 
         showStep('Success');
         setTimeout(() => goToDashboard(), 3000);
@@ -489,15 +595,24 @@
     // Check if returning from OAuth callbacks
     if (window.location.search.includes('gmail_connected=true')) {
       gmailConnected = true;
-      document.getElementById('gmailBtn').classList.add('connected');
-      document.getElementById('gmailBtn').innerHTML = '<span class="oauth-icon">✓</span><span>Gmail Connected</span><span class="oauth-status">Ready</span>';
-      document.getElementById('nextBtn3').disabled = false;
+      const gmailBtn = document.getElementById('gmailBtn');
+      if (gmailBtn) {
+        gmailBtn.classList.add('connected');
+        gmailBtn.innerHTML = '<span class="oauth-icon">✓</span><span>Gmail Connected</span><span class="oauth-status">Ready</span>';
+      }
+      const nextBtn3 = document.getElementById('nextBtn3');
+      if (nextBtn3) nextBtn3.disabled = false;
     }
 
     if (window.location.search.includes('whatsapp_connected=true')) {
       whatsappConnected = true;
-      document.getElementById('whatsappBtn').classList.add('connected');
-      document.getElementById('whatsappBtn').innerHTML = '<span class="oauth-icon">✓</span><span>WhatsApp Connected</span><span class="oauth-status">Ready</span>';
+      const whatsappBtn = document.getElementById('whatsappBtn');
+      if (whatsappBtn) {
+        whatsappBtn.classList.add('connected');
+        whatsappBtn.innerHTML = '<span class="oauth-icon">✓</span><span>WhatsApp Connected</span><span class="oauth-status">Ready</span>';
+      }
+      const step4NextBtn = document.getElementById('step4NextBtn');
+      if (step4NextBtn) step4NextBtn.disabled = false;
     }
 
     updateProgress();

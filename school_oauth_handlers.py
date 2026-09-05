@@ -363,8 +363,8 @@ def process_whatsapp_message(msg, db):
 # API ENDPOINTS for frontend config
 # ============================================================================
 
-def register_config_routes(app):
-    """Register API endpoints for OAuth client IDs (needed by frontend)"""
+def register_config_routes(app, db):
+    """Register API endpoints for OAuth client IDs and WhatsApp groups"""
 
     @app.route('/api/config/gmail-client-id', methods=['GET'])
     def get_gmail_client_id():
@@ -380,6 +380,51 @@ def register_config_routes(app):
             'client_id': os.getenv('WHATSAPP_BUSINESS_CLIENT_ID', '')
         })
 
+    @app.route('/api/whatsapp/groups', methods=['GET'])
+    def get_whatsapp_groups():
+        """
+        Fetch WhatsApp groups user is a member of
+        Requires: token (user_id)
+        """
+        token = request.args.get('token', '')
+
+        try:
+            # Get user's WhatsApp token from database
+            result = db.table('school_wa_tokens').select('*').limit(1).execute()
+            if not result.data:
+                return jsonify({'error': 'WhatsApp not connected'}), 400
+
+            wa_token = result.data[0]
+            access_token = wa_token['access_token']
+
+            # Fetch groups from WhatsApp API
+            headers = {'Authorization': f'Bearer {access_token}'}
+            response = requests.get(
+                'https://graph.instagram.com/v18.0/me/chats',
+                headers=headers,
+                params={'fields': 'id,name,is_group'},
+                timeout=10
+            )
+            response.raise_for_status()
+            chats = response.json().get('data', [])
+
+            # Filter to only groups
+            groups = [
+                {
+                    'id': chat['id'],
+                    'name': chat.get('name', 'Unknown Group'),
+                    'is_group': chat.get('is_group', False),
+                    'member_count': chat.get('member_count', 0)
+                }
+                for chat in chats if chat.get('is_group')
+            ]
+
+            return jsonify({'groups': groups}), 200
+
+        except Exception as e:
+            print(f"Error fetching WhatsApp groups: {e}")
+            return jsonify({'error': str(e)}), 500
+
 
 # ============================================================================
 # USAGE in sms_service.py:
@@ -387,5 +432,5 @@ def register_config_routes(app):
 # from school_oauth_handlers import register_oauth_routes, register_config_routes
 #
 # # In your Flask app initialization:
-# register_oauth_routes(app, db)  # Register OAuth callbacks + webhook
-# register_config_routes(app)     # Register config endpoints
+# register_oauth_routes(app, db)       # Register OAuth callbacks + webhook
+# register_config_routes(app, db)      # Register config + groups endpoints
