@@ -13148,13 +13148,13 @@ def _receipt_category(merchant: str, summary: str = "") -> str:
     if any(k in m for k in ["tesco", "sainsbury", "asda", "morrisons", "waitrose",
                               "aldi", "lidl", "marks & spencer", "m&s food", "co-op", "coop",
                               "co op", "booths", "iceland food", "budgens", "costco",
-                              "whole foods", "ocado", "spar"]):
+                              "whole foods", "ocado", "spar", "quality foods"]):
         return "Groceries"
 
     # Coffee & Lunch (cafes, quick-service, bakeries)
     if any(k in m for k in ["pret", "starbucks", "costa", "caffe nero", "nero",
                               "greggs", "leon", "itsu", "wasabi", "coffee",
-                              "paul bakery", "boston tea", "eat."]):
+                              "paul bakery", "boston tea", "eat.", "watchhouse"]):
         return "Coffee & Lunch"
 
     # Lunch & Dining (sit-down restaurants, pubs)
