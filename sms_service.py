@@ -43581,5 +43581,5 @@ def onboarding():
 
 
 # ── SCHOOL COMMS V2: OAuth handlers & webhook (Phase 1 foundation) ──
-register_oauth_routes(app, db)
-register_config_routes(app, db)
+register_oauth_routes(app, lib._sb())
+register_config_routes(app, lib._sb())
