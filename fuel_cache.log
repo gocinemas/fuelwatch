@@ -4495,3 +4495,85 @@
 [fuel-cache] Fetched 7852 prices
 [fuel-cache] Total: 8047 valid stations
 ✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-05 21:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8057 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 2494 prices
+[fuel-cache] Total: 2500 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-05 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8057 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7852 prices
+[fuel-cache] Total: 8048 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-05 23:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8057 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7852 prices
+[fuel-cache] Total: 8048 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-06 07:32:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8057 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 1996 prices
+[fuel-cache] Total: 1999 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-06 09:33:59] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8057 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7852 prices
+[fuel-cache] Total: 8048 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-06 10:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8057 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 500 prices
+[fuel-cache] Total: 500 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-06 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8057 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7852 prices
+[fuel-cache] Total: 8048 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-06 11:31:54] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8057 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 3987 prices
+[fuel-cache] Total: 3999 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='xyzabc.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache (Caused by NameResolutionError("HTTPSConnection(host='xyzabc.supabase.co', port=443): Failed to resolve 'xyzabc.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(

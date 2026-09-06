@@ -48,6 +48,7 @@ import school_service
 import personal_events_service
 import shopping_history
 import brief_analyzer
+from school_oauth_handlers import register_oauth_routes, register_config_routes
 from scoring_engine import MarketEntryScorer
 from intel_groq_optimizer import IntelGroqOptimizer
 
@@ -43562,3 +43563,8 @@ def onboarding():
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
     return resp
+
+
+# ── SCHOOL COMMS V2: OAuth handlers & webhook (Phase 1 foundation) ──
+register_oauth_routes(app, db)
+register_config_routes(app, db)
