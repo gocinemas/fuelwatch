@@ -483,6 +483,41 @@
     }
   }
 
+  async function connectGmail() {
+    try {
+      // Get Gmail client ID from API
+      const configRes = await fetch('/api/config/gmail-client-id');
+      const config = await configRes.json();
+      const clientId = config.client_id;
+
+      if (!clientId) {
+        alert('Gmail client ID not configured. Please contact support.');
+        return;
+      }
+
+      // Get user token
+      const wa = localStorage.getItem('school_wa') || localStorage.getItem('miru_phone') || '';
+      const token = localStorage.getItem('_miruToken') || wa || '';
+
+      // Build OAuth URL
+      const redirectUri = `${window.location.origin}/oauth/gmail/callback`;
+      const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      authUrl.searchParams.set('client_id', clientId);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('response_type', 'code');
+      authUrl.searchParams.set('scope', 'https://www.googleapis.com/auth/gmail.readonly email profile');
+      authUrl.searchParams.set('state', token);
+      authUrl.searchParams.set('access_type', 'offline');
+      authUrl.searchParams.set('prompt', 'consent');
+
+      // Redirect to Google
+      window.location.href = authUrl.toString();
+    } catch (e) {
+      console.error('Gmail OAuth error:', e);
+      alert('Error connecting Gmail. Please try again.');
+    }
+  }
+
   function renderGmailSection() {
     const el = document.getElementById('gmailSection');
     if (schools.length === 0) {
@@ -505,9 +540,9 @@
         </div>`;
     } else {
       const buttons = needsGmail.map(s => {
-        return `<a href="${s.oauth_url || '#'}" style="display: inline-block; padding: 12px 20px; background: #1a1a2e; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; margin-right: 8px; margin-bottom: 8px;">
+        return `<button onclick="connectGmail()" style="display: inline-block; padding: 12px 20px; background: #1a1a2e; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; border: none; cursor: pointer; font-size: 14px;">
           🔗 Connect Gmail${schools.length > 1 ? ` (${s.child_name})` : ''}
-        </a>`;
+        </button>`;
       }).join('');
 
       el.innerHTML = `
