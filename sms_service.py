@@ -16518,11 +16518,14 @@ def api_home_brief():
     # Check cache — trains always fresh; rest cached 15 min; ?refresh=1 busts it
     # Goodnight hours (23:00–05:00) and GPS requests are never served from cache
     _cur_hour = _dt.now(_LDN).hour
+    _cur_minute = _dt.now(_LDN).minute
     _is_goodnight_hour = _cur_hour >= 23 or _cur_hour < 5
     # Wind-down mode (MIRU_STEERING.md "Night (9pm+)" rule) — computed fresh from
     # server time on every response (not cached) so a brief cached just before 9pm
     # never serves a stale is_night_mode:false after the boundary.
     _is_night_mode = _cur_hour >= 21 or _cur_hour < 5
+    # Shop closing time: After 17:00 (5 PM), no grocery/fuel suggestions (shops close ~4-5 PM)
+    _is_shop_closed = _cur_hour >= 17 or _cur_hour < 6
     force_refresh = request.args.get("refresh", "") == "1" or _is_goodnight_hour or has_location
 
     # Send current hour to frontend so it uses server time instead of browser time
@@ -16859,6 +16862,17 @@ def api_home_brief():
             for vm in _visited_merchants
         )
     ]
+
+    # Filter out grocery/shopping suggestions after shops close (17:00 / 5 PM)
+    # Groceries suggests going to shops, which are closed. Only show after 6 AM.
+    if _is_shop_closed:
+        place_saves_unvisited = [
+            s for s in place_saves_unvisited
+            if s.get("category") not in ("Groceries", "Shopping", "Dining", "Coffee & Lunch")
+        ]
+        # Also exclude fuel context when shops are closed (user is home)
+        if "fuel" in ctx:
+            ctx["fuel"] = {}  # Clear fuel data — no point suggesting fuel at night
 
     # Split content saves: event clips (🎫) surfaced separately with stricter prompt handling
     # STRICT: Filter out past events from saved clips (no events before today)
@@ -18665,6 +18679,7 @@ def api_home_brief():
     result["today_events"] = _final_cal
     result["response_time_hour"] = _response_time_hour  # Include server hour so frontend can use correct time
     result["is_night_mode"] = _is_night_mode  # 9pm-5am wind-down — frontend hides commute/spend lanes, shows saves/leisure
+    result["is_shop_closed"] = _is_shop_closed  # After 5 PM: no grocery/fuel suggestions (shops close)
 
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
