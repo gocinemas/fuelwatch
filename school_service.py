@@ -246,9 +246,26 @@ def _gmail_get(path: str, params: dict = None, refresh_token: str = None, access
 # ── Email fetching ─────────────────────────────────────────────────────────────
 
 def _build_gmail_query(sender_emails: list[str], days_back: int = 7) -> str:
+    """
+    Build Gmail search query.
+    Supports:
+    - Specific addresses: office@chartersschool.org.uk
+    - Domain matching: @chartersschool.org.uk (searches all emails from that domain)
+    """
     after = (date.today() - timedelta(days=days_back)).strftime("%Y/%m/%d")
-    froms = " OR ".join(f"from:{e}" for e in sender_emails)
-    return f"in:inbox ({froms}) after:{after}"
+
+    froms = []
+    for e in sender_emails:
+        if e.startswith("@"):
+            # Domain matching: @chartersschool.org.uk → from:chartersschool.org.uk
+            domain = e.lstrip("@")
+            froms.append(f"from:{domain}")
+        else:
+            # Specific address: office@chartersschool.org.uk
+            froms.append(f"from:{e}")
+
+    froms_query = " OR ".join(froms)
+    return f"in:inbox ({froms_query}) after:{after}"
 
 
 def _extract_pptx_text(msg_id: str, att_id: str, filename: str, refresh_token: str = None) -> str:
