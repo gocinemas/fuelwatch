@@ -148,7 +148,7 @@ def verify_webhook_token(token):
 # FLASK ROUTE HANDLERS (to be added to sms_service.py)
 # ============================================================================
 
-def register_oauth_routes(app, db):
+def register_oauth_routes(app, lib):
     """Register OAuth routes with Flask app"""
 
     # ========================================
@@ -191,7 +191,7 @@ def register_oauth_routes(app, db):
             expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
 
             # Update user's Gmail connection
-            # TODO: Link to user profile via state_token (user_id)
+            db = lib._sb()
             db_result = db.table('user_profiles').update({
                 'gmail_access_token': access_token,
                 'gmail_refresh_token': refresh_token,
@@ -241,6 +241,7 @@ def register_oauth_routes(app, db):
             expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
 
             # Store WhatsApp token
+            db = lib._sb()
             db.table('school_wa_tokens').upsert({
                 'from_number': from_number,
                 'access_token': access_token,
@@ -301,6 +302,7 @@ def register_oauth_routes(app, db):
                 return "Unauthorized", 403
 
             data = request.get_json()
+            db = lib._sb()
 
             # Process messages
             if 'entry' in data:
@@ -363,7 +365,7 @@ def process_whatsapp_message(msg, db):
 # API ENDPOINTS for frontend config
 # ============================================================================
 
-def register_config_routes(app, db):
+def register_config_routes(app, lib):
     """Register API endpoints for OAuth client IDs and WhatsApp groups"""
 
     @app.route('/api/config/gmail-client-id', methods=['GET'])
@@ -390,6 +392,7 @@ def register_config_routes(app, db):
 
         try:
             # Get user's WhatsApp token from database
+            db = lib._sb()
             result = db.table('school_wa_tokens').select('*').limit(1).execute()
             if not result.data:
                 return jsonify({'error': 'WhatsApp not connected'}), 400
@@ -432,5 +435,5 @@ def register_config_routes(app, db):
 # from school_oauth_handlers import register_oauth_routes, register_config_routes
 #
 # # In your Flask app initialization:
-# register_oauth_routes(app, db)       # Register OAuth callbacks + webhook
-# register_config_routes(app, db)      # Register config + groups endpoints
+# register_oauth_routes(app, lib)       # Register OAuth callbacks + webhook
+# register_config_routes(app, lib)      # Register config + groups endpoints
