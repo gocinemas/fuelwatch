@@ -744,7 +744,7 @@ Example format: [[{{"event_title":"PE Days","event_date":"2026-09-02","event_typ
         estimated_tokens = len(batch_items) * 1500
         print(f"[school] Batch parse: {len(batch_items)} emails, ~{estimated_tokens} tokens. Checking rate limit...")
 
-        _groq_limiter.wait_if_needed(estimated_tokens)
+        _groq_limiter.wait_if_needed()
 
         message = client.chat.completions.create(
             model="groq/compound",
