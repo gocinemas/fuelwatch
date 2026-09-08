@@ -11663,12 +11663,34 @@ def api_v2_prefs_get():
         query_key = from_number  # from_number is already normalized by _v2_resolve
         app.logger.info(f"[v2_prefs GET] ===== SELECT QUERY ===== query_key='{query_key}'")
 
-        query_result = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", query_key).eq("type", "v2_prefs").limit(1).execute()
-        rows = query_result.data or []
-        app.logger.info(f"[v2_prefs GET] ===== SELECT RESULT ===== found {len(rows)} rows")
-        if rows:
-            app.logger.info(f"[v2_prefs GET] ===== DATA ===== {rows[0]}")
+        # Use direct REST API call to bypass SDK issues
+        import requests
+        _sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+        _sb_key = os.getenv("SUPABASE_KEY", "")
+
+        headers = {
+            "Authorization": f"Bearer {_sb_key}",
+            "Content-Type": "application/json",
+        }
+
+        # Query with filters: device_id=$query_key AND type=v2_prefs
+        rest_url = f'{_sb_url}/rest/v1/ma_details?device_id=eq.{query_key}&type=eq.v2_prefs&select=data'
+        app.logger.info(f"[v2_prefs GET] REST API URL: {rest_url}")
+
+        resp = requests.get(rest_url, headers=headers, timeout=5)
+        app.logger.info(f"[v2_prefs GET] REST API status={resp.status_code}")
+
+        rows = []
+        if resp.status_code == 200:
+            try:
+                rows = resp.json() or []
+                app.logger.info(f"[v2_prefs GET] ===== SELECT RESULT ===== found {len(rows)} rows")
+                if rows:
+                    app.logger.info(f"[v2_prefs GET] ===== DATA ===== {rows[0]}")
+            except Exception as e:
+                app.logger.error(f"[v2_prefs GET] JSON parse error: {e}")
+        else:
+            app.logger.error(f"[v2_prefs GET] REST API error: {resp.text}")
 
         prefs = rows[0]["data"] if rows else {}
         app.logger.warning(f"[v2_prefs GET] CRITICAL: query_key='{query_key}', found_rows={len(rows)}, prefs={prefs}")
@@ -12589,26 +12611,36 @@ def api_v2_prefs_post():
         merged_prefs = {**_prev_prefs, **new_prefs}
         app.logger.warning(f"[v2_prefs POST] CRITICAL: _prev_prefs={_prev_prefs}, new_prefs={new_prefs}, merged={merged_prefs}")
 
-        # SAVE PREFS: Try update first (for existing records), then insert if needed
+        # SAVE PREFS: Use direct REST API call to bypass SDK issues
         try:
-            update_resp = sb.table("ma_details").update({
+            import requests
+            _sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+            _sb_key = os.getenv("SUPABASE_KEY", "")
+
+            # Try to upsert via direct REST API
+            upsert_data = {
+                "device_id": upsert_key,
+                "type": "v2_prefs",
                 "label": "home_brief",
                 "data": merged_prefs,
-            }).eq("device_id", upsert_key).eq("type", "v2_prefs").execute()
-            app.logger.info(f"[v2_prefs POST] Update executed. Response data length: {len(update_resp.data) if update_resp.data else 0}")
+            }
 
-            # If no rows were updated, insert a new one
-            if not update_resp.data:
-                app.logger.info(f"[v2_prefs POST] No existing rows, inserting new record")
-                insert_resp = sb.table("ma_details").insert({
-                    "device_id": upsert_key,
-                    "type": "v2_prefs",
-                    "label": "home_brief",
-                    "data": merged_prefs,
-                }).execute()
-                app.logger.info(f"[v2_prefs POST] Insert executed. Response: {insert_resp.data}")
+            headers = {
+                "Authorization": f"Bearer {_sb_key}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates",
+            }
+
+            resp = requests.post(
+                f"{_sb_url}/rest/v1/ma_details",
+                json=[upsert_data],
+                headers=headers,
+                timeout=5
+            )
+            app.logger.warning(f"[v2_prefs POST] REST API upsert status={resp.status_code}, body={resp.text[:200]}")
+
         except Exception as save_err:
-            app.logger.error(f"[v2_prefs POST] Save failed: {save_err}")
+            app.logger.error(f"[v2_prefs POST] REST API save failed: {save_err}")
             raise
 
         if new_prefs.get("morning_push") is True and not _prev_prefs.get("morning_push"):
