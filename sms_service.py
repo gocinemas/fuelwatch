@@ -11656,29 +11656,31 @@ def api_v2_prefs_get():
     from_number = _v2_resolve(token)
     if not from_number:
         return jsonify({"prefs": {}, "has_prefs": False})
+
     try:
         # Use EXACT same query as POST endpoint uses — single device_id format
         # POST uses upsert_key which is the whatsapp: prefixed format
         query_key = from_number  # from_number is already normalized by _v2_resolve
         app.logger.info(f"[v2_prefs GET] ===== SELECT QUERY ===== query_key='{query_key}'")
-        try:
-            query_result = lib._sb().table("ma_details").select("data") \
-                .eq("device_id", query_key).eq("type", "v2_prefs").limit(1).execute()
-            rows = query_result.data or []
-            app.logger.info(f"[v2_prefs GET] ===== SELECT RESULT ===== found {len(rows)} rows")
-            if rows:
-                app.logger.info(f"[v2_prefs GET] ===== DATA ===== {rows[0]}")
-        except Exception as e:
-            app.logger.error(f"[v2_prefs GET] ===== SELECT ERROR ===== {e}")
-            rows = []
+
+        query_result = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", query_key).eq("type", "v2_prefs").limit(1).execute()
+        rows = query_result.data or []
+        app.logger.info(f"[v2_prefs GET] ===== SELECT RESULT ===== found {len(rows)} rows")
+        if rows:
+            app.logger.info(f"[v2_prefs GET] ===== DATA ===== {rows[0]}")
+
         prefs = rows[0]["data"] if rows else {}
         app.logger.warning(f"[v2_prefs GET] CRITICAL: query_key='{query_key}', found_rows={len(rows)}, prefs={prefs}")
+
         _all_cal = lib._sb().table("ma_details").select("id,device_id") \
             .eq("type", "calendar_token").execute().data or []
+        _query_plain = query_key.replace("whatsapp:", "").strip()  # Extract plain number for comparison
         cal_connected = any(
-            r.get("device_id","").replace("whatsapp:","").strip() == _fn_plain
+            r.get("device_id","").replace("whatsapp:","").strip() == _query_plain
             for r in _all_cal
         )
+
         return jsonify({"prefs": prefs, "has_prefs": bool(prefs), "calendar_connected": cal_connected})
     except Exception as e:
         app.logger.error(f"[v2_prefs GET] Exception: {str(e)}")
