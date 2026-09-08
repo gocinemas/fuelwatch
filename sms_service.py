@@ -11658,17 +11658,15 @@ def api_v2_prefs_get():
         return jsonify({"prefs": {}, "has_prefs": False})
 
     try:
-        # Use SAME pattern as working query at line 1537
-        _fn_plain = from_number.replace("whatsapp:", "").strip()
-        _fn_wa    = f"whatsapp:{_fn_plain}"
-        app.logger.warning(f"[v2_prefs GET] Query for device_id in [{_fn_plain}, {_fn_wa}], type='v2_prefs'")
+        # SIMPLEST POSSIBLE QUERY
+        app.logger.warning(f"[v2_prefs GET] Simple query for from_number={from_number}")
 
-        # Use .in_() like the working query does
-        rows = lib._sb().table("ma_details").select("data") \
-            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs") \
-            .limit(1).execute().data or []
+        # Just get ALL v2_prefs and filter client-side if needed
+        all_prefs = lib._sb().table("ma_details").select("device_id,data").eq("type", "v2_prefs").execute().data or []
+        app.logger.warning(f"[v2_prefs GET] Total v2_prefs in DB: {len(all_prefs)}")
 
-        app.logger.warning(f"[v2_prefs GET] Found {len(rows)} rows. Data: {rows[0] if rows else 'none'}")
+        rows = [r for r in all_prefs if r.get("device_id") == from_number]
+        app.logger.warning(f"[v2_prefs GET] Found {len(rows)} rows matching {from_number}")
 
         prefs = rows[0]["data"] if rows else {}
         app.logger.warning(f"[v2_prefs GET] CRITICAL: query_key='{query_key}', found_rows={len(rows)}, prefs={prefs}")
