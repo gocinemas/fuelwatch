@@ -1,7 +1,7 @@
 """
 Ask Miru RAG System — Smart retrieval + inference for personal data queries
 - Entity extraction (merchant, date, item, amount)
-- Unified database retrieval (wa_saves + receipts table)
+- Algolia search (fast full-text index) + Database retrieval (wa_saves + receipts table)
 - Claude-powered synthesis (data-first, no hallucination)
 - Context memory for follow-ups
 """
@@ -9,6 +9,11 @@ import json
 import re
 from datetime import datetime, date, timedelta
 from typing import Dict, List, Tuple, Optional, Any
+
+try:
+    from algolia_service import get_algolia
+except ImportError:
+    get_algolia = lambda: None
 
 
 class EntityExtractor:
@@ -191,9 +196,17 @@ class MiruRAG:
     def _query_receipts(
         self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str], question: str
     ) -> Dict[str, Any]:
-        """Query receipts from wa_saves and receipts table"""
+        """Query receipts from Algolia (if available) or wa_saves and receipts table"""
         try:
-            # 1. TRY wa_saves FIRST (most reliable, has real receipt data)
+            # 0. TRY ALGOLIA FIRST (instant full-text search, typo-proof)
+            algolia = get_algolia()
+            if algolia and algolia.enabled:
+                algolia_result = self._query_algolia_receipts(merchant, item, time_qual, question)
+                if algolia_result.get("found"):
+                    self.context_history.append({"type": "receipt", "merchant": merchant, "items": algolia_result.get("items")})
+                    return algolia_result
+
+            # 1. TRY wa_saves FALLBACK (most reliable, has real receipt data)
             wa_result = self._query_wa_saves(merchant, item, time_qual)
             if wa_result.get("found"):
                 self.context_history.append({"type": "receipt", "merchant": merchant, "items": wa_result.get("items")})
@@ -231,6 +244,88 @@ class MiruRAG:
 
         except Exception as e:
             return {"answer": f"Error querying receipts: {e}", "source": "error", "confidence": 0.0}
+
+    def _query_algolia_receipts(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str], question: str) -> Dict:
+        """Query Algolia for receipts (instant full-text search)"""
+        try:
+            algolia = get_algolia()
+            if not algolia or not algolia.enabled:
+                return {"found": False}
+
+            # Build search query
+            search_terms = []
+            if merchant:
+                search_terms.append(merchant)
+            if item:
+                search_terms.append(item)
+
+            if not search_terms:
+                # If no specific terms, use the question
+                search_terms.append(question)
+
+            search_query = " ".join(search_terms)
+
+            # Build filters
+            filters = {}
+            if time_qual == "today":
+                filters["date_after"] = date.today().isoformat()
+            elif time_qual == "yesterday":
+                filters["date_after"] = (date.today() - timedelta(days=1)).isoformat()
+            elif time_qual == "this week":
+                filters["date_after"] = (date.today() - timedelta(days=7)).isoformat()
+            elif time_qual == "this month":
+                filters["date_after"] = (date.today() - timedelta(days=30)).isoformat()
+
+            # Search Algolia
+            results = algolia.search_receipts(search_query, self.phone_variants[0], filters=filters, limit=20)
+
+            if not results:
+                return {"found": False}
+
+            # Filter by item if specified (strict matching)
+            if item:
+                item_lower = item.lower()
+                results = [r for r in results if any(item_lower in i.lower() for i in r.get("items", []))]
+
+            if not results:
+                return {"found": False}
+
+            # Format results for response
+            items_list = []
+            total_amount = 0
+            merchants_found = set()
+
+            for receipt in results[:5]:  # Top 5 results
+                merchant_name = receipt.get("merchant", "Unknown")
+                merchants_found.add(merchant_name)
+                amount = receipt.get("amount", 0)
+                total_amount += amount
+                items_list.extend(receipt.get("items", []))
+
+            answer = f"Found {len(results)} receipt(s)"
+            if len(merchants_found) == 1:
+                answer += f" from {list(merchants_found)[0]}"
+            elif merchants_found:
+                answer += f" from {', '.join(list(merchants_found)[:3])}"
+
+            answer += f" totalling £{total_amount:.2f}"
+
+            return {
+                "found": True,
+                "answer": answer,
+                "data": {
+                    "receipts": results[:5],
+                    "total_amount": total_amount,
+                    "merchants": list(merchants_found),
+                },
+                "source": "algolia",
+                "confidence": 0.95,
+                "items": list(set(items_list))[:10],
+            }
+
+        except Exception as e:
+            print(f"[Algolia] Receipt query error: {e}")
+            return {"found": False}
 
     def _query_wa_saves(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str]) -> Dict:
         """Query wa_saves table (🧾 receipts) — works with all phone formats"""
