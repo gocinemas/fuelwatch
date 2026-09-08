@@ -12553,45 +12553,38 @@ def api_v2_prefs_post():
 
     try:
         sb = lib._sb()
-        _fn_plain = from_number.replace("whatsapp:", "").strip()
-        _fn_wa    = f"whatsapp:{_fn_plain}"
+        # Use upsert (not separate insert/update) — matches pattern used elsewhere in codebase
+        # Normalise device_id to whatsapp: prefix format for consistency
+        upsert_key = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
 
-        # DEBUG: Log the query details
-        app.logger.info(f"[v2_prefs POST] from_number={from_number}, _fn_plain={_fn_plain}, _fn_wa={_fn_wa}, new_prefs={new_prefs}")
-
-        rows = sb.table("ma_details").select("id,data") \
-            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
+        # Get existing prefs to check if morning_push is new
+        rows = sb.table("ma_details").select("data") \
+            .eq("device_id", upsert_key).eq("type", "v2_prefs").limit(1).execute().data or []
         _prev_prefs = (rows[0].get("data") or {}) if rows else {}
-        app.logger.info(f"[v2_prefs POST] Found {len(rows)} existing rows. Prev prefs: {_prev_prefs}")
 
-        if rows:
-            merged = {**_prev_prefs, **new_prefs}
-            result = sb.table("ma_details").update({"data": merged}).eq("id", rows[0]["id"]).execute()
-            app.logger.info(f"[v2_prefs POST] Updated existing record. Result: {result}")
-        else:
-            result = sb.table("ma_details").insert({
-                "device_id": from_number, "type": "v2_prefs",
-                "label": "home_brief", "data": new_prefs,
-            }).execute()
-            app.logger.info(f"[v2_prefs POST] Inserted new record. Result: {result}")
+        # Merge with existing prefs
+        merged_prefs = {**_prev_prefs, **new_prefs}
+
+        # UPSERT: insert if not exists, update if exists
+        sb.table("ma_details").upsert({
+            "device_id": upsert_key,
+            "type": "v2_prefs",
+            "label": "home_brief",
+            "data": merged_prefs,
+        }).execute()
 
         if new_prefs.get("morning_push") is True and not _prev_prefs.get("morning_push"):
             try:
-                _to = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+                _to = upsert_key if upsert_key.startswith("whatsapp:") else f"whatsapp:{upsert_key}"
                 _wa_send_proactive(_to,
                     "📬 Morning briefs are on. I'll message you at 7:30am daily.\n\n"
                     "Reply *STOP BRIEF* anytime to turn off.")
             except Exception:
                 pass
 
-        # DEBUG: Verify the data was actually saved
-        verify_rows = sb.table("ma_details").select("id,data") \
-            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
-        app.logger.info(f"[v2_prefs POST] Verification: Found {len(verify_rows)} rows after save. Data: {verify_rows[0].get('data') if verify_rows else 'none'}")
-
-        return jsonify({"ok": True, "prefs": new_prefs})
+        return jsonify({"ok": True, "prefs": merged_prefs})
     except Exception as e:
-        app.logger.error(f"[v2_prefs POST] Exception: {str(e)}")
+        app.logger.error(f"[v2_prefs POST] Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
