@@ -11659,8 +11659,11 @@ def api_v2_prefs_get():
     try:
         _fn_plain = from_number.replace("whatsapp:", "").strip()
         _fn_wa    = f"whatsapp:{_fn_plain}"
+        # DEBUG
+        app.logger.info(f"[v2_prefs GET] token={token}, from_number={from_number}, _fn_plain={_fn_plain}, _fn_wa={_fn_wa}")
         rows = lib._sb().table("ma_details").select("data") \
             .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
+        app.logger.info(f"[v2_prefs GET] Query result: {len(rows)} rows, data: {rows[0].get('data') if rows else 'none'}")
         prefs = rows[0]["data"] if rows else {}
         _all_cal = lib._sb().table("ma_details").select("id,device_id") \
             .eq("type", "calendar_token").execute().data or []
@@ -11670,6 +11673,7 @@ def api_v2_prefs_get():
         )
         return jsonify({"prefs": prefs, "has_prefs": bool(prefs), "calendar_connected": cal_connected})
     except Exception as e:
+        app.logger.error(f"[v2_prefs GET] Exception: {str(e)}")
         return jsonify({"prefs": {}, "has_prefs": False, "calendar_connected": False, "error": str(e)})
 
 
@@ -12558,9 +12562,12 @@ def api_v2_prefs_post():
         upsert_key = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
 
         # Get existing prefs to check if morning_push is new
+        # DEBUG
+        app.logger.info(f"[v2_prefs POST] upsert_key={upsert_key}, new_prefs={new_prefs}")
         rows = sb.table("ma_details").select("data") \
             .eq("device_id", upsert_key).eq("type", "v2_prefs").limit(1).execute().data or []
         _prev_prefs = (rows[0].get("data") or {}) if rows else {}
+        app.logger.info(f"[v2_prefs POST] SELECT found {len(rows)} rows, _prev_prefs={_prev_prefs}")
 
         # Merge with existing prefs
         merged_prefs = {**_prev_prefs, **new_prefs}
