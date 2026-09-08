@@ -176,12 +176,15 @@ class MiruRAG:
                 return self._query_spending(merchant, time_qual, question)
             elif any(w in q_lower for w in ["when", "date", "time"]):
                 return self._query_dates(merchant, time_qual, question)
+            elif any(w in q_lower for w in ["save", "saved", "bookmark", "recipe", "article", "link"]):
+                # Question about saved links/bookmarks
+                return self._query_saved_links(question)
             elif merchant:
                 # If a merchant name is mentioned alone (e.g., "kokoro"), treat as receipt query
                 return self._query_receipts(merchant, None, None, question)
             else:
                 return {
-                    "answer": "I can help with: spending, receipts, items you bought, and patterns.",
+                    "answer": "I can help with: spending, receipts, items you bought, saved links, recipes, and patterns.",
                     "source": "system",
                     "confidence": 1.0,
                 }
@@ -601,6 +604,90 @@ class MiruRAG:
                 "confidence": result.get("confidence"),
             }
         return result
+
+    def _query_saved_links(self, question: str) -> Dict:
+        """Query saved links/bookmarks/recipes using Algolia"""
+        try:
+            # Try Algolia first
+            algolia = get_algolia()
+            if algolia and algolia.enabled:
+                results = algolia.search_saves(question, self.phone_variants[0], limit=10)
+
+                if results:
+                    answer = f"Found {len(results)} saved items:\n"
+                    for i, result in enumerate(results[:5], 1):
+                        title = result.get("title", "Unknown")
+                        category = result.get("category", "")
+                        category_str = f" ({category})" if category else ""
+                        answer += f"{i}. {title}{category_str}\n"
+
+                    return {
+                        "found": True,
+                        "answer": answer.strip(),
+                        "data": {"saves": results},
+                        "source": "algolia",
+                        "confidence": 0.9,
+                    }
+
+            # Fallback: query wa_saves without 🧾 emoji (general saves)
+            rows = self.sb.table("wa_saves").select("title,summary,url,created_at").in_(
+                "from_number", self.phone_variants
+            ).not_("title", "ilike", "%🧾%").order("created_at", desc=True).limit(20).execute().data or []
+
+            if not rows:
+                return {
+                    "answer": "I didn't find any saved links matching that.",
+                    "found": False,
+                    "source": "database",
+                    "confidence": 0.8,
+                }
+
+            # Filter by question keywords
+            q_words = set(question.lower().split())
+            matched = []
+
+            for row in rows:
+                title = (row.get("title") or "").lower()
+                summary = (row.get("summary") or "").lower()
+                text = f"{title} {summary}"
+
+                # Count keyword matches
+                matches = sum(1 for word in q_words if word in text and len(word) > 2)
+                if matches > 0:
+                    matched.append((row, matches))
+
+            if not matched:
+                return {
+                    "answer": "I didn't find any saved links matching that.",
+                    "found": False,
+                    "source": "database",
+                    "confidence": 0.8,
+                }
+
+            # Sort by match count
+            matched.sort(key=lambda x: x[1], reverse=True)
+            top_results = [r[0] for r in matched[:5]]
+
+            answer = f"Found {len(matched)} saved items:\n"
+            for i, result in enumerate(top_results, 1):
+                title = result.get("title", "Unknown")
+                answer += f"{i}. {title}\n"
+
+            return {
+                "found": True,
+                "answer": answer.strip(),
+                "data": {"saves": top_results},
+                "source": "wa_saves",
+                "confidence": 0.85,
+            }
+
+        except Exception as e:
+            return {
+                "answer": f"Error searching saves: {e}",
+                "found": False,
+                "source": "error",
+                "confidence": 0.0,
+            }
 
     @staticmethod
     def _parse_receipt_items(summary: str) -> List[str]:

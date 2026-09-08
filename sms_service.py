@@ -3029,13 +3029,29 @@ def brand_debug_full():
 
 @app.route("/api/brands/search")
 def brands_search():
-    """Search for brands by name - returns matching brands for autocomplete"""
+    """Search for brands by name - returns matching brands for autocomplete (Algolia + fallback)"""
     query = request.args.get("q", "").strip().lower()
 
     if not query or len(query) < 1:
         return jsonify([])
 
     try:
+        # Try Algolia first (faster, typo-tolerant)
+        try:
+            from algolia_service import get_algolia
+            algolia = get_algolia()
+            if algolia and algolia.enabled:
+                results = algolia.search_brands(query, limit=10)
+                suggestions = [
+                    {"name": r.get("name"), "category": r.get("sector"), "source": "algolia"}
+                    for r in results
+                ]
+                if suggestions:
+                    return jsonify(suggestions)
+        except Exception as e:
+            app.logger.debug(f"[brands_search] Algolia error: {e}")
+
+        # Fallback: Database search
         sb = lib._sb()
         # Get all unique brands
         result = sb.table("brand_phase1_intelligence").select("brand_name, category").execute()
@@ -3054,7 +3070,7 @@ def brands_search():
 
         # Return sorted list
         suggestions = [
-            {"name": name, "category": cat}
+            {"name": name, "category": cat, "source": "database"}
             for name, cat in sorted(brands_dict.items())
         ]
 
