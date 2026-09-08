@@ -11674,7 +11674,10 @@ def api_v2_prefs_get():
         }
 
         # Query with filters: device_id=$query_key AND type=v2_prefs
-        rest_url = f'{_sb_url}/rest/v1/ma_details?device_id=eq.{query_key}&type=eq.v2_prefs&select=*'
+        # URL encode the device_id parameter (has + and : which need encoding)
+        from urllib.parse import quote
+        encoded_device_id = quote(query_key, safe='')
+        rest_url = f'{_sb_url}/rest/v1/ma_details?device_id=eq.{encoded_device_id}&type=eq.v2_prefs&select=*'
         app.logger.info(f"[v2_prefs GET] REST API URL: {rest_url}")
 
         resp = requests.get(rest_url, headers=headers, timeout=5)
