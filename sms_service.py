@@ -12555,17 +12555,26 @@ def api_v2_prefs_post():
         sb = lib._sb()
         _fn_plain = from_number.replace("whatsapp:", "").strip()
         _fn_wa    = f"whatsapp:{_fn_plain}"
+
+        # DEBUG: Log the query details
+        app.logger.info(f"[v2_prefs POST] from_number={from_number}, _fn_plain={_fn_plain}, _fn_wa={_fn_wa}, new_prefs={new_prefs}")
+
         rows = sb.table("ma_details").select("id,data") \
             .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
         _prev_prefs = (rows[0].get("data") or {}) if rows else {}
+        app.logger.info(f"[v2_prefs POST] Found {len(rows)} existing rows. Prev prefs: {_prev_prefs}")
+
         if rows:
             merged = {**_prev_prefs, **new_prefs}
-            sb.table("ma_details").update({"data": merged}).eq("id", rows[0]["id"]).execute()
+            result = sb.table("ma_details").update({"data": merged}).eq("id", rows[0]["id"]).execute()
+            app.logger.info(f"[v2_prefs POST] Updated existing record. Result: {result}")
         else:
-            sb.table("ma_details").insert({
+            result = sb.table("ma_details").insert({
                 "device_id": from_number, "type": "v2_prefs",
                 "label": "home_brief", "data": new_prefs,
             }).execute()
+            app.logger.info(f"[v2_prefs POST] Inserted new record. Result: {result}")
+
         if new_prefs.get("morning_push") is True and not _prev_prefs.get("morning_push"):
             try:
                 _to = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
@@ -12574,8 +12583,15 @@ def api_v2_prefs_post():
                     "Reply *STOP BRIEF* anytime to turn off.")
             except Exception:
                 pass
+
+        # DEBUG: Verify the data was actually saved
+        verify_rows = sb.table("ma_details").select("id,data") \
+            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
+        app.logger.info(f"[v2_prefs POST] Verification: Found {len(verify_rows)} rows after save. Data: {verify_rows[0].get('data') if verify_rows else 'none'}")
+
         return jsonify({"ok": True, "prefs": new_prefs})
     except Exception as e:
+        app.logger.error(f"[v2_prefs POST] Exception: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
