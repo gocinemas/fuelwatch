@@ -11658,15 +11658,13 @@ def api_v2_prefs_get():
         return jsonify({"prefs": {}, "has_prefs": False})
 
     try:
-        # SIMPLEST POSSIBLE QUERY
-        app.logger.warning(f"[v2_prefs GET] Simple query for from_number={from_number}")
+        # Use the EXACT SAME PATTERN as line 1537 in _build_ask_miru_context
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
 
-        # Just get ALL v2_prefs and filter client-side if needed
-        all_prefs = lib._sb().table("ma_details").select("device_id,data").eq("type", "v2_prefs").execute().data or []
-        app.logger.warning(f"[v2_prefs GET] Total v2_prefs in DB: {len(all_prefs)}")
-
-        rows = [r for r in all_prefs if r.get("device_id") == from_number]
-        app.logger.warning(f"[v2_prefs GET] Found {len(rows)} rows matching {from_number}")
+        rows = lib._sb().table("ma_details").select("data") \
+            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs") \
+            .limit(1).execute().data or []
 
         prefs = rows[0]["data"] if rows else {}
         app.logger.warning(f"[v2_prefs GET] CRITICAL: query_key='{query_key}', found_rows={len(rows)}, prefs={prefs}")
