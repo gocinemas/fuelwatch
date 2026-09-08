@@ -11657,12 +11657,13 @@ def api_v2_prefs_get():
     if not from_number:
         return jsonify({"prefs": {}, "has_prefs": False})
     try:
-        _fn_plain = from_number.replace("whatsapp:", "").strip()
-        _fn_wa    = f"whatsapp:{_fn_plain}"
+        # Use EXACT same query as POST endpoint uses — single device_id format
+        # POST uses upsert_key which is the whatsapp: prefixed format
+        query_key = from_number  # from_number is already normalized by _v2_resolve
         # DEBUG
-        app.logger.info(f"[v2_prefs GET] token={token}, from_number={from_number}, _fn_plain={_fn_plain}, _fn_wa={_fn_wa}")
+        app.logger.info(f"[v2_prefs GET] token={token}, from_number={from_number}, query_key={query_key}")
         rows = lib._sb().table("ma_details").select("data") \
-            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
+            .eq("device_id", query_key).eq("type", "v2_prefs").limit(1).execute().data or []
         app.logger.info(f"[v2_prefs GET] Query result: {len(rows)} rows, data: {rows[0].get('data') if rows else 'none'}")
         prefs = rows[0]["data"] if rows else {}
         _all_cal = lib._sb().table("ma_details").select("id,device_id") \
