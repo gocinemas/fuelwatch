@@ -11672,6 +11672,7 @@ def api_v2_prefs_get():
             app.logger.error(f"[v2_prefs GET] ===== SELECT ERROR ===== {e}")
             rows = []
         prefs = rows[0]["data"] if rows else {}
+        app.logger.warning(f"[v2_prefs GET] CRITICAL: query_key='{query_key}', found_rows={len(rows)}, prefs={prefs}")
         _all_cal = lib._sb().table("ma_details").select("id,device_id") \
             .eq("type", "calendar_token").execute().data or []
         cal_connected = any(
@@ -12584,6 +12585,7 @@ def api_v2_prefs_post():
 
         # Merge with existing prefs
         merged_prefs = {**_prev_prefs, **new_prefs}
+        app.logger.warning(f"[v2_prefs POST] CRITICAL: _prev_prefs={_prev_prefs}, new_prefs={new_prefs}, merged={merged_prefs}")
 
         # SAVE PREFS: Try update first (for existing records), then insert if needed
         try:
