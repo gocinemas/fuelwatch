@@ -12566,12 +12566,13 @@ def api_v2_prefs_post():
         merged_prefs = {**_prev_prefs, **new_prefs}
 
         # UPSERT: insert if not exists, update if exists
+        # Conflict on (device_id, type) — these form the unique key
         sb.table("ma_details").upsert({
             "device_id": upsert_key,
             "type": "v2_prefs",
             "label": "home_brief",
             "data": merged_prefs,
-        }).execute()
+        }, on_conflict="device_id,type").execute()
 
         if new_prefs.get("morning_push") is True and not _prev_prefs.get("morning_push"):
             try:
