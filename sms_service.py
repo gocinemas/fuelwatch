@@ -12467,10 +12467,12 @@ def api_v2_prefs_post():
     # Accept prefs as nested {"prefs":{...}} or top-level keys in the same body
     PREF_KEYS = {"train_from", "train_to", "fuel_postcode", "commute_mode",
                  "bin_collection_day", "bin_types", "bin_types_a", "bin_types_b", "bin_rotation", "bin_rotation_week",
-                 "interests", "show_spending", "show_school", "show_commute", "show_my_area", "show_saves"}
-    new_prefs = body.get("prefs") or {k: v for k, v in body.items() if k in PREF_KEYS}
-    if not isinstance(new_prefs, dict):
+                 "interests", "show_spending", "show_school", "show_commute", "show_my_area", "show_saves", "morning_push"}
+    prefs_raw = body.get("prefs") or {k: v for k, v in body.items() if k in PREF_KEYS}
+    if not isinstance(prefs_raw, dict):
         return jsonify({"error": "prefs must be object"}), 400
+    # Filter to only valid keys (security + prevent accidental bloat)
+    new_prefs = {k: v for k, v in prefs_raw.items() if k in PREF_KEYS}
 
     # ── Validate train stations ──────────────────────────────────────────────
     def _find_station(name):
