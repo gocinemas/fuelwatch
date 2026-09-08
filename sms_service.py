@@ -11658,21 +11658,15 @@ def api_v2_prefs_get():
         return jsonify({"prefs": {}, "has_prefs": False})
 
     try:
-        # Use Supabase SDK - it definitely works with the existing data from May
-        query_key = from_number  # from_number is already normalized by _v2_resolve
-        app.logger.warning(f"[v2_prefs GET] Query for device_id='{query_key}', type='v2_prefs'")
+        # Use SAME pattern as working query at line 1537
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
+        app.logger.warning(f"[v2_prefs GET] Query for device_id in [{_fn_plain}, {_fn_wa}], type='v2_prefs'")
 
-        # Select specific columns (not * which might not work with anon key)
-        try:
-            response = lib._sb().table("ma_details") \
-                .eq("device_id", query_key).eq("type", "v2_prefs") \
-                .select("device_id,type,label,data") \
-                .limit(1).execute()
-            app.logger.warning(f"[v2_prefs GET] SDK Response: status={response.status if hasattr(response, 'status') else 'N/A'}, data={response.data}, error={response.error if hasattr(response, 'error') else 'N/A'}")
-            rows = response.data or []
-        except Exception as e:
-            app.logger.error(f"[v2_prefs GET] SDK Query Exception: {e}")
-            rows = []
+        # Use .in_() like the working query does
+        rows = lib._sb().table("ma_details").select("data") \
+            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs") \
+            .limit(1).execute().data or []
 
         app.logger.warning(f"[v2_prefs GET] Found {len(rows)} rows. Data: {rows[0] if rows else 'none'}")
 
