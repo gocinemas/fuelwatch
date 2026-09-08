@@ -11658,42 +11658,17 @@ def api_v2_prefs_get():
         return jsonify({"prefs": {}, "has_prefs": False})
 
     try:
-        # Use EXACT same query as POST endpoint uses — single device_id format
-        # POST uses upsert_key which is the whatsapp: prefixed format
+        # Use Supabase SDK - it definitely works with the existing data from May
         query_key = from_number  # from_number is already normalized by _v2_resolve
-        app.logger.info(f"[v2_prefs GET] ===== SELECT QUERY ===== query_key='{query_key}'")
+        app.logger.warning(f"[v2_prefs GET] Query for device_id='{query_key}', type='v2_prefs'")
 
-        # Use direct REST API call to bypass SDK issues
-        import requests
-        _sb_url = os.getenv("SUPABASE_URL", "").rstrip("/")
-        _sb_key = os.getenv("SUPABASE_KEY", "")
+        # SELECT * to get full row (not just one column which breaks the query)
+        rows = lib._sb().table("ma_details") \
+            .eq("device_id", query_key).eq("type", "v2_prefs") \
+            .select("*") \
+            .limit(1).execute().data or []
 
-        headers = {
-            "Authorization": f"Bearer {_sb_key}",
-            "Content-Type": "application/json",
-        }
-
-        # Query with filters: device_id=$query_key AND type=v2_prefs
-        # URL encode the device_id parameter (has + and : which need encoding)
-        from urllib.parse import quote
-        encoded_device_id = quote(query_key, safe='')
-        rest_url = f'{_sb_url}/rest/v1/ma_details?device_id=eq.{encoded_device_id}&type=eq.v2_prefs&select=*'
-        app.logger.info(f"[v2_prefs GET] REST API URL: {rest_url}")
-
-        resp = requests.get(rest_url, headers=headers, timeout=5)
-        app.logger.info(f"[v2_prefs GET] REST API status={resp.status_code}")
-
-        rows = []
-        if resp.status_code == 200:
-            try:
-                rows = resp.json() or []
-                app.logger.info(f"[v2_prefs GET] ===== SELECT RESULT ===== found {len(rows)} rows")
-                if rows:
-                    app.logger.info(f"[v2_prefs GET] ===== DATA ===== {rows[0]}")
-            except Exception as e:
-                app.logger.error(f"[v2_prefs GET] JSON parse error: {e}")
-        else:
-            app.logger.error(f"[v2_prefs GET] REST API error: {resp.text}")
+        app.logger.warning(f"[v2_prefs GET] Found {len(rows)} rows. Data: {rows[0] if rows else 'none'}")
 
         prefs = rows[0]["data"] if rows else {}
         app.logger.warning(f"[v2_prefs GET] CRITICAL: query_key='{query_key}', found_rows={len(rows)}, prefs={prefs}")
