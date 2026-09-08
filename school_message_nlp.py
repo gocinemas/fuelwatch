@@ -20,6 +20,7 @@ class SchoolMessageExtractor:
     - event: School event (date + time)
     - action-needed: Requires parent action (form, payment, consent)
     - permission-slip: Needs signature/return
+    - eca-schedule: Club/activity schedule
     - fyi: Informational (no action)
     - announcement: School-wide announcement
     """
@@ -31,6 +32,13 @@ class SchoolMessageExtractor:
         'half-term', 'holiday', 'break', 'inset', 'training day',
         'nativity', 'carol', 'christmas', 'easter', 'summer', 'show',
         'workshop', 'session', 'class', 'swimming', 'pe', 'games', 'match'
+    }
+
+    ECA_KEYWORDS = {
+        'club', 'activity', 'eca', 'signup', 'register', 'after school',
+        'lunchtime', 'lunch club', 'rehearsal', 'practice', 'group',
+        'chess', 'robotics', 'coding', 'football', 'netball', 'badminton',
+        'dance', 'drama', 'choir', 'band', 'music', 'art', 'craft'
     }
 
     ACTION_KEYWORDS = {
@@ -81,6 +89,7 @@ class SchoolMessageExtractor:
             'event': 0,
             'action-needed': 0,
             'permission-slip': 0,
+            'eca-schedule': 0,
             'announcement': 0,
             'fyi': 0
         }
@@ -89,6 +98,7 @@ class SchoolMessageExtractor:
         scores['event'] = cls._score_keywords(text_lower, cls.EVENT_KEYWORDS)
         scores['action-needed'] = cls._score_keywords(text_lower, cls.ACTION_KEYWORDS)
         scores['permission-slip'] = cls._score_keywords(text_lower, cls.PERMISSION_KEYWORDS) * 1.5  # Higher weight
+        scores['eca-schedule'] = cls._score_keywords(text_lower, cls.ECA_KEYWORDS) * 1.3  # Boost ECA detection
         scores['announcement'] = cls._score_keywords(text_lower, cls.ANNOUNCEMENT_KEYWORDS)
 
         # Determine primary category

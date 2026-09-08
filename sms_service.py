@@ -630,6 +630,76 @@ def _validate_brief_text(text):
     return text if text else ""
 
 
+# ── ECA CLUBS (School Activities) ──────────────────────────────────────────────
+def _get_todays_eca_clubs(from_number: str) -> list:
+    """
+    Fetch ECA clubs for today, grouped by child
+    Returns: [{"club_name": "...", "day": "Wednesday", "start_time": "15:15", "child": "Riaan"}]
+    """
+    try:
+        if not from_number:
+            return []
+
+        from datetime import datetime as _dt
+        import zoneinfo as _zi
+        _LDN = _zi.ZoneInfo("Europe/London")
+
+        today = _dt.now(_LDN)
+        day_name = today.strftime("%A")  # e.g., "Wednesday"
+
+        # Get user's children (year groups) from prefs
+        prefs_row = lib._sb().table("ma_details") \
+            .select("data") \
+            .eq("device_id", from_number) \
+            .eq("type", "v2_prefs") \
+            .limit(1) \
+            .execute()
+
+        prefs = (prefs_row.data[0]["data"] if prefs_row.data else {})
+        children = prefs.get("children", [])  # [{"name": "Riaan", "year_group": "Y5"}, ...]
+
+        # Fetch ECA clubs for this user on today's day
+        clubs = lib._sb().table("school_eca_clubs") \
+            .select("club_name,day_of_week,start_time,end_time,year_group") \
+            .eq("from_number", from_number) \
+            .eq("day_of_week", day_name) \
+            .execute()
+
+        club_list = clubs.data or []
+
+        # Filter by child's year group
+        filtered_clubs = []
+        for club in club_list:
+            year_group = club.get("year_group", "").lower()
+
+            # If "All Years" or matches child's year group
+            matches_any_child = any(
+                "all" in year_group or
+                c.get("year_group", "").lower() in year_group
+                for c in children
+            )
+
+            if matches_any_child:
+                # Find which child this club is for (first match)
+                child_name = next(
+                    (c.get("name", "Riaan") for c in children
+                     if "all" in year_group or c.get("year_group", "").lower() in year_group),
+                    "Riaan"
+                )
+
+                filtered_clubs.append({
+                    "club_name": club.get("club_name", ""),
+                    "time": club.get("start_time", ""),
+                    "child": child_name if len(children) > 1 else ""
+                })
+
+        return filtered_clubs[:3]  # Max 3 clubs in brief
+
+    except Exception as e:
+        print(f"[ECA] Failed to fetch clubs: {e}")
+        return []
+
+
 _CORS_ORIGINS = {"https://ai.humanagency.co", "http://ai.humanagency.co", "http://localhost:8080",
                  "https://mekalav.com", "https://www.mekalav.com"}
 
@@ -17587,6 +17657,18 @@ def api_home_brief():
             time_str = ra.get("time", "")
             if activity:
                 facts.append(f"🎯 {child + ': ' if child else ''}{activity}" + (f" at {time_str}" if time_str else ""))
+
+    # === ADD ECA CLUBS (School Activities) ===
+    try:
+        eca_clubs = _get_todays_eca_clubs(from_number)
+        for club in eca_clubs[:2]:
+            club_name = club.get("club_name", "")
+            time_str = club.get("time", "")
+            child = club.get("child", "")
+            if club_name:
+                facts.append(f"🏅 {child + ': ' if child else ''}{club_name}" + (f" at {time_str}" if time_str else ""))
+    except Exception as e:
+        print(f"[Brief] ECA loading failed: {e}")
 
     # NOTE: Savings highlights removed from facts — they were causing Groq to infer
     # the user is actively doing things they only saved. Will be shown in dedicated

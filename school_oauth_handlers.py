@@ -325,9 +325,14 @@ def register_oauth_routes(app, lib):
 def process_whatsapp_message(msg, db):
     """
     Process incoming WhatsApp message
-    Extract event, action, dates using NLP
+    1. Categorize using NLP (event, action-needed, eca-schedule, etc)
+    2. If ECA schedule, extract clubs using Groq LLM
+    3. Store clubs in database
     """
     from datetime import datetime
+    from school_message_nlp import SchoolMessageExtractor
+    from school_eca_extractor import extract_eca_clubs_from_message, deduplicate_clubs
+    from groq import Groq
 
     msg_id = msg.get('id')
     from_number = msg.get('from')
@@ -357,8 +362,81 @@ def process_whatsapp_message(msg, db):
         'status': 'success'
     }).execute()
 
-    # TODO: Call NLP categorizer here
-    # categorize_message(msg_id, text, db)
+    # ── NLP Categorization ───────────────────────────────────────────────────
+    category, confidence, extracted_date, action_text = SchoolMessageExtractor.categorize(text)
+
+    # Update message with category
+    db.table('school_wa_messages').update({
+        'category': category,
+        'confidence': confidence,
+        'extracted_date': extracted_date if extracted_date else None,
+        'extracted_action': action_text
+    }).eq('wa_message_id', msg_id).execute()
+
+    # ── ECA Schedule Extraction ───────────────────────────────────────────────
+    if category == 'eca-schedule':
+        try:
+            groq_client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+
+            # Extract clubs using Groq
+            clubs = extract_eca_clubs_from_message(text, groq_client)
+
+            if clubs:
+                # Get existing clubs for this user/school to deduplicate
+                existing = db.table('school_eca_clubs').select('*').eq('from_number', from_number).execute()
+                existing_clubs = existing.data if existing.data else []
+
+                # Filter out duplicates
+                new_clubs = deduplicate_clubs(clubs, existing_clubs)
+
+                if new_clubs:
+                    # Insert new clubs
+                    for club in new_clubs:
+                        try:
+                            db.table('school_eca_clubs').insert({
+                                'from_number': from_number,
+                                'school_id': group_id,  # Use group_id as school identifier
+                                'club_name': club.get('club_name', ''),
+                                'day_of_week': club.get('day_of_week', ''),
+                                'start_time': club.get('start_time', ''),
+                                'end_time': club.get('end_time', ''),
+                                'year_group': club.get('year_group', 'All Years'),
+                                'location': club.get('location', ''),
+                                'source': 'whatsapp',
+                                'source_message_id': msg_id,
+                                'source_message_text': text[:500]
+                            }).execute()
+                        except Exception as e:
+                            print(f"[ECA] Failed to insert club {club.get('club_name')}: {e}")
+
+                    # Audit log
+                    db.table('school_eca_audit').insert({
+                        'from_number': from_number,
+                        'operation': 'club_extracted',
+                        'clubs_count': len(new_clubs),
+                        'source_message_id': msg_id
+                    }).execute()
+
+                    print(f"[ECA] Extracted {len(new_clubs)} new clubs from {from_number}")
+                else:
+                    # Audit log for duplicates
+                    db.table('school_eca_audit').insert({
+                        'from_number': from_number,
+                        'operation': 'club_duplicate',
+                        'clubs_count': len(clubs),
+                        'source_message_id': msg_id
+                    }).execute()
+
+                    print(f"[ECA] {len(clubs)} clubs found but all duplicates")
+
+        except Exception as e:
+            print(f"[ECA] Extraction error: {e}")
+            db.table('school_eca_audit').insert({
+                'from_number': from_number,
+                'operation': 'extraction_error',
+                'error_details': str(e)[:200],
+                'source_message_id': msg_id
+            }).execute()
 
 
 # ============================================================================
