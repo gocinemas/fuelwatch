@@ -11662,10 +11662,10 @@ def api_v2_prefs_get():
         query_key = from_number  # from_number is already normalized by _v2_resolve
         app.logger.warning(f"[v2_prefs GET] Query for device_id='{query_key}', type='v2_prefs'")
 
-        # SELECT * to get full row (not just one column which breaks the query)
+        # Select specific columns (not * which might not work with anon key)
         rows = lib._sb().table("ma_details") \
             .eq("device_id", query_key).eq("type", "v2_prefs") \
-            .select("*") \
+            .select("device_id,type,label,data") \
             .limit(1).execute().data or []
 
         app.logger.warning(f"[v2_prefs GET] Found {len(rows)} rows. Data: {rows[0] if rows else 'none'}")
