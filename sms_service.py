@@ -11660,11 +11660,17 @@ def api_v2_prefs_get():
         # Use EXACT same query as POST endpoint uses — single device_id format
         # POST uses upsert_key which is the whatsapp: prefixed format
         query_key = from_number  # from_number is already normalized by _v2_resolve
-        # DEBUG
-        app.logger.info(f"[v2_prefs GET] token={token}, from_number={from_number}, query_key={query_key}")
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", query_key).eq("type", "v2_prefs").limit(1).execute().data or []
-        app.logger.info(f"[v2_prefs GET] Query result: {len(rows)} rows, data: {rows[0].get('data') if rows else 'none'}")
+        app.logger.info(f"[v2_prefs GET] ===== SELECT QUERY ===== query_key='{query_key}'")
+        try:
+            query_result = lib._sb().table("ma_details").select("data") \
+                .eq("device_id", query_key).eq("type", "v2_prefs").limit(1).execute()
+            rows = query_result.data or []
+            app.logger.info(f"[v2_prefs GET] ===== SELECT RESULT ===== found {len(rows)} rows")
+            if rows:
+                app.logger.info(f"[v2_prefs GET] ===== DATA ===== {rows[0]}")
+        except Exception as e:
+            app.logger.error(f"[v2_prefs GET] ===== SELECT ERROR ===== {e}")
+            rows = []
         prefs = rows[0]["data"] if rows else {}
         _all_cal = lib._sb().table("ma_details").select("id,device_id") \
             .eq("type", "calendar_token").execute().data or []
@@ -12563,12 +12569,18 @@ def api_v2_prefs_post():
         upsert_key = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
 
         # Get existing prefs to check if morning_push is new
-        # DEBUG
-        app.logger.info(f"[v2_prefs POST] upsert_key={upsert_key}, new_prefs={new_prefs}")
-        rows = sb.table("ma_details").select("data") \
-            .eq("device_id", upsert_key).eq("type", "v2_prefs").limit(1).execute().data or []
+        app.logger.info(f"[v2_prefs POST] ===== SELECT QUERY ===== upsert_key='{upsert_key}', new_prefs={new_prefs}")
+        try:
+            query_result = sb.table("ma_details").select("data") \
+                .eq("device_id", upsert_key).eq("type", "v2_prefs").limit(1).execute()
+            rows = query_result.data or []
+            app.logger.info(f"[v2_prefs POST] ===== SELECT RESULT ===== found {len(rows)} rows")
+            if rows:
+                app.logger.info(f"[v2_prefs POST] ===== DATA ===== {rows[0]}")
+        except Exception as e:
+            app.logger.error(f"[v2_prefs POST] ===== SELECT ERROR ===== {e}")
+            rows = []
         _prev_prefs = (rows[0].get("data") or {}) if rows else {}
-        app.logger.info(f"[v2_prefs POST] SELECT found {len(rows)} rows, _prev_prefs={_prev_prefs}")
 
         # Merge with existing prefs
         merged_prefs = {**_prev_prefs, **new_prefs}
