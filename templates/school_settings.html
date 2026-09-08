@@ -283,6 +283,9 @@
   <!-- Gmail Connection Section -->
   <div id="gmailSection" style="margin-bottom: 32px;"></div>
 
+  <!-- WhatsApp Connection Section -->
+  <div id="whatsappSection" style="margin-bottom: 32px;"></div>
+
   <button class="btn-add-school" onclick="redirectToSignup()">+ Add a School</button>
 
   <div class="schools-grid" id="schoolsGrid">
@@ -518,6 +521,39 @@
     }
   }
 
+  async function connectWhatsApp() {
+    try {
+      // Get WhatsApp client ID from API
+      const configRes = await fetch('/api/config/whatsapp-client-id');
+      const config = await configRes.json();
+      const clientId = config.client_id;
+
+      if (!clientId) {
+        alert('WhatsApp not configured. Please contact support.');
+        return;
+      }
+
+      // Get user token
+      const wa = localStorage.getItem('school_wa') || localStorage.getItem('miru_phone') || '';
+      const token = localStorage.getItem('_miruToken') || wa || '';
+
+      // Build OAuth URL for WhatsApp Business
+      const redirectUri = `${window.location.origin}/oauth/whatsapp/callback`;
+      const authUrl = new URL('https://graph.instagram.com/oauth/authorize');
+      authUrl.searchParams.set('client_id', clientId);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('response_type', 'code');
+      authUrl.searchParams.set('scope', 'whatsapp_business_messaging,whatsapp_business_management');
+      authUrl.searchParams.set('state', token);
+
+      // Redirect to Meta
+      window.location.href = authUrl.toString();
+    } catch (e) {
+      console.error('WhatsApp OAuth error:', e);
+      alert('Error connecting WhatsApp. Please try again.');
+    }
+  }
+
   function renderGmailSection() {
     const el = document.getElementById('gmailSection');
     if (schools.length === 0) {
@@ -561,6 +597,44 @@
     }
   }
 
+  function renderWhatsAppSection() {
+    const el = document.getElementById('whatsappSection');
+    if (schools.length === 0) {
+      el.innerHTML = '';
+      return;
+    }
+
+    const hasWhatsApp = schools.some(s => s.whatsapp_connected);
+
+    if (hasWhatsApp) {
+      el.innerHTML = `
+        <div style="background: #fff; border-radius: 16px; border: 1.5px solid var(--gray-200); padding: 20px; margin-bottom: 24px; display: flex; gap: 16px; align-items: center;">
+          <div style="font-size: 32px;">💬</div>
+          <div style="flex: 1;">
+            <div style="font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 4px;">WhatsApp Groups Connected</div>
+            <div style="font-size: 14px; color: var(--gray-600);">Miru is scanning school groups for club schedules and announcements.</div>
+          </div>
+          <div style="font-size: 12px; font-weight: 600; color: #10b981; background: #d1fae5; padding: 8px 12px; border-radius: 8px;">✓ Connected</div>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div style="background: #fff; border-radius: 16px; border: 1.5px solid var(--gray-200); padding: 20px; margin-bottom: 24px; border-color: #60a5fa; background: #eff6ff;">
+          <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <div style="font-size: 32px;">💬</div>
+            <div style="flex: 1;">
+              <div style="font-size: 16px; font-weight: 700; color: #1e40af; margin-bottom: 8px;">WhatsApp Not Connected</div>
+              <div style="font-size: 14px; color: #1e3a8a; line-height: 1.6;">
+                Connect WhatsApp to let Miru scan school groups for ECA clubs and announcements. Miru will extract club schedules automatically.
+              </div>
+            </div>
+          </div>
+          <button onclick="connectWhatsApp()" style="display: inline-block; padding: 12px 20px; background: #1a1a2e; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; font-size: 14px;">
+            🔗 Connect WhatsApp
+          </button>
+        </div>`;
+    }
+  }
+
   function renderSchools() {
     const grid = document.getElementById('schoolsGrid');
     const empty = document.getElementById('emptyState');
@@ -573,6 +647,7 @@
 
     empty.style.display = 'none';
     renderGmailSection();
+    renderWhatsAppSection();
     populateAddEventProfiles();
     grid.innerHTML = schools.map((s, i) => `
       <div class="school-card">
