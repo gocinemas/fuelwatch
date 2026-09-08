@@ -12739,6 +12739,226 @@ def api_v2_recurring_all_year():
         return jsonify({"error": str(e)}), 500
 
 
+# ============================================================================
+# GOALS API — Spending goals + progress tracking
+# ============================================================================
+
+@app.route("/api/v2/goals", methods=["POST"])
+def api_v2_goals_post():
+    """
+    Save a spending goal
+    Body: {wa, title, target_value (in £), period_days}
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    wa = (body.get("wa") or "").strip()
+    title = (body.get("title") or "").strip()
+    target_value = body.get("target_value", 0)  # in £
+    period_days = body.get("period_days", 7)
+
+    from_number = _v2_resolve(wa)
+    if not from_number:
+        return jsonify({"error": "Invalid wa/token"}), 401
+
+    if not title or target_value <= 0:
+        return jsonify({"error": "title and target_value required"}), 400
+
+    try:
+        sb = lib._sb()
+        # Convert £ to pence for storage
+        target_pence = int(target_value * 100)
+
+        # Insert goal
+        result = sb.table("user_goals").insert({
+            "from_number": from_number,
+            "title": title,
+            "target_value": target_pence,
+            "period_days": period_days
+        }).execute()
+
+        return jsonify({"status": "ok", "goal_id": result.data[0]["id"] if result.data else None})
+
+    except Exception as e:
+        if "duplicate key" in str(e).lower() or "unique" in str(e).lower():
+            return jsonify({"error": f"Goal '{title}' already exists"}), 400
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v2/goals", methods=["GET"])
+def api_v2_goals_get():
+    """Get all goals for a user"""
+    token = request.args.get("token", "").strip()
+    wa = request.args.get("wa", "").strip()
+    from_number = _v2_resolve(token or wa)
+    if not from_number:
+        return jsonify({"goals": []})
+
+    try:
+        sb = lib._sb()
+        goals = sb.table("user_goals").select("*") \
+            .eq("from_number", from_number) \
+            .execute().data or []
+
+        # Add current progress to each goal
+        for goal in goals:
+            goal["target_value"] = goal["target_value"] / 100  # Convert back to £
+
+        return jsonify({"status": "ok", "goals": goals})
+
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e), "goals": []}), 500
+
+
+@app.route("/api/v2/goals/<goal_id>", methods=["DELETE"])
+def api_v2_goals_delete(goal_id):
+    """Delete a goal"""
+    token = request.args.get("token", "").strip()
+    wa = request.args.get("wa", "").strip()
+    from_number = _v2_resolve(token or wa)
+    if not from_number:
+        return jsonify({"error": "token required"}), 401
+
+    try:
+        sb = lib._sb()
+        # Verify ownership
+        goal = sb.table("user_goals").select("from_number").eq("id", goal_id).limit(1).execute().data or []
+        if not goal or goal[0]["from_number"] != from_number:
+            return jsonify({"error": "unauthorized"}), 403
+
+        sb.table("user_goals").delete().eq("id", goal_id).execute()
+        return jsonify({"status": "ok"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v2/engagement-summary", methods=["GET"])
+def api_v2_engagement_summary():
+    """
+    Get weekly engagement summary: wins, goals, badges, social proof
+    Returns: {wins, goals, badges, social}
+    """
+    token = request.args.get("token", "").strip()
+    wa = request.args.get("wa", "").strip()
+    from_number = _v2_resolve(token or wa)
+
+    if not from_number:
+        return jsonify({
+            "wins": {"status": "error"},
+            "goals": [],
+            "badges": [],
+            "social": {}
+        })
+
+    try:
+        from datetime import datetime as _dt, timedelta as _td
+        import zoneinfo as _zi
+        _LDN = _zi.ZoneInfo("Europe/London")
+
+        sb = lib._sb()
+        now = _dt.now(_LDN)
+        week_start = now - _td(days=now.weekday())  # Monday of this week
+        week_start_iso = week_start.date().isoformat()
+        now_iso = now.date().isoformat()
+
+        # ── WEEKLY WINS ──
+        wins = {"status": "error", "saved_vs_last_week_pence": 0, "overspent_vs_last_week_pence": 0,
+                "days_on_budget": 0, "days_elapsed": 0, "fuel_saved_pence": 0, "tip": None}
+
+        # Get this week's spend
+        this_week_spend = sb.table("ma_receipt_log").select("amount_pence") \
+            .eq("from_number", from_number) \
+            .gte("log_date", week_start_iso) \
+            .lte("log_date", now_iso) \
+            .execute().data or []
+
+        this_week_total = sum(r.get("amount_pence", 0) for r in this_week_spend)
+
+        # Get last week's spend
+        last_week_start = week_start - _td(days=7)
+        last_week_start_iso = last_week_start.date().isoformat()
+        last_week_end = week_start - _td(days=1)
+        last_week_end_iso = last_week_end.date().isoformat()
+
+        last_week_spend = sb.table("ma_receipt_log").select("amount_pence") \
+            .eq("from_number", from_number) \
+            .gte("log_date", last_week_start_iso) \
+            .lte("log_date", last_week_end_iso) \
+            .execute().data or []
+
+        last_week_total = sum(r.get("amount_pence", 0) for r in last_week_spend)
+
+        # Compare
+        if this_week_total < last_week_total:
+            wins["status"] = "ok"
+            wins["saved_vs_last_week_pence"] = last_week_total - this_week_total
+        elif this_week_total > last_week_total:
+            wins["status"] = "ok"
+            wins["overspent_vs_last_week_pence"] = this_week_total - last_week_total
+        else:
+            wins["status"] = "ok"
+
+        # Days on budget (simplified: if user logged receipts = engaged)
+        wins["days_elapsed"] = (now - week_start).days + 1
+        wins["days_on_budget"] = len(set(r.get("log_date") for r in this_week_spend if r.get("log_date")))
+
+        # Tip
+        if this_week_total > last_week_total and last_week_total > 0:
+            wins["tip"] = "Worth a look? You've spent more this week."
+
+        # ── GOALS ──
+        goals_rows = sb.table("user_goals").select("*").eq("from_number", from_number).execute().data or []
+        goals = []
+        for g in goals_rows:
+            target_pence = g.get("target_value", 0)
+            progress_pct = int((this_week_total / target_pence * 100)) if target_pence > 0 else 0
+            goals.append({
+                "id": g.get("id"),
+                "title": g.get("title"),
+                "target_value": target_pence / 100,  # Convert to £
+                "current_value": this_week_total / 100,  # Convert to £
+                "progress_percent": min(progress_pct, 100)
+            })
+
+        # ── BADGES (simplified) ──
+        badges = []
+        if wins["days_on_budget"] >= 5:
+            badges.append({"emoji": "🔥", "label": "On Fire", "desc": "Logged receipts 5+ days"})
+        if wins["saved_vs_last_week_pence"] > 0:
+            badges.append({"emoji": "💰", "label": "Saver", "desc": "Saved money vs last week"})
+        if len(goals) >= 3:
+            badges.append({"emoji": "🎯", "label": "Goal Setter", "desc": "3+ active goals"})
+
+        # ── SOCIAL PROOF ──
+        social = {}
+        total_saved = (
+            sb.table("ma_receipt_log").select("amount_pence")
+            .eq("from_number", from_number)
+            .execute().data or []
+        )
+        lifetime_spend = sum(r.get("amount_pence", 0) for r in total_saved)
+        if lifetime_spend > 50000:  # £500+
+            social["tier_label"] = "Gold Tracker — £500+ logged"
+        elif lifetime_spend > 10000:  # £100+
+            social["tier_label"] = "Silver Tracker — £100+ logged"
+
+        return jsonify({
+            "wins": wins,
+            "goals": goals,
+            "badges": badges,
+            "social": social
+        })
+
+    except Exception as e:
+        print(f"[engagement-summary] Error: {e}")
+        return jsonify({
+            "wins": {"status": "error"},
+            "goals": [],
+            "badges": [],
+            "social": {},
+            "error": str(e)
+        }), 500
+
+
 @app.route("/api/v2/location-profile", methods=["GET"])
 def api_v2_location_profile_get():
     token = request.args.get("token", "").strip()
