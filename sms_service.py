@@ -5770,9 +5770,97 @@ def api_company_intelligence():
             except Exception as profile_err:
                 app.logger.debug(f"[company/intelligence] Profile lookup failed: {profile_err}")
 
+        # Extract and format AI opportunities if available
+        if result and result.get("ai_opportunities"):
+            ai_opps = result.get("ai_opportunities", {})
+            pipeline = ai_opps.get("pipeline_ideas", [])
+
+            # Sort by opportunity size (largest first)
+            pipeline_sorted = sorted(pipeline, key=lambda x: x.get("opportunity_size_millions", 0), reverse=True)
+
+            # Format for API response
+            result["ai_opportunities"] = {
+                "current_investment": ai_opps.get("current_investment", {}),
+                "pipeline_ideas": pipeline_sorted[:5],  # Top 5 ideas
+                "total_opportunities": len(pipeline),
+                "total_potential_value_millions": sum(idea.get("opportunity_size_millions", 0) for idea in pipeline),
+                "total_investment_needed_millions": sum(idea.get("investment_needed_millions", idea.get("investment_needed_minerals", 0)) for idea in pipeline),
+                "all_ideas_available": True
+            }
+
         return jsonify(result)
     except Exception as e:
         app.logger.error(f"[company/intelligence] ERROR: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/company/ai-opportunities", methods=["GET"])
+def api_company_ai_opportunities():
+    """Fetch AI opportunities and strategic ideas for a company.
+
+    Query params:
+    - name: Company name (required)
+    - include_all: Include all ideas or just top 5 (default: false)
+    """
+    name = request.args.get("name", "").strip()
+    include_all = request.args.get("include_all", "false").lower() == "true"
+
+    if not name or len(name) < 2:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        import library as lib
+        sb = lib._sb()
+
+        # Get company profile
+        result = sb.table("company_profiles").select("data").eq("company_name", name).limit(1).execute()
+
+        if not result.data:
+            return jsonify({
+                "error": f"Company '{name}' not found",
+                "company": name,
+                "ai_opportunities": None
+            }), 404
+
+        profile_data = result.data[0].get("data", {})
+        ai_opps = profile_data.get("ai_opportunities", {})
+
+        if not ai_opps or not ai_opps.get("pipeline_ideas"):
+            return jsonify({
+                "error": f"No AI opportunities found for '{name}'",
+                "company": name,
+                "ai_opportunities": None
+            }), 404
+
+        # Prepare response
+        pipeline = ai_opps.get("pipeline_ideas", [])
+        pipeline_sorted = sorted(pipeline, key=lambda x: (
+            x.get("probability_success", 0) *
+            x.get("opportunity_size_millions", 0)
+        ), reverse=True)
+
+        ideas_to_return = pipeline_sorted if include_all else pipeline_sorted[:5]
+
+        response = {
+            "company": name,
+            "full_name": profile_data.get("name", name),
+            "industry": profile_data.get("industry", "Unknown"),
+            "ai_opportunities": {
+                "current_investment": ai_opps.get("current_investment", {}),
+                "pipeline_ideas": ideas_to_return,
+                "total_opportunities": len(pipeline),
+                "total_potential_value_millions": sum(idea.get("opportunity_size_millions", 0) for idea in pipeline),
+                "total_investment_needed_millions": sum(idea.get("investment_needed_millions", idea.get("investment_needed_minerals", 0)) for idea in pipeline),
+                "blended_success_probability": round(sum(idea.get("probability_success", 0) for idea in pipeline) / len(pipeline), 1) if pipeline else 0,
+                "all_ideas_available": include_all
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        app.logger.error(f"[company/ai-opportunities] ERROR: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
@@ -11674,6 +11762,7 @@ def api_intel_request_brand():
 
 # ── BRAND INTELLIGENCE API (Phase 1) ────────────────────────────────────
 @app.route("/api/v2/prefs", methods=["GET"])
+# Force Supabase schema cache refresh via redeploy
 def api_v2_prefs_get():
     """Return V2 preferences for the user identified by token."""
     token = request.args.get("token", "").strip()
