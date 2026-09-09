@@ -5709,6 +5709,11 @@ def api_company_intelligence():
             "mcdonalds": "McDonald's",
             "coca cola": "Coca-Cola",
             "pepsico": "PepsiCo",
+            # FMCG / Confectionery / Food
+            "cadbury": "Mondelēz International",
+            "kelloggs": "Kellanov",
+            "kellogg": "Kellanov",
+            "kraft": "Kraft Heinz",
         }
 
         search_name = name
@@ -5745,6 +5750,25 @@ def api_company_intelligence():
         if suggested_name:
             result["searched_as"] = suggested_name
             result["original_query"] = name
+
+        # Fallback: Check company_profiles table for stored profiles (Mars, Kellanov, Kraft, etc.)
+        if not result or not result.get("name") or (result.get("source") == "Direct Search (minimal)"):
+            try:
+                import library as lib
+                sb = lib._sb()
+                profile_result = sb.table("company_profiles").select("data").eq(
+                    "company_name", search_name
+                ).limit(1).execute()
+
+                if profile_result.data and profile_result.data[0].get("data"):
+                    profile_data = profile_result.data[0]["data"]
+                    if profile_data.get("name"):
+                        # Use stored profile instead of minimal response
+                        result = profile_data
+                        result["source"] = "Company Profile Database"
+                        app.logger.info(f"[company/intelligence] Loaded {search_name} from company_profiles")
+            except Exception as profile_err:
+                app.logger.debug(f"[company/intelligence] Profile lookup failed: {profile_err}")
 
         return jsonify(result)
     except Exception as e:
