@@ -2018,6 +2018,7 @@ def brand_search():
 
 
 @app.route("/company")
+@app.route("/company/")
 def company_intelligence():
     """Company Intelligence — UNIFIED page showing Financials + Leadership + Hiring Signals"""
     return render_template("intel_company.html")
