@@ -42853,14 +42853,8 @@ def api_company_competitors():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/company", methods=["GET"])
-@app.route("/company/", methods=["GET"])
-def company_qa_page():
-    """Render company Q&A page (search page)."""
-    try:
-        return render_template("company_qa.html")
-    except Exception as e:
-        return f"Error: {str(e)}", 500
+# REMOVED: Duplicate route — using /company route from line 2020 instead (intel_company.html)
+# Old company_qa_page() has been removed to prevent route conflict
 
 
 def _company_has_history(company_name: str) -> bool:
