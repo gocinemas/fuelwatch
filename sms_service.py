@@ -2067,6 +2067,19 @@ def company_intelligence_tabbed(company_name):
                 message=f"Error loading intelligence for {company_name}"
             ), 500
 
+        # Fetch company profile data (name, employees, revenue, stock, AI opportunities)
+        company_profile = {}
+        ai_opportunities = {}
+        try:
+            import library as lib
+            sb = lib._sb()
+            profile_result = sb.table("company_profiles").select("data").eq("company_name", company_name).limit(1).execute()
+            if profile_result.data:
+                company_profile = profile_result.data[0].get("data", {})
+                ai_opportunities = company_profile.get("ai_opportunities", {})
+        except Exception as profile_err:
+            app.logger.debug(f"[intelligence_tabbed] Profile lookup failed: {profile_err}")
+
         # Render tabbed interface
         return render_template(
             "intelligence_tabbed.html",
@@ -2075,7 +2088,9 @@ def company_intelligence_tabbed(company_name):
             signals=tabbed_data["signals"],
             intelligence=tabbed_data["intelligence"],
             available_competitors=tabbed_data["available_competitors"],
-            timestamp=tabbed_data["timestamp"]
+            timestamp=tabbed_data["timestamp"],
+            company_profile=company_profile,
+            ai_opportunities=ai_opportunities
         )
 
     except Exception as e:
