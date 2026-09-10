@@ -5743,15 +5743,34 @@ def api_company_intelligence():
 
         result = None
 
-        # If country specified, search that country
-        if country:
-            result = fetch_company_intelligence(search_name, country)
-        else:
-            # Search globally: try US first (most companies), then GB, then international
-            for search_country in ["US", "GB", "INT"]:
-                result = fetch_company_intelligence(search_name, search_country)
-                if result and result.get("name"):
-                    break
+        # PRIORITY 1: Check company_profiles table FIRST (has AI opportunities)
+        try:
+            import library as lib
+            sb = lib._sb()
+            profile_result = sb.table("company_profiles").select("data").eq(
+                "company_name", search_name
+            ).limit(1).execute()
+
+            if profile_result.data and profile_result.data[0].get("data"):
+                profile_data = profile_result.data[0]["data"]
+                if profile_data.get("name"):
+                    result = profile_data
+                    result["source"] = "Company Profile Database"
+                    app.logger.info(f"[company/intelligence] Loaded {search_name} from company_profiles")
+        except Exception as profile_err:
+            app.logger.debug(f"[company/intelligence] Profile lookup failed: {profile_err}")
+
+        # PRIORITY 2: Fall back to external sources if not in database
+        if not result or not result.get("name"):
+            # If country specified, search that country
+            if country:
+                result = fetch_company_intelligence(search_name, country)
+            else:
+                # Search globally: try US first (most companies), then GB, then international
+                for search_country in ["US", "GB", "INT"]:
+                    result = fetch_company_intelligence(search_name, search_country)
+                    if result and result.get("name"):
+                        break
 
         if not result or not result.get("name"):
             # If search failed and we have a suggestion, inform user
@@ -5766,25 +5785,6 @@ def api_company_intelligence():
         if suggested_name:
             result["searched_as"] = suggested_name
             result["original_query"] = name
-
-        # Fallback: Check company_profiles table for stored profiles (Mars, Kellanov, Kraft, etc.)
-        if not result or not result.get("name") or (result.get("source") == "Direct Search (minimal)"):
-            try:
-                import library as lib
-                sb = lib._sb()
-                profile_result = sb.table("company_profiles").select("data").eq(
-                    "company_name", search_name
-                ).limit(1).execute()
-
-                if profile_result.data and profile_result.data[0].get("data"):
-                    profile_data = profile_result.data[0]["data"]
-                    if profile_data.get("name"):
-                        # Use stored profile instead of minimal response
-                        result = profile_data
-                        result["source"] = "Company Profile Database"
-                        app.logger.info(f"[company/intelligence] Loaded {search_name} from company_profiles")
-            except Exception as profile_err:
-                app.logger.debug(f"[company/intelligence] Profile lookup failed: {profile_err}")
 
         # Extract and format AI opportunities if available
         if result and result.get("ai_opportunities"):
