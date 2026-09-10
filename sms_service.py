@@ -2019,18 +2019,8 @@ def brand_search():
 
 @app.route("/company")
 @app.route("/company/")
-def company_qa_page():
-    """Simple company search (Q&A) page."""
-    try:
-        return render_template("company_qa.html")
-    except Exception as e:
-        return f"Error: {str(e)}", 500
-
-
-@app.route("/company/intelligence")
-@app.route("/company/intelligence/")
 def company_intelligence():
-    """Company Intelligence — DETAILED page with Financials + AI Opportunities"""
+    """Company Intelligence — Search + Detailed Data + AI Opportunities (UNIFIED)"""
     return render_template("intel_company.html")
 
 
