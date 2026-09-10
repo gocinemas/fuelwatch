@@ -558,6 +558,17 @@
                 <div id="newsList" style="display: flex; flex-direction: column; gap: 12px;"><div style="color: #999; font-size: 12px; padding: 12px; text-align: center;">Loading news...</div></div>
             </div>
 
+            <!-- AI Opportunities Section -->
+            <div class="section" id="aiOpportunitiesSection" style="display: none; border: 2px solid #8b5cf6;">
+                <div class="section-title">
+                    <span class="section-icon">🚀</span>
+                    AI Opportunities & Strategic Ideas
+                </div>
+                <div id="aiOpportunitiesContent" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="color: #999; font-size: 12px; padding: 12px; text-align: center;">Loading AI opportunities...</div>
+                </div>
+            </div>
+
             <a href="/" class="back-link">← Back to Intel</a>
         </div>
     </div>
@@ -581,8 +592,30 @@
             const company = companyInput.value.trim();
             if (!company) return;
 
-            // Immediately redirect to Intel company intelligence page
-            window.location.href = `https://intel.humanagency.co/intelligence/${encodeURIComponent(company)}`;
+            loading.style.display = 'flex';
+            try {
+                // Fetch company intelligence data (includes profile + AI opportunities)
+                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.name) {
+                    showError(`Company '${company}' not found`, data.suggestion);
+                    return;
+                }
+
+                // Display the data
+                displayResults(data);
+
+                // Load additional data sections
+                loadMAActivity(company);
+                loadRetentionMetrics(company);
+                loadNews(company);
+            } catch (error) {
+                console.error('Search error:', error);
+                showError('Error searching for company. Please try again.');
+            } finally {
+                loading.style.display = 'none';
+            }
         }
 
         function showError(message, suggestion = null) {
@@ -597,8 +630,9 @@
         }
 
         function searchCompanyByName(companyName) {
-            // Redirect to Intel company intelligence page
-            window.location.href = `https://intel.humanagency.co/intelligence/${encodeURIComponent(companyName)}`;
+            // Search for the company on same page
+            companyInput.value = companyName;
+            searchCompany();
         }
 
         function displayResults(data) {
@@ -914,6 +948,52 @@
                         document.getElementById('hiringSection').style.display = 'block';
                     }
                 }
+            }
+
+            // Display AI Opportunities if available
+            if (data.ai_opportunities && data.ai_opportunities.pipeline_ideas && data.ai_opportunities.pipeline_ideas.length > 0) {
+                const aiOpps = data.ai_opportunities;
+                let aiHTML = `
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                            <div class="stat-card">
+                                <div class="stat-label">💡 Ideas</div>
+                                <div class="stat-value">${aiOpps.total_opportunities}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">💰 TAM (3yr)</div>
+                                <div class="stat-value">$${formatNumber(aiOpps.total_potential_value_millions / 1000, 1)}B</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">📊 Avg Success</div>
+                                <div class="stat-value">${aiOpps.blended_success_probability || 0}%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <h4 style="color: var(--primary-light); margin-bottom: 12px;">🚀 Strategic AI Opportunities</h4>
+                        <div class="list-items">
+                            ${aiOpps.pipeline_ideas.slice(0, 5).map(idea => `
+                                <div class="list-item" style="border-left: 4px solid #8b5cf6; padding-left: 16px;">
+                                    <strong style="color: #8b5cf6;">${idea.idea}</strong>
+                                    <div style="color: var(--text-secondary); font-size: 13px; margin-top: 6px; line-height: 1.5;">
+                                        ${idea.description.substring(0, 150)}...
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; font-size: 12px;">
+                                        <div>💰 Opportunity: $${idea.opportunity_size_millions}M</div>
+                                        <div>⏱️ Timeline: ${idea.timeline_months} mo</div>
+                                        <div>✅ Success: ${idea.probability_success}%</div>
+                                        <div>📈 ROI (3yr): ${idea.roi_year_3}%</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ${aiOpps.total_opportunities > 5 ? `<p style="color: var(--text-secondary); font-size: 12px; margin-top: 12px; text-align: center;">+ ${aiOpps.total_opportunities - 5} more ideas available</p>` : ''}
+                    </div>
+                `;
+
+                document.getElementById('aiOpportunitiesContent').innerHTML = aiHTML;
+                document.getElementById('aiOpportunitiesSection').style.display = 'block';
             }
 
             // Load additional data sections
