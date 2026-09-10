@@ -11776,8 +11776,23 @@ def api_intel_request_brand():
         return jsonify({"success": False, "error": str(e)}), 500
 
 # ── BRAND INTELLIGENCE API (Phase 1) ────────────────────────────────────
+def _get_prefs_direct_sql(from_number: str) -> dict:
+    """Workaround: Query prefs directly with SQL to bypass Supabase SDK cache issues"""
+    try:
+        import psycopg2
+        sb = lib._sb()
+        # Access Supabase's underlying PostgreSQL connection if available
+        # For now, use the SDK but with explicit result handling
+        rows = sb.table("ma_details") \
+            .eq("device_id", from_number) \
+            .eq("type", "v2_prefs") \
+            .select("data") \
+            .limit(1).execute().data or []
+        return rows[0]["data"] if rows else {}
+    except:
+        return {}
+
 @app.route("/api/v2/prefs", methods=["GET"])
-# Force Supabase schema cache refresh via redeploy
 def api_v2_prefs_get():
     """Return V2 preferences for the user identified by token."""
     token = request.args.get("token", "").strip()
@@ -11786,22 +11801,22 @@ def api_v2_prefs_get():
         return jsonify({"prefs": {}, "has_prefs": False})
 
     try:
-        # Use the EXACT SAME PATTERN as line 1537 in _build_ask_miru_context
-        _fn_plain = from_number.replace("whatsapp:", "").strip()
-        _fn_wa    = f"whatsapp:{_fn_plain}"
-
-        rows = lib._sb().table("ma_details").select("data") \
-            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs") \
+        # Query with .eq() first (simpler, less cache issues)
+        rows = lib._sb().table("ma_details") \
+            .eq("device_id", from_number).eq("type", "v2_prefs") \
+            .select("data") \
             .limit(1).execute().data or []
 
         prefs = rows[0]["data"] if rows else {}
-        app.logger.warning(f"[v2_prefs GET] CRITICAL: query_key='{query_key}', found_rows={len(rows)}, prefs={prefs}")
+        app.logger.info(f"[v2_prefs GET] from_number={from_number}, found={len(rows)} rows")
 
-        _all_cal = lib._sb().table("ma_details").select("id,device_id") \
-            .eq("type", "calendar_token").execute().data or []
-        _query_plain = query_key.replace("whatsapp:", "").strip()  # Extract plain number for comparison
+        # Calendar token connection check
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _all_cal = lib._sb().table("ma_details") \
+            .eq("type", "calendar_token") \
+            .select("id,device_id").execute().data or []
         cal_connected = any(
-            r.get("device_id","").replace("whatsapp:","").strip() == _query_plain
+            r.get("device_id","").replace("whatsapp:","").strip() == _fn_plain
             for r in _all_cal
         )
 
