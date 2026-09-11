@@ -81,7 +81,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 5400,
                 "timeline_months": 24,
                 "probability_success": 58,
-                "investment_needed_minerals": 580,
+                "investment_needed_millions": 580,
                 "roi_year_3": 1400,
                 "strategic_fit": "Very High - healthcare TAM + Apple brand trust",
                 "team_needed": "150 biomedical engineers, 80 neuroscientists, 120 ML engineers"
@@ -186,7 +186,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 4200,
                 "timeline_months": 18,
                 "probability_success": 65,
-                "investment_needed_minerals": 320,
+                "investment_needed_millions": 320,
                 "roi_year_3": 1800,
                 "strategic_fit": "High - ESG + government credits",
                 "team_needed": "75 chemical engineers, 60 ML specialists, 40 climate scientists"
@@ -197,7 +197,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 2800,
                 "timeline_months": 14,
                 "probability_success": 72,
-                "investment_needed_minerals": 180,
+                "investment_needed_millions": 180,
                 "roi_year_3": 1200,
                 "strategic_fit": "High - reduces exploration costs",
                 "team_needed": "50 geophysicists, 70 ML engineers, 30 data scientists"
@@ -214,7 +214,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 6200,
                 "timeline_months": 20,
                 "probability_success": 68,
-                "investment_needed_minerals": 380,
+                "investment_needed_millions": 380,
                 "roi_year_3": 2100,
                 "strategic_fit": "Very High - energy transition positioning",
                 "team_needed": "120 power systems engineers, 100 ML engineers, 60 climate scientists"
@@ -233,7 +233,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 3400,
                 "timeline_months": 18,
                 "probability_success": 62,
-                "investment_needed_minerals": 280,
+                "investment_needed_millions": 280,
                 "roi_year_3": 1200,
                 "strategic_fit": "High - labor cost reduction + consistency",
                 "team_needed": "45 robotics engineers, 60 ML engineers, 30 culinary experts"
@@ -244,7 +244,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 1200,
                 "timeline_months": 8,
                 "probability_success": 81,
-                "investment_needed_minerals": 85,
+                "investment_needed_millions": 85,
                 "roi_year_3": 480,
                 "strategic_fit": "Very High - reduces store failures",
                 "team_needed": "20 data scientists, 25 retail strategists, 10 geospatial experts"
@@ -261,7 +261,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 7800,
                 "timeline_months": 24,
                 "probability_success": 48,
-                "investment_needed_minerals": 620,
+                "investment_needed_millions": 620,
                 "roi_year_3": 1800,
                 "strategic_fit": "High - but creatively risky",
                 "team_needed": "150 creative technologists, 100 ML engineers, 80 screenwriters"
@@ -272,7 +272,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 4200,
                 "timeline_months": 28,
                 "probability_success": 42,
-                "investment_needed_minerals": 480,
+                "investment_needed_millions": 480,
                 "roi_year_3": 1200,
                 "strategic_fit": "High - but controversial (IP/ethics)",
                 "team_needed": "80 computer vision engineers, 60 animation AI specialists"
@@ -291,7 +291,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 520,
                 "timeline_months": 12,
                 "probability_success": 71,
-                "investment_needed_minerals": 65,
+                "investment_needed_millions": 65,
                 "roi_year_3": 380,
                 "strategic_fit": "High - accelerates R&D",
                 "team_needed": "25 ML engineers, 30 chemists, 15 microbiologists"
@@ -308,7 +308,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 2100,
                 "timeline_months": 10,
                 "probability_success": 79,
-                "investment_needed_minerals": 140,
+                "investment_needed_millions": 140,
                 "roi_year_3": 920,
                 "strategic_fit": "Very High - e-commerce critical for beauty",
                 "team_needed": "45 computer vision engineers, 35 mobile engineers, 20 beauty experts"
@@ -319,7 +319,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 380,
                 "timeline_months": 9,
                 "probability_success": 82,
-                "investment_needed_minerals": 55,
+                "investment_needed_millions": 55,
                 "roi_year_3": 220,
                 "strategic_fit": "High - ESG requirements increasing",
                 "team_needed": "15 sustainability experts, 30 ML engineers, 20 auditors"
@@ -338,7 +338,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 280,
                 "timeline_months": 8,
                 "probability_success": 75,
-                "investment_needed_minerals": 45,
+                "investment_needed_millions": 45,
                 "roi_year_3": 180,
                 "strategic_fit": "High - direct to consumer growth",
                 "team_needed": "15 NLP engineers, 20 medical experts, 12 product developers"
@@ -357,7 +357,7 @@ AI_OPPORTUNITIES = {
                 "opportunity_size_millions": 450,
                 "timeline_months": 12,
                 "probability_success": 73,
-                "investment_needed_minerals": 85,
+                "investment_needed_millions": 85,
                 "roi_year_3": 280,
                 "strategic_fit": "Very High - core business",
                 "team_needed": "30 ML engineers, 45 cloud architects, 20 change managers"
