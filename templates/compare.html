@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Strategy Comparison Tool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+
+        h1 { font-size: 32px; margin-bottom: 12px; font-weight: 700; }
+        .subtitle { color: #cbd5e1; font-size: 14px; margin-bottom: 30px; }
+
+        .selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .company-select {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .company-select label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        select {
+            padding: 12px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #14b8a6;
+        }
+
+        .compare-button {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            align-self: flex-end;
+            transition: all 0.3s;
+        }
+
+        .compare-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(20, 184, 166, 0.3);
+        }
+
+        .comparison-table {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 40px;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 200px repeat(auto-fit, minmax(280px, 1fr));
+            border-bottom: 1px solid #334155;
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-cell {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .row-label {
+            font-weight: 600;
+            color: #14b8a6;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .row-value {
+            font-size: 15px;
+            margin-top: 6px;
+            color: #f1f5f9;
+        }
+
+        .company-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .company-industry {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .ai-idea {
+            background: rgba(168, 85, 247, 0.1);
+            border-left: 4px solid #a855f7;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .ai-idea:last-child {
+            margin-bottom: 0;
+        }
+
+        .idea-name {
+            font-weight: 600;
+            color: #c4b5fd;
+            margin-bottom: 4px;
+        }
+
+        .idea-metrics {
+            font-size: 11px;
+            color: #cbd5e1;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .metric {
+            background: rgba(20, 184, 166, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: #94a3b8;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #14b8a6;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #cbd5e1;
+        }
+
+        .info-box {
+            background: rgba(20, 184, 166, 0.05);
+            border-left: 4px solid #14b8a6;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚖️ AI Strategy Comparison</h1>
+        <p class="subtitle">Compare AI opportunities and strategies side-by-side across companies.</p>
+
+        <div class="info-box">
+            💡 <strong>Premium Feature:</strong> Compare strategies, identify competitive advantages, and benchmark AI investments across your sector.
+        </div>
+
+        <div class="selector">
+            <div class="company-select">
+                <label>Company 1</label>
+                <select id="company1" onchange="updateComparison()">
+                    <option value="">Select company...</option>
+                    <option value="Microsoft">Microsoft</option>
+                    <option value="Google">Google</option>
+                    <option value="Apple">Apple</option>
+                    <option value="Amazon">Amazon</option>
+                    <option value="Tesla">Tesla</option>
+                    <option value="Toyota">Toyota</option>
+                    <option value="Mars">Mars</option>
+                    <option value="Walmart">Walmart</option>
+                    <option value="JPMorgan Chase">JPMorgan Chase</option>
+                </select>
+            </div>
+
+            <div class="company-select">
+                <label>Company 2</label>
+                <select id="company2" onchange="updateComparison()">
+                    <option value="">Select company...</option>
+                    <option value="Microsoft">Microsoft</option>
+                    <option value="Google">Google</option>
+                    <option value="Apple">Apple</option>
+                    <option value="Amazon">Amazon</option>
+                    <option value="Tesla">Tesla</option>
+                    <option value="Toyota">Toyota</option>
+                    <option value="Mars">Mars</option>
+                    <option value="Walmart">Walmart</option>
+                    <option value="JPMorgan Chase">JPMorgan Chase</option>
+                </select>
+            </div>
+
+            <div class="company-select">
+                <label>Company 3 (Optional)</label>
+                <select id="company3" onchange="updateComparison()">
+                    <option value="">Select company...</option>
+                    <option value="Microsoft">Microsoft</option>
+                    <option value="Google">Google</option>
+                    <option value="Apple">Apple</option>
+                    <option value="Amazon">Amazon</option>
+                    <option value="Tesla">Tesla</option>
+                    <option value="Toyota">Toyota</option>
+                    <option value="Mars">Mars</option>
+                    <option value="Walmart">Walmart</option>
+                    <option value="JPMorgan Chase">JPMorgan Chase</option>
+                </select>
+            </div>
+
+            <button class="compare-button" onclick="updateComparison()">Compare →</button>
+        </div>
+
+        <div id="comparisonResult"></div>
+    </div>
+
+    <script>
+        async function updateComparison() {
+            const c1 = document.getElementById("company1").value;
+            const c2 = document.getElementById("company2").value;
+            const c3 = document.getElementById("company3").value;
+
+            if (!c1 || !c2) {
+                document.getElementById("comparisonResult").innerHTML = '<div class="empty">Select at least 2 companies to compare.</div>';
+                return;
+            }
+
+            const companies = [c1, c2, c3].filter(Boolean);
+            const data = [];
+
+            for (const company of companies) {
+                try {
+                    const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`);
+                    const result = await response.json();
+                    data.push(result);
+                } catch (err) {
+                    console.error(`Error fetching ${company}:`, err);
+                }
+            }
+
+            renderComparison(data);
+        }
+
+        function renderComparison(companies) {
+            if (!companies.length) return;
+
+            const metrics = [
+                { key: 'name', label: 'Company' },
+                { key: 'industry', label: 'Industry' },
+                { key: 'employees', label: 'Employees' },
+                { key: 'revenue_billions', label: 'Revenue ($B)' },
+                { key: 'market_cap_billions', label: 'Market Cap ($B)' },
+                { key: 'ai_opps', label: 'Top AI Ideas' },
+                { key: 'hiring', label: 'AI Hiring Growth' },
+            ];
+
+            let html = '<div class="comparison-table">';
+
+            metrics.forEach(metric => {
+                html += '<div class="table-row">';
+                html += `<div class="table-cell"><div class="row-label">${metric.label}</div></div>`;
+
+                companies.forEach(company => {
+                    html += '<div class="table-cell">';
+
+                    if (metric.key === 'name') {
+                        html += `<div class="company-name">${company.name}</div>`;
+                        html += `<div class="company-industry">${company.industry || 'N/A'}</div>`;
+                    } else if (metric.key === 'employees') {
+                        html += `<div class="row-value">${company.employees ? company.employees.toLocaleString() : 'N/A'}</div>`;
+                    } else if (metric.key === 'revenue_billions') {
+                        html += `<div class="row-value">$${company.revenue_billions || 'N/A'}B</div>`;
+                    } else if (metric.key === 'market_cap_billions') {
+                        html += `<div class="row-value">$${company.market_cap_billions || 'N/A'}B</div>`;
+                    } else if (metric.key === 'ai_opps') {
+                        const ideas = company.ai_opportunities?.pipeline_ideas || [];
+                        html += `<div class="row-value">
+                            ${ideas.slice(0, 2).map(idea => `
+                                <div class="ai-idea">
+                                    <div class="idea-name">${idea.idea}</div>
+                                    <div class="metrics-grid">
+                                        <div class="metric"><div class="metric-label">TAM</div><div class="metric-value">$${idea.opportunity_size_millions}M</div></div>
+                                        <div class="metric"><div class="metric-label">Success</div><div class="metric-value">${idea.probability_success}%</div></div>
+                                        <div class="metric"><div class="metric-label">ROI</div><div class="metric-value">${idea.roi_year_3}%</div></div>
+                                        <div class="metric"><div class="metric-label">Timeline</div><div class="metric-value">${idea.timeline_months}mo</div></div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>`;
+                    } else if (metric.key === 'hiring') {
+                        const hiring = company.talent?.hiring_focus?.[0];
+                        html += `<div class="row-value">${hiring ? `${hiring.focus_area}: +${hiring.growth || '?'}%` : 'N/A'}</div>`;
+                    } else {
+                        html += `<div class="row-value">${company[metric.key] || 'N/A'}</div>`;
+                    }
+
+                    html += '</div>';
+                });
+
+                html += '</div>';
+            });
+
+            html += '</div>';
+            document.getElementById("comparisonResult").innerHTML = html;
+        }
+    </script>
+</body>
+</html>

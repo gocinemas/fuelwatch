@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industry Intelligence by Sector</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 36px; margin-bottom: 12px; font-weight: 700; }
+        .subtitle { color: #cbd5e1; font-size: 16px; margin-bottom: 40px; }
+
+        .sectors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        .sector-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .sector-card:hover {
+            transform: translateY(-4px);
+            border-color: #64748b;
+            box-shadow: 0 12px 40px rgba(20, 184, 166, 0.15);
+        }
+
+        .sector-icon { font-size: 32px; margin-bottom: 12px; }
+        .sector-name { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+        .sector-stats {
+            color: #cbd5e1;
+            font-size: 14px;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+        .stat-item { margin-bottom: 8px; }
+        .stat-label { color: #94a3b8; }
+        .stat-value { color: #14b8a6; font-weight: 600; }
+
+        .sector-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            width: 100%;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+        }
+
+        .sector-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(20, 184, 166, 0.3);
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 60px;
+        }
+
+        .cta-section h2 { font-size: 24px; margin-bottom: 12px; }
+        .cta-section p { color: #cbd5e1; margin-bottom: 20px; }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(168, 85, 247, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 Sector Intelligence Hub</h1>
+        <p class="subtitle">Explore AI opportunities across industries. View companies, trends, and strategic initiatives by sector.</p>
+
+        <div class="sectors-grid" id="sectorsGrid"></div>
+
+        <div class="cta-section">
+            <h2>💡 Explore 500+ AI Ideas</h2>
+            <p>Browse all AI opportunities across all companies, filtered by TAM, timeline, and success probability.</p>
+            <a href="/ideas" class="cta-button">Browse Ideas Library →</a>
+        </div>
+    </div>
+
+    <script>
+        const SECTORS = [
+            { name: "Technology", icon: "💻", companies: ["Microsoft", "Google", "Apple", "Amazon", "Meta"], tam: "$2.8T", ideas: 18, growth: "28%" },
+            { name: "Finance", icon: "💰", companies: ["JPMorgan Chase", "Goldman Sachs", "Visa", "Mastercard"], tam: "$1.2T", ideas: 12, growth: "15%" },
+            { name: "Healthcare & Pharma", icon: "🏥", companies: ["Johnson & Johnson", "Merck", "Pfizer", "AbbVie", "Eli Lilly"], tam: "$900B", ideas: 16, growth: "12%" },
+            { name: "FMCG & Food", icon: "🍔", companies: ["Mars", "Kellanov", "Kraft Heinz", "Mondelēz", "PepsiCo", "Coca-Cola", "Nestlé"], tam: "$2.1T", ideas: 22, growth: "8%" },
+            { name: "Energy", icon: "⚡", companies: ["ExxonMobil", "Shell", "Chevron", "BP", "Saudi Aramco"], tam: "$850B", ideas: 14, growth: "18%" },
+            { name: "Automotive", icon: "🚗", companies: ["Tesla", "Toyota", "Volkswagen", "BMW", "Mercedes"], tam: "$1.5T", ideas: 16, growth: "22%" },
+            { name: "Retail & E-commerce", icon: "🛒", companies: ["Walmart", "Amazon", "Target", "Costco"], tam: "$1.8T", ideas: 14, growth: "16%" },
+            { name: "Consumer & Apparel", icon: "👗", companies: ["Unilever", "Procter & Gamble", "LVMH", "Nike"], tam: "$900B", ideas: 12, growth: "9%" },
+        ];
+
+        function renderSectors() {
+            const grid = document.getElementById("sectorsGrid");
+            grid.innerHTML = SECTORS.map(sector => `
+                <div class="sector-card" onclick="goToSector('${sector.name.toLowerCase().replace(/\\s+/g, '-')}')">
+                    <div class="sector-icon">${sector.icon}</div>
+                    <div class="sector-name">${sector.name}</div>
+                    <div class="sector-stats">
+                        <div class="stat-item"><span class="stat-label">Companies:</span> <span class="stat-value">${sector.companies.length}</span></div>
+                        <div class="stat-item"><span class="stat-label">AI Ideas:</span> <span class="stat-value">${sector.ideas}</span></div>
+                        <div class="stat-item"><span class="stat-label">TAM (3yr):</span> <span class="stat-value">${sector.tam}</span></div>
+                        <div class="stat-item"><span class="stat-label">Growth:</span> <span class="stat-value">${sector.growth}</span></div>
+                    </div>
+                    <button class="sector-button">View Sector →</button>
+                </div>
+            `).join('');
+        }
+
+        function goToSector(sector) {
+            window.location.href = `/sector/${sector}`;
+        }
+
+        renderSectors();
+    </script>
+</body>
+</html>

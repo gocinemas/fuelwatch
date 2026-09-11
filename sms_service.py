@@ -44099,3 +44099,31 @@ def onboarding():
 # Pass lib instead of db — routes will call lib._sb() on demand when needed
 register_oauth_routes(app, lib)
 register_config_routes(app, lib)
+
+
+# ═══ COMMERCIAL INTELLIGENCE PLATFORM ═══
+
+@app.route("/sectors")
+@app.route("/sectors/")
+def sectors_page():
+    """Browse AI opportunities by sector."""
+    return render_template("sectors.html")
+
+@app.route("/sector/<sector_name>")
+@app.route("/sector/<sector_name>/")
+def sector_detail(sector_name):
+    """Sector intelligence detail page."""
+    # Sector detail would be similar to sectors but filtered
+    return render_template("sectors.html")  # For now, use same template
+
+@app.route("/ideas")
+@app.route("/ideas/")
+def ideas_library():
+    """Browse all AI ideas with filters."""
+    return render_template("ideas_library.html")
+
+@app.route("/compare")
+@app.route("/compare/")
+def compare_tool():
+    """Compare company AI strategies side-by-side."""
+    return render_template("compare.html")

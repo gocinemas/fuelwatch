@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Ideas Library — 500+ Strategic Opportunities</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        h1 { font-size: 36px; margin-bottom: 12px; font-weight: 700; }
+        .subtitle { color: #cbd5e1; font-size: 16px; margin-bottom: 30px; }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+            background: #1e293b;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        .ideas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .idea-card {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+
+        .idea-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 12px 40px rgba(168, 85, 247, 0.15);
+        }
+
+        .idea-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #c4b5fd;
+        }
+
+        .idea-company {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+
+        .idea-desc {
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .idea-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .metric {
+            background: rgba(168, 85, 247, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .metric-label {
+            color: #94a3b8;
+            margin-bottom: 2px;
+        }
+
+        .metric-value {
+            color: #c4b5fd;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .idea-button {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .idea-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #cbd5e1;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .stat-box {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #14b8a6;
+            margin-bottom: 6px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💡 AI Ideas Library</h1>
+            <p class="subtitle">500+ strategic AI opportunities across companies and sectors. Filter by TAM, timeline, ROI, and success probability.</p>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-box">
+                <div class="stat-number">500+</div>
+                <div class="stat-label">AI Ideas</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">$50T</div>
+                <div class="stat-label">Total TAM</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">26+</div>
+                <div class="stat-label">Companies</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">8</div>
+                <div class="stat-label">Sectors</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Sector</label>
+                <select id="sectorFilter" onchange="filterIdeas()">
+                    <option value="">All Sectors</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="FMCG">FMCG & Food</option>
+                    <option value="Energy">Energy</option>
+                    <option value="Automotive">Automotive</option>
+                    <option value="Retail">Retail</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Min TAM ($M)</label>
+                <input type="number" id="minTam" placeholder="100" onchange="filterIdeas()">
+            </div>
+
+            <div class="filter-group">
+                <label>Min Success %</label>
+                <input type="number" id="minSuccess" placeholder="60" min="0" max="100" onchange="filterIdeas()">
+            </div>
+
+            <div class="filter-group">
+                <label>Timeline (Months)</label>
+                <select id="timelineFilter" onchange="filterIdeas()">
+                    <option value="">All Timelines</option>
+                    <option value="quick">Quick (≤6 months)</option>
+                    <option value="medium">Medium (7-12 months)</option>
+                    <option value="long">Long (13+ months)</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Company</label>
+                <select id="companyFilter" onchange="filterIdeas()">
+                    <option value="">All Companies</option>
+                    <option value="Microsoft">Microsoft</option>
+                    <option value="Google">Google</option>
+                    <option value="Apple">Apple</option>
+                    <option value="Amazon">Amazon</option>
+                    <option value="Mars">Mars</option>
+                    <option value="Tesla">Tesla</option>
+                    <option value="Walmart">Walmart</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Min ROI Year 3 (%)</label>
+                <input type="number" id="minRoi" placeholder="300" onchange="filterIdeas()">
+            </div>
+        </div>
+
+        <div class="ideas-grid" id="ideasGrid"></div>
+
+        <div class="empty" id="emptyState" style="display: none;">
+            <p>No ideas match your filters. Try adjusting your criteria.</p>
+        </div>
+    </div>
+
+    <script>
+        let allIdeas = []; // This will be populated from API
+
+        async function loadIdeas() {
+            try {
+                // Fetch all companies and their AI opportunities
+                const companies = ["Microsoft", "Google", "Apple", "Amazon", "Johnson & Johnson", "JPMorgan Chase", "Walmart", "ExxonMobil", "Tesla", "Toyota", "PepsiCo", "Coca-Cola", "Nestlé"];
+
+                for (const company of companies) {
+                    const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`);
+                    const data = await response.json();
+
+                    if (data.ai_opportunities && data.ai_opportunities.pipeline_ideas) {
+                        data.ai_opportunities.pipeline_ideas.forEach(idea => {
+                            allIdeas.push({
+                                title: idea.idea,
+                                company: data.name,
+                                description: idea.description,
+                                tam: idea.opportunity_size_millions,
+                                investment: idea.investment_needed_millions || idea.investment_needed_minerals,
+                                success: idea.probability_success,
+                                timeline: idea.timeline_months,
+                                roi: idea.roi_year_3,
+                                sector: data.industry
+                            });
+                        });
+                    }
+                }
+
+                renderIdeas(allIdeas);
+            } catch (err) {
+                console.error('Error loading ideas:', err);
+            }
+        }
+
+        function filterIdeas() {
+            const sector = document.getElementById("sectorFilter").value;
+            const minTam = parseFloat(document.getElementById("minTam").value) || 0;
+            const minSuccess = parseFloat(document.getElementById("minSuccess").value) || 0;
+            const timeline = document.getElementById("timelineFilter").value;
+            const company = document.getElementById("companyFilter").value;
+            const minRoi = parseFloat(document.getElementById("minRoi").value) || 0;
+
+            let filtered = allIdeas.filter(idea => {
+                let match = true;
+                if (sector && !idea.sector.includes(sector)) match = false;
+                if (idea.tam < minTam) match = false;
+                if (idea.success < minSuccess) match = false;
+                if (company && idea.company !== company) match = false;
+                if (idea.roi < minRoi) match = false;
+
+                if (timeline === "quick" && idea.timeline > 6) match = false;
+                if (timeline === "medium" && (idea.timeline < 7 || idea.timeline > 12)) match = false;
+                if (timeline === "long" && idea.timeline < 13) match = false;
+
+                return match;
+            });
+
+            renderIdeas(filtered);
+        }
+
+        function renderIdeas(ideas) {
+            const grid = document.getElementById("ideasGrid");
+            const empty = document.getElementById("emptyState");
+
+            if (ideas.length === 0) {
+                grid.innerHTML = "";
+                empty.style.display = "block";
+                return;
+            }
+
+            empty.style.display = "none";
+            grid.innerHTML = ideas.map(idea => `
+                <div class="idea-card">
+                    <div class="idea-title">${idea.title}</div>
+                    <div class="idea-company">→ ${idea.company}</div>
+                    <div class="idea-desc">${idea.description}</div>
+                    <div class="idea-metrics">
+                        <div class="metric">
+                            <div class="metric-label">TAM</div>
+                            <div class="metric-value">$${idea.tam}M</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Success %</div>
+                            <div class="metric-value">${idea.success}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Timeline</div>
+                            <div class="metric-value">${idea.timeline}mo</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Y3 ROI</div>
+                            <div class="metric-value">${idea.roi}%</div>
+                        </div>
+                    </div>
+                    <button class="idea-button">📊 View Details</button>
+                </div>
+            `).join('');
+        }
+
+        loadIdeas();
+    </script>
+</body>
+</html>
