@@ -246,9 +246,20 @@
                     <option value="Google">Google</option>
                     <option value="Apple">Apple</option>
                     <option value="Amazon">Amazon</option>
-                    <option value="Mars">Mars</option>
                     <option value="Tesla">Tesla</option>
+                    <option value="Mars">Mars</option>
+                    <option value="Kellanov">Kellanov</option>
+                    <option value="Kraft Heinz">Kraft Heinz</option>
+                    <option value="Mondelēz">Mondelēz</option>
+                    <option value="PepsiCo">PepsiCo</option>
+                    <option value="Coca-Cola">Coca-Cola</option>
+                    <option value="Nestlé">Nestlé</option>
+                    <option value="Unilever">Unilever</option>
                     <option value="Walmart">Walmart</option>
+                    <option value="Johnson & Johnson">Johnson & Johnson</option>
+                    <option value="JPMorgan Chase">JPMorgan Chase</option>
+                    <option value="ExxonMobil">ExxonMobil</option>
+                    <option value="Toyota">Toyota</option>
                 </select>
             </div>
 
@@ -271,7 +282,7 @@
         async function loadIdeas() {
             try {
                 // Fetch all companies and their AI opportunities
-                const companies = ["Microsoft", "Google", "Apple", "Amazon", "Johnson & Johnson", "JPMorgan Chase", "Walmart", "ExxonMobil", "Tesla", "Toyota", "PepsiCo", "Coca-Cola", "Nestlé"];
+                const companies = ["Microsoft", "Google", "Apple", "Amazon", "Tesla", "Toyota", "Mars", "Kellanov", "Kraft Heinz", "Mondelēz", "PepsiCo", "Coca-Cola", "Nestlé", "Unilever", "Walmart", "Johnson & Johnson", "JPMorgan Chase", "ExxonMobil"];
 
                 for (const company of companies) {
                     const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`);
