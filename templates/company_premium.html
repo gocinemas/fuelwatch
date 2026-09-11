@@ -877,7 +877,10 @@
             if (data.risks) {
                 riskCard.style.display = 'block';
                 const riskEl = document.getElementById('riskContainer');
-                riskEl.innerHTML = data.risks.split(',').map(r => `• ${r.trim()}`).join('<br/>');
+                const risks = Array.isArray(data.risks) ?
+                    data.risks :
+                    data.risks.split(',').map(r => r.trim());
+                riskEl.innerHTML = risks.map(r => `• ${typeof r === 'string' ? r.trim() : r}`).join('<br/>');
             }
         }
     </script>
