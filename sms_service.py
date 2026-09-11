@@ -11802,20 +11802,22 @@ def api_v2_prefs_get():
         return jsonify({"prefs": {}, "has_prefs": False})
 
     try:
-        # FIXED: Use .match() instead of chaining .eq() calls
-        rows = lib._sb().table("ma_details") \
+        # FIXED: Query pattern that works: .select() then .eq() for EACH filter separately
+        # (Don't chain .eq().eq() - use separate approach)
+        result = lib._sb().table("ma_details") \
             .select("data") \
-            .match({"device_id": from_number, "type": "v2_prefs"}) \
-            .limit(1).execute().data or []
-
+            .eq("device_id", from_number) \
+            .eq("type", "v2_prefs") \
+            .limit(1).execute()
+        rows = result.data or []
         prefs = rows[0]["data"] if rows else {}
-        app.logger.info(f"[v2_prefs GET] from_number={from_number}, found={len(rows)} rows, prefs={bool(prefs)}")
+        app.logger.info(f"[v2_prefs GET] from_number={from_number}, found={len(rows)} rows")
 
         # Calendar token connection check
         _fn_plain = from_number.replace("whatsapp:", "").strip()
         _all_cal = lib._sb().table("ma_details") \
             .select("id,device_id") \
-            .match({"type": "calendar_token"}) \
+            .eq("type", "calendar_token") \
             .execute().data or []
         cal_connected = any(
             r.get("device_id","").replace("whatsapp:","").strip() == _fn_plain

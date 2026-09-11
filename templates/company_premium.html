@@ -613,12 +613,16 @@
 
     <script>
         function generateSWOT(data) {
+            const risksList = data.risks ?
+                (Array.isArray(data.risks) ? data.risks : data.risks.split(',').map(r => r.trim())) :
+                [];
+
             return {
                 strengths: [
                     data.market_cap_billions ? `Market cap of $${data.market_cap_billions}B provides significant capital for innovation` : null,
                     data.employees ? `Large workforce of ${(data.employees/1000).toFixed(0)}k employees with deep expertise` : null,
                     data.divisions && data.divisions.length > 1 ? `Diversified portfolio across ${data.divisions.length} business divisions` : null,
-                    data.growth_drivers ? `Strong growth drivers in key sectors` : null,
+                    data.growth_drivers && data.growth_drivers.length > 0 ? `Strong growth drivers in key sectors` : null,
                     data.recent_acquisitions && data.recent_acquisitions.length > 0 ? `Strategic acquisition track record` : null,
                     `Well-established brand portfolio with global recognition`,
                     `Strong competitive positioning vs major rivals`
@@ -643,13 +647,13 @@
                 ],
 
                 threats: [
-                    data.risks ? data.risks.split(',').slice(0, 3).map(r => r.trim()) : [],
+                    ...risksList.slice(0, 2),
                     `Increasing private label competition`,
                     `Changing consumer preferences (health, sustainability)`,
                     `Supply chain disruptions`,
                     `Regulatory pressures on product ingredients`,
                     `Economic uncertainty affecting consumer spending`
-                ].flat().filter(Boolean).slice(0, 5)
+                ].filter(Boolean).slice(0, 5)
             };
         }
 
@@ -787,9 +791,15 @@
             }
 
             // Strategic Focus
-            document.getElementById('focusContainer').innerHTML = data.growth_drivers ?
-                data.growth_drivers.split(',').map(d => `• ${d.trim()}`).join('<br/>') :
-                '— No data available';
+            if (data.growth_drivers) {
+                const drivers = Array.isArray(data.growth_drivers) ?
+                    data.growth_drivers :
+                    data.growth_drivers.split(',');
+                document.getElementById('focusContainer').innerHTML =
+                    drivers.map(d => `• ${typeof d === 'string' ? d.trim() : d}`).join('<br/>');
+            } else {
+                document.getElementById('focusContainer').innerHTML = '— No data available';
+            }
 
             // SWOT Analysis (Generated from data)
             const swot = generateSWOT(data);
