@@ -372,6 +372,57 @@
             color: var(--text-secondary);
         }
 
+        /* ═══ SWOT ═══ */
+        .swot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .swot-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .swot-box h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .swot-strengths { border-top: 4px solid var(--success); }
+        .swot-strengths h4 { color: var(--success); }
+
+        .swot-weaknesses { border-top: 4px solid var(--warning); }
+        .swot-weaknesses h4 { color: var(--warning); }
+
+        .swot-opportunities { border-top: 4px solid var(--primary-light); }
+        .swot-opportunities h4 { color: var(--primary-light); }
+
+        .swot-threats { border-top: 4px solid var(--danger); }
+        .swot-threats h4 { color: var(--danger); }
+
+        .swot-list {
+            list-style: none;
+        }
+
+        .swot-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .swot-list li:last-child {
+            border-bottom: none;
+        }
+
         /* ═══ LOADING & ERROR ═══ */
         .loading {
             text-align: center;
@@ -503,6 +554,29 @@
                 </div>
             </div>
 
+            <!-- SWOT Analysis -->
+            <div class="card">
+                <h3>📊 SWOT Analysis</h3>
+                <div class="swot-grid">
+                    <div class="swot-box swot-strengths">
+                        <h4>💪 Strengths</h4>
+                        <ul class="swot-list" id="swotStrengths"></ul>
+                    </div>
+                    <div class="swot-box swot-weaknesses">
+                        <h4>⚠️ Weaknesses</h4>
+                        <ul class="swot-list" id="swotWeaknesses"></ul>
+                    </div>
+                    <div class="swot-box swot-opportunities">
+                        <h4>🚀 Opportunities</h4>
+                        <ul class="swot-list" id="swotOpportunities"></ul>
+                    </div>
+                    <div class="swot-box swot-threats">
+                        <h4>🔴 Threats</h4>
+                        <ul class="swot-list" id="swotThreats"></ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- Hiring Trends -->
             <div class="card" id="hiringCard" style="display: none;">
                 <h3>💼 Hiring Trends & Growth Areas</h3>
@@ -538,6 +612,58 @@
     </div>
 
     <script>
+        function generateSWOT(data) {
+            return {
+                strengths: [
+                    data.market_cap_billions ? `Market cap of $${data.market_cap_billions}B provides significant capital for innovation` : null,
+                    data.employees ? `Large workforce of ${(data.employees/1000).toFixed(0)}k employees with deep expertise` : null,
+                    data.divisions && data.divisions.length > 1 ? `Diversified portfolio across ${data.divisions.length} business divisions` : null,
+                    data.growth_drivers ? `Strong growth drivers in key sectors` : null,
+                    data.recent_acquisitions && data.recent_acquisitions.length > 0 ? `Strategic acquisition track record` : null,
+                    `Well-established brand portfolio with global recognition`,
+                    `Strong competitive positioning vs major rivals`
+                ].filter(Boolean),
+
+                weaknesses: [
+                    data.divisions && data.divisions.length > 2 ? `Portfolio complexity across multiple divisions` : null,
+                    data.talent && data.talent.turnover_rate && parseFloat(data.talent.turnover_rate) > 15 ? `Higher than average employee turnover` : null,
+                    `Legacy business models in certain segments`,
+                    `Integration challenges from acquisitions`,
+                    `Slower decision-making in large organizations`
+                ].filter(Boolean),
+
+                opportunities: [
+                    `AI-driven personalization and consumer analytics`,
+                    `Expansion into adjacent high-growth categories`,
+                    `Direct-to-consumer digital transformation`,
+                    `Emerging market penetration (Asia, Africa)`,
+                    `Sustainability-driven product innovation`,
+                    `Strategic partnerships with tech leaders`,
+                    `M&A opportunities in high-growth sectors`
+                ],
+
+                threats: [
+                    data.risks ? data.risks.split(',').slice(0, 3).map(r => r.trim()) : [],
+                    `Increasing private label competition`,
+                    `Changing consumer preferences (health, sustainability)`,
+                    `Supply chain disruptions`,
+                    `Regulatory pressures on product ingredients`,
+                    `Economic uncertainty affecting consumer spending`
+                ].flat().filter(Boolean).slice(0, 5)
+            };
+        }
+
+        function populateSWOT(swot) {
+            const populateList = (id, items) => {
+                const el = document.getElementById(id);
+                el.innerHTML = items.map(item => `<li>${item}</li>`).join('');
+            };
+            populateList('swotStrengths', swot.strengths);
+            populateList('swotWeaknesses', swot.weaknesses);
+            populateList('swotOpportunities', swot.opportunities);
+            populateList('swotThreats', swot.threats);
+        }
+
         const searchInput = document.getElementById('searchInput');
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchCompany();
@@ -664,6 +790,10 @@
             document.getElementById('focusContainer').innerHTML = data.growth_drivers ?
                 data.growth_drivers.split(',').map(d => `• ${d.trim()}`).join('<br/>') :
                 '— No data available';
+
+            // SWOT Analysis (Generated from data)
+            const swot = generateSWOT(data);
+            populateSWOT(swot);
 
             // Hiring Trends
             const hiringCard = document.getElementById('hiringCard');
