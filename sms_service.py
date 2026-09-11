@@ -11802,14 +11802,14 @@ def api_v2_prefs_get():
         return jsonify({"prefs": {}, "has_prefs": False})
 
     try:
-        # FIXED: Query pattern that works: .select() then .eq() for EACH filter separately
-        # (Don't chain .eq().eq() - use separate approach)
-        result = lib._sb().table("ma_details") \
-            .select("data") \
-            .eq("device_id", from_number) \
+        # FIXED: Get ALL v2_prefs, then filter in Python (avoid chaining .eq())
+        all_prefs = lib._sb().table("ma_details") \
+            .select("device_id,data") \
             .eq("type", "v2_prefs") \
-            .limit(1).execute()
-        rows = result.data or []
+            .execute().data or []
+
+        # Filter by device_id in Python
+        rows = [r for r in all_prefs if r.get("device_id") == from_number]
         prefs = rows[0]["data"] if rows else {}
         app.logger.info(f"[v2_prefs GET] from_number={from_number}, found={len(rows)} rows")
 
