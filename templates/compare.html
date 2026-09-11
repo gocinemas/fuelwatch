@@ -259,6 +259,30 @@
     </div>
 
     <script>
+        async function loadCompaniesDropdowns() {
+            try {
+                const response = await fetch('/api/all-companies');
+                const data = await response.json();
+                const companies = data.companies || [];
+
+                // Populate all three dropdowns
+                ['company1', 'company2', 'company3'].forEach(id => {
+                    const select = document.getElementById(id);
+                    companies.forEach(company => {
+                        const option = document.createElement('option');
+                        option.value = company;
+                        option.textContent = company;
+                        select.appendChild(option);
+                    });
+                });
+            } catch (err) {
+                console.error('Error loading companies:', err);
+            }
+        }
+
+        // Load companies on page load
+        loadCompaniesDropdowns();
+
         async function updateComparison() {
             const c1 = document.getElementById("company1").value;
             const c2 = document.getElementById("company2").value;

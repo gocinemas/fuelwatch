@@ -242,24 +242,6 @@
                 <label>Company</label>
                 <select id="companyFilter" onchange="filterIdeas()">
                     <option value="">All Companies</option>
-                    <option value="Microsoft">Microsoft</option>
-                    <option value="Google">Google</option>
-                    <option value="Apple">Apple</option>
-                    <option value="Amazon">Amazon</option>
-                    <option value="Tesla">Tesla</option>
-                    <option value="Mars">Mars</option>
-                    <option value="Kellanov">Kellanov</option>
-                    <option value="Kraft Heinz">Kraft Heinz</option>
-                    <option value="Mondelēz">Mondelēz</option>
-                    <option value="PepsiCo">PepsiCo</option>
-                    <option value="Coca-Cola">Coca-Cola</option>
-                    <option value="Nestlé">Nestlé</option>
-                    <option value="Unilever">Unilever</option>
-                    <option value="Walmart">Walmart</option>
-                    <option value="Johnson & Johnson">Johnson & Johnson</option>
-                    <option value="JPMorgan Chase">JPMorgan Chase</option>
-                    <option value="ExxonMobil">ExxonMobil</option>
-                    <option value="Toyota">Toyota</option>
                 </select>
             </div>
 
@@ -278,11 +260,26 @@
 
     <script>
         let allIdeas = []; // This will be populated from API
+        let allCompanies = []; // Will be populated from database
 
         async function loadIdeas() {
             try {
+                // Fetch all companies dynamically from database
+                const response = await fetch('/api/all-companies');
+                const data = await response.json();
+                allCompanies = data.companies || [];
+
+                // Populate company filter dropdown
+                const companySelect = document.getElementById('companyFilter');
+                allCompanies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company;
+                    option.textContent = company;
+                    companySelect.appendChild(option);
+                });
+
                 // Fetch all companies and their AI opportunities
-                const companies = ["Microsoft", "Google", "Apple", "Amazon", "Tesla", "Toyota", "Mars", "Kellanov", "Kraft Heinz", "Mondelēz", "PepsiCo", "Coca-Cola", "Nestlé", "Unilever", "Walmart", "Johnson & Johnson", "JPMorgan Chase", "ExxonMobil"];
+                const companies = allCompanies;
 
                 for (const company of companies) {
                     const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`);

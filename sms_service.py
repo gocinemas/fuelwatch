@@ -44127,3 +44127,16 @@ def ideas_library():
 def compare_tool():
     """Compare company AI strategies side-by-side."""
     return render_template("compare.html")
+
+
+@app.route("/api/all-companies", methods=["GET"])
+def api_all_companies():
+    """Get list of all companies in database for dropdowns."""
+    try:
+        import library as lib
+        sb = lib._sb()
+        result = sb.table("company_profiles").select("company_name").execute()
+        companies = sorted([row["company_name"] for row in result.data])
+        return jsonify({"companies": companies})
+    except Exception as e:
+        return jsonify({"error": str(e), "companies": []}), 500
