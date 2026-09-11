@@ -2020,8 +2020,8 @@ def brand_search():
 @app.route("/company")
 @app.route("/company/")
 def company_intelligence():
-    """Company Intelligence — Search + Detailed Data + AI Opportunities (UNIFIED)"""
-    return render_template("intel_company.html")
+    """Company Intelligence — Premium AI Strategy Platform (UNIFIED)"""
+    return render_template("company_premium.html")
 
 
 @app.route("/brand/intelligence")

@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Intelligence — Premium AI Strategy</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0f766e;
+            --primary-light: #14b8a6;
+            --primary-dark: #0d5e57;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --border: #334155;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1f3a 100%);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ═══ HEADER ═══ */
+        .header {
+            margin-bottom: 40px;
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 14px 20px;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        .search-bar button {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .search-bar button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(20, 184, 166, 0.3);
+        }
+
+        /* ═══ COMPANY HEADER SECTION ═══ */
+        .company-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .company-info {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .company-title {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .company-title h1 {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .ticker {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .company-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .stat {
+            background: rgba(20, 184, 166, 0.05);
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-light);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-light);
+        }
+
+        .stock-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .stock-price {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stock-price h2 {
+            font-size: 28px;
+        }
+
+        .stock-change {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .stock-change.up {
+            color: var(--success);
+        }
+
+        .stock-change.down {
+            color: var(--danger);
+        }
+
+        .stock-momentum {
+            background: rgba(15, 118, 110, 0.1);
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid var(--primary);
+        }
+
+        /* ═══ GRID LAYOUT ═══ */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        /* ═══ CARDS ═══ */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-section {
+            margin-bottom: 24px;
+        }
+
+        .card-section:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ═══ BRANDS ═══ */
+        .brands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .brand-tag {
+            background: rgba(20, 184, 166, 0.1);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--primary-light);
+        }
+
+        /* ═══ DIVISIONS ═══ */
+        .division {
+            background: rgba(20, 184, 166, 0.05);
+            border-left: 4px solid var(--primary-light);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .division-name {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--primary-light);
+            margin-bottom: 8px;
+        }
+
+        .division-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+
+        .division-stat {
+            color: var(--text-secondary);
+        }
+
+        /* ═══ COMPETITORS ═══ */
+        .competitor-card {
+            background: rgba(15, 118, 110, 0.05);
+            border: 1px solid rgba(20, 184, 166, 0.2);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .competitor-name {
+            font-weight: 600;
+            color: var(--primary-light);
+            margin-bottom: 12px;
+        }
+
+        .advantage {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .advantage-label {
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        /* ═══ AI OPPORTUNITIES ═══ */
+        .ai-opp {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-left: 4px solid #a855f7;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .ai-opp-title {
+            font-weight: 600;
+            color: #c4b5fd;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .ai-opp-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .ai-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+        }
+
+        .metric {
+            background: rgba(168, 85, 247, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            color: #c4b5fd;
+            font-weight: 600;
+        }
+
+        /* ═══ HIRING TRENDS ═══ */
+        .hiring-item {
+            background: rgba(16, 185, 129, 0.05);
+            border-left: 4px solid var(--success);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .hiring-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .hiring-growth {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .hiring-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* ═══ LOADING & ERROR ═══ */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 768px) {
+            .grid-2, .company-header {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .company-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .ai-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Search Bar -->
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search companies... (Mars, Kellanov, Kraft, Cadbury, etc.)" />
+            <button onclick="searchCompany()">Search</button>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading" style="display: none;">
+            ⏳ Loading company intelligence...
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="error" style="display: none;"></div>
+
+        <!-- Company Data (Hidden by default) -->
+        <div id="companyData" style="display: none;">
+            <!-- Company Header -->
+            <div class="company-header">
+                <div class="company-info">
+                    <div class="company-title">
+                        <div>
+                            <h1 id="companyName"></h1>
+                            <p id="companyIndustry" style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;"></p>
+                        </div>
+                        <div class="ticker" id="tickerBadge"></div>
+                    </div>
+
+                    <p id="companyDescription" style="color: var(--text-secondary); margin-bottom: 20px; line-height: 1.6;"></p>
+
+                    <div class="company-stats">
+                        <div class="stat">
+                            <div class="stat-label">Revenue</div>
+                            <div class="stat-value" id="revenue">—</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Employees</div>
+                            <div class="stat-value" id="employees">—</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Founded</div>
+                            <div class="stat-value" id="founded">—</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">Headquarters</div>
+                        <div id="headquarters" style="font-size: 14px;"></div>
+                    </div>
+                </div>
+
+                <div class="stock-section">
+                    <div class="stock-price">
+                        <h2 id="stockPrice">N/A</h2>
+                        <div class="stock-change" id="stockChange"></div>
+                    </div>
+                    <div id="stockMomentum" class="stock-momentum" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Brands & Divisions -->
+            <div class="grid-2">
+                <div class="card">
+                    <h3>🏷️ Brands & Products</h3>
+                    <div id="brandsContainer" class="brands-grid"></div>
+                </div>
+
+                <div class="card">
+                    <h3>📊 Business Divisions</h3>
+                    <div id="divisionsContainer"></div>
+                </div>
+            </div>
+
+            <!-- Competitors & Focus -->
+            <div class="grid-2">
+                <div class="card">
+                    <h3>🏆 Competitive Position</h3>
+                    <div id="competitorsContainer"></div>
+                </div>
+
+                <div class="card">
+                    <h3>🎯 Strategic Focus</h3>
+                    <div id="focusContainer" style="color: var(--text-secondary); line-height: 1.8;"></div>
+                </div>
+            </div>
+
+            <!-- Hiring Trends -->
+            <div class="card" id="hiringCard" style="display: none;">
+                <h3>💼 Hiring Trends & Growth Areas</h3>
+                <div id="hiringContainer"></div>
+            </div>
+
+            <!-- AI Opportunities (Premium) -->
+            <div class="card" id="aiOppsCard" style="display: none;">
+                <h3>🚀 AI Opportunities & Strategic Ideas</h3>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">High-potential AI initiatives ranked by TAM × Success Probability</p>
+                <div id="aiOppsContainer"></div>
+            </div>
+
+            <!-- Additional Intelligence -->
+            <div class="grid-2">
+                <div class="card" id="talentCard" style="display: none;">
+                    <h3>👥 Talent & Retention</h3>
+                    <div id="talentContainer" style="color: var(--text-secondary); line-height: 1.8;"></div>
+                </div>
+
+                <div class="card" id="riskCard" style="display: none;">
+                    <h3>⚠️ Key Risks</h3>
+                    <div id="riskContainer" style="color: var(--text-secondary); line-height: 1.8;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty" class="empty" style="margin-top: 80px;">
+            <p style="font-size: 18px; margin-bottom: 12px;">🔍 Company Intelligence Search</p>
+            <p style="color: var(--text-secondary);">Search for Mars, Kellanov, Kraft, Cadbury, Microsoft, Google, Apple, Netflix and more<br/>to see real-time financial data, competitive positioning, hiring trends, and AI opportunities.</p>
+        </div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchCompany();
+        });
+
+        async function searchCompany() {
+            const company = searchInput.value.trim();
+            if (!company) return;
+
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const companyData = document.getElementById('companyData');
+            const empty = document.getElementById('empty');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            companyData.style.display = 'none';
+            empty.style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/company/intelligence?name=${encodeURIComponent(company)}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.name) {
+                    error.style.display = 'block';
+                    error.textContent = `❌ Company not found: "${company}"`;
+                    return;
+                }
+
+                displayCompanyData(data);
+                companyData.style.display = 'block';
+            } catch (err) {
+                error.style.display = 'block';
+                error.textContent = `⚠️ Error: ${err.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayCompanyData(data) {
+            // Basic Info
+            document.getElementById('companyName').textContent = data.name || '—';
+            document.getElementById('companyIndustry').textContent = data.industry || '—';
+            document.getElementById('companyDescription').textContent = data.description || '—';
+            document.getElementById('revenue').textContent = data.revenue_billions ? `$${data.revenue_billions}B` : '—';
+            document.getElementById('employees').textContent = data.employees ? data.employees.toLocaleString() : '—';
+            document.getElementById('founded').textContent = data.founded_year || '—';
+            document.getElementById('headquarters').textContent = data.hq ? `${data.hq.city}, ${data.hq.country}` : '—';
+
+            // Stock Info
+            if (data.is_public) {
+                document.getElementById('stockPrice').textContent = data.stock_price ? `$${data.stock_price}` : 'N/A';
+                if (data.stock_change_percent) {
+                    const change = parseFloat(data.stock_change_percent);
+                    const changeEl = document.getElementById('stockChange');
+                    changeEl.className = change >= 0 ? 'stock-change up' : 'stock-change down';
+                    changeEl.textContent = `${change > 0 ? '📈' : '📉'} ${Math.abs(change).toFixed(2)}% (1D)`;
+                }
+                if (data.stock_momentum) {
+                    const momentumEl = document.getElementById('stockMomentum');
+                    momentumEl.style.display = 'block';
+                    momentumEl.innerHTML = `<strong>📊 Momentum:</strong> ${data.stock_momentum}`;
+                }
+            } else {
+                document.getElementById('stockPrice').textContent = 'Private';
+                document.getElementById('stockChange').textContent = '🔒 Not Publicly Traded';
+                document.getElementById('tickerBadge').textContent = 'PRIVATE';
+            }
+
+            // Brands
+            const brandsEl = document.getElementById('brandsContainer');
+            brandsEl.innerHTML = '';
+            if (data.divisions && data.divisions.length > 0) {
+                const allBrands = data.divisions.flatMap(d => d.brands || []);
+                allBrands.forEach(brand => {
+                    const tag = document.createElement('div');
+                    tag.className = 'brand-tag';
+                    tag.textContent = brand;
+                    brandsEl.appendChild(tag);
+                });
+            }
+
+            // Divisions
+            const divisionsEl = document.getElementById('divisionsContainer');
+            divisionsEl.innerHTML = '';
+            if (data.divisions && data.divisions.length > 0) {
+                data.divisions.forEach(div => {
+                    const divEl = document.createElement('div');
+                    divEl.className = 'division';
+                    divEl.innerHTML = `
+                        <div class="division-name">${div.name}</div>
+                        <div class="division-stats">
+                            <div class="division-stat"><strong>Revenue:</strong> $${div.revenue_billions}B</div>
+                            <div class="division-stat"><strong>Growth:</strong> ${div.growth_rate}</div>
+                            <div class="division-stat"><strong>Position:</strong> ${div.market_position}</div>
+                        </div>
+                    `;
+                    divisionsEl.appendChild(divEl);
+                });
+            }
+
+            // Competitors
+            const competitorsEl = document.getElementById('competitorsContainer');
+            competitorsEl.innerHTML = '';
+            if (data.vs_competitors) {
+                Object.entries(data.vs_competitors).forEach(([key, comp]) => {
+                    const compName = key.replace('vs_', '').charAt(0).toUpperCase() + key.replace('vs_', '').slice(1);
+                    const compEl = document.createElement('div');
+                    compEl.className = 'competitor-card';
+                    compEl.innerHTML = `
+                        <div class="competitor-name">${compName}</div>
+                        <div class="advantage">
+                            <span class="advantage-label">✓ ${data.name}:</span> ${comp.mars_advantage || comp[Object.keys(comp)[2]]}
+                        </div>
+                        <div class="advantage">
+                            <span class="advantage-label">✓ ${compName}:</span> ${comp[Object.keys(comp)[3]] || 'Strong market position'}
+                        </div>
+                    `;
+                    competitorsEl.appendChild(compEl);
+                });
+            }
+
+            // Strategic Focus
+            document.getElementById('focusContainer').innerHTML = data.growth_drivers ?
+                data.growth_drivers.split(',').map(d => `• ${d.trim()}`).join('<br/>') :
+                '— No data available';
+
+            // Hiring Trends
+            const hiringCard = document.getElementById('hiringCard');
+            const hiringEl = document.getElementById('hiringContainer');
+            if (data.talent && data.talent.hiring_focus) {
+                hiringCard.style.display = 'block';
+                hiringEl.innerHTML = '';
+                data.talent.hiring_focus.forEach(item => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'hiring-item';
+                    itemEl.innerHTML = `
+                        <div class="hiring-title">
+                            <span>${item.focus_area || item}</span>
+                            ${item.growth ? `<span class="hiring-growth">+${item.growth}%</span>` : ''}
+                        </div>
+                        ${item.description ? `<div class="hiring-desc">${item.description}</div>` : ''}
+                    `;
+                    hiringEl.appendChild(itemEl);
+                });
+            }
+
+            // AI Opportunities
+            const aiCard = document.getElementById('aiOppsCard');
+            const aiEl = document.getElementById('aiOppsContainer');
+            if (data.ai_opportunities && data.ai_opportunities.pipeline_ideas && data.ai_opportunities.pipeline_ideas.length > 0) {
+                aiCard.style.display = 'block';
+                aiEl.innerHTML = '';
+                data.ai_opportunities.pipeline_ideas.forEach(idea => {
+                    const oppEl = document.createElement('div');
+                    oppEl.className = 'ai-opp';
+                    oppEl.innerHTML = `
+                        <div class="ai-opp-title">💡 ${idea.idea}</div>
+                        <div class="ai-opp-desc">${idea.description}</div>
+                        <div class="ai-metrics">
+                            <div class="metric">
+                                <div class="metric-label">TAM</div>
+                                <div class="metric-value">$${idea.opportunity_size_millions}M</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Success %</div>
+                                <div class="metric-value">${idea.probability_success}%</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Investment</div>
+                                <div class="metric-value">$${idea.investment_needed_millions}M</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Y3 ROI</div>
+                                <div class="metric-value">${idea.roi_year_3}%</div>
+                            </div>
+                        </div>
+                    `;
+                    aiEl.appendChild(oppEl);
+                });
+            }
+
+            // Talent & Retention
+            const talentCard = document.getElementById('talentCard');
+            if (data.talent && (data.talent.turnover_rate || data.talent.glassdoor_rating)) {
+                talentCard.style.display = 'block';
+                const talentEl = document.getElementById('talentContainer');
+                talentEl.innerHTML = `
+                    ${data.talent.turnover_rate ? `<div>📊 <strong>Turnover Rate:</strong> ${data.talent.turnover_rate}</div>` : ''}
+                    ${data.talent.glassdoor_rating ? `<div>⭐ <strong>Glassdoor Rating:</strong> ${data.talent.glassdoor_rating}</div>` : ''}
+                    ${data.talent.retention_initiatives ? `<div>✓ <strong>Retention Focus:</strong> ${data.talent.retention_initiatives}</div>` : ''}
+                `;
+            }
+
+            // Risks
+            const riskCard = document.getElementById('riskCard');
+            if (data.risks) {
+                riskCard.style.display = 'block';
+                const riskEl = document.getElementById('riskContainer');
+                riskEl.innerHTML = data.risks.split(',').map(r => `• ${r.trim()}`).join('<br/>');
+            }
+        }
+    </script>
+</body>
+</html>
