@@ -95,6 +95,7 @@ app.add_url_rule(
 from idea_analyzer import generate_report
 
 @app.route("/idea")
+@app.route("/idea/")
 def idea_landing():
     """Serve the FrameWork idea validator landing page."""
     app.logger.info("[idea] Route hit successfully")
