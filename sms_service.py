@@ -17205,10 +17205,10 @@ def api_home_brief():
             # This removes unnecessary Places API calls
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
-        # Wait up to 8s for ALL futures collectively (not 8s each), then take whatever finished
+        # Wait up to 15s for ALL futures collectively (not 15s each), then take whatever finished
         import time as _timing
         _start_wait = _timing.time()
-        _done, _pending = _cf.wait(futures.values(), timeout=8)
+        _done, _pending = _cf.wait(futures.values(), timeout=15)
         _wait_time = _timing.time() - _start_wait
         app.logger.warning(f"[brief-profile] Waited {_wait_time:.2f}s. Done: {len(_done)}, Pending: {len(_pending)}")
         for k, f in futures.items():
