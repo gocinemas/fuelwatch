@@ -17,8 +17,8 @@ CLIENT_SECRET = "kfUxvLNVTIZay6LnTeHSTXrMNd4E5yhqkRcIW93NDsb9CecdSJhAsl0O2PVB5JV
 REFRESH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJraW5kIjoicHVibGljIiwiY2xpZW50X2lkIjoiMlZMZjI4ZkxGd1pyTkJKcHdMalluYUhNMnZSQmhUMXAiLCJpbmZvX3JlY2lwaWVudF9pZCI6ImNhZGY1MDYxLWRkYzAtNDZlMC04NDIxLTE1MjRlZTQyYzc3ZiIsInRva2VuX3VzZSI6InJlZnJlc2giLCJzdWIiOiIyVkxmMjhmTEZ3WnJOQkpwd0xqWW5hSE0ydlJCaFQxcCIsImF1ZCI6Im9hdXRoIiwiaWF0IjoxNzg2MDMwMTgyLCJleHAiOjE3ODYyMDI5ODJ9.VZK_XW6BRDoW2mqsqV2nKEJx-Y-X0DoKau2RmJl3PQw"
 
 # Supabase
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://xyzabc.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_9aLorWl9R3jKAItspJstXQ_Fb47gOat")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://uqwidlptkgmbxgaivafi.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 
 
 def get_fresh_access_token() -> Optional[str]:
@@ -166,8 +166,8 @@ def upload_to_supabase(fuel_data: dict) -> bool:
             "updated_at": datetime.utcnow().isoformat()
         }
 
-        resp = requests.post(
-            f"{SUPABASE_URL}/rest/v1/fuel_prices_cache",
+        resp = requests.patch(
+            f"{SUPABASE_URL}/rest/v1/fuel_prices_cache?id=eq.current",
             headers={
                 "apikey": SUPABASE_KEY,
                 "Authorization": f"Bearer {SUPABASE_KEY}",

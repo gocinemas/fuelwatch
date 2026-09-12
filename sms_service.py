@@ -16723,10 +16723,12 @@ def _build_super_smart_brief(ctx, prefs, hour, dow, school_holiday, loc_ctx, wea
             priority_score["active_trip"] = 100
 
         # === SCHOOL INTELLIGENCE (kids matter most!) ===
+        # Skip school content on weekends (Saturday/Sunday) unless holiday alert
+        is_weekend = dow in ("Saturday", "Sunday")
         if school_holiday:
             insights.append("🏫 School holidays")
             priority_score["school"] = 40
-        else:
+        elif not is_weekend:
             school = ctx.get("school", {})
             events = school.get("events", [])
             if events:
