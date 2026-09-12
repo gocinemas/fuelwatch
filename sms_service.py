@@ -17058,8 +17058,9 @@ def api_home_brief():
         def _run_preflight():
             nonlocal prefs, _loc_profile, _active_trip_early
             try:
-                rows = lib._sb().table("ma_details").select("data") \
-                    .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+                all_rows = lib._sb().table("ma_details").select("data") \
+                    .eq("type", "v2_prefs").execute().data or []
+                rows = [r for r in all_rows if r.get("device_id") == from_number]
                 prefs = rows[0]["data"] if rows else {}
             except Exception: pass
             try:
