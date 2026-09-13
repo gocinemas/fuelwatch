@@ -1162,8 +1162,9 @@ def _get_wa_home_postcode(from_number: str):
     # Fallback: identity postcode stored in v2_prefs
     try:
         for did in [plain, wa]:
-            prows = lib._sb().table("ma_details").select("data") \
-                .eq("device_id", did).eq("type", "v2_prefs").limit(1).execute().data or []
+            all_prows = lib._sb().table("ma_details").select("device_id,data,type") \
+                .eq("type", "v2_prefs").execute().data or []
+            prows = [r for r in all_prows if r.get("device_id") == did]
             if prows:
                 prefs = prows[0].get("data") or {}
                 pc = prefs.get("fuel_postcode") or prefs.get("home_postcode") or ""
@@ -1179,7 +1180,9 @@ def _set_wa_pending_intent(from_number: str, intent: dict):
     plain = from_number.replace("whatsapp:", "").strip()
     try:
         sb = lib._sb()
-        sb.table("wa_saves").delete().eq("from_number", plain).eq("status", "pending_intent").execute()
+        _all_pending = sb.table("wa_saves").select("id,from_number").eq("status", "pending_intent").execute().data or []
+        for _pend in [r for r in _all_pending if r.get("from_number") == plain]:
+            sb.table("wa_saves").delete().eq("id", _pend["id"]).execute()
         if intent:
             sb.table("wa_saves").insert({
                 "from_number": plain,
@@ -1231,9 +1234,10 @@ def _clear_wa_pending_intent(from_number: str):
 def _get_frequent_places(from_number: str) -> dict:
     plain = from_number.replace("whatsapp:", "").strip()
     try:
-        row = lib._sb().table("ma_details").select("data").eq("device_id", plain).eq("type", "frequent_places").maybe_single().execute()
-        if row.data:
-            d = row.data.get("data") or {}
+        all_rows = lib._sb().table("ma_details").select("device_id,data,type").eq("type", "frequent_places").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == plain]
+        if rows:
+            d = rows[0].get("data") or {}
             return d if isinstance(d, dict) else {}
     except Exception:
         pass
@@ -1590,7 +1594,8 @@ def _get_cached_ask_miru_context(from_number: str) -> str:
     try:
         if not from_number:
             return ""
-        rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number).eq("type", "ask_miru_context").limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("device_id,data,type").eq("type", "ask_miru_context").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         if rows and rows[0].get("data", {}).get("context"):
             return rows[0]["data"]["context"]
     except Exception:
@@ -9806,7 +9811,9 @@ def api_myarea_home_postcode_post():
         record = {"name": "__home__", "category": "_home", "postcode": postcode, "emoji": "📍",
                   "device_id": key}
         if from_number:
-            sb.table("my_area_places").delete().eq("from_number", from_number).eq("category", "_home").execute()
+            _all_home_rows = sb.table("my_area_places").select("id,from_number").eq("category", "_home").execute().data or []
+            for _home_row in [r for r in _all_home_rows if r.get("from_number") == from_number]:
+                sb.table("my_area_places").delete().eq("id", _home_row["id"]).execute()
             record["from_number"] = from_number
         else:
             sb.table("my_area_places").delete().eq("device_id", token).eq("category", "_home").execute()
@@ -12679,8 +12686,9 @@ def api_v2_prefs_post():
         _hlat = _hlng = None
         # Prefer stored home location anchor (more precise than postcode centroid)
         try:
-            _lp = lib._sb().table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+            _all_lp = lib._sb().table("ma_details").select("device_id,data,type") \
+                .eq("type", "location_profile").execute().data or []
+            _lp = [r for r in _all_lp if r.get("device_id") == from_number]
             _home_anchor = (_lp[0].get("data") or {}).get("home", {}) if _lp else {}
             _hlat = _home_anchor.get("lat")
             _hlng = _home_anchor.get("lng")
@@ -12835,8 +12843,9 @@ def api_v2_recurring_get():
     if not from_number:
         return jsonify({"activities": [], "error": "token required"}), 401
     try:
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "recurring_activities").limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("device_id,data,type") \
+            .eq("type", "recurring_activities").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         activities = (rows[0]["data"] if rows else []) or []
         activities.sort(key=lambda a: (a.get("weekday", 7), a.get("time", "")))
         app.logger.info(f"[recurring] Found {len(activities)} activities for {from_number}")
@@ -12914,8 +12923,9 @@ def api_v2_recurring_delete():
         return jsonify({"error": "weekday and activity required"}), 400
     try:
         sb = lib._sb()
-        rows = sb.table("ma_details").select("id,data") \
-            .eq("device_id", from_number).eq("type", "recurring_activities").limit(1).execute().data or []
+        all_rows = sb.table("ma_details").select("id,device_id,data,type") \
+            .eq("type", "recurring_activities").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         if not rows:
             return jsonify({"ok": True})
         activities = list(rows[0].get("data") or [])
@@ -12944,8 +12954,9 @@ def api_v2_recurring_all_year():
         return jsonify({"error": "weekday and activity required"}), 400
     try:
         sb = lib._sb()
-        rows = sb.table("ma_details").select("id,data") \
-            .eq("device_id", from_number).eq("type", "recurring_activities").limit(1).execute().data or []
+        all_rows = sb.table("ma_details").select("id,device_id,data,type") \
+            .eq("type", "recurring_activities").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         if not rows:
             return jsonify({"ok": True})
         activities = list(rows[0].get("data") or [])
@@ -13185,8 +13196,9 @@ def api_v2_location_profile_get():
     if not from_number:
         return jsonify({"profile": {}, "has_profile": False})
     try:
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("device_id,data,type") \
+            .eq("type", "location_profile").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         profile = rows[0]["data"] if rows else {}
         return jsonify({"profile": profile, "has_profile": bool(profile)})
     except Exception as e:
@@ -13209,8 +13221,9 @@ def api_v2_location_profile_post():
         return jsonify({"error": "anchor must be object or null"}), 400
     try:
         sb = lib._sb()
-        rows = sb.table("ma_details").select("id,data") \
-            .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+        all_rows = sb.table("ma_details").select("id,device_id,data,type") \
+            .eq("type", "location_profile").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         if rows:
             profile = rows[0].get("data") or {}
             if anchor is None:
@@ -13244,8 +13257,9 @@ def api_v2_classify_location():
     except (TypeError, ValueError):
         return jsonify({"context": "unknown"})
     try:
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("device_id,data,type") \
+            .eq("type", "location_profile").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         profile = rows[0]["data"] if rows else {}
         result = _classify_location(lat, lng, profile)
         return jsonify(result)
@@ -13316,8 +13330,9 @@ def _v2_log_location_signal(from_number: str, lat: float, lng: float):
     import datetime as _dt
     try:
         sb = lib._sb()
-        rows = sb.table("ma_details").select("id,data") \
-            .eq("device_id", from_number).eq("type", "location_signals").limit(1).execute().data or []
+        all_rows = sb.table("ma_details").select("id,device_id,data,type") \
+            .eq("type", "location_signals").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         now_ts = _dt.datetime.utcnow().isoformat()
         new_ping = {"lat": round(lat, 5), "lng": round(lng, 5), "ts": now_ts}
         if rows:
@@ -13341,8 +13356,9 @@ def _v2_check_auto_learn(from_number: str) -> dict | None:
     """Return a candidate home location if 3+ evening pings cluster within 200m. Else None."""
     try:
         sb = lib._sb()
-        rows = sb.table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "location_signals").limit(1).execute().data or []
+        all_rows = sb.table("ma_details").select("device_id,data,type") \
+            .eq("type", "location_signals").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         if not rows:
             return None
         pings = (rows[0].get("data") or {}).get("pings", [])
@@ -13947,8 +13963,9 @@ def _v2_fetch_postcode_change_date(from_number: str, postcode: str) -> str | Non
     try:
         from datetime import date as _pcd
         today_iso = _pcd.today().isoformat()
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "v2_postcode_track").limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("id,device_id,data,type") \
+            .eq("type", "v2_postcode_track").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         if not rows:
             try:
                 lib._sb().table("ma_details").insert({
@@ -13966,7 +13983,7 @@ def _v2_fetch_postcode_change_date(from_number: str, postcode: str) -> str | Non
             try:
                 lib._sb().table("ma_details").update({
                     "data": {"postcode": postcode, "changed_at": today_iso}
-                }).eq("device_id", from_number).eq("type", "v2_postcode_track").execute()
+                }).eq("id", rows[0]["id"]).execute()
             except Exception:
                 pass
         return changed_at
@@ -16144,9 +16161,10 @@ def api_brief_location():
             sb = lib._sb()
             # Spend in this category this month
             if spend_cat:
-                rows = sb.table("wa_saves").select("title,amount") \
-                    .eq("from_number", from_number).eq("category", spend_cat) \
+                _all_cat_rows = sb.table("wa_saves").select("from_number,title,amount") \
+                    .eq("category", spend_cat) \
                     .gte("created_at", since).execute().data or []
+                rows = [r for r in _all_cat_rows if r.get("from_number") == from_number]
                 amounts = [float(r.get("amount") or 0) for r in rows if r.get("amount")]
                 if amounts:
                     venue["spend_this_month"] = round(sum(amounts), 2)
@@ -16158,9 +16176,10 @@ def api_brief_location():
                 .ilike("title", f"%{venue['name'].split()[0]}%") \
                 .limit(3).execute().data or []
             if not place_rows and spend_cat:
-                place_rows = sb.table("wa_saves").select("title,summary,url") \
-                    .eq("from_number", from_number).eq("category", spend_cat) \
-                    .order("created_at", desc=True).limit(3).execute().data or []
+                _all_place_rows = sb.table("wa_saves").select("from_number,title,summary,url") \
+                    .eq("category", spend_cat) \
+                    .order("created_at", desc=True).execute().data or []
+                place_rows = [r for r in _all_place_rows if r.get("from_number") == from_number][:3]
             venue["saves"] = [{"title": r.get("title", ""), "url": r.get("url", "")} for r in place_rows]
         except Exception:
             pass
@@ -16387,7 +16406,8 @@ def api_v2_personal_events():
             deleted = len(evs) < len(_v2_fetch_personal_events(from_number))
 
         if deleted:
-            _rows = lib._sb().table("ma_details").select("id").eq("device_id", from_number).eq("type","personal_events").limit(1).execute().data
+            _all_rows = lib._sb().table("ma_details").select("id,device_id").eq("type","personal_events").execute().data or []
+            _rows = [r for r in _all_rows if r.get("device_id") == from_number]
             if _rows:
                 lib._sb().table("ma_details").update({"data": evs}).eq("id", _rows[0]["id"]).execute()
         return jsonify({"ok": True})
@@ -16416,7 +16436,8 @@ def api_v2_personal_events():
     if ev_location:
         ev_obj["location"] = ev_location
     evs.append(ev_obj)
-    rows = lib._sb().table("ma_details").select("id").eq("device_id", from_number).eq("type","personal_events").limit(1).execute().data
+    all_rows = lib._sb().table("ma_details").select("id,device_id").eq("type","personal_events").execute().data or []
+    rows = [r for r in all_rows if r.get("device_id") == from_number]
     if rows:
         lib._sb().table("ma_details").update({"data": evs}).eq("id", rows[0]["id"]).execute()
     else:
@@ -16493,8 +16514,9 @@ def api_v2_learn_patterns():
                 continue
 
             # Load existing prefs to merge
-            _pref_rows = lib._sb().table("ma_details").select("id,data") \
-                .eq("device_id", phone).eq("type", "v2_prefs").limit(1).execute().data or []
+            _all_pref_rows = lib._sb().table("ma_details").select("id,device_id,data") \
+                .eq("type", "v2_prefs").execute().data or []
+            _pref_rows = [r for r in _all_pref_rows if r.get("device_id") == phone]
             _prefs = _pref_rows[0]["data"] if _pref_rows else {}
             _changed = False
 
@@ -17064,8 +17086,9 @@ def api_home_brief():
                 prefs = rows[0]["data"] if rows else {}
             except Exception: pass
             try:
-                _lp = lib._sb().table("ma_details").select("data") \
-                    .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+                _all_lp = lib._sb().table("ma_details").select("device_id,data") \
+                    .eq("type", "location_profile").execute().data or []
+                _lp = [r for r in _all_lp if r.get("device_id") == from_number]
                 _loc_profile = _lp[0]["data"] if _lp else {}
             except Exception: pass
             # Also try loading user_commutes for traffic
@@ -17293,8 +17316,9 @@ def api_home_brief():
         # Also fetch manual birthday list from DB
         if from_number:
             try:
-                _bd_rows = lib._sb().table("ma_details").select("data") \
-                    .eq("device_id", from_number).eq("type", "birthdays").limit(1).execute().data or []
+                _all_bd_rows = lib._sb().table("ma_details").select("device_id,data") \
+                    .eq("type", "birthdays").execute().data or []
+                _bd_rows = [r for r in _all_bd_rows if r.get("device_id") == from_number]
                 _manual_bds = _bd_rows[0]["data"] if _bd_rows else []
                 for _mbd in _manual_bds:
                     _name = (_mbd.get("name") or "").strip()
@@ -17927,9 +17951,10 @@ def api_home_brief():
     # Highlight resuming activities only if resuming TODAY or TOMORROW (not every day)
     try:
         from datetime import date as _rwd
-        _all_rec_rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "recurring_activities") \
-            .limit(1).execute().data or [] if from_number else []
+        _all_rec_rows_raw = lib._sb().table("ma_details").select("device_id,data") \
+            .eq("type", "recurring_activities") \
+            .execute().data or [] if from_number else []
+        _all_rec_rows = [r for r in _all_rec_rows_raw if r.get("device_id") == from_number]
         _all_acts = (_all_rec_rows[0]["data"] if _all_rec_rows else []) or []
         _today_wday = now.weekday()
         for _pa in _all_acts:
@@ -19221,7 +19246,10 @@ def api_active_trip_dismiss():
     if not phone:
         return jsonify({"error": "phone required"}), 400
     try:
-        lib._sb().table("ma_details").delete().eq("device_id", phone).eq("type", "active_trip").execute()
+        _all_at_rows = lib._sb().table("ma_details").select("id,device_id").eq("type", "active_trip").execute().data or []
+        _at_ids = [r["id"] for r in _all_at_rows if r.get("device_id") == phone]
+        for _at_id in _at_ids:
+            lib._sb().table("ma_details").delete().eq("id", _at_id).execute()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -20232,9 +20260,10 @@ def api_home_ask():
         _all_recurring = []
         if from_number:
             try:
-                _rec_rows = lib._sb().table("ma_details").select("data") \
-                    .eq("device_id", from_number).eq("type", "recurring_activities") \
-                    .limit(1).execute().data or []
+                _all_rec_rows2 = lib._sb().table("ma_details").select("device_id,data") \
+                    .eq("type", "recurring_activities") \
+                    .execute().data or []
+                _rec_rows = [r for r in _all_rec_rows2 if r.get("device_id") == from_number]
                 _all_recurring = (_rec_rows[0]["data"] if _rec_rows else []) or []
                 _all_recurring.sort(key=lambda a: (a.get("weekday", 7), a.get("time", "")))
             except Exception:
@@ -20342,9 +20371,10 @@ def api_home_ask():
 
             # ── User prefs (train route, fuel postcode, bin day) ──────────────
             try:
-                _prows = lib._sb().table("ma_details").select("data") \
-                    .eq("device_id", from_number).eq("type", "v2_prefs") \
-                    .limit(1).execute().data or []
+                _all_prows = lib._sb().table("ma_details").select("device_id,data") \
+                    .eq("type", "v2_prefs") \
+                    .execute().data or []
+                _prows = [r for r in _all_prows if r.get("device_id") == from_number]
                 _prefs = (_prows[0]["data"] if _prows else {}) or {}
                 if _prefs.get("train_from") or _prefs.get("train_to"):
                     ctx_lines.append(
@@ -20415,9 +20445,10 @@ def api_home_ask():
 
             # ── Frequent / saved places (home, work, school) ──────────────────
             try:
-                _fp_rows = lib._sb().table("ma_details").select("data") \
-                    .eq("device_id", from_number).eq("type", "frequent_places") \
-                    .limit(1).execute().data or []
+                _all_fp_rows = lib._sb().table("ma_details").select("device_id,data") \
+                    .eq("type", "frequent_places") \
+                    .execute().data or []
+                _fp_rows = [r for r in _all_fp_rows if r.get("device_id") == from_number]
                 _fp = (_fp_rows[0]["data"] if _fp_rows else {}) or {}
                 for _label, _place in _fp.items():
                     if isinstance(_place, dict) and _place.get("name"):
@@ -20429,9 +20460,10 @@ def api_home_ask():
 
             # ── Location profile (home/work addresses) ────────────────────────
             try:
-                _lp_rows = lib._sb().table("ma_details").select("data") \
-                    .eq("device_id", from_number).eq("type", "location_profile") \
-                    .limit(1).execute().data or []
+                _all_lp_rows = lib._sb().table("ma_details").select("device_id,data") \
+                    .eq("type", "location_profile") \
+                    .execute().data or []
+                _lp_rows = [r for r in _all_lp_rows if r.get("device_id") == from_number]
                 _lp = (_lp_rows[0]["data"] if _lp_rows else {}) or {}
                 if _lp.get("home_postcode"):
                     ctx_lines.append(f"Home postcode: {_lp['home_postcode']}")
@@ -21308,9 +21340,10 @@ def api_tgtg_check_all():
         lat, lon = row.get("lat"), row.get("lon")
         if not lat or not lon:
             # Try to get from home postcode
-            pc = sb.table("my_area_places").select("postcode").eq("from_number", phone).eq("category", "_home").maybe_single().execute()
-            if pc and pc.data:
-                ll = postcode_to_latlon(pc.data["postcode"])
+            _all_home_pc = sb.table("my_area_places").select("from_number,postcode").eq("category", "_home").execute().data or []
+            _pc_rows = [r for r in _all_home_pc if r.get("from_number") == phone]
+            if _pc_rows:
+                ll = postcode_to_latlon(_pc_rows[0]["postcode"])
                 if ll and ll[0]:
                     lat, lon = ll
                     sb.table("tgtg_accounts").update({"lat": lat, "lon": lon}).eq("phone", phone).execute()
@@ -23844,9 +23877,10 @@ def api_finder_save_trade():
     device_id = device_id.replace("whatsapp:", "").strip()
 
     try:
-        rows = lib._sb().table("ma_details").select("id,data") \
-            .eq("device_id", device_id).eq("type", "trusted_trades") \
-            .limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("id,device_id,data") \
+            .eq("type", "trusted_trades") \
+            .execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == device_id]
         trades = (rows[0]["data"] if rows else {}) or {}
         row_id = rows[0]["id"] if rows else None
 
@@ -23877,9 +23911,10 @@ def api_finder_trusted_trades():
         return jsonify({"trades": {}})
     device_id = (_v2_resolve(token) or token).replace("whatsapp:", "").strip()
     try:
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", device_id).eq("type", "trusted_trades") \
-            .limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("device_id,data") \
+            .eq("type", "trusted_trades") \
+            .execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == device_id]
         trades = (rows[0]["data"] if rows else {}) or {}
         return jsonify({"trades": trades})
     except Exception:
@@ -24538,12 +24573,14 @@ def _get_smart_book_context(from_number: str) -> tuple:
     """
     try:
         device_id = from_number.replace("whatsapp:", "").strip()
-        result = lib._sb().table("ma_details").select("data").eq("device_id", device_id).eq("type", "book_scan_state").order("id", desc=True).limit(1).execute()
+        all_result = lib._sb().table("ma_details").select("id,device_id,data").eq("type", "book_scan_state").execute()
+        rows = [r for r in (all_result.data or []) if r.get("device_id") == device_id]
+        rows.sort(key=lambda r: r.get("id", 0), reverse=True)
 
-        if not result.data:
+        if not rows:
             return (None, None, None)  # First time
 
-        state = result.data[0].get("data", {})
+        state = rows[0].get("data", {})
         last_book = state.get("book_name", "")
         last_scan_str = state.get("last_scan_date", "")
 
@@ -24578,7 +24615,7 @@ def _save_book_scan_state(from_number: str, book_name: str):
                 "book_name": book_name,
                 "last_scan_date": datetime.utcnow().isoformat()
             }
-        }).eq("device_id", device_id).eq("type", "book_scan_state").execute()
+        }).execute()
         app.logger.info(f"[book_state] saved: {book_name}")
     except Exception as e:
         app.logger.error(f"[book_state] save failed: {e}")
@@ -25614,12 +25651,14 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             # Auto-dismiss active_trip if receipt merchant matches destination
             try:
                 _plain = fn.replace("whatsapp:", "").strip()
-                _at_chk = lib._sb().table("ma_details").select("data").eq("device_id", _plain).eq("type", "active_trip").order("id", desc=True).limit(1).execute()
-                if _at_chk.data:
-                    _at_dest = (_at_chk.data[0].get("data") or {}).get("destination", "").lower()
+                _all_at_chk = lib._sb().table("ma_details").select("id,device_id,data").eq("type", "active_trip").execute()
+                _at_rows = [r for r in (_all_at_chk.data or []) if r.get("device_id") == _plain]
+                _at_rows.sort(key=lambda r: r.get("id", 0), reverse=True)
+                if _at_rows:
+                    _at_dest = (_at_rows[0].get("data") or {}).get("destination", "").lower()
                     _merch_l = _r_merchant.lower()
                     if _at_dest and (_merch_l in _at_dest or _at_dest.split()[0] in _merch_l):
-                        lib._sb().table("ma_details").delete().eq("device_id", _plain).eq("type", "active_trip").execute()
+                        lib._sb().table("ma_details").delete().eq("id", _at_rows[0]["id"]).execute()
             except Exception:
                 pass
             return
@@ -26425,8 +26464,9 @@ def _wa_send_proactive(to: str, body: str) -> None:
 def _wa_load_thread(from_number: str) -> list:
     """Return last 3 exchanges (6 messages) from ma_details type=wa_thread."""
     try:
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "wa_thread").limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("device_id,data") \
+            .eq("type", "wa_thread").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         return (rows[0].get("data") or {}).get("messages", []) if rows else []
     except Exception:
         return []
@@ -26436,8 +26476,9 @@ def _wa_save_thread(from_number: str, user_msg: str, bot_reply: str) -> None:
     """Append exchange to wa_thread, keep last 6 messages (3 exchanges)."""
     try:
         sb = lib._sb()
-        rows = sb.table("ma_details").select("id,data") \
-            .eq("device_id", from_number).eq("type", "wa_thread").limit(1).execute().data or []
+        all_rows = sb.table("ma_details").select("id,device_id,data") \
+            .eq("type", "wa_thread").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         msgs = (rows[0].get("data") or {}).get("messages", []) if rows else []
         msgs.append({"role": "user",      "content": user_msg[:300]})
         msgs.append({"role": "assistant", "content": bot_reply[:500]})
@@ -26498,8 +26539,9 @@ def _wa_general_chat(from_number: str, body: str, thread: list) -> str:
         # Fallback: basic context only
         print(f"[ask-miru] Hub fetch failed: {e}")
         try:
-            rows = lib._sb().table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            all_rows = lib._sb().table("ma_details").select("device_id,data") \
+                .eq("type", "v2_prefs").execute().data or []
+            rows = [r for r in all_rows if r.get("device_id") == from_number]
             prefs = rows[0]["data"] if rows else {}
             if prefs.get("fuel_postcode"):
                 ctx_parts.append(f"User lives near {prefs['fuel_postcode']}, UK.")
@@ -27918,7 +27960,9 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             }
             try:
                 _tp = from_number.replace("whatsapp:", "").strip()
-                lib._sb().table("ma_details").delete().eq("device_id", _tp).eq("type", "active_trip").execute()
+                _all_old_trips = lib._sb().table("ma_details").select("id,device_id").eq("type", "active_trip").execute().data or []
+                for _old_trip in [r for r in _all_old_trips if r.get("device_id") == _tp]:
+                    lib._sb().table("ma_details").delete().eq("id", _old_trip["id"]).execute()
                 lib._sb().table("ma_details").insert({"device_id": _tp, "type": "active_trip", "data": _trip, "label": "active_trip"}).execute()
             except Exception as _te:
                 app.logger.warning(f"[active_trip] store error: {_te}")
@@ -27972,8 +28016,9 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
     # Get user’s home postcode
     origin = None
     try:
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        all_rows = lib._sb().table("ma_details").select("device_id,data") \
+            .eq("type", "v2_prefs").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == from_number]
         prefs = rows[0]["data"] if rows else {}
         origin = prefs.get("fuel_postcode") or prefs.get("home_postcode")
     except Exception:
@@ -29252,8 +29297,9 @@ def _whatsapp_reply_inner():
     if body_lower in ("stop brief", "pause brief", "stop morning brief", "no brief"):
         try:
             _sb2 = lib._sb()
-            _br2 = _sb2.table("ma_details").select("id,data") \
-                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            _all_br2 = _sb2.table("ma_details").select("id,device_id,data") \
+                .eq("type", "v2_prefs").execute().data or []
+            _br2 = [r for r in _all_br2 if r.get("device_id") == from_number]
             if _br2:
                 _bd2 = {**(_br2[0].get("data") or {}), "brief_paused": True}
                 _sb2.table("ma_details").update({"data": _bd2}).eq("id", _br2[0]["id"]).execute()
@@ -29264,8 +29310,9 @@ def _whatsapp_reply_inner():
     if body_lower in ("start brief", "resume brief", "start morning brief"):
         try:
             _sb3 = lib._sb()
-            _br3 = _sb3.table("ma_details").select("id,data") \
-                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            _all_br3 = _sb3.table("ma_details").select("id,device_id,data") \
+                .eq("type", "v2_prefs").execute().data or []
+            _br3 = [r for r in _all_br3 if r.get("device_id") == from_number]
             if _br3:
                 _bd3 = {**(_br3[0].get("data") or {}), "brief_paused": False}
                 _sb3.table("ma_details").update({"data": _bd3}).eq("id", _br3[0]["id"]).execute()
@@ -29627,9 +29674,10 @@ def _whatsapp_reply_inner():
             r = row.data
             lat, lon = r.get("lat"), r.get("lon")
             if not lat:
-                pc = lib._sb().table("my_area_places").select("postcode").eq("from_number", from_number).eq("category", "_home").maybe_single().execute()
-                if pc and pc.data:
-                    ll = postcode_to_latlon(pc.data["postcode"])
+                _all_home_pc2 = lib._sb().table("my_area_places").select("from_number,postcode").eq("category", "_home").execute().data or []
+                _pc_rows2 = [r for r in _all_home_pc2 if r.get("from_number") == from_number]
+                if _pc_rows2:
+                    ll = postcode_to_latlon(_pc_rows2[0]["postcode"])
                     if ll and ll[0]: lat, lon = ll
             if not lat:
                 resp.message("I need your home postcode first. Reply with your postcode.")
@@ -29707,7 +29755,9 @@ def _whatsapp_reply_inner():
                 try:
                     sb = lib._sb()
                     plain = from_number.replace("whatsapp:", "").strip()
-                    sb.table("my_area_places").delete().eq("from_number", plain).eq("category", "_home").execute()
+                    _all_home_del = sb.table("my_area_places").select("id,from_number").eq("category", "_home").execute().data or []
+                    for _home_del in [r for r in _all_home_del if r.get("from_number") == plain]:
+                        sb.table("my_area_places").delete().eq("id", _home_del["id"]).execute()
                     sb.table("my_area_places").insert({
                         "name": "__home__", "category": "_home",
                         "postcode": _pc_val.replace(" ", ""),
@@ -32823,8 +32873,9 @@ def api_birthdays():
     if request.method == "GET":
         # Fetch saved birthdays
         try:
-            rows = lib._sb().table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "birthdays").limit(1).execute().data or []
+            all_rows = lib._sb().table("ma_details").select("device_id,data") \
+                .eq("type", "birthdays").execute().data or []
+            rows = [r for r in all_rows if r.get("device_id") == from_number]
             birthdays = rows[0]["data"] if rows else []
             return _cors(jsonify({"birthdays": birthdays}))
         except Exception as e:
@@ -32843,12 +32894,13 @@ def api_birthdays():
                     return _cors(jsonify({"error": "each birthday needs name + date (YYYY-MM-DD)"})), 400
 
             # Save or update
-            existing = lib._sb().table("ma_details").select("id") \
-                .eq("device_id", from_number).eq("type", "birthdays").limit(1).execute().data or []
+            all_existing = lib._sb().table("ma_details").select("id,device_id") \
+                .eq("type", "birthdays").execute().data or []
+            existing = [r for r in all_existing if r.get("device_id") == from_number]
 
             if existing:
                 lib._sb().table("ma_details").update({"data": birthdays}) \
-                    .eq("device_id", from_number).eq("type", "birthdays").execute()
+                    .eq("id", existing[0]["id"]).execute()
             else:
                 lib._sb().table("ma_details").insert({
                     "device_id": from_number,
@@ -34202,17 +34254,11 @@ def api_home_week_full():
         # Also fetch manual events from ma_details (Add Event button)
         manual_events_week = []
         try:
-            # Try both with and without whatsapp: prefix
-            ma_details_rows = sb.table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "personal_events").execute().data or []
-            if not ma_details_rows and not from_number.startswith("whatsapp:"):
-                # Try with whatsapp: prefix
-                ma_details_rows = sb.table("ma_details").select("data") \
-                    .eq("device_id", f"whatsapp:{from_number}").eq("type", "personal_events").execute().data or []
-            elif not ma_details_rows and from_number.startswith("whatsapp:"):
-                # Try without whatsapp: prefix
-                ma_details_rows = sb.table("ma_details").select("data") \
-                    .eq("device_id", from_number.replace("whatsapp:", "")).eq("type", "personal_events").execute().data or []
+            # Single fetch by type; match device_id in Python against both with/without whatsapp: prefix
+            _all_pe_rows = sb.table("ma_details").select("device_id,data") \
+                .eq("type", "personal_events").execute().data or []
+            _pe_candidates = {from_number, f"whatsapp:{from_number}", from_number.replace("whatsapp:", "")}
+            ma_details_rows = [r for r in _all_pe_rows if r.get("device_id") in _pe_candidates]
 
             if ma_details_rows and ma_details_rows[0].get("data"):
                 all_manual = ma_details_rows[0]["data"]
@@ -34451,17 +34497,11 @@ def api_home_week_full():
         # Also fetch manual events from ma_details for last week
         last_manual_events_week = []
         try:
-            # Try both with and without whatsapp: prefix
-            ma_details_rows = sb.table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "personal_events").execute().data or []
-            if not ma_details_rows and not from_number.startswith("whatsapp:"):
-                # Try with whatsapp: prefix
-                ma_details_rows = sb.table("ma_details").select("data") \
-                    .eq("device_id", f"whatsapp:{from_number}").eq("type", "personal_events").execute().data or []
-            elif not ma_details_rows and from_number.startswith("whatsapp:"):
-                # Try without whatsapp: prefix
-                ma_details_rows = sb.table("ma_details").select("data") \
-                    .eq("device_id", from_number.replace("whatsapp:", "")).eq("type", "personal_events").execute().data or []
+            # Single fetch by type; match device_id in Python against both with/without whatsapp: prefix
+            _all_pe_rows = sb.table("ma_details").select("device_id,data") \
+                .eq("type", "personal_events").execute().data or []
+            _pe_candidates = {from_number, f"whatsapp:{from_number}", from_number.replace("whatsapp:", "")}
+            ma_details_rows = [r for r in _all_pe_rows if r.get("device_id") in _pe_candidates]
 
             if ma_details_rows and ma_details_rows[0].get("data"):
                 all_manual = ma_details_rows[0]["data"]
@@ -34801,7 +34841,9 @@ def api_moving_progress_clear():
         if not phone:
             return jsonify({"error": "Not authenticated"}), 401
 
-        lib._sb().table("ma_details").delete().eq("device_id", phone).eq("type", "moving_progress").execute()
+        _all_mp_rows = lib._sb().table("ma_details").select("id,device_id").eq("type", "moving_progress").execute().data or []
+        for _mp_row in [r for r in _all_mp_rows if r.get("device_id") == phone]:
+            lib._sb().table("ma_details").delete().eq("id", _mp_row["id"]).execute()
         return jsonify({"ok": True})
     except Exception as e:
         print(f"[moving_clear] {e}")
@@ -35546,8 +35588,9 @@ def api_identity_persist():
         try:
             key = phone.replace("whatsapp:", "").strip()
             rec = {"postcode": postcode} if postcode else {}
-            existing = lib._sb().table("ma_details").select("id,data") \
-                .eq("device_id", key).eq("type", "web_identity").limit(1).execute().data
+            _all_existing = lib._sb().table("ma_details").select("id,device_id,data") \
+                .eq("type", "web_identity").execute().data or []
+            existing = [r for r in _all_existing if r.get("device_id") == key]
             if existing:
                 merged = {**(existing[0].get("data") or {}), **rec}
                 lib._sb().table("ma_details").update({"data": merged}) \
@@ -35573,8 +35616,9 @@ def api_identity_restore():
     postcode = ""
     try:
         # 1. Check web_identity record (set via web app identity modal)
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", phone).eq("type", "web_identity").limit(1).execute().data
+        all_rows = lib._sb().table("ma_details").select("device_id,data") \
+            .eq("type", "web_identity").execute().data or []
+        rows = [r for r in all_rows if r.get("device_id") == phone]
         if rows and rows[0].get("data", {}).get("postcode"):
             postcode = rows[0]["data"]["postcode"]
     except Exception:
@@ -35582,12 +35626,12 @@ def api_identity_restore():
     if not postcode:
         try:
             # 2. Fall back to WhatsApp-set home postcode in my_area_places
-            for variant in [phone, "whatsapp:" + phone]:
-                rows = lib._sb().table("my_area_places").select("postcode") \
-                    .eq("from_number", variant).eq("category", "_home").limit(1).execute().data
-                if rows and rows[0].get("postcode"):
-                    postcode = rows[0]["postcode"].upper().strip()
-                    break
+            _variants = {phone, "whatsapp:" + phone}
+            _all_home_places = lib._sb().table("my_area_places").select("from_number,postcode") \
+                .eq("category", "_home").execute().data or []
+            rows = [r for r in _all_home_places if r.get("from_number") in _variants]
+            if rows and rows[0].get("postcode"):
+                postcode = rows[0]["postcode"].upper().strip()
         except Exception:
             pass
     if not postcode:
@@ -35610,11 +35654,10 @@ def api_resolve_token():
     postcode = ""
     try:
         plain = phone
-        rows = lib._sb().table("my_area_places").select("postcode") \
-            .eq("from_number", plain).eq("category", "_home").limit(1).execute().data
-        if not rows:
-            rows = lib._sb().table("my_area_places").select("postcode") \
-                .eq("from_number", "whatsapp:" + plain).eq("category", "_home").limit(1).execute().data
+        _variants = {plain, "whatsapp:" + plain}
+        _all_home_rows = lib._sb().table("my_area_places").select("from_number,postcode") \
+            .eq("category", "_home").execute().data or []
+        rows = [r for r in _all_home_rows if r.get("from_number") in _variants]
         if rows:
             postcode = (rows[0].get("postcode") or "").upper().strip()
     except Exception:
@@ -40928,8 +40971,9 @@ def debug_personal_events():
         return jsonify({"error": "Need phone"}), 400
 
     try:
-        result = lib._sb().table("ma_details").select("data").eq("device_id", phone).eq("type", "personal_events").limit(1).execute()
-        events = result.data[0]["data"] if result.data else []
+        all_result = lib._sb().table("ma_details").select("device_id,data").eq("type", "personal_events").execute()
+        rows = [r for r in (all_result.data or []) if r.get("device_id") == phone]
+        events = rows[0]["data"] if rows else []
         return jsonify({
             "phone": phone,
             "total_events": len(events),
@@ -42121,8 +42165,9 @@ def _send_morning_brief_to_user(device_id: str, phone: str) -> dict:
         from constants import now_london
         # Get user's morning brief prefs
         sb = lib._sb()
-        pref_rows = sb.table("ma_details").select("data") \
-            .eq("device_id", device_id).eq("type", "morning_brief_prefs").limit(1).execute().data or []
+        all_pref_rows = sb.table("ma_details").select("device_id,data") \
+            .eq("type", "morning_brief_prefs").execute().data or []
+        pref_rows = [r for r in all_pref_rows if r.get("device_id") == device_id]
         if not pref_rows:
             return {"success": False, "message": "no prefs"}
 
@@ -42203,8 +42248,9 @@ def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
         token = f"whatsapp:{plain_phone}" if not phone.startswith("whatsapp") else phone
 
         sb = lib._sb()
-        prefs_rows = sb.table("ma_details").select("data") \
-            .eq("device_id", plain_phone).eq("type", "v2_prefs").limit(1).execute().data or []
+        all_prefs_rows = sb.table("ma_details").select("device_id,data") \
+            .eq("type", "v2_prefs").execute().data or []
+        prefs_rows = [r for r in all_prefs_rows if r.get("device_id") == plain_phone]
         prefs = prefs_rows[0]["data"] if prefs_rows else {}
 
         from_number = token
@@ -44080,8 +44126,9 @@ def onboarding():
             if from_number:
                 # Check if they've already completed setup
                 try:
-                    rows = lib._sb().table("ma_details").select("id") \
-                        .eq("device_id", from_number).eq("type", "onboarding_complete").limit(1).execute().data or []
+                    all_rows = lib._sb().table("ma_details").select("id,device_id") \
+                        .eq("type", "onboarding_complete").execute().data or []
+                    rows = [r for r in all_rows if r.get("device_id") == from_number]
                     if rows:
                         # Already set up, redirect to main app
                         return redirect("/")
