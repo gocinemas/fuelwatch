@@ -20525,7 +20525,7 @@ let _savesAll = [];
     // Spend card removed from context cards — now rendered in right sidebar only
 
     var spend = ctx && ctx.spend;
-    if (true) {  // ENABLED: Spend card rendering
+    if (false) {  // DISABLED: Old spend card (newer pie-chart version at line 20626 is better)
       var breakdownHtml = "";
       var bd = spend.breakdown || {};
       var bdKeys = Object.keys(bd).sort(function(a, b) { return bd[b].total - bd[a].total; });

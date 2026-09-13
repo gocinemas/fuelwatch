@@ -12718,9 +12718,9 @@ def api_v2_prefs_post():
         # Get existing prefs to check if morning_push is new
         app.logger.info(f"[v2_prefs POST] ===== SELECT QUERY ===== upsert_key='{upsert_key}', new_prefs={new_prefs}")
         try:
-            query_result = sb.table("ma_details").select("data") \
-                .eq("device_id", upsert_key).eq("type", "v2_prefs").limit(1).execute()
-            rows = query_result.data or []
+            all_rows = sb.table("ma_details").select("device_id,data") \
+                .eq("type", "v2_prefs").execute().data or []
+            rows = [r for r in all_rows if r.get("device_id") == upsert_key]
             app.logger.info(f"[v2_prefs POST] ===== SELECT RESULT ===== found {len(rows)} rows")
             if rows:
                 app.logger.info(f"[v2_prefs POST] ===== DATA ===== {rows[0]}")
