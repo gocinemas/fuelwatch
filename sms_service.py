@@ -17342,6 +17342,9 @@ def api_home_brief():
 
     # Kids + school comms
     school_data = ctx.get("school", {})
+    # NEVER show school context on weekends (Sat-Sun), even if there's data
+    if wday >= 5:  # Saturday (5) or Sunday (6)
+        school_data = {}
     school_upcoming = school_data.get("upcoming", school_data.get("events", [])) if isinstance(school_data, dict) else []
     school_recent   = school_data.get("recent", []) if isinstance(school_data, dict) else []
     kids = [s.get("child_name", "") for s in school_data.get("schools", [])] if isinstance(school_data, dict) else []
@@ -42313,7 +42316,8 @@ def _get_brief_for_user_internal(device_id: str, phone: str) -> dict:
             elif temp <= 1:
                 facts.append(f"⚠️ Freezing ({temp}°C) — icy conditions possible")
 
-        school = ctx.get("school", {})
+        # Only show school on weekdays (Mon-Fri), never on weekends (Sat-Sun)
+        school = ctx.get("school", {}) if wday < 5 else {}
         school_upcoming = school.get("events", [])
         school_events_today = [ev for ev in school_upcoming if ev.get("event_date") == now.date().isoformat()]
         for ev in school_events_today[:2]:

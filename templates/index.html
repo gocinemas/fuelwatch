@@ -20623,7 +20623,8 @@ let _savesAll = [];
     }
 
     // Spend card → render into right sidebar (between Live Now and Tools)
-    if (spend && spend.total > 0 && _moduleEnabled("spend")) {
+    // Show even if spend.total is 0 (user might have disabled tracking or no purchases yet)
+    if (spend && _moduleEnabled("spend")) {
       var breakdownHtml = "";
       var pieChartHtml = "";
       var colors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#f7b801"];  // vibrant: coral, teal, sky, gold
@@ -20744,6 +20745,27 @@ let _savesAll = [];
         + '<div id="' + cardId + '-chart" style="display:none;margin-top:8px">' + pieChartHtml + '</div>'
         + '<div id="brief-spend-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
         + '</div>';
+
+      // If spend is empty, show friendly message instead
+      if (!spend.total || spend.total === 0) {
+        spend.total = 0;
+        spend.count = 0;
+        spend.month = spend.month || monthNames[new Date().getMonth()];
+
+        var emptySpendHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🔒 Spend · ' + spend.month + '</div>'
+          + '<div style="margin-top:12px;text-align:center;padding:20px;color:var(--muted)">'
+          + '<div style="font-size:13px">No purchases tracked yet</div>'
+          + '<div style="font-size:12px;margin-top:8px">Upload receipts or connect your accounts to get started</div>'
+          + '</div>'
+          + '</div>';
+
+        var spendContainer = document.getElementById("brief-spend-card-container");
+        if (spendContainer) {
+          spendContainer.innerHTML = emptySpendHtml;
+        }
+        return;
+      }
 
       var spendContainer = document.getElementById("brief-spend-card-container");
       if (spendContainer) {
