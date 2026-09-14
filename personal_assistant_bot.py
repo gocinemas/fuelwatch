@@ -1,66 +1,54 @@
 """
-Personal WhatsApp Assistant Bot
-================================
+Personal Assistant Bot — Webhook Handler
+==========================================
 
-Reads all incoming WhatsApp messages, extracts TODOs, summarizes content,
-and responds intelligently using Claude.
+Receives WhatsApp messages and routes them to personal_message_processor
+for intelligent extraction and routing to appropriate modules (school_comms,
+personal_events, personal TODOs, etc.)
 
 Workflow:
 1. Receive message via Twilio webhook
-2. Store raw message (durability first)
-3. Acknowledge immediately with TwiML
-4. Async: Call Claude to extract TODOs/summary
-5. Send follow-up WhatsApp response if needed
-6. Store all results in Supabase
+2. Validate Twilio signature
+3. Check idempotency
+4. Store raw message (durability first)
+5. Return immediate TwiML ack
+6. Async: Call personal_message_processor.process_message()
+   → Routes to school_comms, personal_events, TODOs, etc.
+7. Send follow-up response if needed
 """
 
 import os
-import json
 import logging
 import threading
-from datetime import datetime
-from typing import Optional, Dict, Any
 from flask import Blueprint, request, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.request_validator import RequestValidator
-import anthropic
 from supabase import create_client
+from personal_message_processor import process_message
 
 logger = logging.getLogger(__name__)
 
-# Initialize Supabase client (uses SUPABASE_URL + SUPABASE_KEY from env)
 def get_supabase():
+    """Get Supabase client."""
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_KEY")
     if not url or not key:
-        raise ValueError("SUPABASE_URL and SUPABASE_KEY env vars required")
+        raise ValueError("SUPABASE_URL and SUPABASE_KEY required")
     return create_client(url, key)
 
-# Initialize Claude client (uses ANTHROPIC_API_KEY from env)
-def get_claude():
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY env var required")
-    return anthropic.Anthropic(api_key=api_key)
-
-# Create blueprint
 personal_bot_bp = Blueprint('personal_bot', __name__)
 
 # ─────────────────────────────────────────────────────────────────────
-# 1. WEBHOOK ENTRY POINT
+# WEBHOOK ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────
 
 @personal_bot_bp.route('/personal-bot/whatsapp', methods=['POST'])
 def personal_bot_whatsapp_webhook():
     """
-    Twilio inbound WhatsApp webhook.
+    Twilio inbound WhatsApp webhook for personal message processing.
 
-    Flow:
-    1. Validate Twilio signature
-    2. Check idempotency (MessageSid)
-    3. Store raw message (status='received')
-    4. Return TwiML ack immediately
-    5. Fire background processing (async)
+    Receives all WhatsApp messages, validates, stores, and routes to
+    appropriate systems (school, events, TODOs, etc).
     """
 
     # 1. Validate Twilio signature
@@ -94,13 +82,13 @@ def personal_bot_whatsapp_webhook():
     try:
         sb = get_supabase()
 
-        # 3. Check idempotency (already processed?)
+        # 3. Check idempotency
         existing = sb.table('messages').select('id').eq('wa_message_sid', message_sid).execute()
         if existing.data:
-            logger.info(f"Message {message_sid} already processed, returning 200")
+            logger.info(f"Message {message_sid} already processed")
             return MessagingResponse().to_xml()
 
-        # 4. Store raw message with status='received'
+        # 4. Store raw message
         msg_result = sb.table('messages').insert({
             'direction': 'inbound',
             'from_number': from_number,
@@ -113,16 +101,16 @@ def personal_bot_whatsapp_webhook():
         }).execute()
 
         message_id = msg_result.data[0]['id']
-        logger.info(f"Stored message {message_id} from {from_number}")
+        logger.info(f"Stored message {message_id}: {body[:50]}")
 
-        # 5. Return immediate TwiML acknowledgement (sync)
+        # 5. Return immediate TwiML ack
         resp = MessagingResponse()
         resp.message("👍 Got it")
 
-        # 6. Fire background processing (async, non-blocking)
+        # 6. Fire background processing
         thread = threading.Thread(
             target=process_message_async,
-            args=(message_id, from_number, to_number, body, media_urls)
+            args=(message_id, from_number, body, media_urls)
         )
         thread.daemon = True
         thread.start()
@@ -130,143 +118,42 @@ def personal_bot_whatsapp_webhook():
         return resp.to_xml()
 
     except Exception as e:
-        logger.exception(f"Error in webhook: {e}")
-        return jsonify({"error": "Internal server error"}), 500
+        logger.exception(f"Webhook error: {e}")
+        return jsonify({"error": "Server error"}), 500
 
 
-# ─────────────────────────────────────────────────────────────────────
-# 2. ASYNC MESSAGE PROCESSING
-# ─────────────────────────────────────────────────────────────────────
-
-def process_message_async(message_id: str, from_number: str, to_number: str,
-                          body: str, media_urls: list):
+def process_message_async(message_id: str, from_number: str, body: str, media_urls: list):
     """
-    Background processing: call Claude, extract TODOs, send follow-up response.
+    Async background processing: route message to appropriate systems.
 
-    Steps:
-    1. Call Claude with structured prompt
-    2. Parse response (category, summary, todos, needs_response)
-    3. Insert todos into database
-    4. Insert message_processing record
-    5. If needs_response, send follow-up WhatsApp message
-    6. Update message status to 'processed' (or 'failed')
+    Calls personal_message_processor which:
+    - Extracts intent with Claude
+    - Routes to school_comms if school-related
+    - Routes to personal_events if event
+    - Routes to personal TODOs if action items
+    - Sends follow-up response if needed
     """
 
     try:
         sb = get_supabase()
-        claude = get_claude()
 
-        logger.info(f"Processing message {message_id} async")
-
-        # Update status to 'processing'
+        # Update status
         sb.table('messages').update({'status': 'processing'}).eq('id', message_id).execute()
 
-        # 1. Call Claude
-        extraction_prompt = f"""Analyze this WhatsApp message and extract structured information.
+        # Call the message processor (does all the routing)
+        result = process_message(message_id, from_number, body, media_urls)
 
-Message: {body}
+        logger.info(f"✅ Routed message to: {result.get('routes', [])}")
 
-Return a JSON object with:
-- category: "todo" | "question" | "note" | "request" | "fyi"
-- summary: one or two sentence summary
-- todos: array of {{ text, due_date (YYYY-MM-DD or null), priority ("low"|"medium"|"high") }}
-- needs_response: boolean (true if bot should send a follow-up)
-- suggested_response: text to send back (if needs_response=true)
-
-Only return valid JSON, no markdown or extra text."""
-
-        response = claude.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=500,
-            messages=[
-                {"role": "user", "content": extraction_prompt}
-            ]
-        )
-
-        # Parse Claude's response
-        raw_text = response.content[0].text
-        extracted = json.loads(raw_text)
-
-        logger.info(f"Claude extraction: {extracted}")
-
-        # 2. Insert todos
-        todos = extracted.get('todos', [])
-        for todo in todos:
-            sb.table('todos').insert({
-                'source_message_id': message_id,
-                'text': todo.get('text'),
-                'due_date': todo.get('due_date'),
-                'priority': todo.get('priority', 'medium'),
-                'status': 'open'
-            }).execute()
-
-        # 3. Insert message_processing record
-        sb.table('message_processing').insert({
-            'message_id': message_id,
-            'summary': extracted.get('summary'),
-            'category': extracted.get('category'),
-            'sentiment': extracted.get('sentiment'),
-            'needs_response': extracted.get('needs_response', False),
-            'claude_model': 'claude-3-5-sonnet-20241022',
-            'raw_response': extracted
-        }).execute()
-
-        # 4. If needs_response, send follow-up WhatsApp
-        if extracted.get('needs_response'):
-            suggested_response = extracted.get('suggested_response', '')
-            if suggested_response:
-                send_whatsapp_response(from_number, suggested_response, message_id)
-
-        # 5. Update message status to 'processed'
+        # Update status to processed
         sb.table('messages').update({'status': 'processed'}).eq('id', message_id).execute()
 
-        logger.info(f"✅ Successfully processed message {message_id}")
-
-    except json.JSONDecodeError as e:
-        logger.error(f"Claude returned invalid JSON: {e}")
-        sb.table('messages').update({'status': 'failed'}).eq('id', message_id).execute()
     except Exception as e:
         logger.exception(f"Error processing message {message_id}: {e}")
         try:
             sb.table('messages').update({'status': 'failed'}).eq('id', message_id).execute()
         except:
             pass
-
-
-def send_whatsapp_response(to_number: str, message_text: str, source_message_id: str):
-    """Send a WhatsApp response via Twilio and log it."""
-
-    try:
-        account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
-        auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
-        from_number = os.environ.get("TWILIO_WHATSAPP_NUMBER")
-
-        if not all([account_sid, auth_token, from_number]):
-            raise ValueError("Twilio credentials not configured")
-
-        from twilio.rest import Client
-        client = Client(account_sid, auth_token)
-
-        # Send the message
-        result = client.messages.create(
-            from_=f"whatsapp:{from_number}",
-            to=to_number,
-            body=message_text
-        )
-
-        # Log the response
-        sb = get_supabase()
-        sb.table('auto_responses').insert({
-            'message_id': source_message_id,
-            'response_text': message_text,
-            'response_type': 'answer',
-            'outbound_wa_sid': result.sid
-        }).execute()
-
-        logger.info(f"Sent WhatsApp response to {to_number}, SID: {result.sid}")
-
-    except Exception as e:
-        logger.exception(f"Error sending WhatsApp response: {e}")
 
 
 # ─────────────────────────────────────────────────────────────────────
