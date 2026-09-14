@@ -751,10 +751,14 @@ Return [] for an email with no events.
 Example format: [[{{"event_title":"PE Days","event_date":"2026-09-02","event_type":"reminder"}}], [{{}}]]"""
 
     try:
-        client = _get_groq_client()
-        if not client:
-            print(f"[school] Groq API key not set, returning empty")
+        # Use OpenAI instead of Groq (Groq keeps deprecating models)
+        import os
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        if not openai_key:
+            print(f"[school] OpenAI API key not set, returning empty")
             return [[] for _ in batch_items]
+        from openai import OpenAI as OpenAIClient
+        client = OpenAIClient(api_key=openai_key)
 
         # Apply rate limiting before making Groq call
         # Estimate ~1500 tokens per email in batch
@@ -787,7 +791,7 @@ Email: {single_prompt}
 Return ONLY a JSON array (can be empty []).  Example: [{{"event_title":"PE Days","event_date":"2026-09-02","event_type":"reminder"}}]"""
 
                     msg = client.chat.completions.create(
-                        model="llama-3.1-8b-instant",
+                        model="gpt-4o-mini",
                         max_tokens=500,
                         messages=[{"role": "user", "content": single_query}]
                     )
@@ -804,7 +808,7 @@ Return ONLY a JSON array (can be empty []).  Example: [{{"event_title":"PE Days"
             return all_results
 
         message = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="gpt-4o-mini",
             max_tokens=2000,
             messages=[{"role": "user", "content": combined_prompt}]
         )
