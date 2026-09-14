@@ -12771,6 +12771,11 @@ def api_v2_prefs_post():
             )
             app.logger.warning(f"[v2_prefs POST] REST API upsert status={resp.status_code}, body={resp.text[:200]}")
 
+            # CRITICAL: Verify the save actually succeeded
+            if resp.status_code not in (200, 201):
+                app.logger.error(f"[v2_prefs POST] REST API FAILED: {resp.status_code} {resp.text}")
+                raise Exception(f"REST API returned {resp.status_code}: {resp.text[:500]}")
+
         except Exception as save_err:
             app.logger.error(f"[v2_prefs POST] REST API save failed: {save_err}")
             raise
