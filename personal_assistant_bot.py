@@ -50,8 +50,8 @@ personal_bot_bp = Blueprint('personal_bot', __name__)
 # 1. WEBHOOK ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────
 
-@personal_bot_bp.route('/whatsapp/webhook', methods=['POST'])
-def whatsapp_webhook():
+@personal_bot_bp.route('/personal-bot/whatsapp', methods=['POST'])
+def personal_bot_whatsapp_webhook():
     """
     Twilio inbound WhatsApp webhook.
 
