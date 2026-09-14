@@ -44203,3 +44203,30 @@ def api_all_companies():
         return jsonify({"companies": companies})
     except Exception as e:
         return jsonify({"error": str(e), "companies": []}), 500
+
+
+# ═══ AI LEARNING PLATFORM (ai.humanagency.co) ═══
+
+@app.route("/setup/claude")
+@app.route("/setup/claude/")
+def setup_claude():
+    """Claude CLI installation guide."""
+    return render_template("setup_claude.html")
+
+@app.route("/setup/codex")
+@app.route("/setup/codex/")
+def setup_codex():
+    """Codex installation guide."""
+    return render_template("setup_codex.html")
+
+@app.route("/setup/portfolio")
+@app.route("/setup/portfolio/")
+def setup_portfolio():
+    """Personal portfolio builder guide."""
+    return render_template("setup_portfolio.html")
+
+@app.route("/setup/integrations")
+@app.route("/setup/integrations/")
+def setup_integrations():
+    """GitHub + Supabase + Railway integration guide."""
+    return render_template("setup_integrations.html")

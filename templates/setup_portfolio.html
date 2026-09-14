@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Portfolio Builder</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; padding: 40px 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { font-size: 32px; margin-bottom: 20px; }
+        .subtitle { color: #cbd5e1; margin-bottom: 40px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 28px; }
+        .card h2 { color: #14b8a6; margin-bottom: 12px; font-size: 20px; }
+        .card p { color: #cbd5e1; margin-bottom: 16px; line-height: 1.6; }
+        .card-link { display: inline-block; color: #14b8a6; text-decoration: none; font-weight: 600; }
+        .card-link:hover { text-decoration: underline; }
+        .code-block { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin: 20px 0; font-family: Monaco, monospace; font-size: 13px; color: #14b8a6; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Build Your Personal Portfolio</h1>
+        <p class="subtitle">Step-by-step guide to create a portfolio with GitHub + Supabase + Railway</p>
+        
+        <div class="grid">
+            <div class="card">
+                <h2>1️⃣ GitHub Setup</h2>
+                <p>Create your portfolio repository on GitHub.</p>
+                <div class="code-block">git init my-portfolio<br>cd my-portfolio<br>git remote add origin https://github.com/YOUR_USERNAME/my-portfolio</div>
+                <a href="/setup/integrations#github" class="card-link">→ Full Guide</a>
+            </div>
+
+            <div class="card">
+                <h2>2️⃣ Supabase Database</h2>
+                <p>Set up your database for portfolio data (projects, skills, blog posts).</p>
+                <div class="code-block">npm install @supabase/supabase-js<br>export SUPABASE_URL=your_url<br>export SUPABASE_KEY=your_key</div>
+                <a href="/setup/integrations#supabase" class="card-link">→ Full Guide</a>
+            </div>
+
+            <div class="card">
+                <h2>3️⃣ Deploy to Railway</h2>
+                <p>Go live with your portfolio on Railway.</p>
+                <div class="code-block">railway link<br>railway up<br>✓ Live at your-domain.railway.app</div>
+                <a href="/setup/integrations#railway" class="card-link">→ Full Guide</a>
+            </div>
+
+            <div class="card">
+                <h2>💻 Project Structure</h2>
+                <p>Here's how to organize your portfolio:</p>
+                <div class="code-block">my-portfolio/<br>├── src/pages/<br>├── public/assets/<br>├── supabase.js<br>├── railway.json<br>└── README.md</div>
+            </div>
+
+            <div class="card">
+                <h2>📝 Your First Project</h2>
+                <p>Add your first project to your portfolio:</p>
+                <div class="code-block">// supabase.js<br>const { data } = await supabase<br>  .from('projects')<br>  .insert({<br>    title: 'My AI App',<br>    description: 'Built with Claude API'<br>  })</div>
+            </div>
+
+            <div class="card">
+                <h2>🚀 Go Live!</h2>
+                <p>Your portfolio is now live. Start adding projects!</p>
+                <p style="margin-top: 16px;"><strong>Next: Connect your GitHub to Railway for auto-deploys</strong></p>
+                <a href="/setup/integrations" class="card-link">→ View All Integrations</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

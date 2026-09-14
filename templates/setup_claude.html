@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude CLI Setup — Interactive Guide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 { font-size: 32px; margin-bottom: 8px; font-weight: 700; }
+        .subtitle { color: #cbd5e1; font-size: 14px; }
+
+        .progress-bar {
+            background: #1e293b;
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #0f766e 0%, #14b8a6 100%);
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .step-indicator {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .step-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 40px;
+            min-height: 500px;
+            display: none;
+        }
+
+        .step-container.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #14b8a6;
+        }
+
+        .step-description {
+            color: #cbd5e1;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .code-block {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: #14b8a6;
+            overflow-x: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: #0f766e;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #14b8a6;
+        }
+
+        .screenshot {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #94a3b8;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .troubleshooting {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+
+        .troubleshooting h4 {
+            color: #fca5a5;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .troubleshooting-item {
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+
+        .troubleshooting-item strong {
+            color: #fca5a5;
+        }
+
+        .checklist {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+
+        .checklist h4 {
+            color: #6ee7b7;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #10b981;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checkbox.checked {
+            background: #10b981;
+            color: white;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 16px;
+            margin-top: 40px;
+            justify-content: space-between;
+        }
+
+        button {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-prev {
+            background: #334155;
+            color: #f1f5f9;
+        }
+
+        .btn-prev:hover {
+            background: #475569;
+        }
+
+        .btn-prev:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+            color: white;
+        }
+
+        .btn-next:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(20, 184, 166, 0.3);
+        }
+
+        .complete-screen {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .complete-screen h2 {
+            font-size: 28px;
+            color: #10b981;
+            margin-bottom: 16px;
+        }
+
+        .complete-screen p {
+            color: #cbd5e1;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Claude CLI Setup Guide</h1>
+            <p class="subtitle">Interactive step-by-step installation for beginners</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="step-indicator">
+            Step <span id="currentStep">1</span> of 5
+        </div>
+
+        <!-- STEP 1: Requirements -->
+        <div class="step-container active" id="step1">
+            <div class="step-title">📋 Step 1: Check Requirements</div>
+            <div class="step-description">Before installing Claude CLI, make sure you have the basics installed.</div>
+
+            <div class="screenshot">
+                <div>
+                    ✅ Node.js v18+ (download from nodejs.org)<br>
+                    ✅ npm or yarn installed<br>
+                    ✅ A text editor (VS Code, Cursor, etc)<br>
+                    ✅ Git (download from git-scm.com)
+                </div>
+            </div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1;">Check if you have Node.js installed:</p>
+            <div class="code-block">
+                <span>node --version</span>
+                <button class="copy-btn" onclick="copyToClipboard('node --version')">Copy</button>
+            </div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1;">Check if you have npm installed:</p>
+            <div class="code-block">
+                <span>npm --version</span>
+                <button class="copy-btn" onclick="copyToClipboard('npm --version')">Copy</button>
+            </div>
+
+            <div class="checklist">
+                <h4>✓ Ready to Continue?</h4>
+                <div class="checklist-item">
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>Node.js v18+ installed</span>
+                </div>
+                <div class="checklist-item">
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>npm installed</span>
+                </div>
+                <div class="checklist-item">
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>Text editor ready</span>
+                </div>
+            </div>
+
+            <div class="troubleshooting">
+                <h4>❌ Troubleshooting</h4>
+                <div class="troubleshooting-item">
+                    <strong>Q: Command not found (node/npm)</strong><br>
+                    A: Restart your terminal after installation, or add Node to PATH
+                </div>
+                <div class="troubleshooting-item">
+                    <strong>Q: Old Node version?</strong><br>
+                    A: Download latest from nodejs.org or run: brew install node (Mac)
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Install Claude CLI -->
+        <div class="step-container" id="step2">
+            <div class="step-title">⚙️ Step 2: Install Claude CLI</div>
+            <div class="step-description">Install the Claude CLI tool globally on your system.</div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1;">Run this command in your terminal:</p>
+            <div class="code-block">
+                <span>npm install -g @anthropic-ai/claude-cli</span>
+                <button class="copy-btn" onclick="copyToClipboard('npm install -g @anthropic-ai/claude-cli')">Copy</button>
+            </div>
+
+            <div class="screenshot">
+                <div>
+                    installing packages...<br>
+                    ✓ @anthropic-ai/claude-cli@latest<br>
+                    ✓ added 45 packages
+                </div>
+            </div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1;">Wait 1-2 minutes for installation to complete.</p>
+
+            <div class="troubleshooting">
+                <h4>❌ Troubleshooting</h4>
+                <div class="troubleshooting-item">
+                    <strong>Q: Permission denied?</strong><br>
+                    A: Add sudo: sudo npm install -g @anthropic-ai/claude-cli
+                </div>
+                <div class="troubleshooting-item">
+                    <strong>Q: Installation stuck?</strong><br>
+                    A: Press Ctrl+C and try: npm cache clean --force
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Verify Installation -->
+        <div class="step-container" id="step3">
+            <div class="step-title">✅ Step 3: Verify Installation</div>
+            <div class="step-description">Check that Claude CLI installed correctly.</div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1;">Run this command:</p>
+            <div class="code-block">
+                <span>claude --version</span>
+                <button class="copy-btn" onclick="copyToClipboard('claude --version')">Copy</button>
+            </div>
+
+            <div class="screenshot">
+                <div>
+                    claude/2.1.0 (darwin-arm64)<br>
+                    ✓ Successfully installed
+                </div>
+            </div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1;">You should see a version number. If you do, installation is complete!</p>
+
+            <div class="checklist">
+                <h4>✓ Installation Verified</h4>
+                <div class="checklist-item">
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>Version command returns a number</span>
+                </div>
+            </div>
+
+            <div class="troubleshooting">
+                <h4>❌ Troubleshooting</h4>
+                <div class="troubleshooting-item">
+                    <strong>Q: Command not found</strong><br>
+                    A: Restart terminal or check npm: npm list -g @anthropic-ai/claude-cli
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 4: Create API Key -->
+        <div class="step-container" id="step4">
+            <div class="step-title">🔑 Step 4: Get Your API Key</div>
+            <div class="step-description">Set up authentication with Claude.</div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1;">1. Go to: <strong>https://console.anthropic.com/keys</strong></p>
+            <p style="margin-bottom: 16px; color: #cbd5e1;">2. Click "Create API Key"</p>
+            <p style="margin-bottom: 16px; color: #cbd5e1;">3. Copy your key (looks like: sk-ant-...)</p>
+            <p style="margin-bottom: 16px; color: #cbd5e1;">4. Run this command and paste your key:</p>
+
+            <div class="code-block">
+                <span>claude auth login</span>
+                <button class="copy-btn" onclick="copyToClipboard('claude auth login')">Copy</button>
+            </div>
+
+            <div class="screenshot">
+                <div>
+                    Enter your Claude API key:<br>
+                    sk-ant-...<br>
+                    ✓ Authentication successful
+                </div>
+            </div>
+
+            <div class="troubleshooting">
+                <h4>❌ Troubleshooting</h4>
+                <div class="troubleshooting-item">
+                    <strong>Q: Invalid API key</strong><br>
+                    A: Make sure you copied the full key from console.anthropic.com
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 5: Your First Command -->
+        <div class="step-container" id="step5">
+            <div class="step-title">🎉 Step 5: Your First Command</div>
+            <div class="step-description">Test Claude CLI with your first query!</div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1;">Run a simple test:</p>
+            <div class="code-block">
+                <span>claude "What is AI?"</span>
+                <button class="copy-btn" onclick="copyToClipboard('claude \"What is AI?\"')">Copy</button>
+            </div>
+
+            <div class="screenshot">
+                <div>
+                    $ claude "What is AI?"<br>
+                    AI (Artificial Intelligence) is...<br>
+                    [Claude responds here]
+                </div>
+            </div>
+
+            <p style="margin-bottom: 16px; color: #cbd5e1; margin-top: 20px;"><strong>🎊 You're done!</strong> Claude CLI is ready to use.</p>
+
+            <div class="checklist">
+                <h4>✓ Next Steps</h4>
+                <div class="checklist-item">
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>Explore: claude --help</span>
+                </div>
+                <div class="checklist-item">
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>Try: claude "write hello world in Python"</span>
+                </div>
+                <div class="checklist-item">
+                    <div class="checkbox" onclick="toggleCheck(this)"></div>
+                    <span>Ready to build your portfolio</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-buttons">
+            <button class="btn-prev" id="prevBtn" onclick="previousStep()" disabled>← Previous</button>
+            <button class="btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentStepNum = 1;
+        const totalSteps = 5;
+
+        function showStep(n) {
+            document.querySelectorAll('.step-container').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${n}`).classList.add('active');
+            document.getElementById('currentStep').textContent = n;
+            document.getElementById('progressFill').style.width = `${(n / totalSteps) * 100}%`;
+            document.getElementById('prevBtn').disabled = n === 1;
+            document.getElementById('nextBtn').textContent = n === totalSteps ? 'Complete ✓' : 'Next →';
+        }
+
+        function nextStep() {
+            if (currentStepNum < totalSteps) {
+                currentStepNum++;
+                showStep(currentStepNum);
+            } else {
+                alert('🎉 You have completed the Claude CLI setup!');
+            }
+        }
+
+        function previousStep() {
+            if (currentStepNum > 1) {
+                currentStepNum--;
+                showStep(currentStepNum);
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert('✓ Copied to clipboard!');
+        }
+
+        function toggleCheck(el) {
+            el.classList.toggle('checked');
+            el.textContent = el.classList.contains('checked') ? '✓' : '';
+        }
+    </script>
+</body>
+</html>

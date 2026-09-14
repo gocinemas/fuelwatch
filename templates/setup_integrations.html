@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrations Guide — GitHub, Supabase, Railway</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; padding: 40px 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { font-size: 32px; margin-bottom: 20px; }
+        .section { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 32px; margin-bottom: 24px; }
+        .section h2 { color: #14b8a6; margin-bottom: 16px; font-size: 22px; }
+        .step { margin-bottom: 20px; }
+        .step-title { font-weight: 600; color: #f1f5f9; margin-bottom: 8px; }
+        .step-desc { color: #cbd5e1; margin-bottom: 12px; }
+        .code-block { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin: 12px 0; font-family: Monaco, monospace; font-size: 13px; color: #14b8a6; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Integration Guide</h1>
+        <p style="color: #cbd5e1; margin-bottom: 40px;">Connect GitHub, Supabase, and Railway for a complete portfolio platform</p>
+
+        <div class="section" id="github">
+            <h2>1. GitHub Setup</h2>
+            <div class="step">
+                <div class="step-title">Step 1: Create a repository</div>
+                <div class="step-desc">Go to github.com/new and create a new repository</div>
+                <div class="code-block">Repository name: my-portfolio<br>Description: My AI-powered portfolio<br>Public (so employers can see it)</div>
+            </div>
+            <div class="step">
+                <div class="step-title">Step 2: Clone & initialize</div>
+                <div class="code-block">git clone https://github.com/YOUR_USERNAME/my-portfolio<br>cd my-portfolio<br>npm init -y</div>
+            </div>
+            <div class="step">
+                <div class="step-title">Step 3: First commit</div>
+                <div class="code-block">git add .<br>git commit -m "Initial commit: portfolio setup"<br>git push origin main</div>
+            </div>
+        </div>
+
+        <div class="section" id="supabase">
+            <h2>2. Supabase Database</h2>
+            <div class="step">
+                <div class="step-title">Step 1: Create Supabase project</div>
+                <div class="step-desc">Go to supabase.com → Sign up → Create new project</div>
+            </div>
+            <div class="step">
+                <div class="step-title">Step 2: Get your credentials</div>
+                <div class="step-desc">Project Settings → API → Copy SUPABASE_URL and SUPABASE_KEY</div>
+            </div>
+            <div class="step">
+                <div class="step-title">Step 3: Create tables</div>
+                <div class="code-block">CREATE TABLE projects (<br>  id SERIAL PRIMARY KEY,<br>  title TEXT,<br>  description TEXT,<br>  live_url TEXT<br>);</div>
+            </div>
+            <div class="step">
+                <div class="step-title">Step 4: Environment variables</div>
+                <div class="code-block">echo "SUPABASE_URL=your_url" > .env<br>echo "SUPABASE_KEY=your_key" >> .env</div>
+            </div>
+        </div>
+
+        <div class="section" id="railway">
+            <h2>3. Railway Deployment</h2>
+            <div class="step">
+                <div class="step-title">Step 1: Install Railway CLI</div>
+                <div class="code-block">npm install -g @railway/cli</div>
+            </div>
+            <div class="step">
+                <div class="step-title">Step 2: Link to Railway</div>
+                <div class="code-block">railway login<br>railway link</div>
+            </div>
+            <div class="step">
+                <div class="step-title">Step 3: Deploy</div>
+                <div class="code-block">railway up<br>✓ App deployed to railway.app</div>
+            </div>
+            <div class="step">
+                <div class="step-title">Step 4: Auto-deploy from GitHub</div>
+                <div class="step-desc">Railway Dashboard → Connect GitHub → Select your repository</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>✅ You're Ready!</h2>
+            <p style="color: #cbd5e1; margin-bottom: 16px;">Your portfolio is now live with:</p>
+            <ul style="color: #cbd5e1; margin-left: 20px;">
+                <li>✓ GitHub version control</li>
+                <li>✓ Supabase database for dynamic content</li>
+                <li>✓ Railway deployment (live to the world)</li>
+                <li>✓ Auto-deployment on every git push</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
