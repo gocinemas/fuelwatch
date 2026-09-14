@@ -20743,7 +20743,7 @@ let _savesAll = [];
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
         + '<div id="' + cardId + '-receipt" style="display:none;margin-top:8px">' + receiptHtml + '</div>'
         + '<div id="' + cardId + '-chart" style="display:none;margin-top:8px">' + pieChartHtml + '</div>'
-        + '<div id="brief-spend-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
+        + '<div id="' + cardId + '-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
         + '</div>';
 
       // If spend is empty, show friendly message instead
@@ -20771,14 +20771,15 @@ let _savesAll = [];
       if (spendContainer) {
         spendContainer.innerHTML = spendHtml;
 
-        // Fetch and show last receipt
+        // Fetch and show last receipt (use unique cardId for this card instance)
         var _token = _miruPhone() || localStorage.getItem("miru_saves_token") || "";
+        var _lastReceiptId = cardId + '-last-receipt';  // Use unique ID for this card
         fetch("/api/home/last-receipt" + (_token ? "?token=" + encodeURIComponent(_token) : ""))
           .then(r => r.json())
           .then(d => {
             console.log('[receipt] Full API response:', d);
             if (d.merchant && d.total) {
-              var el = document.getElementById("brief-spend-last-receipt");
+              var el = document.getElementById(_lastReceiptId);
               if (el) {
                 var dateStr = d.shop_date || '';
                 var formattedDate = '';
