@@ -35049,9 +35049,11 @@ def _get_school_wa():
         return None, (jsonify({"error": "WA number required", "auth": True}), 401)
     wa = _normalise_from_number(raw)
     try:
-        rows = (lib._sb().table("school_profiles")
-                .select("id").eq("from_number", wa).eq("active", True)
-                .limit(1).execute().data or [])
+        # Fixed: Use single .eq() then filter in Python (SDK doesn't support chaining)
+        all_rows = (lib._sb().table("school_profiles")
+                .select("id,from_number,active").eq("active", True)
+                .execute().data or [])
+        rows = [r for r in all_rows if r.get("from_number") == wa]
     except Exception:
         rows = []
     if not rows:
@@ -35072,9 +35074,11 @@ def api_school_events():
     past    = (date.today() - timedelta(days=days_back)).isoformat()
     horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
     try:
-        profiles_raw = (lib._sb().table("school_profiles")
-                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group,gmail_refresh_token,gmail_token_error,sender_emails")
-                    .eq("from_number", wa).eq("active", True).execute().data or [])
+        # Fixed: Use single .eq() then filter in Python (SDK doesn't support chaining)
+        all_profiles = (lib._sb().table("school_profiles")
+                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group,gmail_refresh_token,gmail_token_error,sender_emails,from_number,active")
+                    .eq("active", True).execute().data or [])
+        profiles_raw = [p for p in all_profiles if p.get("from_number") == wa]
         profiles = []
         for p in profiles_raw:
             has_token = bool(p.pop("gmail_refresh_token", None))
