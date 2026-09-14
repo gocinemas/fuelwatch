@@ -95,6 +95,10 @@ app.add_url_rule(
 from personal_assistant_bot import register_personal_bot_endpoints
 register_personal_bot_endpoints(app)
 
+# ── Personal Messages Dashboard ──
+from personal_messages_dashboard import register_personal_messages_endpoints
+register_personal_messages_endpoints(app)
+
 # ── FrameWork: App Idea Validator (Stealth) ──
 from idea_analyzer import generate_report
 

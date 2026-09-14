@@ -1,0 +1,136 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║         Personal WhatsApp Bot — Testing Checklist (20-30 min)              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+STEP 1: GATHER CREDENTIALS (5 min)
+══════════════════════════════════════════════════════════════════════════════
+
+ ☐ Supabase
+   - Go to app.supabase.com → Your project → Settings → API
+   - Copy Project URL → paste as SUPABASE_URL
+   - Copy Service Role Secret → paste as SUPABASE_KEY
+
+ ☐ Twilio
+   - Go to console.twilio.com
+   - Copy Account SID → TWILIO_ACCOUNT_SID
+   - Copy Auth Token → TWILIO_AUTH_TOKEN
+   - Messaging → WhatsApp → Sender # → copy number → TWILIO_WHATSAPP_NUMBER
+
+ ☐ Claude API
+   - Go to console.anthropic.com → Settings → API Keys → Create Key
+   - Copy → ANTHROPIC_API_KEY
+
+ ☐ Generate tokens (in terminal):
+   - openssl rand -hex 32  →  PERSONAL_API_TOKEN
+   - openssl rand -hex 32  →  DIGEST_CRON_TOKEN
+
+
+STEP 2: SET ENV VARS IN RAILWAY (5 min)
+══════════════════════════════════════════════════════════════════════════════
+
+ ☐ Go to railway.app → Your project → Variables tab
+ ☐ Add 8 variables:
+   - SUPABASE_URL = [your-url]
+   - SUPABASE_KEY = [your-key]
+   - TWILIO_ACCOUNT_SID = [your-sid]
+   - TWILIO_AUTH_TOKEN = [your-token]
+   - TWILIO_WHATSAPP_NUMBER = [+1234567890]
+   - ANTHROPIC_API_KEY = [sk-...]
+   - PERSONAL_API_TOKEN = [generated-token-1]
+   - DIGEST_CRON_TOKEN = [generated-token-2]
+ ☐ Wait 1-2 min for Railway to redeploy
+
+
+STEP 3: DEPLOY SUPABASE SCHEMA (3 min)
+══════════════════════════════════════════════════════════════════════════════
+
+ ☐ Go to app.supabase.com → Your project → SQL Editor
+ ☐ New Query → Copy personal_assistant_schema.sql → Paste → Run
+ ☐ Should see ✓ (6 tables created: messages, message_processing, todos, etc)
+
+
+STEP 4: CONFIGURE TWILIO WEBHOOK (3 min)
+══════════════════════════════════════════════════════════════════════════════
+
+ ☐ Go to console.twilio.com → Messaging → WhatsApp → Your sender #
+ ☐ Webhook Settings → "When a message comes in":
+    - URL: https://your-railway-app.up.railway.app/whatsapp/webhook
+    - Method: POST
+ ☐ Save
+
+
+STEP 5: SEND TEST MESSAGE (2 min)
+══════════════════════════════════════════════════════════════════════════════
+
+ ☐ Send WhatsApp to your Twilio number:
+    "Pick up milk from Sainsbury's tomorrow"
+ ☐ Should get instant response: "👍 Got it"
+ ☐ Wait 2-3 seconds for Claude processing
+
+
+STEP 6: VERIFY TODO WAS CREATED (5 min)
+══════════════════════════════════════════════════════════════════════════════
+
+ Option A - Via Supabase Dashboard:
+   ☐ Go to app.supabase.com → todos table
+   ☐ Should see new row with:
+      text: "Pick up milk from Sainsbury's"
+      priority: "medium"
+      due_date: "2026-09-15"
+      status: "open"
+
+ Option B - Via API:
+   ☐ Run in terminal:
+      curl -H "Authorization: Bearer YOUR_TOKEN" \
+        https://your-app.up.railway.app/api/todos
+
+ Option C - Via Supabase SQL:
+   ☐ SQL Editor → Run:
+      select text, priority, due_date from todos order by created_at desc;
+
+
+STEP 7: SEND MORE TEST MESSAGES (5 min)
+══════════════════════════════════════════════════════════════════════════════
+
+ ☐ "Call John at 2pm"
+    → Should create TODO with priority=medium, no due_date
+
+ ☐ "Go shopping, pay bills, submit report"
+    → Should create 3 separate TODOs
+
+ ☐ "What's the best stock to buy?"
+    → Should be category=question, bot should reply
+
+ ☐ "URGENT: Fix server NOW"
+    → Should be priority=high
+
+ ☐ "Meeting Friday 3pm with Sarah"
+    → Should have due_date set to next Friday
+
+
+STEP 8: CHECK EXTRACTION QUALITY (3 min)
+══════════════════════════════════════════════════════════════════════════════
+
+ ☐ Go to app.supabase.com → message_processing table
+ ☐ Click on raw_response column to see full Claude JSON
+ ☐ Verify:
+    - category looks correct
+    - summary is accurate
+    - todos array has right items
+    - needs_response is set correctly
+
+
+✅ FINAL VERIFICATION CHECKLIST
+══════════════════════════════════════════════════════════════════════════════
+
+ ☐ Sent test message → got "👍 Got it" ack
+ ☐ TODO appeared in Supabase todos table
+ ☐ API /api/todos returns the data
+ ☐ Claude extraction is accurate
+ ☐ Multiple messages work correctly
+ ☐ No errors in Railway logs (railway logs -f)
+
+
+🎉 IF ALL CHECKED: YOU'RE READY TO ROLL OUT TO OTHERS!
+
+═══════════════════════════════════════════════════════════════════════════════
