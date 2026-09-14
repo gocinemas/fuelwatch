@@ -787,7 +787,7 @@ Email: {single_prompt}
 Return ONLY a JSON array (can be empty []).  Example: [{{"event_title":"PE Days","event_date":"2026-09-02","event_type":"reminder"}}]"""
 
                     msg = client.chat.completions.create(
-                        model="llama-3.1-70b-versatile",
+                        model="llama-3.1-8b-instant",
                         max_tokens=500,
                         messages=[{"role": "user", "content": single_query}]
                     )
@@ -804,7 +804,7 @@ Return ONLY a JSON array (can be empty []).  Example: [{{"event_title":"PE Days"
             return all_results
 
         message = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.1-8b-instant",
             max_tokens=2000,
             messages=[{"role": "user", "content": combined_prompt}]
         )
