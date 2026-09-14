@@ -11816,10 +11816,11 @@ def api_v2_prefs_get():
             .eq("type", "v2_prefs") \
             .execute().data or []
 
-        # Filter by device_id in Python
-        rows = [r for r in all_prefs if r.get("device_id") == from_number]
+        # Filter by device_id in Python (normalize both to whatsapp: format)
+        _normalized_fn = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+        rows = [r for r in all_prefs if r.get("device_id") == _normalized_fn]
         prefs = rows[0]["data"] if rows else {}
-        app.logger.info(f"[v2_prefs GET] from_number={from_number}, found={len(rows)} rows")
+        app.logger.info(f"[v2_prefs GET] from_number={from_number}, normalized={_normalized_fn}, found={len(rows)} rows")
 
         # Calendar token connection check
         _fn_plain = from_number.replace("whatsapp:", "").strip()
@@ -12688,7 +12689,8 @@ def api_v2_prefs_post():
         try:
             _all_lp = lib._sb().table("ma_details").select("device_id,data,type") \
                 .eq("type", "location_profile").execute().data or []
-            _lp = [r for r in _all_lp if r.get("device_id") == from_number]
+            _normalized_device_id = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+            _lp = [r for r in _all_lp if r.get("device_id") == _normalized_device_id]
             _home_anchor = (_lp[0].get("data") or {}).get("home", {}) if _lp else {}
             _hlat = _home_anchor.get("lat")
             _hlng = _home_anchor.get("lng")
@@ -17079,16 +17081,18 @@ def api_home_brief():
     if from_number:
         def _run_preflight():
             nonlocal prefs, _loc_profile, _active_trip_early
+            # Normalize device_id to whatsapp: format (matches how prefs are stored)
+            _normalized_device_id = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
             try:
                 all_rows = lib._sb().table("ma_details").select("device_id,data") \
                     .eq("type", "v2_prefs").execute().data or []
-                rows = [r for r in all_rows if r.get("device_id") == from_number]
+                rows = [r for r in all_rows if r.get("device_id") == _normalized_device_id]
                 prefs = rows[0]["data"] if rows else {}
             except Exception: pass
             try:
                 _all_lp = lib._sb().table("ma_details").select("device_id,data") \
                     .eq("type", "location_profile").execute().data or []
-                _lp = [r for r in _all_lp if r.get("device_id") == from_number]
+                _lp = [r for r in _all_lp if r.get("device_id") == _normalized_device_id]
                 _loc_profile = _lp[0]["data"] if _lp else {}
             except Exception: pass
             # Also try loading user_commutes for traffic
