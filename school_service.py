@@ -763,8 +763,48 @@ Example format: [[{{"event_title":"PE Days","event_date":"2026-09-02","event_typ
 
         _groq_limiter.wait_if_needed()
 
+        # If batch is large, process one email at a time to avoid 413 errors
+        if len(batch_items) > 2:
+            print(f"[school] Batch too large ({len(batch_items)} emails), processing 1 at a time")
+            all_results = []
+            for i, item in enumerate(batch_items):
+                try:
+                    single_prompt = all_prompts[i] if i < len(all_prompts) else ""
+                    single_query = f"""Extract school event from this email.
+
+IMPORTANT: Extract ANY mention of dates, times, activities, deadlines, payments, or actions.
+
+Return a JSON array with objects containing ONLY these fields that have data:
+- event_title (string): What is happening?
+- event_date (string): When? Format YYYY-MM-DD. If just a day mentioned, convert to 2026 date.
+- event_type (string): One of: activity, permission, deadline, payment, reminder, notification
+- action_needed (string): What must parent do?
+- cost (number): Any £ amount mentioned
+- description (string): 1-2 sentences
+
+Email: {single_prompt}
+
+Return ONLY a JSON array (can be empty []).  Example: [{{"event_title":"PE Days","event_date":"2026-09-02","event_type":"reminder"}}]"""
+
+                    msg = client.chat.completions.create(
+                        model="mixtral-8x7b-32768",
+                        max_tokens=500,
+                        messages=[{"role": "user", "content": single_query}]
+                    )
+                    resp = msg.choices[0].message.content.strip()
+                    start = resp.find('[')
+                    end = resp.rfind(']') + 1
+                    if start >= 0 and end > start:
+                        all_results.append(json.loads(resp[start:end]))
+                    else:
+                        all_results.append([])
+                except Exception as e:
+                    print(f"[school] Error parsing email {i}: {e}")
+                    all_results.append([])
+            return all_results
+
         message = client.chat.completions.create(
-            model="groq/compound",
+            model="mixtral-8x7b-32768",
             max_tokens=2000,
             messages=[{"role": "user", "content": combined_prompt}]
         )
