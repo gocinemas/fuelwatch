@@ -91,6 +91,10 @@ app.add_url_rule(
     methods=["GET"],
 )
 
+# ── Personal WhatsApp Assistant Bot ──
+from personal_assistant_bot import register_personal_bot_endpoints
+register_personal_bot_endpoints(app)
+
 # ── FrameWork: App Idea Validator (Stealth) ──
 from idea_analyzer import generate_report
 
