@@ -1,1 +1,1 @@
-2026-09-15T06:11:32Z — scheduled refresh trigger
+2026-09-15T00:00:00Z — scheduled refresh trigger
