@@ -29022,6 +29022,59 @@ def _whatsapp_reply_inner():
 
     resp = MessagingResponse()
 
+    # ── SMART ROUTING: Personal Message Processor (if text-only, no images) ──
+    num_media = int(request.form.get("NumMedia", 0))
+    if num_media == 0 and body and from_number != "unknown":
+        # Text-only message → route to personal message processor
+        try:
+            from personal_message_processor import process_message
+            from supabase import create_client
+
+            sb_url = os.environ.get("SUPABASE_URL")
+            sb_key = os.environ.get("SUPABASE_KEY")
+
+            if sb_url and sb_key:
+                sb = create_client(sb_url, sb_key)
+
+                # Store raw message first
+                msg_result = sb.table('messages').insert({
+                    'direction': 'inbound',
+                    'from_number': from_number,
+                    'to_number': request.form.get("To", "unknown"),
+                    'wa_message_sid': request.form.get("MessageSid", ""),
+                    'body': body,
+                    'media_urls': [],
+                    'num_media': 0,
+                    'status': 'received'
+                }).execute()
+
+                if msg_result.data:
+                    message_id = msg_result.data[0]['id']
+
+                    # Process asynchronously
+                    import threading
+                    def process_async():
+                        try:
+                            sb.table('messages').update({'status': 'processing'}).eq('id', message_id).execute()
+                            process_message(message_id, from_number, body, [])
+                            sb.table('messages').update({'status': 'processed'}).eq('id', message_id).execute()
+                        except Exception as e:
+                            print(f"[personal_processor] Error: {e}")
+                            try:
+                                sb.table('messages').update({'status': 'failed'}).eq('id', message_id).execute()
+                            except:
+                                pass
+
+                    thread = threading.Thread(target=process_async, daemon=True)
+                    thread.start()
+
+                    # Send immediate ack
+                    resp.message("👍 Got it")
+                    return str(resp)
+        except Exception as e:
+            print(f"[personal_processor] Setup error: {e}")
+            # Fall through to existing handlers if error
+
     # ── Conversation memory: load thread, save exchange after every response ──
     _wa_thread = _wa_load_thread(from_number) if from_number != "unknown" else []
 
