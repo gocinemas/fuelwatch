@@ -348,7 +348,7 @@ TODOs ({len(todos)}):
 Provide a 2-3 sentence summary."""
 
         response = claude.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-opus-5",
             max_tokens=300,
             messages=[
                 {"role": "user", "content": digest_prompt}

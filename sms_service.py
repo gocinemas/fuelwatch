@@ -15029,7 +15029,7 @@ def _v2_fetch_personal_events(from_number: str) -> list:
         for ev in manual_events:
             event_date = ev.get("date", "")
             if event_date and event_date < today:
-                app.logger.warning(f"[personal-events] Filtering manual event: {event_date} < {today} ({ev.get('title')})")
+                app.logger.debug(f"[personal-events] Skipped old event: {event_date} < {today} ({ev.get('title')})")
                 continue
             evs.append(ev)
 

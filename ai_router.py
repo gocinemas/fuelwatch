@@ -136,7 +136,7 @@ class AIRouter:
 
         try:
             response = anthropic_client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-opus-5",
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3
@@ -144,7 +144,7 @@ class AIRouter:
 
             text = response.content[0].text.strip()
             tokens = response.usage.input_tokens + response.usage.output_tokens
-            # Claude 3.5 Sonnet: $3/$15 per 1M tokens
+            # Claude Opus 5: $3/$15 per 1M tokens
             cost = (response.usage.input_tokens / 1000000) * 0.003 + (response.usage.output_tokens / 1000000) * 0.015
 
             return {

@@ -88,7 +88,7 @@ Return JSON with:
 Only return valid JSON, no markdown."""
 
     response = claude.messages.create(
-        model="claude-3-5-sonnet-20241022",
+        model="claude-opus-5",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -145,7 +145,7 @@ def process_message(
             "summary": extraction.get("summary"),
             "category": category,
             "needs_response": extraction.get("needs_response", False),
-            "claude_model": "claude-3-5-sonnet-20241022",
+            "claude_model": "claude-opus-5",
             "raw_response": extraction
         }).execute()
 
