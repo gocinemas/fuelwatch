@@ -1166,6 +1166,22 @@ def _flag_token_error(from_number: str, profiles: list, on_error=None):
             print(f"[school] on_error callback failed: {e}")
 
 
+def _cleanup_old_school_events(days_old: int = 20) -> int:
+    """Delete school events older than N days. Called on every poll to keep DB lean."""
+    try:
+        cutoff = (date.today() - timedelta(days=days_old)).isoformat()
+        # Delete events where created_at < cutoff
+        result = lib._sb().table("school_events").delete() \
+            .lt("created_at", cutoff).execute()
+        deleted_count = len(result.data) if result.data else 0
+        if deleted_count > 0:
+            print(f"[school] Cleaned up {deleted_count} events older than {days_old} days (before {cutoff})")
+        return deleted_count
+    except Exception as e:
+        print(f"[school] Cleanup error: {e}")
+        return 0
+
+
 def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list = None, on_error=None, skip_error_flag: bool = False) -> dict:
     """
     For every active school profile (optionally filtered to profile_ids),
@@ -1174,6 +1190,9 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
     skip_error_flag=True prevents flagging the token as errored (used after fresh OAuth).
     Returns summary dict.
     """
+    # Run cleanup first (deletes events older than 20 days)
+    _cleanup_old_school_events(days_old=20)
+
     profiles = _get_profiles()
     if profile_ids:
         profiles = [p for p in profiles if p["id"] in set(profile_ids)]
