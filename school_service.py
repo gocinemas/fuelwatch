@@ -701,132 +701,84 @@ JSON array:"""
     return claude_events
 
 
+def _regex_parse_email_events(subject: str, body: str) -> list[dict]:
+    """
+    Parse school email using pattern matching - NO LLM CALLS.
+    Fast, free, reliable. Triggers on keywords and patterns.
+    """
+    import re
+    events = []
+
+    # Combine subject + body for searching
+    text = (subject + " " + body).lower()
+
+    # Check if email is school-relevant
+    school_keywords = ['sparx', 'subscription', 'ipad', 'pe day', 'parent', 'school', 'trip', 'deadline',
+                       'reminder', 'action required', 'payment', 'please', 'event', 'activity', 'class', 'email']
+
+    if not any(kw in text for kw in school_keywords):
+        return []
+
+    # Determine event type from keywords
+    is_payment = any(kw in text for kw in ['sparx', 'subscription', 'pay', 'cost', 'fee', 'closing date', 'purchase', 'order'])
+    is_activity = any(kw in text for kw in ['trip', 'visit', 'excursion', 'ipad', 'pe day', 'workshop', 'session', 'event'])
+    is_deadline = any(kw in text for kw in ['due by', 'closing date', 'deadline', 'submit by', 'return by'])
+
+    if is_payment:
+        event_type = 'payment'
+    elif is_activity:
+        event_type = 'activity'
+    elif is_deadline:
+        event_type = 'deadline'
+    elif any(kw in text for kw in ['reminder', 'important', 'note', 'remember']):
+        event_type = 'reminder'
+    else:
+        event_type = 'notification'
+
+    # Clean up subject for title
+    title = subject.strip()
+    if title.lower().startswith(('re:', 'fw:', 'fwd:')):
+        title = title[4:].strip()
+    if not title:
+        title = "School notification"
+
+    # Extract first 2 lines of body for description
+    body_lines = body.split('\n')
+    description = '\n'.join(body_lines[:2])[:200].strip()
+
+    event = {
+        'event_title': title[:100],
+        'event_type': event_type,
+        'action_needed': 'See school email for details',
+        'description': description
+    }
+    events.append(event)
+    return events
+
+
 def _groq_batch_parse_events(batch_items: list[tuple]) -> list[list[dict]]:
     """
-    Parse multiple emails in one Groq call to reduce token usage by ~70%.
-    batch_items: list of (msg_id, subject, sent_date, profile) tuples
+    Parse school emails using regex patterns (FAST, FREE, NO API CALLS).
+    batch_items: list of (msg_id, subject, body, sent_date, profile) tuples
     Returns: list of event lists, one per email
     """
     if not batch_items:
         return []
 
-    # Build combined prompt for all emails
-    all_prompts = []
-    for i, (msg_id, subject, sent_date, profile) in enumerate(batch_items):
+    print(f"[school] Regex parse: {len(batch_items)} emails (instant)")
+
+    all_results = []
+    for msg_id, subject, body, sent_date, matched_profile in batch_items:
         try:
-            ref = date.fromisoformat(sent_date) if sent_date else date.today()
-        except ValueError:
-            ref = date.today()
+            events = _regex_parse_email_events(subject, body)
+            all_results.append(events)
+            if events:
+                print(f"[school] {msg_id}: parsed {len(events)} events from '{subject[:60]}'")
+        except Exception as e:
+            print(f"[school] Parse error {msg_id}: {e}")
+            all_results.append([])
 
-        weekday = ref.strftime("%A")
-        ref_str = ref.isoformat()
-        school_name = profile.get("school_name", "")
-        year_group = profile.get("year_group", "")
-
-        all_prompts.append(f"[Email {i+1}] School: {school_name} | Year: {year_group} | Sent: {ref_str} ({weekday}) | Subject: {subject}")
-
-    combined_prompt = f"""Extract school events from these {len(batch_items)} emails.
-
-IMPORTANT: Extract ANY mention of dates, times, activities, deadlines, payments, or actions. Be generous - include everything that might be important for parents.
-
-For EACH email, return a JSON array with objects containing ONLY these fields that have data:
-- event_title (string): What is happening? (e.g., "PE Days", "School dinner ordering", "Trip overview")
-- event_date (string): When? Use format YYYY-MM-DD. If just a day mentioned, convert to 2026 date.
-- event_type (string): One of: activity, permission, deadline, payment, reminder, notification
-- action_needed (string): What must parent do?
-- cost (number): Any £ amount mentioned
-- description (string): 1-2 sentences
-
-EXAMPLE INPUT: "School dinner ordering for this term - please order by Friday 6th September"
-EXAMPLE OUTPUT: {{"event_title":"School dinner ordering","event_date":"2026-09-06","event_type":"payment","action_needed":"Order school dinners","description":"Order dinners for the term by Friday"}}
-
-EXAMPLE INPUT: "PE Days - your child wears PE kit on Monday and Thursday"
-EXAMPLE OUTPUT: {{"event_title":"PE Days","event_type":"reminder","action_needed":"Send PE kit on Monday and Thursday","description":"Wear PE kit on these days"}}
-
-Emails:
-{chr(10).join(all_prompts)}
-
-Return ONLY a JSON array of {len(batch_items)} arrays (one array per email). Each array contains objects for events found.
-Return [] for an email with no events.
-Example format: [[{{"event_title":"PE Days","event_date":"2026-09-02","event_type":"reminder"}}], [{{}}]]"""
-
-    try:
-        # Use OpenAI instead of Groq (Groq keeps deprecating models)
-        import os
-        openai_key = os.environ.get("OPENAI_API_KEY")
-        if not openai_key:
-            print(f"[school] OpenAI API key not set, returning empty")
-            return [[] for _ in batch_items]
-        from openai import OpenAI as OpenAIClient
-        client = OpenAIClient(api_key=openai_key)
-
-        # Apply rate limiting before making Groq call
-        # Estimate ~1500 tokens per email in batch
-        estimated_tokens = len(batch_items) * 1500
-        print(f"[school] Batch parse: {len(batch_items)} emails, ~{estimated_tokens} tokens. Checking rate limit...")
-
-        _groq_limiter.wait_if_needed()
-
-        # If batch is large, process one email at a time to avoid 413 errors
-        if len(batch_items) > 2:
-            print(f"[school] Batch too large ({len(batch_items)} emails), processing 1 at a time")
-            all_results = []
-            for i, item in enumerate(batch_items):
-                try:
-                    single_prompt = all_prompts[i] if i < len(all_prompts) else ""
-                    single_query = f"""Extract school event from this email.
-
-IMPORTANT: Extract ANY mention of dates, times, activities, deadlines, payments, or actions.
-
-Return a JSON array with objects containing ONLY these fields that have data:
-- event_title (string): What is happening?
-- event_date (string): When? Format YYYY-MM-DD. If just a day mentioned, convert to 2026 date.
-- event_type (string): One of: activity, permission, deadline, payment, reminder, notification
-- action_needed (string): What must parent do?
-- cost (number): Any £ amount mentioned
-- description (string): 1-2 sentences
-
-Email: {single_prompt}
-
-Return ONLY a JSON array (can be empty []).  Example: [{{"event_title":"PE Days","event_date":"2026-09-02","event_type":"reminder"}}]"""
-
-                    msg = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        max_tokens=500,
-                        messages=[{"role": "user", "content": single_query}]
-                    )
-                    resp = msg.choices[0].message.content.strip()
-                    start = resp.find('[')
-                    end = resp.rfind(']') + 1
-                    if start >= 0 and end > start:
-                        all_results.append(json.loads(resp[start:end]))
-                    else:
-                        all_results.append([])
-                except Exception as e:
-                    print(f"[school] Error parsing email {i}: {e}")
-                    all_results.append([])
-            return all_results
-
-        message = client.chat.completions.create(
-            model="gpt-4o-mini",
-            max_tokens=2000,
-            messages=[{"role": "user", "content": combined_prompt}]
-        )
-        response_text = message.choices[0].message.content.strip()
-
-        # Parse response as array of arrays
-        start = response_text.find('[')
-        end = response_text.rfind(']') + 1
-        if start >= 0 and end > start:
-            json_str = response_text[start:end]
-            parsed = json.loads(json_str)
-            if isinstance(parsed, list) and len(parsed) == len(batch_items):
-                return parsed
-    except Exception as e:
-        print(f"[school] Groq batch parse error: {e}")
-
-    # Fallback: return empty arrays for each email
-    return [[] for _ in batch_items]
+    return all_results
 
 
 # ── Supabase helpers ───────────────────────────────────────────────────────────
@@ -1375,28 +1327,19 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
                     print(f"[school] {msg_id} subject={subject!r} → {reason}")
                     continue
 
-                # Fetch cached term dates to reduce Groq token usage
-                cached_terms = None
-                try:
-                    _sb = lib._sb()
-                    _term_data = _sb.table("school_terms").select("data").eq("school_name", school_name).limit(1).execute().data
-                    if _term_data and _term_data[0].get("data"):
-                        cached_terms = _term_data[0]["data"]
-                except Exception as e:
-                    print(f"[school] Could not fetch cached terms for {school_name}: {e}")
-
-                events = _groq_parse_events(subject, body, school_name, matched_profile.get("year_group", ""), sent_date=sent_date, cached_term_dates=cached_terms)
-                print(f"[school] Groq: {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
+                # Parse with regex (fast, no API calls)
+                events = _regex_parse_email_events(subject, body)
+                print(f"[school] Regex: {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
                 if events:
                     inserted = _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
                     total_events += len(events)
                     if inserted:
                         new_by_parent.setdefault(from_number, []).extend(inserted)
             else:
-                # Batch parse: send all 5 subjects together
-                batch_subjects = [(r[0], r[1], r[3], r[4]) for r in batch]  # (msg_id, subject, sent_date, profile)
-                batch_events = _groq_batch_parse_events(batch_subjects)
-                for (msg_id, subject, sent_date, matched_profile), events in zip(batch_subjects, batch_events):
+                # Batch parse: send all emails with their full body to regex parser
+                batch_items = [(r[0], r[1], r[2], r[3], r[4]) for r in batch]  # (msg_id, subject, body, sent_date, profile)
+                batch_events = _groq_batch_parse_events(batch_items)
+                for (msg_id, subject, body, sent_date, matched_profile), events in zip(batch_items, batch_events):
                     print(f"[school] {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
                     if events:
                         inserted = _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
