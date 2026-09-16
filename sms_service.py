@@ -2072,17 +2072,24 @@ def company_intelligence_tabbed(company_name):
     from company_intelligence_routes import ensure_company_row
     from flask import request
 
-    # Fetch company basics from Wikipedia only (fast, no API keys needed)
+    # Fetch company basics from Wikipedia + Claude enrichment
     company_details = None
     try:
-        from company_data_populator import _fetch_wikipedia_summary
+        from company_data_populator import _fetch_wikipedia_summary, _enrich_with_claude
         wiki = _fetch_wikipedia_summary(company_name)
-        if wiki:
+        enriched = _enrich_with_claude(company_name, wiki) or {}
+
+        if wiki or enriched:
             company_details = {
                 "company_name": company_name,
                 "status": "ready",
-                "description": wiki.get("extract", "")[:500] if wiki else None,
-                "logo_url": wiki.get("image"),
+                "description": enriched.get("description") or (wiki.get("extract", "")[:500] if wiki else None),
+                "industry": enriched.get("industry"),
+                "website": enriched.get("website"),
+                "headquarters": enriched.get("headquarters"),
+                "founded_year": enriched.get("founded_year"),
+                "employee_count": enriched.get("employee_count"),
+                "logo_url": wiki.get("image") if wiki else None,
             }
     except Exception:
         pass
