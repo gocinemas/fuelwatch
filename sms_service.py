@@ -2054,12 +2054,36 @@ def brand_expansion_page():
     return render_template("intel_brand_expansion.html")
 
 
+@app.route("/company/<company_name>")
 @app.route("/intelligence/<company_name>")
 def company_intelligence_tabbed(company_name):
-    """Two-tab intelligence interface (Signal + Deep Dive)."""
+    """
+    Unified company dashboard: company_details basics (description, industry,
+    website, social, key facts — populated by company_data_populator.py in
+    the background) layered on top of the existing 5signals/sentiment/
+    comparison intelligence.
+
+    Canonical, shareable URL: /company/<name>. The legacy /intelligence/<name>
+    URL keeps working — same view, same template — so old links/bookmarks
+    don't break.
+    """
     from intelligence_5signals import get_5_signals
     from intelligence_tabbed_service import TabbedIntelligenceService
+    from company_intelligence_routes import ensure_company_row
     from flask import request
+
+    # Get-or-create the company_details row (basics + enrichment status).
+    # Fires a background enrichment thread when missing/stale and returns
+    # immediately either way — this must never block the page render.
+    company_details = None
+    try:
+        company_details, _just_created = ensure_company_row(
+            company_name, requested_by=request.headers.get("X-Forwarded-For", request.remote_addr)
+        )
+    except Exception as e:
+        app.logger.error(f"[intelligence_tabbed] company_details lookup FAILED: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
 
     try:
         # Get competitor from query params (default: Henkel for Reckitt, etc.)
@@ -2109,7 +2133,8 @@ def company_intelligence_tabbed(company_name):
             available_competitors=tabbed_data["available_competitors"],
             timestamp=tabbed_data["timestamp"],
             company_profile=company_profile,
-            ai_opportunities=ai_opportunities
+            ai_opportunities=ai_opportunities,
+            company_details=company_details
         )
 
     except Exception as e:

@@ -97,6 +97,112 @@
             }
         }
 
+        /* Status badge — company_details enrichment state */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.4em;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        .status-ready { background: #e6f7ed; color: #1a7f4f; }
+        .status-pending, .status-enriching { background: #fff4e0; color: #a86a00; }
+        .status-failed { background: #fde8e8; color: #b42318; }
+
+        @media (prefers-color-scheme: dark) {
+            .status-ready { background: #103a24; color: #4ade80; }
+            .status-pending, .status-enriching { background: #3a2c0c; color: #fbbf24; }
+            .status-failed { background: #3a1414; color: #f87171; }
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-pending .status-dot, .status-enriching .status-dot {
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        /* Company basics — from company_details (description, industry, facts) */
+        .company-basics {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .company-basics { border-top-color: #333; }
+        }
+
+        .basics-chip {
+            display: inline-block;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: #667eea;
+            background: #eef0fd;
+            padding: 3px 10px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .basics-chip { background: #23264a; }
+        }
+
+        .basics-desc {
+            font-size: 0.95em;
+            line-height: 1.5;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
+
+        .basics-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 20px;
+            font-size: 0.85em;
+            opacity: 0.75;
+            margin-bottom: 12px;
+        }
+
+        .basics-meta a { color: inherit; text-decoration: underline; }
+
+        .basics-facts {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 12px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .basics-facts li { padding: 4px 0; }
+        .basics-facts li::before { content: "• "; opacity: 0.5; }
+
+        .basics-social a {
+            font-size: 0.85em;
+            margin-right: 14px;
+            color: #667eea;
+        }
+
+        .company-basics.pending {
+            font-size: 0.9em;
+            opacity: 0.65;
+            font-style: italic;
+        }
+
         /* Tabs */
         .tabs {
             display: flex;
@@ -493,8 +599,50 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <div class="header-title">{{ company }} vs {{ competitor }}</div>
+            <div class="header-title">
+                {{ company }} vs {{ competitor }}
+                {% if company_details %}
+                <span class="status-badge status-{{ company_details.status or 'pending' }}">
+                    <span class="status-dot"></span>
+                    {% if company_details.status == 'ready' %}Ready
+                    {% elif company_details.status == 'failed' %}Enrichment failed
+                    {% elif company_details.status == 'enriching' %}Enriching…
+                    {% else %}Loading…
+                    {% endif %}
+                </span>
+                {% endif %}
+            </div>
             <div class="header-subtitle">Real-time company intelligence for deal-makers</div>
+
+            {% if company_details and company_details.status == 'ready' and (company_details.description or company_details.industry) %}
+            <div class="company-basics">
+                {% if company_details.industry %}<span class="basics-chip">{{ company_details.industry }}</span>{% endif %}
+                {% if company_details.description %}<p class="basics-desc">{{ company_details.description }}</p>{% endif %}
+                <div class="basics-meta">
+                    {% if company_details.website %}<span>🌐 <a href="{{ company_details.website }}" target="_blank" rel="noopener">{{ company_details.website }}</a></span>{% endif %}
+                    {% if company_details.headquarters %}<span>📍 {{ company_details.headquarters }}</span>{% endif %}
+                    {% if company_details.founded_year %}<span>📅 Founded {{ company_details.founded_year }}</span>{% endif %}
+                    {% if company_details.employee_count %}<span>👥 {{ company_details.employee_count }}</span>{% endif %}
+                </div>
+                {% if company_details.key_facts %}
+                <ul class="basics-facts">
+                    {% for fact in company_details.key_facts %}<li>{{ fact }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+                {% if company_details.social_links %}
+                <div class="basics-social">
+                    {% for platform, url in company_details.social_links.items() %}
+                        {% if url %}<a href="{{ url }}" target="_blank" rel="noopener">{{ platform|capitalize }}</a>{% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% elif company_details and company_details.status != 'ready' %}
+            <div class="company-basics pending" id="company-basics-pending">
+                Gathering company profile (description, industry, key facts)… usually ready within a minute.
+                Signals and comparisons below are already live.
+            </div>
+            {% endif %}
 
             <div class="competitor-selector">
                 <label for="competitor-select">Compare with:</label>
@@ -777,8 +925,29 @@
         function changeCompetitor() {
             const competitor = document.getElementById('competitor-select').value;
             const company = '{{ company }}';
-            window.location.href = `/intelligence/${company}?vs=${competitor}`;
+            window.location.href = `/company/${company}?vs=${competitor}`;
         }
     </script>
+
+    {% if company_details and company_details.status not in ('ready', 'failed') and company_details.slug %}
+    <script>
+        // Poll the lightweight status endpoint until company_details finishes
+        // enriching (description/industry/facts), then reload to show it.
+        // The 5signals/sentiment/comparison data above is already live either way.
+        (function () {
+            const slug = {{ company_details.slug|tojson }};
+            const poll = setInterval(async () => {
+                try {
+                    const r = await fetch(`/api/company/${slug}/status`);
+                    const data = await r.json();
+                    if (data.status === 'ready' || data.status === 'failed') {
+                        clearInterval(poll);
+                        location.reload();
+                    }
+                } catch (e) { /* keep polling */ }
+            }, 4000);
+        })();
+    </script>
+    {% endif %}
 </body>
 </html>

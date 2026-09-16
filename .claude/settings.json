@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "set -e; cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE 'git commit'; then echo '[Python 3.9 Check]' >&2; python3 -m py_compile fuelwatch/*.py 2>&1; echo '{}'; else echo '{}'; fi",
+            "if": "Bash(git commit*)"
+          }
+        ]
+      }
+    ]
+  }
+}

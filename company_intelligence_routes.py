@@ -110,6 +110,7 @@ def _ensure_row(company_name: str, requested_by: str = None):
     if row is None:
         display_name = company_name.strip().title()
         try:
+            print(f"[company_routes] Inserting new company: {display_name} (slug={slug})")
             _sb().table("company_details").insert(
                 {
                     "company_name": display_name,
@@ -118,10 +119,11 @@ def _ensure_row(company_name: str, requested_by: str = None):
                     "requested_by": requested_by,
                 }
             ).execute()
+            print(f"[company_routes] ✓ Insert successful for {slug}")
         except Exception as e:
             # Race: two requests for the same new company at once — the unique
             # slug constraint will reject the second insert. Just re-read.
-            print(f"[company_routes] insert race for slug={slug}: {e}")
+            print(f"[company_routes] ✗ Insert failed for slug={slug}: {type(e).__name__}: {e}")
         row = _get_company(slug) or {
             "company_name": display_name,
             "slug": slug,
