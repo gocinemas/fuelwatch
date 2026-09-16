@@ -1,17 +1,23 @@
 """
-Company Intelligence Routes — shareable company profile pages.
+Company Intelligence Routes — company_details data layer for the unified
+company dashboard.
 
   https://miru.humanagency.co/company/Ikea
 
-Fast path: look up `company_details` in Supabase. If it exists and is fresh,
-render immediately with OpenGraph/Twitter meta tags so the link previews
-nicely when shared in WhatsApp/iMessage/Slack/etc. If it's missing or stale,
-serve a lightweight "gathering intelligence" page INSTANTLY (no blocking on
-enrichment) and kick off company_data_populator.populate_company_data() on a
-background daemon thread — the same fire-and-forget pattern used by
-brand_intelligence_service.py's _background_enrich_brand(). The pending page
-polls /api/company/<name>/status every few seconds and refreshes itself once
-ready.
+This module owns the `company_details` Supabase table: get-or-create lookup,
+staleness checks, and firing off company_data_populator.populate_company_data()
+on a background daemon thread (fire-and-forget, mirrors
+brand_intelligence_service.py's _background_enrich_brand() — never blocks the
+calling request).
+
+The unified HTML dashboard (`/company/<name>`, also reachable at the legacy
+`/intelligence/<name>` URL) is rendered by sms_service.py's
+`company_intelligence_tabbed()` view, which imports `ensure_company_row()`
+from here to fetch/create the company_details row (basics + enrichment
+status) and merges it with the existing 5signals/sentiment/comparison
+intelligence into a single `intelligence_tabbed.html` render. That keeps this
+module focused on the data layer while the tabbed template stays the one
+place company pages are rendered.
 
 Registered into the main app the same way as the other feature modules in
 sms_service.py:
@@ -19,18 +25,15 @@ sms_service.py:
     from company_intelligence_routes import register_company_intelligence_endpoints
     register_company_intelligence_endpoints(app)
 
-Route map:
-  GET  /company/<company_name>          — shareable HTML profile page
-  GET  /api/company/<company_name>      — JSON profile (triggers fetch if missing)
-  GET  /api/company/<company_name>/status  — lightweight poll target for the pending page
-  GET  /api/companies/search?q=         — search across enriched companies
+Route map (this module):
+  GET  /api/company/<company_name>         — JSON profile (triggers fetch if missing)
+  GET  /api/company/<company_name>/status  — lightweight poll target for the pending badge
+  GET  /api/companies/search?q=            — search across enriched companies
 
-Note: this intentionally does NOT touch the existing `/company`, `/company/`,
-`/company/compare` or `/intelligence/<company_name>` routes already defined
-in sms_service.py (Flask/Werkzeug always prefers a static rule like
-`/company/compare` over a dynamic one like `/company/<company_name>`, so
-there's no collision) — this is a separate, self-contained feature backed by
-its own `company_details` table.
+The shareable HTML page itself — GET /company/<company_name>, also served at
+GET /intelligence/<company_name> — lives in sms_service.py so it can reuse
+the existing tabbed-dashboard machinery (get_5_signals, TabbedIntelligenceService,
+etc.) without duplicating it here.
 """
 
 import os
@@ -38,7 +41,7 @@ import re
 import threading
 from datetime import datetime, timezone
 
-from flask import request, jsonify, render_template_string
+from flask import request, jsonify
 from supabase import create_client
 
 from company_data_populator import populate_company_data, STALE_AFTER_DAYS
@@ -109,7 +112,7 @@ def _ensure_row(company_name: str, requested_by: str = None):
         try:
             _sb().table("company_details").insert(
                 {
-                    "company_name": display_name,
+                    "display_name": display_name,
                     "slug": slug,
                     "status": "pending",
                     "requested_by": requested_by,
@@ -128,34 +131,30 @@ def _ensure_row(company_name: str, requested_by: str = None):
         return row, True
 
     if _is_stale(row):
-        _trigger_background_fetch(row.get("company_name", company_name), slug)
+        _trigger_background_fetch(row.get("display_name", company_name), slug)
 
     return row, False
 
 
+# Public entry point for sms_service.py's unified /company/<name> ↔
+# /intelligence/<name> view — get-or-create the company_details row and
+# kick off background enrichment when missing/stale. Never blocks.
+def ensure_company_row(company_name: str, requested_by: str = None):
+    display_name = (company_name or "").replace("-", " ").replace("_", " ").strip()
+    row, just_created = _ensure_row(display_name, requested_by=requested_by)
+
+    if not just_created and row.get("status") == "ready":
+        try:
+            _sb().table("company_details").update(
+                {"view_count": (row.get("view_count") or 0) + 1}
+            ).eq("slug", row["slug"]).execute()
+        except Exception:
+            pass  # view counting is best-effort, never block the page on it
+
+    return row, just_created
+
+
 def register_company_intelligence_endpoints(app):
-
-    @app.route("/company/<company_name>")
-    def company_detail_page(company_name):
-        display_name = company_name.replace("-", " ").replace("_", " ").strip()
-        row, just_created = _ensure_row(
-            display_name, requested_by=request.headers.get("X-Forwarded-For", request.remote_addr)
-        )
-
-        if not just_created and row.get("status") == "ready":
-            try:
-                _sb().table("company_details").update(
-                    {"view_count": (row.get("view_count") or 0) + 1}
-                ).eq("slug", row["slug"]).execute()
-            except Exception:
-                pass  # view counting is best-effort, never block the page on it
-
-        return render_template_string(
-            COMPANY_PAGE_TEMPLATE,
-            company=row,
-            share_url=request.url,
-            is_ready=(row.get("status") == "ready"),
-        )
 
     @app.route("/api/company/<company_name>")
     def api_company_detail(company_name):
@@ -220,105 +219,3 @@ def handle_company_lookup_command(company_query: str, from_number: str) -> str:
         f" ~30 seconds:\n🔗 {link}"
     )
 
-
-# ─────────────────────────────────────────────────────────────────────────
-# Shareable HTML page — OG/Twitter meta tags make links preview nicely when
-# pasted into WhatsApp/iMessage/Slack. Auto-polls /status while pending.
-# ─────────────────────────────────────────────────────────────────────────
-COMPANY_PAGE_TEMPLATE = """<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ company.company_name }} — Company Intelligence | Miru</title>
-<meta name="description" content="{{ company.description or ('Company profile for ' + company.company_name + ', generated by Miru.') }}">
-
-<!-- OpenGraph / shareable link preview -->
-<meta property="og:type" content="website">
-<meta property="og:title" content="{{ company.company_name }} — Company Intelligence">
-<meta property="og:description" content="{{ company.description or 'AI-generated company profile — description, industry, website, and key facts.' }}">
-<meta property="og:url" content="{{ share_url }}">
-{% if company.logo_url %}<meta property="og:image" content="{{ company.logo_url }}">{% endif %}
-
-<!-- Twitter card -->
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="{{ company.company_name }} — Company Intelligence">
-<meta name="twitter:description" content="{{ company.description or 'AI-generated company profile.' }}">
-{% if company.logo_url %}<meta name="twitter:image" content="{{ company.logo_url }}">{% endif %}
-
-<style>
-  :root { color-scheme: light dark; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 640px;
-         margin: 0 auto; padding: 32px 20px 64px; background: #fafafa; color: #1a1a1a; }
-  @media (prefers-color-scheme: dark) { body { background: #111; color: #eee; } .card { background: #1c1c1c !important; border-color: #2a2a2a !important; } }
-  .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 16px; padding: 28px; }
-  h1 { font-size: 1.6rem; margin: 0 0 4px; }
-  .industry { color: #888; font-size: 0.95rem; margin-bottom: 18px; }
-  .desc { line-height: 1.55; margin-bottom: 20px; }
-  .facts { list-style: none; padding: 0; margin: 0 0 20px; }
-  .facts li { padding: 8px 0; border-top: 1px solid #eee; }
-  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.9rem; color: #666; margin-bottom: 20px; }
-  .social a { margin-right: 14px; font-size: 0.9rem; }
-  .pending { text-align: center; padding: 40px 0; }
-  .spinner { width: 28px; height: 28px; margin: 0 auto 16px; border: 3px solid #ddd; border-top-color: #666;
-             border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .footer { text-align: center; color: #999; font-size: 0.8rem; margin-top: 24px; }
-  a { color: #0a6cff; }
-</style>
-</head>
-<body>
-  <div class="card" id="company-card">
-    {% if is_ready %}
-      <h1>{{ company.company_name }}</h1>
-      {% if company.industry %}<div class="industry">{{ company.industry }}</div>{% endif %}
-      {% if company.description %}<p class="desc">{{ company.description }}</p>{% endif %}
-
-      <div class="meta">
-        {% if company.website %}<span>🌐 <a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a></span>{% endif %}
-        {% if company.headquarters %}<span>📍 {{ company.headquarters }}</span>{% endif %}
-        {% if company.founded_year %}<span>📅 Founded {{ company.founded_year }}</span>{% endif %}
-        {% if company.employee_count %}<span>👥 {{ company.employee_count }}</span>{% endif %}
-      </div>
-
-      {% if company.key_facts %}
-      <ul class="facts">
-        {% for fact in company.key_facts %}<li>• {{ fact }}</li>{% endfor %}
-      </ul>
-      {% endif %}
-
-      {% if company.social_links %}
-      <div class="social">
-        {% for platform, url in company.social_links.items() %}
-          {% if url %}<a href="{{ url }}" target="_blank" rel="noopener">{{ platform|capitalize }}</a>{% endif %}
-        {% endfor %}
-      </div>
-      {% endif %}
-    {% else %}
-      <div class="pending" id="pending-block">
-        <div class="spinner"></div>
-        <h1>{{ company.company_name }}</h1>
-        <p>Gathering company intelligence… this usually takes under a minute.</p>
-      </div>
-    {% endif %}
-  </div>
-  <div class="footer">Generated by <a href="https://miru.humanagency.co">Miru</a> — shareable company intelligence</div>
-
-  {% if not is_ready %}
-  <script>
-    // Poll for completion, then reload to render the finished profile.
-    const slug = {{ company.slug|tojson }};
-    const poll = setInterval(async () => {
-      try {
-        const r = await fetch(`/api/company/${slug}/status`);
-        const data = await r.json();
-        if (data.status === 'ready' || data.status === 'failed') {
-          clearInterval(poll);
-          location.reload();
-        }
-      } catch (e) { /* keep polling */ }
-    }, 3000);
-  </script>
-  {% endif %}
-</body>
-</html>"""
