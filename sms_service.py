@@ -2072,16 +2072,32 @@ def company_intelligence_tabbed(company_name):
     from company_intelligence_routes import ensure_company_row
     from flask import request
 
-    # Get-or-create the company_details row (basics + enrichment status).
-    # Fires a background enrichment thread when missing/stale and returns
-    # immediately either way — this must never block the page render.
+    # Fetch company basics (headquarters, employees, founded, etc) from Wikipedia + Claude
+    # without storing in Supabase (which has schema cache issues)
     company_details = None
     try:
-        company_details, _just_created = ensure_company_row(
-            company_name, requested_by=request.headers.get("X-Forwarded-For", request.remote_addr)
-        )
+        from company_data_populator import _fetch_wikipedia_summary, _enrich_with_claude
+        wiki = _fetch_wikipedia_summary(company_name)
+        enriched = _enrich_with_claude(company_name, wiki) or {}
+
+        if wiki or enriched:
+            company_details = {
+                "company_name": company_name,
+                "slug": company_name.lower().replace(" ", "-"),
+                "status": "ready",
+                "description": enriched.get("description") or (wiki.get("extract", "")[:500] if wiki else None),
+                "industry": enriched.get("industry"),
+                "website": enriched.get("website"),
+                "headquarters": enriched.get("headquarters"),
+                "founded_year": enriched.get("founded_year"),
+                "employee_count": enriched.get("employee_count"),
+                "social_links": enriched.get("social_links") or {},
+                "key_facts": enriched.get("key_facts") or [],
+                "logo_url": (wiki.get("image") if wiki else None),
+                "confidence_score": enriched.get("confidence_score"),
+            }
     except Exception as e:
-        pass  # Gracefully skip company enrichment on error
+        pass  # Gracefully skip if enrichment fails
 
     try:
         # Get competitor from query params (default: Henkel for Reckitt, etc.)
