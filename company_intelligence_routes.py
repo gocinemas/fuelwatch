@@ -127,14 +127,11 @@ def _ensure_row(company_name: str, requested_by: str = None):
             "slug": slug,
             "status": "pending",
         }
-        # Background enrichment disabled due to schema cache issues
-        # _trigger_background_fetch(display_name, slug, requested_by=requested_by)
+        _trigger_background_fetch(display_name, slug, requested_by=requested_by)
         return row, True
 
     if _is_stale(row):
-        # Background enrichment disabled due to schema cache issues
-        pass
-        # _trigger_background_fetch(row.get("company_name", company_name), slug)
+        _trigger_background_fetch(row.get("company_name", company_name), slug)
 
     return row, False
 

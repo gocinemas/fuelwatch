@@ -4,7 +4,10 @@
 -- on EVERY app startup (there is no "already applied" tracking table), so
 -- every statement here must be safe to run repeatedly.
 
-CREATE TABLE IF NOT EXISTS company_details (
+-- Force Supabase schema cache refresh by dropping and recreating
+DROP TABLE IF EXISTS company_details CASCADE;
+
+CREATE TABLE company_details (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Identity
