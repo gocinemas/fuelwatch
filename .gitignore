@@ -5,3 +5,4 @@ price_history_national.json
 price_history_postcodes.json
 *.png
 .venv/
+venv/
