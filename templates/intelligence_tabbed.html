@@ -599,18 +599,23 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <div class="header-title">
-                {{ company }} vs {{ competitor }}
-                {% if company_details %}
-                <span class="status-badge status-{{ company_details.status or 'pending' }}">
-                    <span class="status-dot"></span>
-                    {% if company_details.status == 'ready' %}Ready
-                    {% elif company_details.status == 'failed' %}Enrichment failed
-                    {% elif company_details.status == 'enriching' %}Enriching…
-                    {% else %}Loading…
+            <div class="header-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    {{ company }} vs {{ competitor }}
+                    {% if company_details %}
+                    <span class="status-badge status-{{ company_details.status or 'pending' }}">
+                        <span class="status-dot"></span>
+                        {% if company_details.status == 'ready' %}Ready
+                        {% elif company_details.status == 'failed' %}Enrichment failed
+                        {% elif company_details.status == 'enriching' %}Enriching…
+                        {% else %}Loading…
+                        {% endif %}
+                    </span>
                     {% endif %}
-                </span>
-                {% endif %}
+                </div>
+                <button onclick="location.reload()" style="padding: 8px 16px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                    🔄 Refresh Data
+                </button>
             </div>
             <div class="header-subtitle">Real-time company intelligence for deal-makers</div>
 

@@ -2096,6 +2096,19 @@ def company_intelligence_tabbed(company_name):
                 "logo_url": (wiki.get("image") if wiki else None),
                 "confidence_score": enriched.get("confidence_score"),
             }
+
+            # Store in database in background (non-blocking)
+            def save_company():
+                try:
+                    from supabase import create_client
+                    sb = create_client(os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_KEY", ""))
+                    sb.table("company_details").upsert(company_details, on_conflict="slug").execute()
+                except Exception:
+                    pass
+
+            import threading
+            threading.Thread(target=save_company, daemon=True).start()
+
     except Exception as e:
         pass  # Gracefully skip if enrichment fails
 
