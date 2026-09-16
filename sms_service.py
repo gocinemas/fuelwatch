@@ -2103,14 +2103,17 @@ def company_intelligence_tabbed(company_name):
                     from supabase import create_client
                     sb = create_client(os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_KEY", ""))
                     sb.table("company_details").upsert(company_details, on_conflict="slug").execute()
-                except Exception:
-                    pass
+                    print(f"[company-page] Saved {company_name} to database")
+                except Exception as e:
+                    print(f"[company-page] Save failed: {e}")
 
             import threading
             threading.Thread(target=save_company, daemon=True).start()
 
     except Exception as e:
-        pass  # Gracefully skip if enrichment fails
+        print(f"[company-page] ERROR: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
 
     try:
         # Get competitor from query params (default: Henkel for Reckitt, etc.)
