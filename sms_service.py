@@ -99,6 +99,10 @@ register_personal_bot_endpoints(app)
 from personal_messages_dashboard import register_personal_messages_endpoints
 register_personal_messages_endpoints(app)
 
+# ── Company Intelligence: shareable /company/<name> profile pages ──
+from company_intelligence_routes import register_company_intelligence_endpoints
+register_company_intelligence_endpoints(app)
+
 # ── FrameWork: App Idea Validator (Stealth) ──
 from idea_analyzer import generate_report
 
@@ -29322,6 +29326,18 @@ def _whatsapp_reply_inner():
                         f"*/event Inaaya dance class today 3pm at Studio XYZ*")
             return str(resp)
 
+    # 🏢 COMPANY COMMAND: /company [name] ─────────────────────────────────────
+    if body_lower.startswith("/company "):
+        company_query = body[9:].strip()  # Remove "/company " prefix
+        if not company_query:
+            resp.message("🏢 Usage: */company Ikea*\n\n"
+                        "I'll put together a shareable profile page for you.")
+            return str(resp)
+
+        from company_intelligence_routes import handle_company_lookup_command
+        resp.message(handle_company_lookup_command(company_query, from_number))
+        return str(resp)
+
     # 🥚 Easter egg: bored → suggest something nearby ────────────────────────
     if body_lower in ("bored", "i'm bored", "im bored", "so bored", "what should i do", "entertain me"):
         home_pc = _get_wa_home_postcode(from_number)
@@ -42564,6 +42580,27 @@ def cron_morning_briefs():
         })
     except Exception as e:
         app.logger.error(f"[cron] Morning briefs error: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/cron/refresh-companies", methods=["POST"])
+def cron_refresh_companies():
+    """Cron endpoint: retry pending/failed company_details rows and refresh
+    stale 'ready' ones (see company_data_populator.populate_stale_companies).
+    Same auth pattern as the other /api/cron/* endpoints in this file."""
+    cron_secret = request.headers.get("X-Cron-Secret", "")
+    expected_secret = os.environ.get("CRON_SECRET", "")
+
+    if not expected_secret or cron_secret != expected_secret:
+        app.logger.warning("[cron-companies] Unauthorized request")
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        from company_data_populator import populate_stale_companies
+        results = populate_stale_companies(limit=20)
+        return jsonify({"success": True, "processed": len(results)})
+    except Exception as e:
+        app.logger.error(f"[cron-companies] error: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
