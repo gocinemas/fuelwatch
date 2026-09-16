@@ -142,8 +142,11 @@ def _ensure_row(company_name: str, requested_by: str = None):
 # /intelligence/<name> view — get-or-create the company_details row and
 # kick off background enrichment when missing/stale. Never blocks.
 def ensure_company_row(company_name: str, requested_by: str = None):
+    print(f"[ensure_company_row] Called with: {company_name}")
     display_name = (company_name or "").replace("-", " ").replace("_", " ").strip()
+    print(f"[ensure_company_row] Display name: {display_name}")
     row, just_created = _ensure_row(display_name, requested_by=requested_by)
+    print(f"[ensure_company_row] ✓ Row result: created={just_created}, status={row.get('status')}")
 
     if not just_created and row.get("status") == "ready":
         try:
