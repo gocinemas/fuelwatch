@@ -2080,13 +2080,12 @@ def company_intelligence_tabbed(company_name):
         if wiki:
             company_details = {
                 "company_name": company_name,
+                "status": "ready",
                 "description": wiki.get("extract", "")[:500] if wiki else None,
                 "logo_url": wiki.get("image"),
             }
     except Exception:
         pass
-        import traceback
-        traceback.print_exc()
 
     try:
         # Get competitor from query params (default: Henkel for Reckitt, etc.)
