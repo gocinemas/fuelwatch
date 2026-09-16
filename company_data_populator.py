@@ -117,7 +117,7 @@ def _parse_json_block(text: str):
     return json.loads(text)
 
 
-def _enrich_with_claude(company_name: str, wiki_context: dict | None):
+def _enrich_with_claude(company_name: str, wiki_context):
     """
     Ask Claude to structure everything into the shape company_details wants.
     Returns None (not raises) if ANTHROPIC_API_KEY isn't configured or the
