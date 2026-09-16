@@ -112,7 +112,7 @@ def _ensure_row(company_name: str, requested_by: str = None):
         try:
             _sb().table("company_details").insert(
                 {
-                    "display_name": display_name,
+                    "company_name": display_name,
                     "slug": slug,
                     "status": "pending",
                     "requested_by": requested_by,
@@ -131,7 +131,7 @@ def _ensure_row(company_name: str, requested_by: str = None):
         return row, True
 
     if _is_stale(row):
-        _trigger_background_fetch(row.get("display_name", company_name), slug)
+        _trigger_background_fetch(row.get("company_name", company_name), slug)
 
     return row, False
 
