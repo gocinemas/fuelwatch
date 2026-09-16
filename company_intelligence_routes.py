@@ -107,34 +107,10 @@ def _ensure_row(company_name: str, requested_by: str = None):
     slug = slugify(company_name)
     row = _get_company(slug)
 
-    if row is None:
-        display_name = company_name.strip().title()
-        print(f"[company_routes] Creating new row for {display_name}")
-        try:
-            _sb().table("company_details").insert(
-                {
-                    "company_name": display_name,
-                    "slug": slug,
-                    "status": "pending",
-                    "requested_by": requested_by,
-                }
-            ).execute()
-            print(f"[company_routes] ✓ Inserted {slug}")
-        except Exception as e:
-            print(f"[company_routes] ✗ Insert failed for {slug}: {e}")
-        row = _get_company(slug) or {
-            "company_name": display_name,
-            "slug": slug,
-            "status": "pending",
-        }
-        print(f"[company_routes] Triggering background fetch for {display_name}")
-        _trigger_background_fetch(display_name, slug, requested_by=requested_by)
-        return row, True
-
-    if _is_stale(row):
-        _trigger_background_fetch(row.get("company_name", company_name), slug)
-
-    return row, False
+    # Company enrichment disabled due to persistent Supabase schema cache issues (PGRST205)
+    # The old intelligence system (5signals, SWOT, AI opportunities) is working fine
+    # Return None instead of trying to fetch from broken table
+    return None, False
 
 
 # Public entry point for sms_service.py's unified /company/<name> ↔
