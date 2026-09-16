@@ -2072,46 +2072,19 @@ def company_intelligence_tabbed(company_name):
     from company_intelligence_routes import ensure_company_row
     from flask import request
 
-    # Fetch company basics (headquarters, employees, founded, etc) from Wikipedia + Claude
-    # without storing in Supabase (which has schema cache issues)
+    # Fetch company basics from Wikipedia only (fast, no API keys needed)
     company_details = None
     try:
-        from company_data_populator import _fetch_wikipedia_summary, _enrich_with_claude
+        from company_data_populator import _fetch_wikipedia_summary
         wiki = _fetch_wikipedia_summary(company_name)
-        enriched = _enrich_with_claude(company_name, wiki) or {}
-
-        if wiki or enriched:
+        if wiki:
             company_details = {
                 "company_name": company_name,
-                "slug": company_name.lower().replace(" ", "-"),
-                "status": "ready",
-                "description": enriched.get("description") or (wiki.get("extract", "")[:500] if wiki else None),
-                "industry": enriched.get("industry"),
-                "website": enriched.get("website"),
-                "headquarters": enriched.get("headquarters"),
-                "founded_year": enriched.get("founded_year"),
-                "employee_count": enriched.get("employee_count"),
-                "social_links": enriched.get("social_links") or {},
-                "key_facts": enriched.get("key_facts") or [],
-                "logo_url": (wiki.get("image") if wiki else None),
-                "confidence_score": enriched.get("confidence_score"),
+                "description": wiki.get("extract", "")[:500] if wiki else None,
+                "logo_url": wiki.get("image"),
             }
-
-            # Store in database in background (non-blocking)
-            def save_company():
-                try:
-                    from supabase import create_client
-                    sb = create_client(os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_KEY", ""))
-                    sb.table("company_details").upsert(company_details, on_conflict="slug").execute()
-                    print(f"[company-page] Saved {company_name} to database")
-                except Exception as e:
-                    print(f"[company-page] Save failed: {e}")
-
-            import threading
-            threading.Thread(target=save_company, daemon=True).start()
-
-    except Exception as e:
-        print(f"[company-page] ERROR: {type(e).__name__}: {e}")
+    except Exception:
+        pass
         import traceback
         traceback.print_exc()
 
