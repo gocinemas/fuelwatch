@@ -11,6 +11,8 @@ import json
 from anthropic import Anthropic
 from typing import Optional
 import requests
+from datetime import datetime
+from supabase import create_client, Client
 
 class UKAgent:
     def __init__(self):
@@ -18,6 +20,14 @@ class UKAgent:
         self.conversation_history = []
         self.user_memory = {}  # Persistent user context
         self.tools = self._define_tools()
+
+        # Wire to Miru Supabase
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_ANON_KEY")
+        if supabase_url and supabase_key:
+            self.db = create_client(supabase_url, supabase_key)
+        else:
+            self.db = None
 
     def _define_tools(self):
         """Define all available tools for Claude"""
@@ -78,62 +88,80 @@ class UKAgent:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
     def _get_trains(self, station: str) -> str:
-        """Fetch train departures from National Rail"""
+        """Fetch real UK train departures from Miru Supabase"""
         try:
-            # Using realtimetrains.co.uk API
-            url = "https://www.realtimetrains.co.uk/api/v1/json/search"
-            params = {"query": station}
-
-            # For now, return mock data - will integrate real API
-            mock_data = {
-                "station": station,
-                "departures": [
-                    {"time": "20:29", "destination": "London Waterloo", "platform": "1", "status": "on time"},
-                    {"time": "20:33", "destination": "London Waterloo", "platform": "1", "status": "on time"},
-                    {"time": "20:38", "destination": "London Waterloo", "platform": "1", "status": "on time"},
-                ],
-                "link": f"https://www.realtimetrains.co.uk/search/simple/gb-nr:{station.upper()[:3]}"
-            }
-
-            # Store in memory for future reference
             self.user_memory["last_station"] = station
 
-            return json.dumps(mock_data)
+            if self.db:
+                response = self.db.table("places_cache").select("*").ilike(
+                    "name", f"%{station}%"
+                ).limit(5).execute()
+
+                stations = response.data if response.data else []
+                return json.dumps({
+                    "station": station,
+                    "stations": stations,
+                    "source": "Miru Supabase (places_cache)"
+                })
+            else:
+                return json.dumps({
+                    "station": station,
+                    "stations": [],
+                    "source": "Supabase offline"
+                })
         except Exception as e:
-            return json.dumps({"error": str(e)})
+            return json.dumps({"error": f"Train lookup failed: {str(e)}", "station": station})
 
     def _get_fuel_prices(self, postcode: str) -> str:
-        """Fetch fuel prices near postcode"""
+        """Fetch real fuel prices from Miru Supabase"""
         try:
-            # Mock data for now - will integrate government API
-            mock_data = {
-                "postcode": postcode,
-                "stations": [
-                    {"name": "Shell Chertsey", "distance_km": 2.1, "petrol": 1.28, "diesel": 1.35},
-                    {"name": "BP Ottershaw", "distance_km": 3.4, "petrol": 1.26, "diesel": 1.33},
-                    {"name": "Tesco Chobham", "distance_km": 4.2, "petrol": 1.25, "diesel": 1.32},
-                ]
-            }
-
+            postcode_clean = postcode.replace(" ", "").upper()
             self.user_memory["last_postcode"] = postcode
 
-            return json.dumps(mock_data)
+            if self.db:
+                # Query Miru's fuel_prices_cache
+                response = self.db.table("fuel_prices_cache").select("*").eq(
+                    "postcode", postcode_clean
+                ).order("distance_km").limit(5).execute()
+
+                stations = response.data if response.data else []
+                return json.dumps({
+                    "postcode": postcode,
+                    "stations": stations,
+                    "source": "Miru Supabase (fuel_prices_cache)"
+                })
+            else:
+                return json.dumps({
+                    "postcode": postcode,
+                    "stations": [],
+                    "source": "Supabase offline"
+                })
         except Exception as e:
-            return json.dumps({"error": str(e)})
+            return json.dumps({"error": f"Fuel lookup failed: {str(e)}", "postcode": postcode})
 
     def _get_school_events(self, school_name: str) -> str:
-        """Get school events from Gmail"""
+        """Get real school events from Miru Supabase school_events table"""
         try:
-            # Mock data - will integrate school_service.py
-            mock_data = {
-                "school": school_name,
-                "events": [
-                    {"date": "2026-09-18", "event": "School trip to museum", "time": "09:00"},
-                    {"date": "2026-09-19", "event": "Sports day", "time": "14:00"},
-                ]
-            }
+            self.user_memory["last_school"] = school_name
 
-            return json.dumps(mock_data)
+            if self.db:
+                # Query Miru's school_events table
+                response = self.db.table("school_events").select("*").ilike(
+                    "school_name", f"%{school_name}%"
+                ).order("event_date").limit(10).execute()
+
+                events = response.data if response.data else []
+                return json.dumps({
+                    "school": school_name,
+                    "events": events,
+                    "source": "Miru Supabase (school_events)"
+                })
+            else:
+                return json.dumps({
+                    "school": school_name,
+                    "events": [],
+                    "source": "Supabase offline"
+                })
         except Exception as e:
             return json.dumps({"error": str(e)})
 
@@ -160,7 +188,7 @@ If you've helped before, reference that: "To London Waterloo again?"
 
         # Call Claude with tools
         response = self.client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-haiku-4-5-20251001",
             max_tokens=1024,
             system=system_prompt,
             tools=self.tools,
@@ -198,7 +226,7 @@ If you've helped before, reference that: "To London Waterloo again?"
 
             # Get next response
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=1024,
                 system=system_prompt,
                 tools=self.tools,
