@@ -2072,24 +2072,27 @@ def company_intelligence_tabbed(company_name):
     from company_intelligence_routes import ensure_company_row
     from flask import request
 
-    # Fetch company basics from Wikipedia + Claude enrichment
+    # Fetch company basics from Wikipedia
     company_details = None
     try:
-        from company_data_populator import _fetch_wikipedia_summary, _enrich_with_claude
+        from company_data_populator import _fetch_wikipedia_summary
+        import re
         wiki = _fetch_wikipedia_summary(company_name)
-        enriched = _enrich_with_claude(company_name, wiki) or {}
 
-        if wiki or enriched:
+        if wiki:
+            extract = wiki.get("extract", "")
+
+            # Parse headquarters and founded year from Wikipedia text
+            hq_match = re.search(r'headquartered?\s+(?:in|at)\s+([^,\n.]+(?:,\s*[^,\n.]+)?)', extract, re.IGNORECASE)
+            founded_match = re.search(r'(?:founded|established)\s+(?:in\s+)?(\d{4})', extract, re.IGNORECASE)
+
             company_details = {
                 "company_name": company_name,
                 "status": "ready",
-                "description": enriched.get("description") or (wiki.get("extract", "")[:500] if wiki else None),
-                "industry": enriched.get("industry"),
-                "website": enriched.get("website"),
-                "headquarters": enriched.get("headquarters"),
-                "founded_year": enriched.get("founded_year"),
-                "employee_count": enriched.get("employee_count"),
-                "logo_url": wiki.get("image") if wiki else None,
+                "description": extract[:500],
+                "headquarters": hq_match.group(1).strip() if hq_match else None,
+                "founded_year": int(founded_match.group(1)) if founded_match else None,
+                "logo_url": wiki.get("image"),
             }
     except Exception:
         pass
