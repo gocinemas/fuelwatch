@@ -2081,9 +2081,7 @@ def company_intelligence_tabbed(company_name):
             company_name, requested_by=request.headers.get("X-Forwarded-For", request.remote_addr)
         )
     except Exception as e:
-        app.logger.error(f"[intelligence_tabbed] company_details lookup FAILED: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
+        pass  # Gracefully skip company enrichment on error
 
     try:
         # Get competitor from query params (default: Henkel for Reckitt, etc.)

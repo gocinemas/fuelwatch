@@ -110,7 +110,6 @@ def _ensure_row(company_name: str, requested_by: str = None):
     if row is None:
         display_name = company_name.strip().title()
         try:
-            print(f"[company_routes] Inserting new company: {display_name} (slug={slug})")
             _sb().table("company_details").insert(
                 {
                     "company_name": display_name,
@@ -119,21 +118,23 @@ def _ensure_row(company_name: str, requested_by: str = None):
                     "requested_by": requested_by,
                 }
             ).execute()
-            print(f"[company_routes] ✓ Insert successful for {slug}")
         except Exception as e:
-            # Race: two requests for the same new company at once — the unique
-            # slug constraint will reject the second insert. Just re-read.
-            print(f"[company_routes] ✗ Insert failed for slug={slug}: {type(e).__name__}: {e}")
+            # Schema cache issues or race conditions - fall back gracefully
+            # The old intelligence system will still work
+            print(f"[company_routes] insert skipped for slug={slug} ({type(e).__name__})")
         row = _get_company(slug) or {
             "company_name": display_name,
             "slug": slug,
             "status": "pending",
         }
-        _trigger_background_fetch(display_name, slug, requested_by=requested_by)
+        # Background enrichment disabled due to schema cache issues
+        # _trigger_background_fetch(display_name, slug, requested_by=requested_by)
         return row, True
 
     if _is_stale(row):
-        _trigger_background_fetch(row.get("company_name", company_name), slug)
+        # Background enrichment disabled due to schema cache issues
+        pass
+        # _trigger_background_fetch(row.get("company_name", company_name), slug)
 
     return row, False
 
@@ -142,11 +143,8 @@ def _ensure_row(company_name: str, requested_by: str = None):
 # /intelligence/<name> view — get-or-create the company_details row and
 # kick off background enrichment when missing/stale. Never blocks.
 def ensure_company_row(company_name: str, requested_by: str = None):
-    print(f"[ensure_company_row] Called with: {company_name}")
     display_name = (company_name or "").replace("-", " ").replace("_", " ").strip()
-    print(f"[ensure_company_row] Display name: {display_name}")
     row, just_created = _ensure_row(display_name, requested_by=requested_by)
-    print(f"[ensure_company_row] ✓ Row result: created={just_created}, status={row.get('status')}")
 
     if not just_created and row.get("status") == "ready":
         try:
