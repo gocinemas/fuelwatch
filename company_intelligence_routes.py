@@ -109,6 +109,7 @@ def _ensure_row(company_name: str, requested_by: str = None):
 
     if row is None:
         display_name = company_name.strip().title()
+        print(f"[company_routes] Creating new row for {display_name}")
         try:
             _sb().table("company_details").insert(
                 {
@@ -118,15 +119,15 @@ def _ensure_row(company_name: str, requested_by: str = None):
                     "requested_by": requested_by,
                 }
             ).execute()
+            print(f"[company_routes] ✓ Inserted {slug}")
         except Exception as e:
-            # Schema cache issues or race conditions - fall back gracefully
-            # The old intelligence system will still work
-            print(f"[company_routes] insert skipped for slug={slug} ({type(e).__name__})")
+            print(f"[company_routes] ✗ Insert failed for {slug}: {e}")
         row = _get_company(slug) or {
             "company_name": display_name,
             "slug": slug,
             "status": "pending",
         }
+        print(f"[company_routes] Triggering background fetch for {display_name}")
         _trigger_background_fetch(display_name, slug, requested_by=requested_by)
         return row, True
 
