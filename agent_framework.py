@@ -13,6 +13,7 @@ from typing import Optional
 import requests
 from datetime import datetime
 from supabase import create_client, Client
+from search import postcode_to_latlon, fetch_all_stations, haversine_km
 
 class UKAgent:
     def __init__(self):
@@ -88,56 +89,90 @@ class UKAgent:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
     def _get_trains(self, station: str) -> str:
-        """Fetch real UK train departures from Miru Supabase"""
+        """Fetch REAL train departures from RTT (same as live Miru)"""
         try:
             self.user_memory["last_station"] = station
 
-            if self.db:
-                response = self.db.table("places_cache").select("*").ilike(
-                    "name", f"%{station}%"
-                ).limit(5).execute()
+            station_map = {
+                "staines": "STN", "london": "LND", "london waterloo": "WAT",
+                "london victoria": "VIC", "chertsey": "CHY", "egham": "EGH",
+            }
+            from_crs = station_map.get(station.lower(), station.upper()[:3])
 
-                stations = response.data if response.data else []
-                return json.dumps({
-                    "station": station,
-                    "stations": stations,
-                    "source": "Miru Supabase (places_cache)"
+            rtt_token = os.getenv("RTT_TOKEN", "")
+            if not rtt_token:
+                return json.dumps({"station": station, "departures": [], "error": "RTT_TOKEN not set"})
+
+            tr = requests.get("https://data.rtt.io/api/get_access_token",
+                headers={"Authorization": f"Bearer {rtt_token}"}, timeout=10)
+            access = tr.json().get("token")
+            if not access:
+                return json.dumps({"station": station, "departures": [], "error": "RTT auth failed"})
+
+            r = requests.get("https://data.rtt.io/rtt/location",
+                headers={"Authorization": f"Bearer {access}"},
+                params={"code": f"gb-nr:{from_crs}"}, timeout=12)
+
+            services = r.json().get("services") or []
+            departures = []
+            for s in services[:6]:
+                loc = s.get("locationDetail", {})
+                dep_b = loc.get("gbttBookedDeparture", "")
+                dep_r = loc.get("realtimeDeparture", dep_b)
+                def _fmt(t):
+                    t = str(t).strip()
+                    if len(t) == 4 and t.isdigit(): return t[:2] + ":" + t[2:]
+                    return t[:5] if len(t) >= 5 else t
+                departures.append({
+                    "time": _fmt(dep_r or dep_b),
+                    "destination": s.get("destination", [{}])[-1].get("description", ""),
+                    "platform": loc.get("platform", ""),
+                    "operator": s.get("atocName", ""),
                 })
-            else:
-                return json.dumps({
-                    "station": station,
-                    "stations": [],
-                    "source": "Supabase offline"
-                })
+
+            return json.dumps({
+                "station": station,
+                "departures": departures,
+                "source": "RTT API (live - same as miru.humanagency.co)"
+            })
+
         except Exception as e:
-            return json.dumps({"error": f"Train lookup failed: {str(e)}", "station": station})
+            return json.dumps({"station": station, "departures": [], "error": f"RTT: {str(e)}"})
 
     def _get_fuel_prices(self, postcode: str) -> str:
-        """Fetch real fuel prices from Miru Supabase"""
+        """Fetch real fuel prices (same as live Miru)"""
         try:
-            postcode_clean = postcode.replace(" ", "").upper()
             self.user_memory["last_postcode"] = postcode
 
-            if self.db:
-                # Query Miru's fuel_prices_cache
-                response = self.db.table("fuel_prices_cache").select("*").eq(
-                    "postcode", postcode_clean
-                ).order("distance_km").limit(5).execute()
+            coords = postcode_to_latlon(postcode)
+            if not coords:
+                return json.dumps({"postcode": postcode, "stations": [], "error": "Invalid postcode"})
 
-                stations = response.data if response.data else []
-                return json.dumps({
-                    "postcode": postcode,
-                    "stations": stations,
-                    "source": "Miru Supabase (fuel_prices_cache)"
-                })
-            else:
-                return json.dumps({
-                    "postcode": postcode,
-                    "stations": [],
-                    "source": "Supabase offline"
-                })
+            lat, lon = coords
+            all_stations = fetch_all_stations()
+
+            nearby = []
+            for s in all_stations:
+                dist = haversine_km(lat, lon, s.get("latitude"), s.get("longitude"))
+                if dist <= 10:
+                    nearby.append({
+                        "name": s.get("name"),
+                        "distance_km": round(dist, 1),
+                        "petrol_pence": s.get("petrol_price"),
+                        "diesel_pence": s.get("diesel_price"),
+                        "brand": s.get("brand"),
+                    })
+
+            nearby.sort(key=lambda x: x["distance_km"])
+
+            return json.dumps({
+                "postcode": postcode,
+                "stations": nearby[:5],
+                "source": "Miru fuel station data (live - same as miru.humanagency.co)"
+            })
+
         except Exception as e:
-            return json.dumps({"error": f"Fuel lookup failed: {str(e)}", "postcode": postcode})
+            return json.dumps({"postcode": postcode, "stations": [], "error": f"Fuel: {str(e)}"})
 
     def _get_school_events(self, school_name: str) -> str:
         """Get real school events from Miru Supabase school_events table"""
