@@ -1,9 +1,7 @@
+#!/usr/bin/env python3
 """
 UK Personal AI Agent Framework
-Rewrite of Miru using Claude agent architecture.
-
-Handles: trains, fuel, schools, company research, brands
-Platform: Web + WhatsApp
+Autonomous agent with Claude, tool calling, real Miru data
 """
 
 import os
@@ -14,15 +12,15 @@ import requests
 from datetime import datetime
 from supabase import create_client, Client
 from search import postcode_to_latlon, fetch_all_stations, haversine_km
+from sms_service import _get_rtt_token
 
 class UKAgent:
     def __init__(self):
         self.client = Anthropic()
         self.conversation_history = []
-        self.user_memory = {}  # Persistent user context
+        self.user_memory = {}
         self.tools = self._define_tools()
 
-        # Wire to Miru Supabase
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_ANON_KEY")
         if supabase_url and supabase_key:
@@ -31,7 +29,6 @@ class UKAgent:
             self.db = None
 
     def _define_tools(self):
-        """Define all available tools for Claude"""
         return [
             {
                 "name": "get_trains",
@@ -78,7 +75,6 @@ class UKAgent:
         ]
 
     def call_tool(self, tool_name: str, tool_input: dict) -> str:
-        """Execute tool and return results"""
         if tool_name == "get_trains":
             return self._get_trains(tool_input.get("station"))
         elif tool_name == "get_fuel_prices":
@@ -89,10 +85,8 @@ class UKAgent:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
     def _get_trains(self, station: str) -> str:
-        """Fetch REAL train departures from RTT (same as live Miru)"""
+        """Fetch REAL train departures using Miru's proven RTT code"""
         try:
-            self.user_memory["last_station"] = station
-
             station_map = {
                 "staines": "STN", "london": "LND", "london waterloo": "WAT",
                 "london victoria": "VIC", "chertsey": "CHY", "egham": "EGH",
@@ -100,68 +94,52 @@ class UKAgent:
                 "windsor": "WDS", "reading": "RDG", "kingston": "KNG",
             }
             from_crs = station_map.get(station.lower(), station.upper()[:3])
+            self.user_memory["last_station"] = station
 
-            rtt_token = os.getenv("RTT_TOKEN", "")
-            if not rtt_token:
-                return json.dumps({"station": station, "departures": [], "error": "RTT_TOKEN not set"})
-
-            tr = requests.get("https://data.rtt.io/api/get_access_token",
-                headers={"Authorization": f"Bearer {rtt_token}"}, timeout=10)
-            access = tr.json().get("token")
-            if not access:
-                return json.dumps({"station": station, "departures": [], "error": "RTT auth failed"})
-
-            r = requests.get("https://data.rtt.io/rtt/location",
+            # Use Miru's working RTT integration
+            access = _get_rtt_token()
+            r = requests.get(
+                "https://data.rtt.io/rtt/location",
                 headers={"Authorization": f"Bearer {access}"},
-                params={"code": f"gb-nr:{from_crs}"}, timeout=12)
-
-            rtt_resp = r.json()
-            services = rtt_resp.get("services") or []
-
-            # Debug: log response structure
-            import sys
-            print(f"RTT response for {from_crs}: {list(rtt_resp.keys())}, services count: {len(services)}", file=sys.stderr)
+                params={"code": f"gb-nr:{from_crs}"},
+                timeout=12,
+            )
+            data = r.json()
+            services = data.get("services") or []
             departures = []
 
             for s in services[:6]:
                 loc = s.get("locationDetail", {})
                 dep_b = loc.get("gbttBookedDeparture", "")
                 dep_r = loc.get("realtimeDeparture", dep_b)
-
-                if not dep_b and not dep_r:
-                    continue
+                plat = loc.get("platform", "")
+                cancelled = loc.get("cancelledDeparture", False) or loc.get("cancelledCall", False)
 
                 def _fmt(t):
                     t = str(t).strip()
                     if len(t) == 4 and t.isdigit(): return t[:2] + ":" + t[2:]
                     return t[:5] if len(t) >= 5 else t
 
-                dest = s.get("destination", [{}])
-                if dest:
-                    dest_name = dest[-1].get("description", dest[-1].get("crs", ""))
-                else:
-                    dest_name = ""
-
                 departures.append({
                     "time": _fmt(dep_r or dep_b),
-                    "destination": dest_name,
-                    "platform": loc.get("platform", "TBA"),
+                    "destination": s.get("destination", [{}])[-1].get("description", ""),
+                    "platform": plat,
+                    "cancelled": bool(cancelled),
                     "operator": s.get("atocName", ""),
                 })
 
             return json.dumps({
                 "station": station,
-                "crs_code": from_crs,
-                "departures": departures,
-                "note": "No scheduled departures" if not departures else None,
-                "source": "RTT API (live real-time)"
+                "location": data.get("location", {}).get("name", station),
+                "departures": departures[:4],
+                "source": "RTT (live real-time)"
             })
 
         except Exception as e:
-            return json.dumps({"station": station, "departures": [], "error": f"RTT: {str(e)}"})
+            return json.dumps({"station": station, "departures": [], "error": str(e)})
 
     def _get_fuel_prices(self, postcode: str) -> str:
-        """Fetch real fuel prices (same as live Miru)"""
+        """Fetch real fuel prices using Miru's data"""
         try:
             self.user_memory["last_postcode"] = postcode
 
@@ -189,19 +167,18 @@ class UKAgent:
             return json.dumps({
                 "postcode": postcode,
                 "stations": nearby[:5],
-                "source": "Miru fuel station data (live - same as miru.humanagency.co)"
+                "source": "Miru fuel station data (live)"
             })
 
         except Exception as e:
-            return json.dumps({"postcode": postcode, "stations": [], "error": f"Fuel: {str(e)}"})
+            return json.dumps({"postcode": postcode, "stations": [], "error": str(e)})
 
     def _get_school_events(self, school_name: str) -> str:
-        """Get real school events from Miru Supabase school_events table"""
+        """Get school events from Miru Supabase"""
         try:
             self.user_memory["last_school"] = school_name
 
             if self.db:
-                # Query Miru's school_events table
                 response = self.db.table("school_events").select("*").ilike(
                     "school_name", f"%{school_name}%"
                 ).order("event_date").limit(10).execute()
@@ -213,23 +190,17 @@ class UKAgent:
                     "source": "Miru Supabase (school_events)"
                 })
             else:
-                return json.dumps({
-                    "school": school_name,
-                    "events": [],
-                    "source": "Supabase offline"
-                })
+                return json.dumps({"school": school_name, "events": [], "source": "offline"})
         except Exception as e:
             return json.dumps({"error": str(e)})
 
     def chat(self, user_message: str) -> str:
         """Main conversation loop with Claude"""
-        # Add user message to history
         self.conversation_history.append({
             "role": "user",
             "content": user_message
         })
 
-        # Build system prompt
         system_prompt = """You are a UK personal AI assistant. You help with trains, fuel prices, schools, and company research.
 
 When user asks about:
@@ -242,7 +213,6 @@ Be conversational, remember context, and always provide next steps.
 If you've helped before, reference that: "To London Waterloo again?"
 """
 
-        # Call Claude with tools
         response = self.client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=1024,
@@ -251,13 +221,10 @@ If you've helped before, reference that: "To London Waterloo again?"
             messages=self.conversation_history
         )
 
-        # Handle tool calls in agentic loop
         while response.stop_reason == "tool_use":
-            # Extract tool use from response
             assistant_message = {"role": "assistant", "content": response.content}
             self.conversation_history.append(assistant_message)
 
-            # Find tool calls
             tool_results = []
             for block in response.content:
                 if block.type == "tool_use":
@@ -265,7 +232,6 @@ If you've helped before, reference that: "To London Waterloo again?"
                     tool_input = block.input
                     tool_use_id = block.id
 
-                    # Execute tool
                     result = self.call_tool(tool_name, tool_input)
 
                     tool_results.append({
@@ -274,13 +240,11 @@ If you've helped before, reference that: "To London Waterloo again?"
                         "content": result
                     })
 
-            # Add tool results to history
             self.conversation_history.append({
                 "role": "user",
                 "content": tool_results
             })
 
-            # Get next response
             response = self.client.messages.create(
                 model="claude-haiku-4-5-20251001",
                 max_tokens=1024,
@@ -289,14 +253,12 @@ If you've helped before, reference that: "To London Waterloo again?"
                 messages=self.conversation_history
             )
 
-        # Extract final text response
         final_response = ""
         for block in response.content:
             if hasattr(block, "text"):
                 final_response = block.text
                 break
 
-        # Add assistant response to history
         self.conversation_history.append({
             "role": "assistant",
             "content": final_response
@@ -305,11 +267,8 @@ If you've helped before, reference that: "To London Waterloo again?"
         return final_response
 
 
-# Test locally
 if __name__ == "__main__":
     agent = UKAgent()
-
-    # Test conversation
     print("🚂 UK Agent Framework - Test Mode")
     print("Type 'quit' to exit\n")
 
