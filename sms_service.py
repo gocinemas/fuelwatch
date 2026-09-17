@@ -44369,3 +44369,82 @@ def setup_portfolio():
 def setup_integrations():
     """GitHub + Supabase + Railway integration guide."""
     return render_template("setup_integrations.html")
+
+# Autonomous Agent
+from agent_framework import UKAgent
+_agent = UKAgent()
+
+@app.route("/agent")
+def agent_ui():
+    """Agent chat interface."""
+    return """
+    <!DOCTYPE html>
+    <html><head><title>UK Agent</title><style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI'; background: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; }
+    .header { padding: 20px; background: #007AFF; color: white; text-align: center; }
+    .header h1 { font-size: 24px; }
+    .chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .msg { padding: 12px 16px; border-radius: 12px; max-width: 85%; word-wrap: break-word; }
+    .user { align-self: flex-end; background: #007AFF; color: white; }
+    .bot { align-self: flex-start; background: #e5e5ea; color: black; }
+    .input-area { padding: 20px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
+    .input-area input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 24px; }
+    .input-area button { padding: 12px 24px; background: #007AFF; color: white; border: none; border-radius: 24px; cursor: pointer; font-weight: 600; }
+    </style></head><body>
+    <div class="container">
+        <div class="header"><h1>🇬🇧 UK Agent</h1><p>Trains • Fuel • Schools</p></div>
+        <div class="chat" id="chat"></div>
+        <div class="input-area">
+            <input type="text" id="input" placeholder="Ask about trains, fuel, schools...">
+            <button onclick="send()">Send</button>
+        </div>
+    </div>
+    <script>
+    const sid = "user-" + Date.now();
+    function add(text, isUser) {
+        const d = document.createElement("div");
+        d.className = "msg " + (isUser ? "user" : "bot");
+        d.textContent = text;
+        document.getElementById("chat").appendChild(d);
+        document.getElementById("chat").scrollTop = 999999;
+    }
+    async function send() {
+        const msg = document.getElementById("input").value.trim();
+        if (!msg) return;
+        add(msg, true);
+        document.getElementById("input").value = "";
+        try {
+            const r = await fetch("/api/agent/chat", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({message: msg, session_id: sid})
+            });
+            const d = await r.json();
+            add(d.response || "Error", false);
+        } catch (e) {
+            add("Error: " + e.message, false);
+        }
+    }
+    document.getElementById("input").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") send();
+    });
+    add("Hi! Ask me about trains, fuel prices, or school events.", false);
+    </script>
+    </body></html>
+    """
+
+@app.route("/api/agent/chat", methods=["POST"])
+def agent_chat():
+    """Agent chat endpoint."""
+    try:
+        data = request.json or {}
+        msg = data.get("message", "")
+        sid = data.get("session_id", "default")
+        if not msg:
+            return jsonify({"error": "Empty message"}), 400
+        response = _agent.chat(msg)
+        return jsonify({"response": response, "session_id": sid})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
