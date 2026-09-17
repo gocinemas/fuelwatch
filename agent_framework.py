@@ -96,6 +96,8 @@ class UKAgent:
             station_map = {
                 "staines": "STN", "london": "LND", "london waterloo": "WAT",
                 "london victoria": "VIC", "chertsey": "CHY", "egham": "EGH",
+                "virginia water": "VWW", "longcross": "LCX", "weybridge": "WBR",
+                "windsor": "WDS", "reading": "RDG", "kingston": "KNG",
             }
             from_crs = station_map.get(station.lower(), station.upper()[:3])
 
@@ -115,25 +117,39 @@ class UKAgent:
 
             services = r.json().get("services") or []
             departures = []
+
             for s in services[:6]:
                 loc = s.get("locationDetail", {})
                 dep_b = loc.get("gbttBookedDeparture", "")
                 dep_r = loc.get("realtimeDeparture", dep_b)
+
+                if not dep_b and not dep_r:
+                    continue
+
                 def _fmt(t):
                     t = str(t).strip()
                     if len(t) == 4 and t.isdigit(): return t[:2] + ":" + t[2:]
                     return t[:5] if len(t) >= 5 else t
+
+                dest = s.get("destination", [{}])
+                if dest:
+                    dest_name = dest[-1].get("description", dest[-1].get("crs", ""))
+                else:
+                    dest_name = ""
+
                 departures.append({
                     "time": _fmt(dep_r or dep_b),
-                    "destination": s.get("destination", [{}])[-1].get("description", ""),
-                    "platform": loc.get("platform", ""),
+                    "destination": dest_name,
+                    "platform": loc.get("platform", "TBA"),
                     "operator": s.get("atocName", ""),
                 })
 
             return json.dumps({
                 "station": station,
+                "crs_code": from_crs,
                 "departures": departures,
-                "source": "RTT API (live - same as miru.humanagency.co)"
+                "note": "No scheduled departures" if not departures else None,
+                "source": "RTT API (live real-time)"
             })
 
         except Exception as e:
