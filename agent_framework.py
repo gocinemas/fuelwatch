@@ -115,7 +115,12 @@ class UKAgent:
                 headers={"Authorization": f"Bearer {access}"},
                 params={"code": f"gb-nr:{from_crs}"}, timeout=12)
 
-            services = r.json().get("services") or []
+            rtt_resp = r.json()
+            services = rtt_resp.get("services") or []
+
+            # Debug: log response structure
+            import sys
+            print(f"RTT response for {from_crs}: {list(rtt_resp.keys())}, services count: {len(services)}", file=sys.stderr)
             departures = []
 
             for s in services[:6]:
