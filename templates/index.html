@@ -4447,6 +4447,15 @@
   document.getElementById("report-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchReport(); });
   // company-input is now a hidden compat field; intel-input handles keydown via onkeydown attr
 
+  // Auto-detect nearby fuel + stations when postcode entered
+  let _fuelAutoTimer;
+  document.getElementById("fuel-postcode").addEventListener("input", e => {
+    clearTimeout(_fuelAutoTimer);
+    const pc = e.target.value.trim().replace(/\s+/g,"");
+    if (!/^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(pc)) return;
+    _fuelAutoTimer = setTimeout(() => { searchFuel(); }, 400);
+  });
+
   // Intel mode: go straight to company screen (mode auto-set after all JS loads)
   if (_INTEL_MODE) { showScreen("company"); }
 
