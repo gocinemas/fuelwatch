@@ -12846,7 +12846,7 @@ def api_v2_prefs_post():
 
 @app.route("/api/onboarding/complete", methods=["POST"])
 def api_onboarding_complete():
-    """Save onboarding selections: postcode + module preferences."""
+    """Save onboarding selections: postcode + module preferences + background context enrichment."""
     try:
         body = request.get_json(force=True, silent=True) or {}
         token = request.args.get("token", "").strip()
@@ -12877,6 +12877,10 @@ def api_onboarding_complete():
 
         app.logger.info(f"[onboarding] Completed for {from_number}: postcode={postcode}, modules={modules_enabled}")
 
+        # Background: enrich postcode with trains, fuel, council, MP
+        from postcode_context_engine import background_enrich_postcode
+        background_enrich_postcode(from_number, postcode)
+
         return jsonify({
             "status": "ok",
             "postcode": postcode,
@@ -12885,6 +12889,74 @@ def api_onboarding_complete():
 
     except Exception as e:
         app.logger.error(f"[onboarding] Error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/postcode-context", methods=["GET"])
+def api_postcode_context():
+    """Retrieve enriched context (trains, fuel, council, MP) for user's postcode."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+
+    if not from_number:
+        return jsonify({"error": "token required"}), 401
+
+    try:
+        rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number) \
+            .eq("type", "postcode_context").execute().data or []
+
+        if rows:
+            return jsonify(rows[0].get("data", {}))
+
+        # No cached context yet — return empty
+        return jsonify({
+            "postcode": "",
+            "station": None,
+            "next_trains": [],
+            "fuel_nearby": [],
+            "mp": None,
+            "council": None,
+        })
+    except Exception as e:
+        app.logger.error(f"[context] Error retrieving: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/postcode-change", methods=["POST"])
+def api_postcode_change():
+    """Update postcode and trigger background context re-enrichment."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+
+    if not from_number:
+        return jsonify({"error": "token required"}), 401
+
+    try:
+        body = request.get_json(force=True, silent=True) or {}
+        new_postcode = body.get("postcode", "").strip().upper()
+
+        if not new_postcode:
+            return jsonify({"error": "postcode required"}), 400
+
+        # Update v2_prefs
+        lib._sb().table("ma_details").upsert({
+            "device_id": from_number,
+            "type": "v2_prefs",
+            "data": {"postcode": new_postcode}
+        }).execute()
+
+        app.logger.info(f"[postcode_change] Updated {from_number} to {new_postcode}")
+
+        # Background: re-enrich
+        from postcode_context_engine import background_enrich_postcode
+        background_enrich_postcode(from_number, new_postcode)
+
+        return jsonify({
+            "status": "ok",
+            "postcode": new_postcode
+        })
+    except Exception as e:
+        app.logger.error(f"[postcode_change] Error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
