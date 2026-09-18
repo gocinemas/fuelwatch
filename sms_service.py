@@ -4416,6 +4416,14 @@ def brief_page():
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     return resp
 
+@app.route("/privacy")
+def privacy():
+    return send_file("privacy.html", mimetype="text/html")
+
+@app.route("/terms")
+def terms():
+    return send_file("terms.html", mimetype="text/html")
+
 @app.route("/elections")
 def elections_page():
     resp = app.make_response(
