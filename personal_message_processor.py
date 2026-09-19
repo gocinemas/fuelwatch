@@ -59,11 +59,12 @@ def extract_message_intent(body: str) -> Dict[str, Any]:
 
     Returns:
     {
-      "category": "school|todo|event|question|note|receipt|fyi",
+      "category": "school|todo|event|question|note|receipt|fyi|pubs",
       "summary": "one liner",
       "todos": [{"text": "...", "due_date": "...", "priority": "..."}],
       "event": {"title": "...", "date": "...", "description": "..."},
       "school_related": bool,
+      "pubs_nearby": bool,
       "needs_response": bool,
       "suggested_response": "text to send back"
     }
@@ -76,14 +77,21 @@ def extract_message_intent(body: str) -> Dict[str, Any]:
 Message: {body}
 
 Return JSON with:
-- category: "school"|"todo"|"event"|"question"|"note"|"receipt"|"fyi"
+- category: "school"|"todo"|"event"|"question"|"note"|"receipt"|"fyi"|"pubs"
 - summary: one sentence summary
 - school_related: true if mentions school/homework/teacher/class
+- pubs_nearby: true if asking for pubs, bars, drinks, or nearby pubs
 - event: {{title, date (YYYY-MM-DD or null), description}} if it's an event
 - todos: [{{text, due_date, priority}}] if it contains action items
 - needs_response: boolean
 - suggested_response: text if needs_response=true
 - confidence: 0-1 (how confident are you in the categorization?)
+
+Examples of pubs_nearby=true:
+- "pubs nearby"
+- "find pubs"
+- "where can I get a drink"
+- "bars near me"
 
 Only return valid JSON, no markdown."""
 
