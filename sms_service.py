@@ -12922,11 +12922,35 @@ def api_postcode_context():
             "station": None,
             "next_trains": [],
             "fuel_nearby": [],
+            "pubs_nearby": [],
             "mp": None,
             "council": None,
         })
     except Exception as e:
         app.logger.error(f"[context] Error retrieving: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pubs-nearby", methods=["GET"])
+def api_pubs_nearby():
+    """Find nearby pubs for a postcode."""
+    postcode = request.args.get("postcode", "").strip().upper()
+    limit = request.args.get("limit", 5, type=int)
+
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+
+    try:
+        from pubs_finder import get_nearby_pubs
+        pubs = get_nearby_pubs(postcode, limit=limit)
+
+        return jsonify({
+            "postcode": postcode,
+            "pubs": pubs,
+            "count": len(pubs)
+        })
+    except Exception as e:
+        app.logger.error(f"[pubs] Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 

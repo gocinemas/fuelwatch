@@ -295,6 +295,10 @@ def enrich_postcode_context(postcode: str, device_id: str = "") -> Dict[str, Any
     mp = get_local_mp(postcode_clean)
     council = get_local_council_info(postcode_clean)
 
+    # Get pubs
+    from pubs_finder import get_nearby_pubs
+    pubs = get_nearby_pubs(postcode_clean, limit=5)
+
     coords = postcode_to_latlon(postcode_clean) or (None, None)
 
     context = {
@@ -304,6 +308,7 @@ def enrich_postcode_context(postcode: str, device_id: str = "") -> Dict[str, Any
         "station": station,
         "next_trains": trains,
         "fuel_nearby": fuel,
+        "pubs_nearby": pubs,
         "mp": mp,
         "council": council,
         "enriched_at": datetime.utcnow().isoformat(),
@@ -312,7 +317,7 @@ def enrich_postcode_context(postcode: str, device_id: str = "") -> Dict[str, Any
     # Cache it
     _CONTEXT_CACHE[postcode_clean] = (context, time.time())
 
-    print(f"[context] Enriched {postcode_clean}: station={station.get('name') if station else None}, mp={mp.get('name') if mp else None}")
+    print(f"[context] Enriched {postcode_clean}: station={station.get('name') if station else None}, pubs={len(pubs)}, mp={mp.get('name') if mp else None}")
 
     return context
 
