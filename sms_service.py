@@ -4424,6 +4424,81 @@ def privacy():
 def terms():
     return send_file("terms.html", mimetype="text/html")
 
+@app.route("/pubs-test")
+def pubs_test():
+    """Test page for pubs finder by postcode."""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Pubs Finder Test</title>
+        <style>
+            body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
+            input { padding: 10px; font-size: 16px; width: 200px; }
+            button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+            button:hover { background: #0056b3; }
+            .results { margin-top: 30px; }
+            .pub { padding: 15px; border: 1px solid #ddd; margin: 10px 0; border-radius: 4px; }
+            .pub-name { font-size: 18px; font-weight: bold; }
+            .pub-distance { color: #666; font-size: 14px; }
+            .error { color: #d9534f; padding: 10px; background: #f2dede; border-radius: 4px; }
+        </style>
+    </head>
+    <body>
+        <h1>🍺 Pubs Finder Test</h1>
+        <p>Enter a UK postcode to find nearby pubs from OpenStreetMap.</p>
+
+        <input type="text" id="postcode" placeholder="e.g. SW1A 1AA" />
+        <button onclick="searchPubs()">Search</button>
+
+        <div class="results" id="results"></div>
+
+        <script>
+            function searchPubs() {
+                const postcode = document.getElementById('postcode').value.trim();
+                if (!postcode) {
+                    document.getElementById('results').innerHTML = '<div class="error">Please enter a postcode</div>';
+                    return;
+                }
+
+                document.getElementById('results').innerHTML = '<p>Loading...</p>';
+
+                fetch(`/api/pubs-nearby?postcode=${encodeURIComponent(postcode)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.pubs || data.pubs.length === 0) {
+                            document.getElementById('results').innerHTML = '<div class="error">No pubs found</div>';
+                            return;
+                        }
+
+                        let html = `<h2>Found ${data.count} pubs near ${data.postcode}</h2>`;
+                        data.pubs.forEach(pub => {
+                            html += `
+                                <div class="pub">
+                                    <div class="pub-name">${pub.name}</div>
+                                    <div class="pub-distance">📍 ${pub.distance_km} km away</div>
+                                    <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                                        ${pub.confidence_tier} • Lat: ${pub.lat.toFixed(4)}, Lon: ${pub.lon.toFixed(4)}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        document.getElementById('results').innerHTML = html;
+                    })
+                    .catch(e => {
+                        document.getElementById('results').innerHTML = '<div class="error">Error: ' + e.message + '</div>';
+                    });
+            }
+
+            // Enter key to search
+            document.getElementById('postcode').addEventListener('keypress', e => {
+                if (e.key === 'Enter') searchPubs();
+            });
+        </script>
+    </body>
+    </html>
+    """
+
 @app.route("/elections")
 def elections_page():
     resp = app.make_response(
