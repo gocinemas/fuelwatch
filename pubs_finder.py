@@ -69,7 +69,7 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
                 continue
 
             dist = haversine_km(user_lat, user_lon, pub_lat, pub_lon)
-            if dist <= 10:  # Within 10km
+            if dist <= 15:  # Within 15km
                 nearby.append({
                     "name": pub.get("name", ""),
                     "postcode": pub.get("postcode", ""),
