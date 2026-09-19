@@ -13,7 +13,14 @@ from datetime import datetime
 import time
 from difflib import SequenceMatcher
 from search import postcode_to_latlon, haversine_km
-import library as lib
+from supabase import create_client
+
+# Use env vars directly or import from library
+try:
+    import library as lib
+    _sb_client = lib._sb
+except:
+    _sb_client = None
 
 print("[pubs-pipeline] Initializing...")
 
@@ -237,7 +244,14 @@ def save_pubs_to_supabase(pubs: List[Dict]) -> bool:
     print(f"[supabase] Saving {len(pubs)} pubs to Supabase...")
 
     try:
-        sb = lib._sb()
+        # Create Supabase client directly from env
+        sb_url = os.getenv("SUPABASE_URL")
+        sb_key = os.getenv("SUPABASE_ANON_KEY")
+
+        if not sb_url or not sb_key:
+            raise Exception("SUPABASE_URL and SUPABASE_ANON_KEY required")
+
+        sb = create_client(sb_url, sb_key)
 
         # Prepare rows (Supabase compatible)
         rows = []
@@ -256,10 +270,10 @@ def save_pubs_to_supabase(pubs: List[Dict]) -> bool:
                 "created_at": datetime.utcnow().isoformat(),
             })
 
-        # Upsert in batches of 100
+        # Insert in batches of 100
         for i in range(0, len(rows), 100):
             batch = rows[i:i+100]
-            sb.table("pubs").upsert(batch, on_conflict="fhrs_id,osm_id").execute()
+            sb.table("pubs").insert(batch).execute()
             print(f"[supabase] Saved batch {i//100 + 1}")
 
         print(f"[supabase] ✅ Saved {len(rows)} pubs")
