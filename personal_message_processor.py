@@ -171,6 +171,11 @@ def process_message(
             result["routes"].append("personal_todos")
             route_to_todos(message_id, extraction.get("todos"))
 
+        # Route: Pubs nearby
+        if extraction.get("pubs_nearby") or category == "pubs":
+            result["routes"].append("pubs")
+            route_to_pubs(from_number, body, extraction)
+
         # Route: Needs response
         if extraction.get("needs_response"):
             result["routes"].append("response")
@@ -296,6 +301,89 @@ def route_to_todos(message_id: str, todos: list):
 
     except Exception as e:
         logger.exception(f"Error routing to todos: {e}")
+
+
+def route_to_pubs(from_number: str, body: str, extraction: Dict):
+    """
+    Route 'pubs nearby' queries to pubs finder API and send results via WhatsApp.
+
+    Queries user's saved postcode from prefs, calls /api/pubs-nearby,
+    and formats results for WhatsApp reply.
+    """
+
+    try:
+        import requests
+        from twilio.rest import Client
+
+        sb = get_supabase()
+        twilio_client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
+
+        # Get user's postcode from v2_prefs
+        prefs = sb.table("ma_details").select("data").eq("device_id", from_number).eq("type", "v2_prefs").execute()
+        if not prefs.data:
+            twilio_client.messages.create(
+                body="🍺 To find nearby pubs, please set your postcode first.",
+                from_=os.getenv("TWILIO_WHATSAPP_FROM"),
+                to=from_number
+            )
+            logger.info(f"No postcode found for {from_number}")
+            return
+
+        postcode = prefs.data[0].get("data", {}).get("postcode")
+        if not postcode:
+            twilio_client.messages.create(
+                body="🍺 To find nearby pubs, please set your postcode first.",
+                from_=os.getenv("TWILIO_WHATSAPP_FROM"),
+                to=from_number
+            )
+            return
+
+        # Call pubs API
+        api_url = f"http://localhost:5000/api/pubs-nearby?postcode={postcode}&limit=5"
+        try:
+            # Try local first, fallback to remote
+            try:
+                pubs_response = requests.get(api_url, timeout=5)
+            except:
+                api_url = f"https://miru.humanagency.co/api/pubs-nearby?postcode={postcode}&limit=5"
+                pubs_response = requests.get(api_url, timeout=5)
+
+            pubs_data = pubs_response.json()
+            pubs = pubs_data.get("pubs", [])
+
+            if not pubs:
+                twilio_client.messages.create(
+                    body="🍺 No pubs found nearby. Try expanding your search!",
+                    from_=os.getenv("TWILIO_WHATSAPP_FROM"),
+                    to=from_number
+                )
+                return
+
+            # Format pubs for WhatsApp (5 max)
+            reply = f"🍺 *Top pubs near {postcode}:*\n\n"
+            for i, pub in enumerate(pubs[:5], 1):
+                name = pub.get("name", "Unknown")
+                distance = pub.get("distance_km", "?")
+                reply += f"{i}. *{name}*\n   📍 {distance}km away\n\n"
+
+            twilio_client.messages.create(
+                body=reply,
+                from_=os.getenv("TWILIO_WHATSAPP_FROM"),
+                to=from_number
+            )
+
+            logger.info(f"✅ Sent {len(pubs[:5])} pubs to {from_number}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error calling pubs API: {e}")
+            twilio_client.messages.create(
+                body="🍺 Error finding pubs. Try again later.",
+                from_=os.getenv("TWILIO_WHATSAPP_FROM"),
+                to=from_number
+            )
+
+    except Exception as e:
+        logger.exception(f"Error routing to pubs: {e}")
 
 
 # ─────────────────────────────────────────────────────────────────────
