@@ -53,22 +53,29 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
         page = 0
         page_size = 1000
 
-        while True:
-            query = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1)
+        print(f"[pubs] Starting pagination: page_size={page_size}")
+
+        while page < 50:  # Safety limit
+            start = page * page_size
+            end = (page + 1) * page_size - 1
+
+            query = sb.table("pubs").select("*").range(start, end)
 
             # Filter by confidence tier if specified
             if confidence_tier:
                 query = query.eq("confidence_tier", confidence_tier)
 
             rows = query.execute().data or []
+            print(f"[pubs] Page {page}: range({start}, {end}) -> {len(rows)} rows")
+
             if not rows:
+                print(f"[pubs] No rows at page {page}, stopping")
                 break
 
             all_rows.extend(rows)
             page += 1
-            print(f"[pubs] Fetched page {page} ({len(all_rows)} total)")
 
-        print(f"[pubs] Total pubs to search: {len(all_rows)}")
+        print(f"[pubs] Total pubs fetched: {len(all_rows)}")
 
         # Calculate distances and filter
         nearby = []
