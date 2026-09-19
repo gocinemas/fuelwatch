@@ -6,6 +6,7 @@ Pubs Finder — Query unified Supabase pubs database (FHRS + OSM + confidence ti
 import os
 import json
 import time
+import requests
 from typing import List, Dict, Any
 from search import postcode_to_latlon, haversine_km
 import library as lib
@@ -13,6 +14,50 @@ import library as lib
 # Cache: {postcode: (data, timestamp)}
 _PUBS_CACHE = {}
 _PUBS_CACHE_TTL = 3600  # 1 hour
+
+# Reverse geocoding cache: {(lat, lon): place_name}
+_AREA_CACHE = {}
+_AREA_CACHE_TTL = 3600  # 1 hour
+
+
+def _get_area_name(lat: float, lon: float) -> str:
+    """
+    Reverse geocode coordinates to get place/area name (Longcross, Virginia Water, etc.)
+    Uses OpenStreetMap Nominatim API.
+    """
+    cache_key = (round(lat, 4), round(lon, 4))
+
+    if cache_key in _AREA_CACHE:
+        cached, ts = _AREA_CACHE[cache_key]
+        if time.time() - ts < _AREA_CACHE_TTL:
+            return cached
+
+    try:
+        # Use Nominatim (free, no API key needed)
+        url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10"
+        headers = {"User-Agent": "Miru-PubsFinder/1.0"}
+
+        resp = requests.get(url, headers=headers, timeout=3)
+        if resp.status_code == 200:
+            data = resp.json()
+
+            # Priority: village > town > suburb > county
+            address = data.get("address", {})
+            area = (
+                address.get("village") or
+                address.get("town") or
+                address.get("suburb") or
+                address.get("county") or
+                address.get("city") or
+                "Unknown"
+            )
+
+            _AREA_CACHE[cache_key] = (area, time.time())
+            return area
+    except Exception as e:
+        print(f"[pubs] Reverse geocode error for ({lat}, {lon}): {e}")
+
+    return None
 
 
 def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) -> List[Dict]:
@@ -88,8 +133,12 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
             dist = haversine_km(user_lat, user_lon, pub_lat, pub_lon)
             if dist <= 15:  # Within 15km
+                # Get area/place name via reverse geocoding
+                area_name = _get_area_name(pub_lat, pub_lon) or "Unknown"
+
                 nearby.append({
                     "name": pub.get("name", ""),
+                    "area": area_name,  # Area/place name (Longcross, Virginia Water, etc.)
                     "postcode": pub.get("postcode", ""),
                     "distance_km": round(dist, 1),
                     "lat": pub_lat,

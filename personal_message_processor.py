@@ -371,8 +371,9 @@ def route_to_pubs(from_number: str, body: str, extraction: Dict):
             reply = f"🍺 *Top pubs near {postcode}:*\n\n"
             for i, pub in enumerate(pubs[:5], 1):
                 name = pub.get("name", "Unknown")
+                area = pub.get("area", "Unknown")
                 distance = pub.get("distance_km", "?")
-                reply += f"{i}. *{name}*\n   📍 {distance}km away\n\n"
+                reply += f"{i}. *{name}*\n   📍 {area} • {distance}km away\n\n"
 
             twilio_client.messages.create(
                 body=reply,
