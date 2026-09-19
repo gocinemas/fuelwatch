@@ -33,6 +33,7 @@ def get_nearby_pubs_osm(postcode: str, radius_km: float = 5.0, limit: int = 5) -
         # Overpass API query: pubs within radius
         # amenity=pub OR amenity=bar (OSM tags for pubs)
         query = f"""
+        [out:json];
         [bbox:{lat - radius_km/111:.4f},{lon - radius_km/111/.83:.4f},{lat + radius_km/111:.4f},{lon + radius_km/111/.83:.4f}];
         (
           node["amenity"="pub"];
