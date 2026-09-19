@@ -47,21 +47,32 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
         user_lat, user_lon = coords
 
-        # Query Supabase pubs table
+        # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         sb = lib._sb()
-        query = sb.table("pubs").select("*")
+        all_rows = []
+        page = 0
+        page_size = 1000
 
-        # Filter by confidence tier if specified
-        if confidence_tier:
-            query = query.eq("confidence_tier", confidence_tier)
+        while True:
+            query = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1)
 
-        # Execute query (fetch all, will filter by distance in Python)
-        # Note: Ideally would use PostGIS distance query, but keeping it simple
-        rows = query.execute().data or []
+            # Filter by confidence tier if specified
+            if confidence_tier:
+                query = query.eq("confidence_tier", confidence_tier)
+
+            rows = query.execute().data or []
+            if not rows:
+                break
+
+            all_rows.extend(rows)
+            page += 1
+            print(f"[pubs] Fetched page {page} ({len(all_rows)} total)")
+
+        print(f"[pubs] Total pubs to search: {len(all_rows)}")
 
         # Calculate distances and filter
         nearby = []
-        for pub in rows:
+        for pub in all_rows:
             pub_lat = pub.get("lat")
             pub_lon = pub.get("lon")
 
@@ -90,7 +101,7 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
         # Cache
         _PUBS_CACHE[cache_key] = (result, time.time())
 
-        print(f"[pubs] Found {len(result)} pubs near {postcode_clean}")
+        print(f"[pubs] Found {len(result)} pubs near {postcode_clean} (searched {len(all_rows)} total)")
         return result
 
     except Exception as e:
@@ -104,10 +115,20 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
     """
     try:
         sb = lib._sb()
-        rows = sb.table("pubs").select("*").execute().data or []
+        all_rows = []
+        page = 0
+        page_size = 1000
+
+        # Paginate through all pubs
+        while True:
+            rows = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1).execute().data or []
+            if not rows:
+                break
+            all_rows.extend(rows)
+            page += 1
 
         nearby = []
-        for pub in rows:
+        for pub in all_rows:
             pub_lat = pub.get("lat")
             pub_lon = pub.get("lon")
 
