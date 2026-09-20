@@ -133,13 +133,12 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
             dist = haversine_km(user_lat, user_lon, pub_lat, pub_lon)
             if dist <= 15:  # Within 15km
-                # Use postcode if available, else do reverse geocoding
-                pub_postcode = pub.get("postcode", "").strip()
-                area_name = pub_postcode or _get_area_name(pub_lat, pub_lon) or ""
+                # Use postcode as area name (most pubs have postcodes)
+                pub_postcode = pub.get("postcode", "").strip() or ""
 
                 nearby.append({
                     "name": pub.get("name", ""),
-                    "area": area_name,  # Area/place name or postcode
+                    "area": pub_postcode,  # Postcode as area identifier
                     "postcode": pub_postcode,
                     "distance_km": round(dist, 1),
                     "lat": pub_lat,
@@ -194,12 +193,11 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
 
             dist = haversine_km(lat, lon, pub_lat, pub_lon)
             if dist <= radius_km:
-                pub_postcode = pub.get("postcode", "").strip()
-                area_name = pub_postcode or _get_area_name(pub_lat, pub_lon) or ""
+                pub_postcode = pub.get("postcode", "").strip() or ""
 
                 nearby.append({
                     "name": pub.get("name", ""),
-                    "area": area_name,
+                    "area": pub_postcode,
                     "postcode": pub_postcode,
                     "distance_km": round(dist, 1),
                     "lat": pub_lat,
