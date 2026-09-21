@@ -4614,14 +4614,20 @@ def pubs_test():
                         data.pubs.forEach(pub => {
                             const rating = pub.fhrs_rating ? `⭐ ${pub.fhrs_rating}/5` : "";
                             const mapsUrl = `https://maps.google.com/?q=${pub.lat},${pub.lon}`;
+                            const phone = pub.phone ? `<div style="font-size: 12px; color: #059669;">☎️ <a href="tel:${pub.phone}" style="color: #059669; text-decoration: none;">${pub.phone}</a></div>` : "";
+                            const hours = pub.opening_hours ? `<div style="font-size: 12px; color: #666;">🕐 ${pub.opening_hours}</div>` : "";
+                            const website = pub.website ? `<a href="${pub.website}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #2563eb; color: white; text-decoration: none; border-radius: 4px; font-size: 13px;">🌐 Website</a>` : "";
                             html += `
                                 <div class="pub">
                                     <div class="pub-name">${pub.name}${rating ? ` <span style="color: #f59e0b; font-size: 14px;">${rating}</span>` : ""}</div>
                                     ${pub.postcode ? `<div style="font-size: 13px; color: #666; margin: 5px 0;">📍 ${pub.postcode}</div>` : ""}
+                                    ${phone}
+                                    ${hours}
                                     <div class="pub-distance">${pub.distance_km} km away</div>
                                     <div style="margin-top: 8px;">
                                         <a href="${mapsUrl}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; margin-right: 6px;">🗺️ Navigate</a>
-                                        <a href="https://maps.google.com/?q=${encodeURIComponent(pub.name)}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 13px;">🔍 Info</a>
+                                        <a href="https://maps.google.com/?q=${encodeURIComponent(pub.name)}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; margin-right: 6px;">🔍 Info</a>
+                                        ${website}
                                     </div>
                                 </div>
                             `;

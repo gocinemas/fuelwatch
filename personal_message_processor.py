@@ -375,6 +375,9 @@ def route_to_pubs(from_number: str, body: str, extraction: Dict):
                 distance = pub.get("distance_km", "?")
                 lat = pub.get("lat")
                 lon = pub.get("lon")
+                phone = pub.get("phone", "").strip() if pub.get("phone") else ""
+                website = pub.get("website", "").strip() if pub.get("website") else ""
+                hours = pub.get("opening_hours", "").strip() if pub.get("opening_hours") else ""
                 maps_link = f"https://maps.google.com/?q={lat},{lon}" if lat and lon else ""
                 rating = pub.get("fhrs_rating")
                 rating_text = f" ⭐ {rating}/5" if rating else ""
@@ -382,10 +385,17 @@ def route_to_pubs(from_number: str, body: str, extraction: Dict):
                 reply += f"{i}. *{name}*{rating_text}\n"
                 if area:
                     reply += f"   📍 {area}\n"
+                if phone:
+                    reply += f"   ☎️ {phone}\n"
+                if hours:
+                    reply += f"   🕐 {hours}\n"
                 reply += f"   ↗️ {distance}km away"
                 if maps_link:
                     reply += f" | {maps_link}"
-                reply += "\n\n"
+                reply += "\n"
+                if website:
+                    reply += f"   🌐 {website}\n"
+                reply += "\n"
 
             twilio_client.messages.create(
                 body=reply,

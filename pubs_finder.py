@@ -87,6 +87,9 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
                     "distance_km": round(dist, 1),
                     "lat": pub_lat,
                     "lon": pub_lon,
+                    "phone": pub.get("phone"),
+                    "website": pub.get("website"),
+                    "opening_hours": pub.get("opening_hours"),
                     "fhrs_rating": pub.get("fhrs_rating"),  # 5=very good, 0=awaiting
                     "confidence_tier": pub.get("confidence_tier", "UNVERIFIED"),
                     "match_confidence": pub.get("match_confidence"),
@@ -142,6 +145,10 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
                     "distance_km": round(dist, 1),
                     "lat": pub_lat,
                     "lon": pub_lon,
+                    "postcode": pub.get("postcode", ""),
+                    "phone": pub.get("phone"),
+                    "website": pub.get("website"),
+                    "opening_hours": pub.get("opening_hours"),
                     "fhrs_rating": pub.get("fhrs_rating"),
                     "confidence_tier": pub.get("confidence_tier"),
                 })

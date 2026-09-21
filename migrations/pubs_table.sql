@@ -13,6 +13,11 @@ CREATE TABLE IF NOT EXISTS pubs (
   -- OSM (OpenStreetMap)
   osm_id TEXT UNIQUE,
 
+  -- Contact info from OSM
+  phone TEXT,          -- Phone number
+  website TEXT,        -- Website URL
+  opening_hours TEXT,  -- Opening hours string (e.g. "Mo-Su 11:00-23:00")
+
   -- Confidence scoring
   confidence_tier TEXT CHECK (confidence_tier IN ('VERIFIED', 'LIKELY', 'UNVERIFIED')),
   match_confidence FLOAT,  -- 0-1 score for FHRS→OSM match
