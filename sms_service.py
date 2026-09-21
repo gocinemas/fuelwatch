@@ -4612,12 +4612,16 @@ def pubs_test():
 
                         let html = `<h2>Found ${data.count} pubs near ${data.postcode}</h2>`;
                         data.pubs.forEach(pub => {
+                            const rating = pub.fhrs_rating ? `⭐ ${pub.fhrs_rating}/5` : "";
+                            const mapsUrl = `https://maps.google.com/?q=${pub.lat},${pub.lon}`;
                             html += `
                                 <div class="pub">
-                                    <div class="pub-name">${pub.name}</div>
-                                    <div class="pub-distance">📍 ${pub.distance_km} km away</div>
-                                    <div style="font-size: 12px; color: #999; margin-top: 5px;">
-                                        ${pub.confidence_tier} • Lat: ${pub.lat.toFixed(4)}, Lon: ${pub.lon.toFixed(4)}
+                                    <div class="pub-name">${pub.name}${rating ? ` <span style="color: #f59e0b; font-size: 14px;">${rating}</span>` : ""}</div>
+                                    ${pub.postcode ? `<div style="font-size: 13px; color: #666; margin: 5px 0;">📍 ${pub.postcode}</div>` : ""}
+                                    <div class="pub-distance">${pub.distance_km} km away</div>
+                                    <div style="margin-top: 8px;">
+                                        <a href="${mapsUrl}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; margin-right: 6px;">🗺️ Navigate</a>
+                                        <a href="https://maps.google.com/?q=${encodeURIComponent(pub.name)}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 13px;">🔍 Info</a>
                                     </div>
                                 </div>
                             `;
