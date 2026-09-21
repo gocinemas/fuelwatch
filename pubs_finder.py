@@ -92,28 +92,18 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
         user_lat, user_lon = coords
 
-        # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
+        # Query Supabase pubs table - fetch all nearby results
         sb = lib._sb()
-        all_rows = []
-        page = 0
-        page_size = 1000
+        try:
+            query = sb.table("pubs").select("*")
 
-        while True:
-            query = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1)
-
-            # Filter by confidence tier if specified
-            if confidence_tier:
-                query = query.eq("confidence_tier", confidence_tier)
-
-            rows = query.execute().data or []
-            if not rows:
-                break
-
-            all_rows.extend(rows)
-            page += 1
-            print(f"[pubs] Fetched page {page} ({len(all_rows)} total)")
-
-        print(f"[pubs] Total pubs to search: {len(all_rows)}")
+            # Limit to first 1000 to avoid massive transfers
+            rows = query.limit(1000).execute().data or []
+            all_rows = rows
+            print(f"[pubs] Fetched {len(all_rows)} pubs from Supabase")
+        except Exception as e:
+            print(f"[pubs] Supabase query error: {e}")
+            all_rows = []
 
         # Calculate distances and filter
         nearby = []
@@ -168,17 +158,12 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
         page = 0
         page_size = 1000
 
-        # Paginate through all pubs
-        all_rows = []
-        page = 0
-        page_size = 1000
-
-        while True:
-            rows = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1).execute().data or []
-            if not rows:
-                break
-            all_rows.extend(rows)
-            page += 1
+        # Fetch all pubs (first 1000)
+        try:
+            all_rows = sb.table("pubs").select("*").limit(1000).execute().data or []
+        except Exception as e:
+            print(f"[pubs] Error: {e}")
+            all_rows = []
 
         nearby = []
         for pub in all_rows:
