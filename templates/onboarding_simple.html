@@ -300,8 +300,9 @@
         // Wait 2 seconds for background enrichment to start
         await new Promise(r => setTimeout(r, 2000));
 
-        // Redirect to homepage
-        window.location.href = '/?postcode=' + encodeURIComponent(postcode);
+        // Redirect to homepage with token (for user identity) and postcode
+        const homeUrl = '/?token=' + encodeURIComponent(token) + '&postcode=' + encodeURIComponent(postcode);
+        window.location.href = homeUrl;
       } catch (e) {
         console.error('Error:', e);
         alert('Setup failed. Please refresh and try again.');
