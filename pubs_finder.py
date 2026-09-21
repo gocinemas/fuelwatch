@@ -6,7 +6,6 @@ Pubs Finder — Query unified Supabase pubs database (FHRS + OSM + confidence ti
 import os
 import json
 import time
-import requests
 from typing import List, Dict, Any
 from search import postcode_to_latlon, haversine_km
 import library as lib
@@ -14,50 +13,6 @@ import library as lib
 # Cache: {postcode: (data, timestamp)}
 _PUBS_CACHE = {}
 _PUBS_CACHE_TTL = 3600  # 1 hour
-
-# Reverse geocoding cache: {(lat, lon): place_name}
-_AREA_CACHE = {}
-_AREA_CACHE_TTL = 3600  # 1 hour
-
-
-def _get_area_name(lat: float, lon: float) -> str:
-    """
-    Reverse geocode coordinates to get place/area name (Longcross, Virginia Water, etc.)
-    Uses OpenStreetMap Nominatim API.
-    """
-    cache_key = (round(lat, 4), round(lon, 4))
-
-    if cache_key in _AREA_CACHE:
-        cached, ts = _AREA_CACHE[cache_key]
-        if time.time() - ts < _AREA_CACHE_TTL:
-            return cached
-
-    try:
-        # Use Nominatim (free, no API key needed)
-        url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10"
-        headers = {"User-Agent": "Miru-PubsFinder/1.0"}
-
-        resp = requests.get(url, headers=headers, timeout=3)
-        if resp.status_code == 200:
-            data = resp.json()
-
-            # Priority: village > town > suburb > county
-            address = data.get("address", {})
-            area = (
-                address.get("village") or
-                address.get("town") or
-                address.get("suburb") or
-                address.get("county") or
-                address.get("city") or
-                "Unknown"
-            )
-
-            _AREA_CACHE[cache_key] = (area, time.time())
-            return area
-    except Exception as e:
-        print(f"[pubs] Reverse geocode error for ({lat}, {lon}): {e}")
-
-    return None
 
 
 def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) -> List[Dict]:
@@ -92,18 +47,28 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
         user_lat, user_lon = coords
 
-        # Query Supabase pubs table - fetch all nearby results
+        # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         sb = lib._sb()
-        try:
-            print(f"[pubs] Querying Supabase...")
-            result = sb.table("pubs").select("*").limit(1000).execute()
-            all_rows = result.data or []
-            print(f"[pubs] Got {len(all_rows)} pubs from Supabase")
-        except Exception as e:
-            print(f"[pubs] ERROR in Supabase query: {e}")
-            import traceback
-            traceback.print_exc()
-            all_rows = []
+        all_rows = []
+        page = 0
+        page_size = 1000
+
+        while True:
+            query = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1)
+
+            # Filter by confidence tier if specified
+            if confidence_tier:
+                query = query.eq("confidence_tier", confidence_tier)
+
+            rows = query.execute().data or []
+            if not rows:
+                break
+
+            all_rows.extend(rows)
+            page += 1
+            print(f"[pubs] Fetched page {page} ({len(all_rows)} total)")
+
+        print(f"[pubs] Total pubs to search: {len(all_rows)}")
 
         # Calculate distances and filter
         nearby = []
@@ -116,13 +81,9 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
             dist = haversine_km(user_lat, user_lon, pub_lat, pub_lon)
             if dist <= 15:  # Within 15km
-                # Use postcode as area name (most pubs have postcodes)
-                pub_postcode = pub.get("postcode", "").strip() or ""
-
                 nearby.append({
                     "name": pub.get("name", ""),
-                    "area": pub_postcode,  # Postcode as area identifier
-                    "postcode": pub_postcode,
+                    "postcode": pub.get("postcode", ""),
                     "distance_km": round(dist, 1),
                     "lat": pub_lat,
                     "lon": pub_lon,
@@ -158,12 +119,13 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
         page = 0
         page_size = 1000
 
-        # Fetch all pubs (first 1000)
-        try:
-            all_rows = sb.table("pubs").select("*").limit(1000).execute().data or []
-        except Exception as e:
-            print(f"[pubs] Error: {e}")
-            all_rows = []
+        # Paginate through all pubs
+        while True:
+            rows = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1).execute().data or []
+            if not rows:
+                break
+            all_rows.extend(rows)
+            page += 1
 
         nearby = []
         for pub in all_rows:
@@ -175,12 +137,8 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
 
             dist = haversine_km(lat, lon, pub_lat, pub_lon)
             if dist <= radius_km:
-                pub_postcode = pub.get("postcode", "").strip() or ""
-
                 nearby.append({
                     "name": pub.get("name", ""),
-                    "area": pub_postcode,
-                    "postcode": pub_postcode,
                     "distance_km": round(dist, 1),
                     "lat": pub_lat,
                     "lon": pub_lon,
