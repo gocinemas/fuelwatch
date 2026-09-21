@@ -6,6 +6,7 @@ Pubs Finder — Query unified Supabase pubs database (FHRS + OSM + confidence ti
 import os
 import json
 import time
+import requests
 from typing import List, Dict, Any
 from search import postcode_to_latlon, haversine_km
 import library as lib
@@ -13,6 +14,88 @@ import library as lib
 # Cache: {postcode: (data, timestamp)}
 _PUBS_CACHE = {}
 _PUBS_CACHE_TTL = 3600  # 1 hour
+
+
+def _enrich_osm_data_for_area(lat: float, lon: float, radius_km: float = 15) -> Dict[str, Dict]:
+    """
+    Fetch detailed OSM pub data (phone, website, opening_hours) for a geographic area.
+    Returns dict: {osm_id: {phone, website, opening_hours}, ...}
+    """
+    try:
+        # Create bbox for area (convert km to degrees: 1 degree ≈ 111 km)
+        delta = (radius_km / 111.0)
+        bbox = f"{lat - delta},{lon - delta},{lat + delta},{lon + delta}"
+
+        overpass_query = f"""
+        [bbox:{bbox}];
+        (
+          node["amenity"="pub"];
+          way["amenity"="pub"];
+          relation["amenity"="pub"];
+        );
+        out center;
+        """
+
+        url = "https://overpass-api.de/api/interpreter"
+        headers = {"User-Agent": "Miru/1.0"}
+
+        print(f"[osm] Fetching OSM data for area ({lat}, {lon})...")
+        response = requests.post(url, data=overpass_query, headers=headers, timeout=15)
+
+        if response.status_code != 200:
+            print(f"[osm] Overpass returned {response.status_code}")
+            return {}
+
+        data = response.json()
+        osm_map = {}
+
+        for elem in data.get("elements", []):
+            if "center" in elem and "tags" in elem:
+                osm_id = f"osm_{elem.get('id', 'unknown')}"
+                tags = elem["tags"]
+
+                phone = tags.get("phone", "").strip() or None
+                website = tags.get("website", "").strip() or None
+                hours = tags.get("opening_hours", "").strip() or None
+
+                osm_map[osm_id] = {
+                    "phone": phone,
+                    "website": website,
+                    "opening_hours": hours
+                }
+
+        print(f"[osm] Found OSM data for {len(osm_map)} pubs")
+        return osm_map
+
+    except Exception as e:
+        print(f"[osm] Error: {e}")
+        return {}
+
+
+def _update_pubs_with_osm_data(osm_data: Dict[str, Dict], sb: Any) -> None:
+    """
+    Update pubs in database with OSM phone/website/opening_hours data.
+    """
+    try:
+        updated = 0
+        for osm_id, info in osm_data.items():
+            if not any([info.get("phone"), info.get("website"), info.get("opening_hours")]):
+                continue
+
+            try:
+                sb.table("pubs").update({
+                    "phone": info.get("phone"),
+                    "website": info.get("website"),
+                    "opening_hours": info.get("opening_hours")
+                }).eq("osm_id", osm_id).execute()
+                updated += 1
+            except Exception as e:
+                # Silently skip if update fails
+                pass
+
+        print(f"[osm] Updated {updated} pubs in database")
+    except Exception as e:
+        print(f"[osm] Error updating database: {e}")
 
 
 def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) -> List[Dict]:
@@ -46,6 +129,15 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
             return []
 
         user_lat, user_lon = coords
+
+        # Enrich OSM data for this area in background (don't block)
+        try:
+            osm_data = _enrich_osm_data_for_area(user_lat, user_lon, radius_km=20)
+            if osm_data:
+                sb = lib._sb()
+                _update_pubs_with_osm_data(osm_data, sb)
+        except Exception as e:
+            print(f"[pubs] Background enrichment failed (non-blocking): {e}")
 
         # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         sb = lib._sb()
