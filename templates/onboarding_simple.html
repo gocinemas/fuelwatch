@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Miru</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 420px;
+      width: 100%;
+      padding: 40px;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 26px;
+      color: #1f2937;
+      margin-bottom: 8px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 32px;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .progress-bar {
+      height: 3px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #667eea;
+      transition: width 0.3s ease;
+    }
+    .step-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+    .form-group {
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 10px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .yes-no-group {
+      display: flex;
+      gap: 12px;
+    }
+    .yes-no-btn {
+      flex: 1;
+      padding: 14px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 12px;
+      background: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 15px;
+    }
+    .yes-no-btn:hover {
+      border-color: #667eea;
+      background: #f3f4ff;
+    }
+    .yes-no-btn.selected {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    .next-btn {
+      width: 100%;
+      padding: 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 12px;
+    }
+    .next-btn:hover:not(:disabled) {
+      background: #5568d3;
+    }
+    .next-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .skip-btn {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      color: #667eea;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .skip-btn:hover {
+      background: #f3f4ff;
+    }
+    .benefits {
+      background: #f3f4ff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 24px;
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.6;
+    }
+    .benefits strong {
+      display: block;
+      color: #667eea;
+      font-size: 12px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e5e7eb;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- STEP 1: POSTCODE -->
+    <div id="step1" class="step">
+      <div class="logo">📍</div>
+      <h1>Where are you?</h1>
+      <p class="subtitle">Your postcode helps us show trains, fuel, pubs & local info</p>
+
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 33%"></div>
+      </div>
+
+      <div class="step-label">Step 1 of 3</div>
+
+      <div class="form-group">
+        <input type="text" id="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" autofocus>
+      </div>
+
+      <button class="next-btn" id="btn-postcode" onclick="nextStep(1)">Continue</button>
+
+      <div class="benefits">
+        <strong>You'll unlock:</strong>
+        🚆 Live train times • ⛽ Fuel prices • 🍺 Pubs nearby • 🏡 Local info
+      </div>
+    </div>
+
+    <!-- STEP 2: KIDS -->
+    <div id="step2" class="step" style="display: none;">
+      <div class="logo">👨‍👩‍👧</div>
+      <h1>School-age kids?</h1>
+      <p class="subtitle">We can track school comms & calendars (optional)</p>
+
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 66%"></div>
+      </div>
+
+      <div class="step-label">Step 2 of 3</div>
+
+      <div class="yes-no-group">
+        <button class="yes-no-btn" id="btn-yes" onclick="selectKids(true)">Yes</button>
+        <button class="yes-no-btn" id="btn-no" onclick="selectKids(false)">No</button>
+      </div>
+
+      <button class="next-btn" id="btn-kids" onclick="nextStep(2)" disabled style="margin-top: 20px;">Continue</button>
+
+      <div class="benefits">
+        <strong>With schools enabled:</strong>
+        📅 See school events • 📧 Track school emails • 🔔 Get alerts
+      </div>
+    </div>
+
+    <!-- STEP 3: DONE -->
+    <div id="step3" class="step" style="display: none;">
+      <div class="logo">🎉</div>
+      <h1>All set!</h1>
+      <p class="subtitle">Loading your area's trains, pubs, fuel & local info...</p>
+
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 100%"></div>
+      </div>
+
+      <div class="loading" id="loading" style="display: flex; flex-direction: column; justify-content: center;">
+        <div class="spinner"></div>
+        <p style="color: #6b7280; font-size: 14px;">Setting up your Miru...</p>
+      </div>
+
+      <div class="benefits" style="margin-top: 24px;">
+        <strong>Coming to your feed:</strong>
+        🚆 Next trains • ⛽ Cheap fuel • 🍺 Pubs • 📍 Local info • 🏡 My Area
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let haKids = null;
+
+    function nextStep(step) {
+      if (step === 1) {
+        const postcode = document.getElementById('postcode').value.trim().toUpperCase();
+        if (!postcode || !/^[A-Z]{1,2}[0-9]{1,2}[A-Z]?\s?[0-9][A-Z]{2}$/i.test(postcode)) {
+          alert('Please enter a valid UK postcode');
+          return;
+        }
+        localStorage.setItem('miru_postcode', postcode);
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'block';
+      } else if (step === 2) {
+        document.getElementById('step2').style.display = 'none';
+        document.getElementById('step3').style.display = 'block';
+        completeOnboarding();
+      }
+    }
+
+    function selectKids(yes) {
+      haKids = yes;
+      document.getElementById('btn-yes').classList.toggle('selected', yes);
+      document.getElementById('btn-no').classList.toggle('selected', !yes);
+      document.getElementById('btn-kids').disabled = false;
+    }
+
+    async function completeOnboarding() {
+      const postcode = localStorage.getItem('miru_postcode');
+      const token = new URLSearchParams(window.location.search).get('token');
+
+      try {
+        // Save onboarding
+        const res = await fetch(`/api/onboarding/complete?token=${encodeURIComponent(token)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            postcode,
+            modules_enabled: { schools: haKids, trains: true, fuel: true, pubs: true }
+          })
+        });
+
+        if (!res.ok) throw new Error('Onboarding failed');
+
+        // Wait 2 seconds for background enrichment to start
+        await new Promise(r => setTimeout(r, 2000));
+
+        // Redirect to homepage
+        window.location.href = '/?postcode=' + encodeURIComponent(postcode);
+      } catch (e) {
+        console.error('Error:', e);
+        alert('Setup failed. Please refresh and try again.');
+      }
+    }
+
+    // Auto-focus postcode field
+    document.getElementById('postcode').focus();
+    document.getElementById('postcode').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') nextStep(1);
+    });
+  </script>
+</body>
+</html>
