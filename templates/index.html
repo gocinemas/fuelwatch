@@ -8620,6 +8620,36 @@ function _hcAdd() {
     el.style.display = "";
   }
 
+  function _maRenderPubsFromAPI(pubs) {
+    // Render pubs from our new /api/pubs-nearby endpoint
+    const el = document.getElementById("rp-panel-pubs");
+    if (!el) return;
+    if (!pubs || pubs.length === 0) {
+      document.getElementById("report-pubs-list").innerHTML = '<p class="text-gray-400 text-sm py-2">No pubs found nearby.</p>';
+      return;
+    }
+    const html = pubs.slice(0, 20).map(p => {
+      const gUrl = `https://maps.google.com/?q=${p.lat},${p.lon}`;
+      const wUrl = `https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`;
+      const aUrl = `maps://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(p.name)}`;
+      const area = p.area || p.postcode || "";
+      return `<div class="py-2.5 flex justify-between items-start gap-2">
+        <div class="flex-1 min-w-0">
+          <div class="text-gray-700 text-sm font-medium">${p.name}</div>
+          ${area ? `<div class="text-xs text-gray-500 mt-0.5">${area}</div>` : ""}
+          <div class="flex gap-2 mt-1">
+            <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${p.name.replace(/"/g,"'")}" onclick="openNav(this)"
+              class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>
+          </div>
+        </div>
+        <span class="text-gray-400 text-xs shrink-0 mt-1">${p.distance_km.toFixed(1)}km</span>
+      </div>`;
+    }).join("");
+    document.getElementById("report-pubs-list").innerHTML = html;
+    const pb = document.getElementById("rptab-badge-pubs");
+    if (pb) { pb.textContent = pubs.length; pb.style.display = "inline-block"; }
+  }
+
   function _maOnPostcodeInput() {
     const typed = document.getElementById("myarea-postcode-input").value.trim().toUpperCase().replace(/\s+/g,"");
     const current = _maCurrentPostcode;
@@ -8763,6 +8793,14 @@ function _hcAdd() {
       _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
       _maHideServicesSkeleton();
     }));
+
+    // Fetch nearby pubs from full database (38k+ pubs)
+    fetch(`/api/pubs-nearby?postcode=${encodeURIComponent(pc)}&limit=50`).then(r=>r.json()).then(_guard(data => {
+      if (data.pubs && data.pubs.length) {
+        _maPubsNearby = data.pubs;
+        _maRenderPubsFromAPI(data.pubs);
+      }
+    })).catch(()=>{});
 
     // Weather + crime (shorter 30-min cache — more time-sensitive)
     _maFetchCached(`localinfo:${pc}`, `/api/myarea/local-info?postcode=${pc}`, 1800, _guard(d => {
