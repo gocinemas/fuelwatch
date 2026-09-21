@@ -91,10 +91,10 @@ def _update_pubs_with_osm_data(osm_data: Dict[tuple, Dict], sb: Any) -> None:
             try:
                 # Find pub within 100m (0.001 degrees) of OSM coordinates
                 delta = 0.001
-                nearby = sb.table("pubs").select("id,name").where(
-                    f"lat >= {osm_lat - delta} AND lat <= {osm_lat + delta} "
-                    f"AND lon >= {osm_lon - delta} AND lon <= {osm_lon + delta}"
-                ).limit(1).execute().data or []
+                nearby = sb.table("pubs").select("id,name") \
+                    .gte("lat", osm_lat - delta).lte("lat", osm_lat + delta) \
+                    .gte("lon", osm_lon - delta).lte("lon", osm_lon + delta) \
+                    .limit(1).execute().data or []
 
                 if nearby:
                     pub_id = nearby[0]["id"]
