@@ -94,33 +94,16 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
         # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         sb = lib._sb()
-        all_rows = []
-        page = 0
-        page_size = 1000
+        # Simple query - fetch all pubs without pagination
+        query = sb.table("pubs").select("*")
 
-        print(f"[pubs] Starting pagination: page_size={page_size}")
+        # Filter by confidence tier if specified
+        if confidence_tier:
+            query = query.eq("confidence_tier", confidence_tier)
 
-        while page < 50:  # Safety limit
-            offset = page * page_size
-
-            query = sb.table("pubs").select("*")
-
-            # Filter by confidence tier if specified
-            if confidence_tier:
-                query = query.eq("confidence_tier", confidence_tier)
-
-            # Apply limit and offset pagination
-            rows = query.limit(page_size).offset(offset).execute().data or []
-            print(f"[pubs] Page {page}: limit({page_size}) offset({offset}) -> {len(rows)} rows")
-
-            if not rows:
-                print(f"[pubs] No rows at page {page}, stopping")
-                break
-
-            all_rows.extend(rows)
-            page += 1
-
-        print(f"[pubs] Total pubs fetched: {len(all_rows)}")
+        # Execute and get results
+        all_rows = query.execute().data or []
+        print(f"[pubs] Fetched {len(all_rows)} pubs from Supabase")
 
         # Calculate distances and filter
         nearby = []
@@ -175,13 +158,8 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
         page = 0
         page_size = 1000
 
-        # Paginate through all pubs
-        while page < 50:  # Safety limit
-            rows = sb.table("pubs").select("*").limit(page_size).offset(page * page_size).execute().data or []
-            if not rows:
-                break
-            all_rows.extend(rows)
-            page += 1
+        # Fetch all pubs
+        all_rows = sb.table("pubs").select("*").execute().data or []
 
         nearby = []
         for pub in all_rows:
