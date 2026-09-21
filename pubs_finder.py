@@ -94,16 +94,27 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
         # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         sb = lib._sb()
-        # Simple query - fetch all pubs without pagination
-        query = sb.table("pubs").select("*")
+        # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
+        all_rows = []
+        page = 0
+        page_size = 1000
 
-        # Filter by confidence tier if specified
-        if confidence_tier:
-            query = query.eq("confidence_tier", confidence_tier)
+        while True:
+            query = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1)
 
-        # Execute and get results
-        all_rows = query.execute().data or []
-        print(f"[pubs] Fetched {len(all_rows)} pubs from Supabase")
+            # Filter by confidence tier if specified
+            if confidence_tier:
+                query = query.eq("confidence_tier", confidence_tier)
+
+            rows = query.execute().data or []
+            if not rows:
+                break
+
+            all_rows.extend(rows)
+            page += 1
+            print(f"[pubs] Fetched page {page} ({len(all_rows)} total)")
+
+        print(f"[pubs] Total pubs to search: {len(all_rows)}")
 
         # Calculate distances and filter
         nearby = []
@@ -158,8 +169,17 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
         page = 0
         page_size = 1000
 
-        # Fetch all pubs
-        all_rows = sb.table("pubs").select("*").execute().data or []
+        # Paginate through all pubs
+        all_rows = []
+        page = 0
+        page_size = 1000
+
+        while True:
+            rows = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1).execute().data or []
+            if not rows:
+                break
+            all_rows.extend(rows)
+            page += 1
 
         nearby = []
         for pub in all_rows:
