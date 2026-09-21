@@ -104,11 +104,14 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
             start = page * page_size
             end = (page + 1) * page_size - 1
 
-            query = sb.table("pubs").select("*").range(start, end)
+            query = sb.table("pubs").select("*")
 
-            # Filter by confidence tier if specified
+            # Filter by confidence tier if specified (BEFORE range)
             if confidence_tier:
                 query = query.eq("confidence_tier", confidence_tier)
+
+            # Apply pagination range AFTER filters
+            query = query.range(start, end)
 
             rows = query.execute().data or []
             print(f"[pubs] Page {page}: range({start}, {end}) -> {len(rows)} rows")
