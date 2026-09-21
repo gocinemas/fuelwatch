@@ -44637,3 +44637,61 @@ def agent_chat():
         return jsonify({"response": response, "session_id": sid})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/schools-by-postcode")
+def api_schools_by_postcode():
+    """Find schools near a postcode (location-based picker for onboarding)."""
+    postcode = request.args.get("postcode", "").strip().upper()
+    
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+    
+    try:
+        # Get postcode coordinates
+        from search import postcode_to_latlon
+        coords = postcode_to_latlon(postcode)
+        if not coords:
+            return jsonify({"schools": []})
+        
+        lat, lon = coords
+        
+        # For now, return hardcoded Surrey schools
+        # TODO: Replace with UK schools database query
+        all_schools = [
+            {"name": "Stanns Heath Junior School", "type": "Primary", "lat": 51.3832, "lon": -0.4156, "postcode": "KT16 8DH"},
+            {"name": "New Haw Junior School", "type": "Primary", "lat": 51.3598, "lon": -0.4342, "postcode": "KT15 3LL"},
+            {"name": "Holy Trinity School", "type": "Primary", "lat": 51.4108, "lon": -0.6733, "postcode": "SL5 8QE"},
+            {"name": "Broadmoor School", "type": "Primary", "lat": 51.4198, "lon": -0.7542, "postcode": "SL4 2JL"},
+            {"name": "Sunninghill School", "type": "Primary", "lat": 51.4265, "lon": -0.6541, "postcode": "SL5 9PT"},
+            {"name": "Ascot Heath School", "type": "Primary", "lat": 51.4142, "lon": -0.6765, "postcode": "SL5 8QX"},
+            {"name": "Coopers Hill School", "type": "Primary", "lat": 51.4265, "lon": -0.6892, "postcode": "SL5 8PQ"},
+        ]
+        
+        # Sort by distance
+        from search import haversine_km
+        nearby = []
+        for school in all_schools:
+            dist = haversine_km(lat, lon, school["lat"], school["lon"])
+            if dist <= 20:  # Within 20km
+                nearby.append({
+                    "id": school["name"].lower().replace(" ", "-"),
+                    "name": school["name"],
+                    "type": school["type"],
+                    "distance_km": round(dist, 1),
+                    "postcode": school["postcode"],
+                    "lat": school["lat"],
+                    "lon": school["lon"]
+                })
+        
+        nearby.sort(key=lambda x: x["distance_km"])
+        
+        return jsonify({
+            "postcode": postcode,
+            "schools": nearby[:10],  # Top 10 nearest
+            "count": len(nearby)
+        })
+    
+    except Exception as e:
+        app.logger.error(f"[schools] Error: {e}")
+        return jsonify({"schools": []}), 200
