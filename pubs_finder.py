@@ -94,7 +94,6 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
         # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         sb = lib._sb()
-        # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         all_rows = []
         page = 0
         page_size = 1000
