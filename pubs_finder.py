@@ -95,14 +95,14 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
         # Query Supabase pubs table - fetch all nearby results
         sb = lib._sb()
         try:
-            query = sb.table("pubs").select("*")
-
-            # Limit to first 1000 to avoid massive transfers
-            rows = query.limit(1000).execute().data or []
-            all_rows = rows
-            print(f"[pubs] Fetched {len(all_rows)} pubs from Supabase")
+            print(f"[pubs] Querying Supabase...")
+            result = sb.table("pubs").select("*").limit(1000).execute()
+            all_rows = result.data or []
+            print(f"[pubs] Got {len(all_rows)} pubs from Supabase")
         except Exception as e:
-            print(f"[pubs] Supabase query error: {e}")
+            print(f"[pubs] ERROR in Supabase query: {e}")
+            import traceback
+            traceback.print_exc()
             all_rows = []
 
         # Calculate distances and filter
