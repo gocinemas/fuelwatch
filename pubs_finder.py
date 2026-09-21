@@ -101,20 +101,17 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
         print(f"[pubs] Starting pagination: page_size={page_size}")
 
         while page < 50:  # Safety limit
-            start = page * page_size
-            end = (page + 1) * page_size - 1
+            offset = page * page_size
 
             query = sb.table("pubs").select("*")
 
-            # Filter by confidence tier if specified (BEFORE range)
+            # Filter by confidence tier if specified
             if confidence_tier:
                 query = query.eq("confidence_tier", confidence_tier)
 
-            # Apply pagination range AFTER filters
-            query = query.range(start, end)
-
-            rows = query.execute().data or []
-            print(f"[pubs] Page {page}: range({start}, {end}) -> {len(rows)} rows")
+            # Apply limit and offset pagination
+            rows = query.limit(page_size).offset(offset).execute().data or []
+            print(f"[pubs] Page {page}: limit({page_size}) offset({offset}) -> {len(rows)} rows")
 
             if not rows:
                 print(f"[pubs] No rows at page {page}, stopping")
@@ -179,8 +176,8 @@ def get_pubs_by_coords(lat: float, lon: float, limit: int = 5, radius_km: float 
         page_size = 1000
 
         # Paginate through all pubs
-        while True:
-            rows = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1).execute().data or []
+        while page < 50:  # Safety limit
+            rows = sb.table("pubs").select("*").limit(page_size).offset(page * page_size).execute().data or []
             if not rows:
                 break
             all_rows.extend(rows)
