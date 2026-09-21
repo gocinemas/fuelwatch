@@ -19,7 +19,8 @@ _PUBS_CACHE_TTL = 3600  # 1 hour
 def _enrich_osm_data_for_area(lat: float, lon: float, radius_km: float = 15) -> Dict[str, Dict]:
     """
     Fetch detailed OSM pub data (phone, website, opening_hours) for a geographic area.
-    Returns dict: {osm_id: {phone, website, opening_hours}, ...}
+    Returns dict: {(lat,lon): {phone, website, opening_hours, osm_id}, ...}
+    Keyed by coordinates for proximity-based matching in database.
     """
     try:
         # Create bbox for area (convert km to degrees: 1 degree ≈ 111 km)
@@ -51,17 +52,21 @@ def _enrich_osm_data_for_area(lat: float, lon: float, radius_km: float = 15) -> 
 
         for elem in data.get("elements", []):
             if "center" in elem and "tags" in elem:
-                osm_id = f"osm_{elem.get('id', 'unknown')}"
+                center = elem["center"]
+                osm_lat = round(center["lat"], 4)
+                osm_lon = round(center["lon"], 4)
                 tags = elem["tags"]
 
                 phone = tags.get("phone", "").strip() or None
                 website = tags.get("website", "").strip() or None
                 hours = tags.get("opening_hours", "").strip() or None
 
-                osm_map[osm_id] = {
+                # Key by coordinates for proximity matching in DB
+                osm_map[(osm_lat, osm_lon)] = {
                     "phone": phone,
                     "website": website,
-                    "opening_hours": hours
+                    "opening_hours": hours,
+                    "osm_id": f"osm_{elem.get('id', 'unknown')}"
                 }
 
         print(f"[osm] Found OSM data for {len(osm_map)} pubs")
@@ -72,28 +77,39 @@ def _enrich_osm_data_for_area(lat: float, lon: float, radius_km: float = 15) -> 
         return {}
 
 
-def _update_pubs_with_osm_data(osm_data: Dict[str, Dict], sb: Any) -> None:
+def _update_pubs_with_osm_data(osm_data: Dict[tuple, Dict], sb: Any) -> None:
     """
     Update pubs in database with OSM phone/website/opening_hours data.
+    Matches by coordinate proximity since pubs keyed as (lat, lon).
     """
     try:
         updated = 0
-        for osm_id, info in osm_data.items():
+        for (osm_lat, osm_lon), info in osm_data.items():
             if not any([info.get("phone"), info.get("website"), info.get("opening_hours")]):
                 continue
 
             try:
-                sb.table("pubs").update({
-                    "phone": info.get("phone"),
-                    "website": info.get("website"),
-                    "opening_hours": info.get("opening_hours")
-                }).eq("osm_id", osm_id).execute()
-                updated += 1
-            except Exception as e:
-                # Silently skip if update fails
-                pass
+                # Find pub within 100m (0.001 degrees) of OSM coordinates
+                delta = 0.001
+                nearby = sb.table("pubs").select("id,name").where(
+                    f"lat >= {osm_lat - delta} AND lat <= {osm_lat + delta} "
+                    f"AND lon >= {osm_lon - delta} AND lon <= {osm_lon + delta}"
+                ).limit(1).execute().data or []
 
-        print(f"[osm] Updated {updated} pubs in database")
+                if nearby:
+                    pub_id = nearby[0]["id"]
+                    sb.table("pubs").update({
+                        "phone": info.get("phone"),
+                        "website": info.get("website"),
+                        "opening_hours": info.get("opening_hours"),
+                        "osm_id": info.get("osm_id")
+                    }).eq("id", pub_id).execute()
+                    updated += 1
+            except Exception as e:
+                pass  # Silently skip if update fails
+
+        if updated > 0:
+            print(f"[osm] Updated {updated} pubs with phone/website/opening_hours")
     except Exception as e:
         print(f"[osm] Error updating database: {e}")
 
@@ -130,14 +146,19 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
         user_lat, user_lon = coords
 
-        # Enrich OSM data for this area in background (don't block)
-        try:
-            osm_data = _enrich_osm_data_for_area(user_lat, user_lon, radius_km=20)
-            if osm_data:
-                sb = lib._sb()
-                _update_pubs_with_osm_data(osm_data, sb)
-        except Exception as e:
-            print(f"[pubs] Background enrichment failed (non-blocking): {e}")
+        # Enrich OSM data for this area in background thread (truly non-blocking)
+        def _bg_enrich():
+            try:
+                osm_data = _enrich_osm_data_for_area(user_lat, user_lon, radius_km=20)
+                if osm_data:
+                    sb = lib._sb()
+                    _update_pubs_with_osm_data(osm_data, sb)
+            except Exception as e:
+                print(f"[pubs] Background enrichment failed: {e}")
+
+        import threading
+        enrich_thread = threading.Thread(target=_bg_enrich, daemon=True)
+        enrich_thread.start()
 
         # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         sb = lib._sb()
