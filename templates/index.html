@@ -8697,14 +8697,18 @@ function _hcAdd() {
       return;
     }
     _maCurrentPostcode = pc;
-    // Persist to identity bar so home screen and other screens stay in sync
-    if (!_miruPostcode()) {
+    // Persist to identity bar AND trigger background enrichment when postcode changes
+    const oldPostcode = _miruPostcode();
+    const postcodeChanged = oldPostcode && oldPostcode !== pc;
+
+    if (!oldPostcode || postcodeChanged) {
       localStorage.setItem("miru_postcode", pc);
-      // Clear train cache so it re-fetches from new postcode
-      Object.keys(localStorage).filter(k => k.startsWith("miru_train_home") || k.startsWith("miru_train_work")).forEach(k => localStorage.removeItem(k));
+      // Clear train/fuel caches so they re-fetch from new postcode
+      Object.keys(localStorage).filter(k => k.startsWith("miru_train_") || k.startsWith("miru_fuel_")).forEach(k => localStorage.removeItem(k));
       _idBarRefresh && _idBarRefresh();
       setTimeout(_setupBannerRender, 100);
       setTimeout(() => { _fuelHomeLoad(); _trainHomeLoad(); }, 200);
+
       // Trigger background enrichment (trains, fuel, pubs, council, etc.)
       const token = _miruPhone();
       if (token) {
