@@ -8703,11 +8703,25 @@ function _hcAdd() {
 
     if (!oldPostcode || postcodeChanged) {
       localStorage.setItem("miru_postcode", pc);
-      // Clear train/fuel caches so they re-fetch from new postcode
-      Object.keys(localStorage).filter(k => k.startsWith("miru_train_") || k.startsWith("miru_fuel_")).forEach(k => localStorage.removeItem(k));
+      // CLEAR ALL CACHES: brief, train, fuel, local info, etc.
+      Object.keys(localStorage).filter(k =>
+        k.startsWith("miru_train_") ||
+        k.startsWith("miru_fuel_") ||
+        k.startsWith("_briefData") ||
+        k.includes("brief")
+      ).forEach(k => localStorage.removeItem(k));
+
+      // Reset brief so it re-fetches for new postcode
+      window._briefData = null;
+
       _idBarRefresh && _idBarRefresh();
       setTimeout(_setupBannerRender, 100);
-      setTimeout(() => { _fuelHomeLoad(); _trainHomeLoad(); }, 200);
+      // Refresh brief, fuel, trains with NEW postcode
+      setTimeout(() => {
+        if (typeof _briefInit === 'function') _briefInit(true); // force refresh
+        _fuelHomeLoad();
+        _trainHomeLoad();
+      }, 200);
 
       // Trigger background enrichment (trains, fuel, pubs, council, etc.)
       const token = _miruPhone();
