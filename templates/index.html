@@ -8703,6 +8703,15 @@ function _hcAdd() {
       _idBarRefresh && _idBarRefresh();
       setTimeout(_setupBannerRender, 100);
       setTimeout(() => { _fuelHomeLoad(); _trainHomeLoad(); }, 200);
+      // Trigger background enrichment (trains, fuel, pubs, council, etc.)
+      const token = _miruPhone();
+      if (token) {
+        fetch(`/api/postcode-change?token=${encodeURIComponent(token)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postcode: pc })
+        }).catch(e => console.log('[postcode-change] bg enrich started'));
+      }
     }
     // Show location bar with postcode + area name
     const locBar = document.getElementById("myarea-location-bar");
