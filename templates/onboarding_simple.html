@@ -265,10 +265,10 @@
       <p class="subtitle">Schools near your area</p>
 
       <div class="progress-bar">
-        <div class="progress-fill" style="width: 75%"></div>
+        <div class="progress-fill" style="width: 60%"></div>
       </div>
 
-      <div class="step-label">Step 3 of 4</div>
+      <div class="step-label">Step 3 of 5</div>
 
       <div id="schools-loading" style="text-align: center; padding: 20px; color: #6b7280;">
         Loading schools near you...
@@ -282,8 +282,32 @@
       <button class="skip-btn" onclick="skipSchools()">Skip for now</button>
     </div>
 
-    <!-- STEP 4: DONE -->
+    <!-- STEP 4: STATION -->
     <div id="step4" class="step" style="display: none;">
+      <div class="logo">🚆</div>
+      <h1>Your regular station?</h1>
+      <p class="subtitle">We'll show you live train times</p>
+
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 80%"></div>
+      </div>
+
+      <div class="step-label">Step 4 of 5</div>
+
+      <div id="stations-loading" style="text-align: center; padding: 20px; color: #6b7280;">
+        Finding nearby stations...
+      </div>
+
+      <div id="stations-list" style="display: none; max-height: 300px; overflow-y: auto; margin-bottom: 16px;">
+      </div>
+
+      <button class="next-btn" id="btn-station-select" onclick="nextStep(4)" disabled>Continue</button>
+
+      <button class="skip-btn" onclick="skipStation()">Skip for now</button>
+    </div>
+
+    <!-- STEP 5: DONE -->
+    <div id="step5" class="step" style="display: none;">
       <div class="logo">🎉</div>
       <h1>All set!</h1>
       <p class="subtitle">Loading your area's trains, pubs, fuel & local info...</p>
@@ -307,6 +331,7 @@
   <script>
     let haKids = null;
     let selectedSchool = null;
+    let selectedStation = null;
 
     function nextStep(step) {
       if (step === 1) {
@@ -324,17 +349,29 @@
           document.getElementById('step3').style.display = 'block';
           loadNearbySchools();
         } else {
-          completeOnboarding();
+          showStationStep();
         }
       } else if (step === 3) {
         if (!selectedSchool) {
           alert('Please select a school');
           return;
         }
-        document.getElementById('step3').style.display = 'none';
-        document.getElementById('step4').style.display = 'block';
+        showStationStep();
+      } else if (step === 4) {
+        if (!selectedStation) {
+          alert('Please select a station');
+          return;
+        }
+        document.getElementById('step4').style.display = 'none';
+        document.getElementById('step5').style.display = 'block';
         completeOnboarding();
       }
+    }
+
+    function showStationStep() {
+      document.getElementById('step3').style.display = 'none';
+      document.getElementById('step4').style.display = 'block';
+      loadNearbyStations();
     }
 
     function selectKids(yes) {
@@ -388,8 +425,56 @@
 
     function skipSchools() {
       selectedSchool = { name: 'Skipped', id: null };
-      document.getElementById('step3').style.display = 'none';
-      document.getElementById('step4').style.display = 'block';
+      showStationStep();
+    }
+
+    async function loadNearbyStations() {
+      const postcode = localStorage.getItem('miru_postcode');
+
+      try {
+        const res = await fetch(`/api/stations-by-postcode?postcode=${encodeURIComponent(postcode)}`);
+        const data = await res.json();
+
+        if (!data.stations || data.stations.length === 0) {
+          document.getElementById('stations-loading').innerHTML = 'No stations found nearby. Continue anyway.';
+          document.getElementById('btn-station-select').disabled = false;
+          return;
+        }
+
+        document.getElementById('stations-loading').style.display = 'none';
+        const list = document.getElementById('stations-list');
+        list.innerHTML = '';
+
+        data.stations.forEach(station => {
+          const item = document.createElement('div');
+          item.className = 'school-item';
+          item.innerHTML = `
+            <div class="school-name">${station.name}</div>
+            <div class="school-info">${station.distance_km} km away • ${station.crs}</div>
+          `;
+          item.onclick = () => selectStation(station, item);
+          list.appendChild(item);
+        });
+
+        list.style.display = 'block';
+      } catch (e) {
+        console.error('Error loading stations:', e);
+        document.getElementById('stations-loading').innerHTML = 'Error loading stations. Continue anyway.';
+      }
+    }
+
+    function selectStation(station, element) {
+      document.querySelectorAll('.school-item').forEach(el => el.classList.remove('selected'));
+      element.classList.add('selected');
+      selectedStation = station;
+      document.getElementById('btn-station-select').disabled = false;
+      localStorage.setItem('miru_selected_station', JSON.stringify(station));
+    }
+
+    function skipStation() {
+      selectedStation = { name: 'Skipped', id: null };
+      document.getElementById('step4').style.display = 'none';
+      document.getElementById('step5').style.display = 'block';
       completeOnboarding();
     }
 
@@ -404,7 +489,8 @@
           body: JSON.stringify({
             postcode,
             modules_enabled: { schools: haKids, trains: true, fuel: true, pubs: true },
-            selected_school: selectedSchool
+            selected_school: selectedSchool,
+            selected_station: selectedStation
           })
         });
 

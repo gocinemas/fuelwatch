@@ -12972,15 +12972,21 @@ def api_onboarding_complete():
 
         postcode = body.get("postcode", "").strip().upper()
         modules_enabled = body.get("modules_enabled", {})
+        selected_station = body.get("selected_station", {})
 
         if not postcode:
             return jsonify({"error": "postcode required"}), 400
 
         # Save postcode to v2_prefs
+        prefs_data = {"postcode": postcode}
+        if selected_station and selected_station.get("crs"):
+            prefs_data["home_station"] = selected_station.get("crs")
+            prefs_data["home_station_name"] = selected_station.get("name")
+
         lib._sb().table("ma_details").upsert({
             "device_id": from_number,
             "type": "v2_prefs",
-            "data": {"postcode": postcode}
+            "data": prefs_data
         }).execute()
 
         # Save module preferences
@@ -12990,7 +12996,7 @@ def api_onboarding_complete():
             "data": modules_enabled
         }).execute()
 
-        app.logger.info(f"[onboarding] Completed for {from_number}: postcode={postcode}, modules={modules_enabled}")
+        app.logger.info(f"[onboarding] Completed for {from_number}: postcode={postcode}, station={selected_station.get('crs')}, modules={modules_enabled}")
 
         # Background: enrich postcode with trains, fuel, council, MP
         from postcode_context_engine import background_enrich_postcode
@@ -44716,3 +44722,52 @@ def api_schools_by_postcode():
     except Exception as e:
         app.logger.error(f"[schools] Error: {e}")
         return jsonify({"schools": []}), 200
+
+
+@app.route("/api/stations-by-postcode")
+def api_stations_by_postcode():
+    """Find nearby train stations for a postcode (for onboarding station picker)."""
+    postcode = request.args.get("postcode", "").strip().upper()
+    
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+    
+    try:
+        from search import postcode_to_latlon, fetch_all_stations, haversine_km
+        coords = postcode_to_latlon(postcode)
+        if not coords:
+            return jsonify({"stations": []})
+        
+        lat, lon = coords
+        all_stations = fetch_all_stations()
+        if not all_stations:
+            return jsonify({"stations": []})
+        
+        nearby = []
+        for s in all_stations:
+            s_lat = s.get("latitude")
+            s_lon = s.get("longitude")
+            if not (s_lat and s_lon):
+                continue
+            
+            dist = haversine_km(lat, lon, s_lat, s_lon)
+            if dist <= 10:  # Within 10km
+                nearby.append({
+                    "name": s.get("name", ""),
+                    "crs": s.get("crs", ""),
+                    "distance_km": round(dist, 1),
+                    "lat": s_lat,
+                    "lon": s_lon
+                })
+        
+        nearby.sort(key=lambda x: x["distance_km"])
+        
+        return jsonify({
+            "postcode": postcode,
+            "stations": nearby[:10],
+            "count": len(nearby)
+        })
+    
+    except Exception as e:
+        app.logger.error(f"[stations] Error: {e}")
+        return jsonify({"stations": []}), 200
