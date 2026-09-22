@@ -4611,23 +4611,44 @@ def pubs_test():
                         }
 
                         let html = `<h2>Found ${data.count} pubs near ${data.postcode}</h2>`;
-                        data.pubs.forEach(pub => {
-                            const rating = pub.fhrs_rating ? `⭐ ${pub.fhrs_rating}/5` : "";
+                        data.pubs.forEach((pub, i) => {
+                            const rating = pub.fhrs_rating ? `⭐ ${pub.fhrs_rating}/5` : "No rating";
+                            const confidence = pub.confidence_tier || "UNVERIFIED";
+                            const confidenceColor = confidence === "VERIFIED" ? "#10b981" : confidence === "LIKELY" ? "#f59e0b" : "#6b7280";
+                            const confidenceEmoji = confidence === "VERIFIED" ? "✓" : confidence === "LIKELY" ? "?" : "⚠️";
+                            const matchScore = pub.match_confidence ? (pub.match_confidence * 100).toFixed(0) : "N/A";
                             const mapsUrl = `https://maps.google.com/?q=${pub.lat},${pub.lon}`;
-                            const phone = pub.phone ? `<div style="font-size: 12px; color: #059669;">☎️ <a href="tel:${pub.phone}" style="color: #059669; text-decoration: none;">${pub.phone}</a></div>` : "";
-                            const hours = pub.opening_hours ? `<div style="font-size: 12px; color: #666;">🕐 ${pub.opening_hours}</div>` : "";
-                            const website = pub.website ? `<a href="${pub.website}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #2563eb; color: white; text-decoration: none; border-radius: 4px; font-size: 13px;">🌐 Website</a>` : "";
+                            const osmUrl = pub.osm_id ? `https://www.openstreetmap.org/${pub.osm_id.replace('osm_', '')}` : "";
+                            const phone = pub.phone ? `<div style="font-size: 13px; margin: 6px 0;"><strong>☎️ Phone:</strong> <a href="tel:${pub.phone}" style="color: #059669; text-decoration: none;">${pub.phone}</a></div>` : "";
+                            const hours = pub.opening_hours ? `<div style="font-size: 13px; margin: 6px 0;"><strong>🕐 Hours:</strong> ${pub.opening_hours}</div>` : "";
+                            const website = pub.website ? `<div style="font-size: 13px; margin: 6px 0;"><strong>🌐 Website:</strong> <a href="${pub.website}" target="_blank" style="color: #2563eb; text-decoration: none;">${pub.website}</a></div>` : "";
                             html += `
-                                <div class="pub">
-                                    <div class="pub-name">${pub.name}${rating ? ` <span style="color: #f59e0b; font-size: 14px;">${rating}</span>` : ""}</div>
-                                    ${pub.postcode ? `<div style="font-size: 13px; color: #666; margin: 5px 0;">📍 ${pub.postcode}</div>` : ""}
-                                    ${phone}
-                                    ${hours}
-                                    <div class="pub-distance">${pub.distance_km} km away</div>
-                                    <div style="margin-top: 8px;">
-                                        <a href="${mapsUrl}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; margin-right: 6px;">🗺️ Navigate</a>
-                                        <a href="https://maps.google.com/?q=${encodeURIComponent(pub.name)}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; margin-right: 6px;">🔍 Info</a>
+                                <div class="pub" style="border-left: 4px solid ${confidenceColor}; background: #f9fafb;">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                        <div>
+                                            <div class="pub-name" style="margin: 0; font-size: 16px;">${pub.name}</div>
+                                            <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
+                                                <span style="color: ${confidenceColor}; font-weight: 700;">${confidenceEmoji} ${confidence}</span>
+                                                ${pub.distance_km ? ` • ${pub.distance_km} km away` : ""}
+                                            </div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 14px; font-weight: 700; color: #f59e0b;">${rating}</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="background: white; padding: 10px; border-radius: 6px; margin: 8px 0; font-size: 13px; color: #374151;">
+                                        ${pub.postcode ? `<div><strong>📍 Postcode:</strong> ${pub.postcode}</div>` : ""}
+                                        ${phone}
+                                        ${hours}
                                         ${website}
+                                    </div>
+
+                                    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <a href="${mapsUrl}" target="_blank" style="padding: 6px 12px; background: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 600;">🗺️ Navigate</a>
+                                        <a href="https://maps.google.com/?q=${encodeURIComponent(pub.name)}" target="_blank" style="padding: 6px 12px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 600;">ℹ️ Google Info</a>
+                                        ${website ? `<a href="${pub.website}" target="_blank" style="padding: 6px 12px; background: #2563eb; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 600;">🌐 Website</a>` : ""}
+                                        ${osmUrl ? `<a href="${osmUrl}" target="_blank" style="padding: 6px 12px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 600;">🗺️ OSM Edit</a>` : ""}
                                     </div>
                                 </div>
                             `;
