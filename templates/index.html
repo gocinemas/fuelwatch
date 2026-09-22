@@ -27303,19 +27303,28 @@ document.addEventListener('keydown', function(e) {
   // ── Show/hide panels ──────────────────────────────────────────────────────
   function _showIdle(keepMode) {
     _stopTimers();
-    document.getElementById("train-idle").style.display   = "block";
-    document.getElementById("train-active").style.display = "none";
-    document.getElementById("train-results").innerHTML    = "";
-    document.getElementById("train-search-results").innerHTML = "";
-    document.getElementById("train-search-input").value   = "";
-    document.getElementById("train-nearest-list").style.display = "none";
-    document.getElementById("train-locate-hint").style.display  = "none";
+    const idle = document.getElementById("train-idle");
+    const active = document.getElementById("train-active");
+    const results = document.getElementById("train-results");
+    const searchResults = document.getElementById("train-search-results");
+    const searchInput = document.getElementById("train-search-input");
+    const nearestList = document.getElementById("train-nearest-list");
+    const locateHint = document.getElementById("train-locate-hint");
+
+    if (idle) idle.style.display   = "block";
+    if (active) active.style.display = "none";
+    if (results) results.innerHTML    = "";
+    if (searchResults) searchResults.innerHTML = "";
+    if (searchInput) searchInput.value   = "";
+    if (nearestList) nearestList.style.display = "none";
+    if (locateHint) locateHint.style.display  = "none";
+
     _trainCrs = ""; _trainName = ""; _trainDest = "";
     _trainToCrs = ""; _trainToName = "";
     _tubeMode = false; _tubeNaptanId = "";
     if (!keepMode) _trainSetMode = null;
-    _renderSaved();
-    _renderSetModeBar();
+    typeof _renderSaved === 'function' && _renderSaved();
+    typeof _renderSetModeBar === 'function' && _renderSetModeBar();
   }
 
   function _showActive(name, id, mode) {
