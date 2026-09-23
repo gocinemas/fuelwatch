@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Postcode Flow</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .subtitle { color: #666; margin-bottom: 24px; }
+    
+    .step { margin-bottom: 32px; padding: 16px; background: #f9f9f9; border-radius: 8px; border-left: 4px solid #3b82f6; }
+    .step.active { background: #eff6ff; border-left-color: #0ea5e9; }
+    .step.done { background: #f0fdf4; border-left-color: #22c55e; }
+    
+    .step-title { font-size: 14px; font-weight: 600; color: #999; margin-bottom: 8px; text-transform: uppercase; }
+    .step.active .step-title { color: #0ea5e9; }
+    .step.done .step-title { color: #22c55e; }
+    
+    input[type="text"] { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 12px; }
+    input[type="text"]:focus { outline: none; border-color: #0ea5e9; }
+    
+    button { padding: 10px 16px; background: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    button:hover { background: #0284c7; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    
+    .option-group { margin: 12px 0; }
+    .option { padding: 12px; margin: 8px 0; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; }
+    .option:hover { border-color: #0ea5e9; background: #f0f9ff; }
+    .option.selected { border-color: #0ea5e9; background: #eff6ff; font-weight: 600; }
+    
+    .loading { text-align: center; color: #999; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e7eb; border-top-color: #0ea5e9; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .result { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .result-title { font-weight: 600; color: #166534; margin-bottom: 8px; }
+    .result-item { margin: 4px 0; color: #15803d; }
+    
+    .error { background: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 12px; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test: Postcode → Fuel + Station</h1>
+    <p class="subtitle">New flow: postcode → auto-fetch nearest fuel + station → user chooses → all data pre-populates</p>
+    
+    <!-- STEP 1: Postcode Entry -->
+    <div class="step active" id="step-1">
+      <div class="step-title">Step 1: Enter Postcode</div>
+      <input type="text" id="postcode-input" placeholder="E.g., SE84LF or KT146PN" value="SE84LF">
+      <button onclick="fetchNearestOptions()">🔍 Search</button>
+      <div id="step-1-error" class="error" style="display:none; margin-top: 12px;"></div>
+    </div>
+    
+    <!-- STEP 2: Select Station -->
+    <div class="step" id="step-2">
+      <div class="step-title">Step 2: Choose Station (Nearest Trains)</div>
+      <div id="station-options" class="option-group"></div>
+      <div id="step-2-loading" class="loading" style="display:none;">
+        <span class="spinner"></span> Loading stations...
+      </div>
+    </div>
+    
+    <!-- STEP 3: Select Fuel -->
+    <div class="step" id="step-3">
+      <div class="step-title">Step 3: Choose Fuel Station (Nearest/Cheapest)</div>
+      <div id="fuel-options" class="option-group"></div>
+      <div id="step-3-loading" class="loading" style="display:none;">
+        <span class="spinner"></span> Loading fuel...
+      </div>
+    </div>
+    
+    <!-- STEP 4: Review & Save -->
+    <div class="step" id="step-4">
+      <div class="step-title">Step 4: Review & Save</div>
+      <button onclick="saveChoices()" style="width: 100%; margin-bottom: 12px;">✅ Save All Settings</button>
+      <div id="step-4-result"></div>
+    </div>
+  </div>
+
+  <script>
+    let selectedStation = null;
+    let selectedFuel = null;
+    let postcode = "SE84LF";
+
+    async function fetchNearestOptions() {
+      postcode = document.getElementById("postcode-input").value.trim().toUpperCase().replace(/\s/g, "");
+      if (!postcode) {
+        document.getElementById("step-1-error").textContent = "Enter a postcode";
+        document.getElementById("step-1-error").style.display = "block";
+        return;
+      }
+
+      document.getElementById("step-1-error").style.display = "none";
+      
+      // Show loading states
+      document.getElementById("step-2").classList.add("active");
+      document.getElementById("step-2-loading").style.display = "block";
+      document.getElementById("step-3").classList.add("active");
+      document.getElementById("step-3-loading").style.display = "block";
+      
+      try {
+        // Fetch stations and fuel in parallel
+        const [stationsRes, fuelRes] = await Promise.all([
+          fetch(`/api/stations-by-postcode?postcode=${postcode}`),
+          fetch(`/api/search?postcode=${postcode}&radius=3`)
+        ]);
+        
+        const stationsData = await stationsRes.json();
+        const fuelData = await fuelRes.json();
+        
+        // Render stations
+        renderStations(stationsData.stations || []);
+        
+        // Render fuel
+        renderFuel(fuelData.results || []);
+        
+        document.getElementById("step-2-loading").style.display = "none";
+        document.getElementById("step-3-loading").style.display = "none";
+        document.getElementById("step-1").classList.add("done");
+        
+      } catch (e) {
+        document.getElementById("step-1-error").textContent = "Error: " + e.message;
+        document.getElementById("step-1-error").style.display = "block";
+        document.getElementById("step-2-loading").style.display = "none";
+        document.getElementById("step-3-loading").style.display = "none";
+      }
+    }
+
+    function renderStations(stations) {
+      const container = document.getElementById("station-options");
+      if (!stations || stations.length === 0) {
+        container.innerHTML = '<div class="error">No stations found</div>';
+        return;
+      }
+      
+      container.innerHTML = stations.slice(0, 5).map(s => `
+        <div class="option" onclick="selectStation('${s.crs}', '${s.name}', ${s.distance_km})">
+          <strong>🚆 ${s.name}</strong> <span style="color: #999;">(${s.distance_km}km away, ${s.crs})</span>
+        </div>
+      `).join("");
+    }
+
+    function renderFuel(stations) {
+      const container = document.getElementById("fuel-options");
+      if (!stations || stations.length === 0) {
+        container.innerHTML = '<div class="error">No fuel stations found</div>';
+        return;
+      }
+      
+      container.innerHTML = stations.slice(0, 5).map(s => {
+        const price = s.prices && s.prices.petrol ? `£${(s.prices.petrol / 100).toFixed(2)}` : "Price TBD";
+        return `
+          <div class="option" onclick="selectFuel('${s.id}', '${s.name}', '${s.postcode}')">
+            <strong>⛽ ${s.name}</strong> <span style="color: #999;">${price} · ${s.postcode}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function selectStation(crs, name, dist) {
+      selectedStation = { crs, name, dist };
+      document.querySelectorAll("#station-options .option").forEach(el => el.classList.remove("selected"));
+      event.target.closest(".option").classList.add("selected");
+      updateReview();
+    }
+
+    function selectFuel(id, name, postcode) {
+      selectedFuel = { id, name, postcode };
+      document.querySelectorAll("#fuel-options .option").forEach(el => el.classList.remove("selected"));
+      event.target.closest(".option").classList.add("selected");
+      updateReview();
+    }
+
+    function updateReview() {
+      if (selectedStation && selectedFuel) {
+        document.getElementById("step-4").classList.add("active");
+      }
+    }
+
+    async function saveChoices() {
+      if (!selectedStation || !selectedFuel) {
+        alert("Please select both a station and fuel");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/test-postcode-save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postcode,
+            station: selectedStation,
+            fuel: selectedFuel
+          })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          document.getElementById("step-4").classList.add("done");
+          document.getElementById("step-4-result").innerHTML = `
+            <div class="result">
+              <div class="result-title">✅ All Data Saved!</div>
+              <div class="result-item">📍 Postcode: ${postcode}</div>
+              <div class="result-item">🚆 Station: ${selectedStation.name} (${selectedStation.crs})</div>
+              <div class="result-item">⛽ Fuel: ${selectedFuel.name}</div>
+              <div class="result-item" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #22c55e;">
+                <strong>Next:</strong> Check homepage - My Area, trains, and fuel should auto-populate
+              </div>
+            </div>
+          `;
+        }
+      } catch (e) {
+        alert("Error: " + e.message);
+      }
+    }
+
+    // Auto-fetch on load
+    window.addEventListener("load", () => fetchNearestOptions());
+  </script>
+</body>
+</html>
