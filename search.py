@@ -679,8 +679,8 @@ _HOUSE_CACHE_TTL = 21600  # 6 hours — Land Registry updates weekly
 
 
 def fetch_local_amenities(lat: float, lon: float, school_km: float = 3.0, pub_km: float = 5.0) -> dict:
-    """Single Overpass query for schools, universities, pubs, bars and cafes.
-    Results are cached for 1 hour per location to dramatically speed up the Area Report."""
+    """Separate Overpass queries for schools and pubs/cafes to avoid timeouts.
+    Results are cached for 24 hours per location."""
     cache_key = (round(lat, 3), round(lon, 3))
     cached = _local_cache.get(cache_key)
     if cached and (time.time() - cached["ts"]) < _LOCAL_CACHE_TTL:
@@ -688,22 +688,41 @@ def fetch_local_amenities(lat: float, lon: float, school_km: float = 3.0, pub_km
 
     school_m = int(school_km * 1000)
     pub_m    = int(pub_km * 1000)
-    query = f"""
-[out:json][timeout:20];
+
+    # Query 1: Schools & Universities (simpler, faster)
+    schools_query = f"""
+[out:json][timeout:10];
 (
   node["amenity"="school"](around:{school_m},{lat},{lon});
   way["amenity"="school"](around:{school_m},{lat},{lon});
   node["amenity"="university"](around:{school_m},{lat},{lon});
   way["amenity"="university"](around:{school_m},{lat},{lon});
+);
+out center 100;
+"""
+
+    # Query 2: Pubs & Cafes (smaller, less likely to timeout)
+    pubs_query = f"""
+[out:json][timeout:10];
+(
   node["amenity"="pub"](around:{pub_m},{lat},{lon});
   way["amenity"="pub"](around:{pub_m},{lat},{lon});
   node["amenity"="cafe"](around:{pub_m},{lat},{lon});
   way["amenity"="cafe"](around:{pub_m},{lat},{lon});
-  node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Nero",i](around:{pub_m},{lat},{lon});
 );
-out center 200;
+out center 100;
 """
-    elements = _overpass(query)
+
+    # Run both queries in parallel
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        schools_fut = executor.submit(_overpass, schools_query)
+        pubs_fut = executor.submit(_overpass, pubs_query)
+
+        schools_elements = schools_fut.result() if schools_fut.result() is not None else []
+        pubs_elements = pubs_fut.result() if pubs_fut.result() is not None else []
+
+    elements = schools_elements + pubs_elements
     schools, universities, pubs, cafes = [], [], [], []
 
     for e in elements:
