@@ -115,8 +115,13 @@
         // Render stations
         renderStations(stationsData.stations || []);
         
-        // Render fuel
-        renderFuel(fuelData.results || []);
+        // Render fuel (if available - may be empty if cache not populated)
+        const fuelResults = fuelData.results || fuelData.stations || [];
+        if (fuelResults.length === 0) {
+          document.getElementById("fuel-options").innerHTML = '<div class="error">⚠️ Fuel data not yet populated. Using stations for now.</div>';
+        } else {
+          renderFuel(fuelResults);
+        }
         
         document.getElementById("step-2-loading").style.display = "none";
         document.getElementById("step-3-loading").style.display = "none";
