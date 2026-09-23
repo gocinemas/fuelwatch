@@ -44728,33 +44728,37 @@ def api_schools_by_postcode():
 def api_stations_by_postcode():
     """Find nearby train stations for a postcode (for onboarding station picker)."""
     postcode = request.args.get("postcode", "").strip().upper()
-    
+
     if not postcode:
         return jsonify({"error": "postcode required"}), 400
-    
+
     try:
-        from search import postcode_to_latlon, fetch_all_stations, haversine_km
+        from search import postcode_to_latlon, haversine_km
         coords = postcode_to_latlon(postcode)
         if not coords:
             return jsonify({"stations": []})
-        
+
         lat, lon = coords
-        all_stations = fetch_all_stations()
+
+        # Fetch train stations from database
+        sb = lib._sb()
+        all_stations = sb.table("stations").select("*").execute().data or []
         if not all_stations:
             return jsonify({"stations": []})
         
         nearby = []
         for s in all_stations:
-            s_lat = s.get("latitude")
-            s_lon = s.get("longitude")
+            # Try both lat/latitude and lon/longitude field names
+            s_lat = s.get("latitude") or s.get("lat")
+            s_lon = s.get("longitude") or s.get("lon")
             if not (s_lat and s_lon):
                 continue
-            
+
             dist = haversine_km(lat, lon, s_lat, s_lon)
             if dist <= 10:  # Within 10km
                 nearby.append({
-                    "name": s.get("name", ""),
-                    "crs": s.get("crs", ""),
+                    "name": s.get("name") or s.get("station_name", ""),
+                    "crs": s.get("crs") or s.get("code", ""),
                     "distance_km": round(dist, 1),
                     "lat": s_lat,
                     "lon": s_lon
