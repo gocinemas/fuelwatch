@@ -44771,3 +44771,46 @@ def api_stations_by_postcode():
     except Exception as e:
         app.logger.error(f"[stations] Error: {e}")
         return jsonify({"stations": []}), 200
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TEST: Postcode Flow (Fuel + Station Auto-Detection)
+# ════════════════════════════════════════════════════════════════════════════════
+
+@app.route("/test-postcode-flow")
+def test_postcode_flow():
+    """Test page for new postcode flow: auto-fetch fuel + station"""
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "test_postcode_flow.html")
+    with open(template_path) as f:
+        html = f.read()
+    resp = app.make_response(html)
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return resp
+
+
+@app.route("/api/test-postcode-save", methods=["POST"])
+def api_test_postcode_save():
+    """Save test postcode + station + fuel choices"""
+    data = request.get_json() or {}
+    postcode = data.get("postcode", "").upper().replace(" ", "")
+    station = data.get("station", {})
+    fuel = data.get("fuel", {})
+    
+    if not postcode or not station or not fuel:
+        return jsonify({"success": False, "error": "Missing data"}), 400
+    
+    # In a real scenario, this would save to DB for logged-in user
+    # For now, return success and log
+    print(f"[TEST] Saved postcode flow:")
+    print(f"  Postcode: {postcode}")
+    print(f"  Station: {station.get('name')} ({station.get('crs')})")
+    print(f"  Fuel: {fuel.get('name')}")
+    
+    return jsonify({
+        "success": True,
+        "postcode": postcode,
+        "station": station,
+        "fuel": fuel,
+        "message": "Test data saved - check console logs"
+    })
