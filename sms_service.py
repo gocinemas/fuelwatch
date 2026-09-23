@@ -44734,31 +44734,32 @@ def api_stations_by_postcode():
 
     try:
         from search import postcode_to_latlon, haversine_km
+        from uk_stations import UK_STATIONS
+
         coords = postcode_to_latlon(postcode)
         if not coords:
             return jsonify({"stations": []})
 
         lat, lon = coords
 
-        # Fetch train stations from database
-        sb = lib._sb()
-        all_stations = sb.table("stations").select("*").execute().data or []
+        # Use UK_STATIONS dictionary (complete list of all UK train stations)
+        all_stations = list(UK_STATIONS.values())
         if not all_stations:
             return jsonify({"stations": []})
-        
+
         nearby = []
         for s in all_stations:
-            # Try both lat/latitude and lon/longitude field names
-            s_lat = s.get("latitude") or s.get("lat")
-            s_lon = s.get("longitude") or s.get("lon")
+            # UK_STATIONS uses lat/lon fields
+            s_lat = s.get("lat")
+            s_lon = s.get("lon")
             if not (s_lat and s_lon):
                 continue
 
             dist = haversine_km(lat, lon, s_lat, s_lon)
             if dist <= 10:  # Within 10km
                 nearby.append({
-                    "name": s.get("name") or s.get("station_name", ""),
-                    "crs": s.get("crs") or s.get("code", ""),
+                    "name": s.get("name", ""),
+                    "crs": s.get("crs", ""),
                     "distance_km": round(dist, 1),
                     "lat": s_lat,
                     "lon": s_lon
