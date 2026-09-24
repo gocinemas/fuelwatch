@@ -44872,3 +44872,8 @@ def api_test_postcode_save():
         "fuel": fuel,
         "message": "Test data saved - check console logs"
     })
+
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)
