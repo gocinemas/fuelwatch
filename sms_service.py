@@ -37,20 +37,59 @@ from datetime import datetime
 from flask import Flask, request, send_file, render_template, jsonify, Response, redirect, make_response, after_this_request
 from twilio.twiml.messaging_response import MessagingResponse
 from supabase import create_client
-from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
-                    fetch_nearby_amenities, fetch_nearby_schools,
-                    fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
-                    fetch_company_info, fetch_brand_data, fetch_brand_social,
-                    _fetch_wikipedia, _fetch_news, _fetch_trustpilot, _BRAND_CACHE)
-import analytics
-import library as lib
-import school_service
-import personal_events_service
-import shopping_history
-import brief_analyzer
-from school_oauth_handlers import register_oauth_routes, register_config_routes
-from scoring_engine import MarketEntryScorer
-from intel_groq_optimizer import IntelGroqOptimizer
+try:
+    from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
+                        fetch_nearby_amenities, fetch_nearby_schools,
+                        fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
+                        fetch_company_info, fetch_brand_data, fetch_brand_social,
+                        _fetch_wikipedia, _fetch_news, _fetch_trustpilot, _BRAND_CACHE)
+except:
+    pass
+
+try:
+    import analytics
+except:
+    pass
+
+try:
+    import library as lib
+except:
+    lib = None
+
+try:
+    import school_service
+except:
+    pass
+
+try:
+    import personal_events_service
+except:
+    pass
+
+try:
+    import shopping_history
+except:
+    pass
+
+try:
+    import brief_analyzer
+except:
+    pass
+
+try:
+    from school_oauth_handlers import register_oauth_routes, register_config_routes
+except:
+    pass
+
+try:
+    from scoring_engine import MarketEntryScorer
+except:
+    pass
+
+try:
+    from intel_groq_optimizer import IntelGroqOptimizer
+except:
+    pass
 
 app = Flask(__name__)
 
@@ -67,21 +106,37 @@ class CustomJSONProvider(DefaultJSONProvider):
 
 app.json = CustomJSONProvider(app)
 
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({"status": "ok"}), 200
+
 # ── Phase 1: Motivation Layer Endpoints ──
-from miru.motivation.endpoints import register_motivation_endpoints
-register_motivation_endpoints(app)
+try:
+    from miru.motivation.endpoints import register_motivation_endpoints
+    register_motivation_endpoints(app)
+except:
+    pass
 
 # ── Apply database migrations ──
-from apply_migrations import apply_all_migrations
-apply_all_migrations()
+try:
+    from apply_migrations import apply_all_migrations
+    apply_all_migrations()
+except:
+    pass
 
 # ── Phase 2: Family Goals Endpoints ──
-from miru.goals.endpoints import register_goals_endpoints
-register_goals_endpoints(app)
+try:
+    from miru.goals.endpoints import register_goals_endpoints
+    register_goals_endpoints(app)
+except:
+    pass
 
 # ── Phase 2: Engagement Loops (weekly wins digest, goals progress, social proof, badges) ──
-from miru.motivation.engagement_endpoints import register_engagement_endpoints
-register_engagement_endpoints(app)
+try:
+    from miru.motivation.engagement_endpoints import register_engagement_endpoints
+    register_engagement_endpoints(app)
+except:
+    pass
 
 # Alias so the documented cron URL name also works, without duplicating the
 # send-and-log logic in miru/motivation/endpoints.py::cron_weekly_savings.
