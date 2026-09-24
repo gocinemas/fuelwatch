@@ -8420,14 +8420,18 @@ def _load_mp_mem() -> dict:
 def _init_mp_cache():
     """Startup: load from DB; if empty, seed from Parliament API first."""
     global _mp_mem
-    mem = _load_mp_mem()
-    if not mem:
-        print("[mp_mem] DB empty — seeding from Parliament API...")
-        _seed_mps_to_db()
+    try:
         mem = _load_mp_mem()
-    with _mp_mem_lock:
-        _mp_mem = mem
-    print(f"[mp_mem] loaded {len(mem)} MPs into memory")
+        if not mem:
+            print("[mp_mem] DB empty — seeding from Parliament API...")
+            _seed_mps_to_db()
+            mem = _load_mp_mem()
+        with _mp_mem_lock:
+            _mp_mem = mem
+        print(f"[mp_mem] loaded {len(mem)} MPs into memory")
+    except Exception as e:
+        print(f"[mp_mem] Cache init failed (non-fatal): {e}")
+        pass  # Continue without MP cache
 
 
 def _get_mp_mem() -> dict:
