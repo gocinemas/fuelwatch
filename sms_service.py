@@ -108,6 +108,14 @@ app.json = CustomJSONProvider(app)
 def health():
     return jsonify({"status": "ok"}), 200
 
+# ── Phase 2: Module Gating (user control over features) ──
+try:
+    from miru.routes.module_gating import register_module_gating_endpoints
+    register_module_gating_endpoints(app)
+except Exception as e:
+    app.logger.error(f"[modules] Failed to register module gating: {e}")
+    pass
+
 # ── Phase 2: Public Data APIs (v1 endpoints) ──
 try:
     from miru.routes.api_v1 import register_api_v1_endpoints
