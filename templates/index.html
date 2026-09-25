@@ -29115,6 +29115,11 @@ document.addEventListener('keydown', function(e) {
       return;
     }
 
+    // Skip onboarding if user already has data (existing users)
+    // TODO: Replace with proper completion flag in DB
+    document.getElementById("onboarding-modal").style.display = "none";
+    return;
+
     const token = _miruPhone() || localStorage.getItem("miru_saves_token") || "";
     if (!token) return; // Not logged in yet
 
