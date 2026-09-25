@@ -173,9 +173,9 @@ DEFAULT_MODULES = {
 }
 
 
-@bp.route('/modules', methods=['GET'])
+@bp.route('/api/modules-legacy', methods=['GET'])
 def get_modules():
-    """Get user's enabled/disabled modules (Smart Home Screen)."""
+    """DEPRECATED: Use /api/user/modules instead. Get user's enabled/disabled modules."""
     token = request.args.get('token', '').strip()
     from_number = _get_user_id(token)
 
@@ -197,7 +197,7 @@ def get_modules():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route('/modules', methods=['POST'])
+@bp.route('/api/modules-legacy', methods=['POST'])
 def save_modules():
     """Save user's enabled/disabled modules (Settings screen)."""
     token = request.args.get('token', '').strip()

@@ -121,6 +121,14 @@ except Exception as e:
     app.logger.error(f"[modules] Failed to register module gating: {e}")
     pass
 
+# ── Phase 2: Email Verification (school comms via IMAP) ──
+try:
+    from miru.routes.email_verification import register_email_verification_endpoints
+    register_email_verification_endpoints(app)
+except Exception as e:
+    app.logger.error(f"[email-verify] Failed to register email verification: {e}")
+    pass
+
 # ── Phase 2: Public Data APIs (v1 endpoints) ──
 try:
     from miru.routes.api_v1 import register_api_v1_endpoints

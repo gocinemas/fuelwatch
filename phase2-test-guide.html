@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 2 Testing Guide — Expected Screens</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { color: #667eea; margin-bottom: 8px; font-size: 32px; }
+    .subtitle { color: #666; margin-bottom: 40px; font-size: 16px; }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 { color: #333; margin-bottom: 16px; font-size: 24px; border-bottom: 3px solid #667eea; padding-bottom: 8px; }
+    .screenshot {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 16px 0;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      line-height: 1.4;
+    }
+    .step {
+      margin: 20px 0;
+      padding: 16px;
+      background: #f0f7ff;
+      border-left: 4px solid #667eea;
+      border-radius: 4px;
+    }
+    .step-num {
+      font-weight: bold;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+    .url {
+      background: #333;
+      color: #0f0;
+      padding: 12px;
+      border-radius: 4px;
+      margin: 12px 0;
+      font-family: 'Monaco', monospace;
+      word-break: break-all;
+    }
+    .check { color: #10b981; font-weight: bold; }
+    .error { color: #ef4444; font-weight: bold; }
+    .info { color: #667eea; }
+    ul { margin-left: 20px; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Phase 2 Testing Guide</h1>
+    <p class="subtitle">Expected screens, responses, and user flows</p>
+
+    <!-- Test 1: Module Picker UI -->
+    <div class="section">
+      <h2>Test 1: Module Picker UI 🎨</h2>
+
+      <div class="step">
+        <div class="step-num">Step 1: Open Module Picker</div>
+        <div class="url">http://localhost:8080/modules?token=test</div>
+      </div>
+
+      <h3>Expected Screen:</h3>
+      <div class="screenshot">
+┌─────────────────────────────────────┐
+│                                     │
+│      📱 Personalize Miru            │
+│                                     │
+│  Choose the features that matter   │
+│  to you                             │
+│                                     │
+│  ┌──────────┐  ┌──────────┐        │
+│  │✓ Enable  │  │✗ Disable │        │
+│  │   All    │  │   All    │        │
+│  └──────────┘  └──────────┘        │
+│                                     │
+├─────────────────────────────────────┤
+│                                     │
+│  ┌──────────────────────────────┐  │
+│  │ 🚆 Trains                    │  │
+│  │ Live train times & delays    │  │
+│  │ ✓ Enabled          [Toggle]  │  │
+│  └──────────────────────────────┘  │
+│                                     │
+│  ┌──────────────────────────────┐  │
+│  │ ⛽ Fuel Prices               │  │
+│  │ Find cheapest petrol nearby  │  │
+│  │ ✓ Enabled          [Toggle]  │  │
+│  └──────────────────────────────┘  │
+│                                     │
+│  ┌──────────────────────────────┐  │
+│  │ 🏫 Schools                   │  │
+│  │ Track school events & comms  │  │
+│  │ ○ Disabled         [Toggle]  │  │
+│  └──────────────────────────────┘  │
+│                                     │
+│  ... (6 more modules)               │
+│                                     │
+│              💾 Save Preferences    │
+│                                     │
+└─────────────────────────────────────┘
+      </div>
+
+      <h3>What to do:</h3>
+      <ul>
+        <li>Click toggles to enable/disable modules</li>
+        <li>Click "Enable All" to turn all on</li>
+        <li>Click "Disable All" to turn all off</li>
+        <li>Click "Save Preferences" button</li>
+      </ul>
+
+      <h3><span class="check">✅ Expected Result:</span></h3>
+      <div class="screenshot">
+Status: Saved! 5/9 modules enabled
+✅ Saved! 5/9 modules enabled
+      </div>
+    </div>
+
+    <!-- Test 2: Module Gating API -->
+    <div class="section">
+      <h2>Test 2: Module Gating API 📡</h2>
+
+      <h3>A) Load Default Modules</h3>
+      <div class="url">curl http://localhost:8080/api/user/modules?token=test | jq</div>
+
+      <h3><span class="check">✅ Expected Response:</span></h3>
+      <div class="screenshot">
+{
+  "ok": true,
+  "modules": {
+    "trains": true,
+    "fuel": true,
+    "schools": true,
+    "expense": true,
+    "local": true,
+    "research": true,
+    "library": true,
+    "gigs": true,
+    "weather": true
+  },
+  "count_enabled": 9,
+  "count_total": 9
+}
+      </div>
+
+      <h3>B) Save Custom Preferences</h3>
+      <div class="url">curl -X POST http://localhost:8080/api/user/modules?token=test \
+  -H "Content-Type: application/json" \
+  -d '{"modules": {"trains": true, "fuel": true, "schools": false, "expense": false, "local": true, "research": true, "library": false, "gigs": false, "weather": true}}'</div>
+
+      <h3><span class="check">✅ Expected Response:</span></h3>
+      <div class="screenshot">
+{
+  "ok": true,
+  "modules": {
+    "trains": true,
+    "fuel": true,
+    "schools": false,
+    "expense": false,
+    "local": true,
+    "research": true,
+    "library": false,
+    "gigs": false,
+    "weather": true
+  },
+  "count_enabled": 5,
+  "count_total": 9
+}
+      </div>
+
+      <h3>C) Load Again (Verify Saved)</h3>
+      <div class="url">curl http://localhost:8080/api/user/modules?token=test | jq '.modules'</div>
+
+      <h3><span class="check">✅ Expected Response:</span></h3>
+      <div class="screenshot">
+{
+  "trains": true,
+  "fuel": true,
+  "schools": false,
+  "expense": false,
+  "local": true,
+  "research": true,
+  "library": false,
+  "gigs": false,
+  "weather": true
+}
+      </div>
+    </div>
+
+    <!-- Test 3: Phase 2 Endpoints -->
+    <div class="section">
+      <h2>Test 3: Phase 2 Data Endpoints 📅</h2>
+
+      <h3>Calendar Endpoint (Working)</h3>
+      <div class="url">curl http://localhost:8080/api/v1/calendar/SE84LF?token=test | jq</div>
+
+      <h3><span class="check">✅ Expected Response:</span></h3>
+      <div class="screenshot">
+{
+  "ok": true,
+  "postcode": "SE84LF",
+  "timestamp": "2026-09-25T10:10:51.391358",
+  "data": {
+    "bank_holidays": [
+      {"date": "2026-01-01", "name": "New Year's Day"},
+      {"date": "2026-04-10", "name": "Good Friday"},
+      {"date": "2026-04-13", "name": "Easter Monday"},
+      ...
+    ],
+    "school_holidays": [
+      {"start": "2026-02-16", "end": "2026-02-20", "name": "Half-term"},
+      ...
+    ]
+  }
+}
+      </div>
+
+      <h3>Bills Endpoint (Working)</h3>
+      <div class="url">curl http://localhost:8080/api/v1/bills/SE84LF?token=test | jq</div>
+
+      <h3><span class="check">✅ Expected Response:</span></h3>
+      <div class="screenshot">
+{
+  "ok": true,
+  "postcode": "SE84LF",
+  "timestamp": "2026-09-25T10:10:51.391358",
+  "data": {
+    "council_tax": {
+      "status": "not_available",
+      "note": "Council tax band lookup requires council authority data"
+    },
+    "water": {
+      "status": "not_available",
+      "note": "Water authority data not available"
+    },
+    "utilities": {
+      "status": "available_from_user_history",
+      "note": "Scan receipts to track your own bills"
+    }
+  }
+}
+      </div>
+
+      <h3>Other Endpoints (Need Fixes)</h3>
+      <ul>
+        <li><span class="info">Transport:</span> http://localhost:8080/api/v1/transport/SE84LF?token=test</li>
+        <li><span class="info">Health Services:</span> http://localhost:8080/api/v1/health-services/SE84LF?token=test</li>
+        <li><span class="info">Parking:</span> http://localhost:8080/api/v1/parking/SE84LF?token=test</li>
+      </ul>
+      <p><span class="error">⚠️ These may return import errors — that's expected, need code fixes</span></p>
+    </div>
+
+    <!-- Test Summary -->
+    <div class="section">
+      <h2>Testing Checklist ✅</h2>
+      <ul>
+        <li>☐ Module Picker UI loads at /modules</li>
+        <li>☐ Can toggle modules on/off</li>
+        <li>☐ Can "Enable All" / "Disable All"</li>
+        <li>☐ Save shows confirmation message</li>
+        <li>☐ GET /api/user/modules returns all 9 modules by default</li>
+        <li>☐ POST /api/user/modules saves custom selection</li>
+        <li>☐ GET /api/user/modules returns saved preferences</li>
+        <li>☐ Calendar endpoint returns bank & school holidays</li>
+        <li>☐ Bills endpoint returns status info</li>
+        <li>☐ Transport/Health/Parking endpoints accessible (may need fixes)</li>
+      </ul>
+    </div>
+
+    <div class="section" style="background: #f0fdf4; border-left: 4px solid #10b981;">
+      <h2 style="border-color: #10b981; color: #10b981;">All Systems Go 🚀</h2>
+      <p>If all tests pass, Phase 2 module system is <span class="check">READY FOR PRODUCTION</span></p>
+    </div>
+  </div>
+</body>
+</html>
