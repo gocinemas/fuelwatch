@@ -2580,8 +2580,17 @@
           <span style="font-size:12px;font-weight:800;color:var(--text);flex:1">✨ What matters to you?</span>
           <span id="home-modules-chevron" style="font-size:12px;color:var(--muted);transition:transform .2s">▾</span>
         </button>
-        <div id="home-modules-body" style="display:none;padding:0 12px 12px 12px;flex-direction:column;gap:6px;border-top:1px solid var(--border)">
+        <div id="home-modules-body" style="display:none;padding:12px;flex-direction:column;gap:10px;border-top:1px solid var(--border)">
           <!-- Module toggles populated by _homeModulesLoad() -->
+          <div id="home-modules-list" style="display:flex;flex-direction:column;gap:6px"></div>
+
+          <!-- Action buttons -->
+          <div style="display:flex;gap:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <button onclick="_homeModulesSelectAll()" style="flex:1;padding:9px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text)">Select All</button>
+            <button onclick="_homeModulesDisableAll()" style="flex:1;padding:9px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--text)">Disable All</button>
+            <button onclick="_homeModulesSaveAll()" style="flex:1;padding:9px;background:#2563eb;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;color:#fff">✓ Save</button>
+          </div>
+          <div id="home-modules-status" style="font-size:10px;color:#059669;text-align:center;display:none">✅ Saved!</div>
         </div>
       </div>
 
@@ -6095,6 +6104,8 @@
     if (chev) chev.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
   }
 
+  window._homeModulesState = {};  // Track current state for bulk operations
+
   function _homeModulesLoad() {
     var token = _miruPhone();
     if (!token) return;
@@ -6102,52 +6113,80 @@
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (!d || !d.modules) return;
-        var body = document.getElementById("home-modules-body");
-        if (!body) return;
-        body.innerHTML = "";
-        Object.keys(d.modules).forEach(function(key) {
+        window._homeModulesState = JSON.parse(JSON.stringify(d.modules));
+        var listEl = document.getElementById("home-modules-list");
+        if (!listEl) return;
+        listEl.innerHTML = "";
+        Object.keys(d.modules).sort().forEach(function(key) {
           var enabled = d.modules[key];
           var icon = MODULE_ICONS[key] || "⭐";
           var label = MODULE_LABELS[key] || key;
           var toggle = document.createElement("label");
-          toggle.style.cssText = "display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:12px;margin-bottom:4px;cursor:pointer;transition:all .2s;border:2px solid transparent";
+          toggle.style.cssText = "display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:12px;cursor:pointer;transition:all .2s;border:2px solid transparent";
           if (enabled) toggle.style.borderColor = "#c7f0d8";
           var chk = document.createElement("input");
           chk.type = "checkbox";
           chk.checked = enabled;
+          chk.dataset.moduleKey = key;
           chk.style.cssText = "cursor:pointer;width:18px;height:18px";
           chk.onchange = function() {
-            _homeModulesSave(key, chk.checked, toggle);
+            window._homeModulesState[key] = chk.checked;
+            toggle.style.borderColor = chk.checked ? "#c7f0d8" : "transparent";
+            toggle.style.background = chk.checked ? "#f0fdf4" : "var(--bg)";
           };
           var txt = document.createElement("span");
           txt.textContent = icon + " " + label;
           txt.style.cssText = "font-size:13px;font-weight:600;color:var(--text)";
           toggle.appendChild(chk);
           toggle.appendChild(txt);
-          body.appendChild(toggle);
+          toggle.dataset.moduleKey = key;
+          listEl.appendChild(toggle);
         });
       })
       .catch(function(e) { console.warn("[home-modules] load failed", e); });
   }
 
-  function _homeModulesSave(key, enabled, toggleEl) {
+  function _homeModulesSelectAll() {
+    document.querySelectorAll("#home-modules-list input[type=checkbox]").forEach(function(chk) {
+      chk.checked = true;
+      window._homeModulesState[chk.dataset.moduleKey] = true;
+      var toggle = chk.closest("label");
+      if (toggle) {
+        toggle.style.borderColor = "#c7f0d8";
+        toggle.style.background = "#f0fdf4";
+      }
+    });
+  }
+
+  function _homeModulesDisableAll() {
+    document.querySelectorAll("#home-modules-list input[type=checkbox]").forEach(function(chk) {
+      chk.checked = false;
+      window._homeModulesState[chk.dataset.moduleKey] = false;
+      var toggle = chk.closest("label");
+      if (toggle) {
+        toggle.style.borderColor = "transparent";
+        toggle.style.background = "var(--bg)";
+      }
+    });
+  }
+
+  function _homeModulesSaveAll() {
     var token = _miruPhone();
     if (!token) return;
-    var mods = window._miruModulesEnabled || {};
-    mods[key] = enabled;
     fetch("/api/user/modules?token=" + encodeURIComponent(token), {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({modules: mods})
+      body: JSON.stringify({modules: window._homeModulesState})
     })
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.ok) {
         window._miruModulesEnabled = d.modules;
         _applyModuleVisibility();
-        if (toggleEl) {
-          toggleEl.style.borderColor = enabled ? "#c7f0d8" : "transparent";
-          if (enabled) toggleEl.style.background = "#f0fdf4";
+        var status = document.getElementById("home-modules-status");
+        if (status) {
+          status.style.display = "block";
+          setTimeout(function() { status.style.display = "none"; }, 2000);
         }
       }
     })
