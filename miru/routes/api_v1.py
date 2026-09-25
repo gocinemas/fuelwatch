@@ -27,8 +27,8 @@ def _resolve_postcode_v1(postcode_str):
 
 
 def _auth_token_or_403(token_str):
-    """Accept any non-empty token (local dev mode)."""
-    return True if token_str else False
+    """Accept any non-empty token (local dev mode). Returns token/phone or None."""
+    return token_str if token_str else None
 
 
 def _build_response(ok, postcode, data=None, error=None, cached=False):

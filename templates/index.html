@@ -2574,6 +2574,17 @@
 
       </div><!-- /lane-getting-around -->
 
+      <!-- ══ MODULE SELECTOR — Collapsible ══ -->
+      <div id="home-modules-selector" style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+        <button onclick="_homeModulesToggle()" style="width:100%;background:none;border:none;padding:13px 16px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;font-family:inherit">
+          <span style="font-size:12px;font-weight:800;color:var(--text);flex:1">✨ What matters to you?</span>
+          <span id="home-modules-chevron" style="font-size:12px;color:var(--muted);transition:transform .2s">▾</span>
+        </button>
+        <div id="home-modules-body" style="display:none;padding:0 12px 12px 12px;flex-direction:column;gap:6px;border-top:1px solid var(--border)">
+          <!-- Module toggles populated by _homeModulesLoad() -->
+        </div>
+      </div>
+
       <!-- ══ LANE: Dining Tonight — evening only (5pm–9pm). Top 3 restaurants, ratings + distance ══ -->
       <div id="lane-dining" style="display:none;margin-bottom:14px" class="miru-lane-fade">
         <div class="home-lane-header">🍽️ Dining Tonight</div>
@@ -3477,13 +3488,6 @@
           </div>
           <span style="font-size:12px;color:var(--muted);flex-shrink:0">Edit ›</span>
         </button>
-      </div>
-
-      <!-- ── MODULES ── -->
-      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Modules</div>
-      <div style="font-size:12px;color:var(--muted);margin:-4px 0 10px">Choose what shows up on your home screen. Changes save instantly.</div>
-      <div id="setup-modules-list" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px">
-        <!-- Populated by _setupLoadModules() -->
       </div>
 
       <!-- ── YOUR COMMUTE ── -->
@@ -4428,7 +4432,6 @@
         });
     }
     if (name === "school")  { schoolCheckPin(); }
-    if (name === "setup")   { _setupLoadModules(); }
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
     if (name === "ai-watch")  { try { _aiwRenderBookmarks(); } catch(e){} _aiwLoadCo(_aiwV); }
@@ -6071,6 +6074,84 @@
     }
     if (typeof _myAreaHeaderRender === "function") _myAreaHeaderRender();
     if (typeof _homeLanesApply === "function") _homeLanesApply();
+  }
+
+  // ── Homepage Module Selector ──────────────────────────────────────────────────
+  var MODULE_ICONS = {
+    trains: "🚆", fuel: "⛽", schools: "🏫", expense: "🧾",
+    local: "🏡", research: "🔎", library: "📚", gigs: "🎭", weather: "☀️"
+  };
+  var MODULE_LABELS = {
+    trains: "Trains", fuel: "Fuel", schools: "School", expense: "Receipts",
+    local: "Local", research: "Research", library: "Library", gigs: "Events", weather: "Weather"
+  };
+
+  function _homeModulesToggle() {
+    var body = document.getElementById("home-modules-body");
+    var chev = document.getElementById("home-modules-chevron");
+    if (!body) return;
+    var open = body.style.display !== "none";
+    body.style.display = open ? "none" : "flex";
+    if (chev) chev.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
+  }
+
+  function _homeModulesLoad() {
+    var token = _miruPhone();
+    if (!token) return;
+    fetch("/api/user/modules?token=" + encodeURIComponent(token))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d || !d.modules) return;
+        var body = document.getElementById("home-modules-body");
+        if (!body) return;
+        body.innerHTML = "";
+        Object.keys(d.modules).forEach(function(key) {
+          var enabled = d.modules[key];
+          var icon = MODULE_ICONS[key] || "⭐";
+          var label = MODULE_LABELS[key] || key;
+          var toggle = document.createElement("label");
+          toggle.style.cssText = "display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:12px;margin-bottom:4px;cursor:pointer;transition:all .2s;border:2px solid transparent";
+          if (enabled) toggle.style.borderColor = "#c7f0d8";
+          var chk = document.createElement("input");
+          chk.type = "checkbox";
+          chk.checked = enabled;
+          chk.style.cssText = "cursor:pointer;width:18px;height:18px";
+          chk.onchange = function() {
+            _homeModulesSave(key, chk.checked, toggle);
+          };
+          var txt = document.createElement("span");
+          txt.textContent = icon + " " + label;
+          txt.style.cssText = "font-size:13px;font-weight:600;color:var(--text)";
+          toggle.appendChild(chk);
+          toggle.appendChild(txt);
+          body.appendChild(toggle);
+        });
+      })
+      .catch(function(e) { console.warn("[home-modules] load failed", e); });
+  }
+
+  function _homeModulesSave(key, enabled, toggleEl) {
+    var token = _miruPhone();
+    if (!token) return;
+    var mods = window._miruModulesEnabled || {};
+    mods[key] = enabled;
+    fetch("/api/user/modules?token=" + encodeURIComponent(token), {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({modules: mods})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        window._miruModulesEnabled = d.modules;
+        _applyModuleVisibility();
+        if (toggleEl) {
+          toggleEl.style.borderColor = enabled ? "#c7f0d8" : "transparent";
+          if (enabled) toggleEl.style.background = "#f0fdf4";
+        }
+      }
+    })
+    .catch(function(e) { console.warn("[home-modules] save failed", e); });
   }
 
   // ── Home lanes: priority scoring + night-mode wind-down + module gating ────
@@ -18489,6 +18570,7 @@ let _savesAll = [];
   document.addEventListener("DOMContentLoaded", function() {
     _loadModuleSettings(function() {
       if ((_schoolWA() || _miruPhone()) && _moduleEnabled("school")) _schoolHomeLoad();
+      _homeModulesLoad();
     });
   });
 

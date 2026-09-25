@@ -104,27 +104,30 @@ class CustomJSONProvider(DefaultJSONProvider):
 
 app.json = CustomJSONProvider(app)
 
-# Enable CORS for all routes (Phase 2 API access from web)
-@app.before_request
-def handle_preflight():
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-        response.headers['Access-Control-Max-Age'] = '3600'
-        return response, 200
-
-@app.after_request
-def enable_cors(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    return response
-
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"}), 200
+
+@app.route('/modules', methods=['GET'])
+def module_picker():
+    """Module picker UI — let users choose which features to enable."""
+    return render_template('module_picker.html')
+
+# ── Phase 2: Module Gating (user control over features) ──
+try:
+    from miru.routes.module_gating import register_module_gating_endpoints
+    register_module_gating_endpoints(app)
+except Exception as e:
+    app.logger.error(f"[modules] Failed to register module gating: {e}")
+    pass
+
+# ── Phase 2: Email Verification (school comms via IMAP) ──
+try:
+    from miru.routes.email_verification import register_email_verification_endpoints
+    register_email_verification_endpoints(app)
+except Exception as e:
+    app.logger.error(f"[email-verify] Failed to register email verification: {e}")
+    pass
 
 # ── Phase 2: Public Data APIs (v1 endpoints) ──
 try:
