@@ -108,6 +108,11 @@ app.json = CustomJSONProvider(app)
 def health():
     return jsonify({"status": "ok"}), 200
 
+@app.route('/modules', methods=['GET'])
+def module_picker():
+    """Module picker UI — let users choose which features to enable."""
+    return render_template('module_picker.html')
+
 # ── Phase 2: Module Gating (user control over features) ──
 try:
     from miru.routes.module_gating import register_module_gating_endpoints
