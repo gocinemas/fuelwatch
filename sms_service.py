@@ -108,6 +108,14 @@ app.json = CustomJSONProvider(app)
 def health():
     return jsonify({"status": "ok"}), 200
 
+# ── Phase 2: Public Data APIs (v1 endpoints) ──
+try:
+    from miru.routes.api_v1 import register_api_v1_endpoints
+    register_api_v1_endpoints(app)
+except Exception as e:
+    app.logger.error(f"[api_v1] Failed to register Phase 2 endpoints: {e}")
+    pass
+
 # ── Phase 1: Motivation Layer Endpoints ──
 try:
     from miru.motivation.endpoints import register_motivation_endpoints
@@ -31810,12 +31818,6 @@ def admin_debug():
     except Exception as e:
         db_status = f"Error: {e}"
     return jsonify({"DATABASE_URL": masked, "db_status": db_status, "analytics_db_ok": analytics._db_ok})
-
-
-@app.route("/health")
-def health():
-    stations = get_stations()
-    return {"status": "ok", "stations_loaded": len(stations)}
 
 
 @app.route("/updates")
