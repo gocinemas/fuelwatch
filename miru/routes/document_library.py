@@ -209,11 +209,20 @@ def search_documents():
     try:
         from sms_service import lib
 
-        # Full-text search using PostgreSQL tsvector
+        # Simple LIKE search on title and excerpt (works with Supabase)
+        search_term = f"%{query}%"
+
         rows = lib._sb().table("documents").select("id,filename,title,excerpt,folder_path,file_type") \
-            .textSearch("ts_vector", query) \
+            .ilike("title", search_term) \
             .limit(limit) \
             .execute().data or []
+
+        # If no results from title, search excerpt
+        if not rows:
+            rows = lib._sb().table("documents").select("id,filename,title,excerpt,folder_path,file_type") \
+                .ilike("excerpt", search_term) \
+                .limit(limit) \
+                .execute().data or []
 
         return jsonify({
             "ok": True,
