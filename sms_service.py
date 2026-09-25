@@ -129,6 +129,14 @@ except Exception as e:
     app.logger.error(f"[email-verify] Failed to register email verification: {e}")
     pass
 
+# ── Phase 2: Document Library (RAG-ready search) ──
+try:
+    from miru.routes.document_library import register_document_library_endpoints
+    register_document_library_endpoints(app)
+except Exception as e:
+    app.logger.error(f"[library] Failed to register document library: {e}")
+    pass
+
 # ── Phase 2: Public Data APIs (v1 endpoints) ──
 try:
     from miru.routes.api_v1 import register_api_v1_endpoints
