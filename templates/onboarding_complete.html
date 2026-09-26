@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miru Onboarding</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 30px 30px;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: rgba(255,255,255,0.3);
+      margin: 24px 0 0 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: white;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .content {
+      padding: 40px 30px;
+      min-height: 300px;
+    }
+
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .step-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .step-desc {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    select:focus {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .option {
+      display: flex;
+      align-items: center;
+      padding: 14px;
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .option:hover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .option input {
+      margin-right: 12px;
+    }
+
+    .option.selected {
+      background: #f0fdf4;
+      border-color: #10b981;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .module-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .module-item:hover {
+      background: #f0f4ff;
+      border-color: #667eea;
+    }
+
+    .module-item.selected {
+      background: #f0fdf4;
+      border-color: #10b981;
+    }
+
+    .module-item input {
+      margin-right: 8px;
+    }
+
+    .module-label {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+
+    .email-verify {
+      background: #f0fdf4;
+      border: 1px solid #c7f0d8;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .email-verify-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #059669;
+      margin-bottom: 8px;
+    }
+
+    .success-content {
+      text-align: center;
+    }
+
+    .success-icon {
+      font-size: 64px;
+      margin-bottom: 24px;
+    }
+
+    .success-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .success-text {
+      font-size: 14px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🚀</div>
+      <div class="title">Miru Setup</div>
+      <div class="subtitle">Personalize your brief in 7 steps</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress"></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Step 1: Postcode -->
+      <div class="step active" id="step1">
+        <div class="step-title">📍 Where are you?</div>
+        <div class="step-desc">Enter your postcode to get local info</div>
+        <div class="form-group">
+          <label class="label">Postcode</label>
+          <input type="text" id="postcode" placeholder="e.g., SE8 4LF" maxlength="10">
+        </div>
+      </div>
+
+      <!-- Step 2: Modules -->
+      <div class="step" id="step2">
+        <div class="step-title">✨ What matters?</div>
+        <div class="step-desc">Choose which features to enable</div>
+        <div class="module-grid">
+          <label class="module-item" onclick="toggleModule(this, 'trains')">
+            <input type="checkbox" checked> 🚆 Trains
+          </label>
+          <label class="module-item" onclick="toggleModule(this, 'fuel')">
+            <input type="checkbox" checked> ⛽ Fuel
+          </label>
+          <label class="module-item" onclick="toggleModule(this, 'schools')">
+            <input type="checkbox" checked> 🏫 Schools
+          </label>
+          <label class="module-item" onclick="toggleModule(this, 'expense')">
+            <input type="checkbox"> 🧾 Receipts
+          </label>
+          <label class="module-item" onclick="toggleModule(this, 'local')">
+            <input type="checkbox" checked> 🏡 Local
+          </label>
+          <label class="module-item" onclick="toggleModule(this, 'research')">
+            <input type="checkbox"> 🔎 Research
+          </label>
+          <label class="module-item" onclick="toggleModule(this, 'library')">
+            <input type="checkbox" checked> 📚 Library
+          </label>
+          <label class="module-item" onclick="toggleModule(this, 'gigs')">
+            <input type="checkbox"> 🎭 Events
+          </label>
+          <label class="module-item" onclick="toggleModule(this, 'weather')">
+            <input type="checkbox" checked> ☀️ Weather
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 3: Train Station -->
+      <div class="step" id="step3">
+        <div class="step-title">🚆 Your Station</div>
+        <div class="step-desc">Which station do you commute from?</div>
+        <div id="stations-list"></div>
+      </div>
+
+      <!-- Step 4: Fuel & Schools -->
+      <div class="step" id="step4">
+        <div class="step-title">⛽ & 🏫 Preferences</div>
+        <div class="step-desc">Set your favorite fuel station and schools</div>
+        <div class="form-group">
+          <label class="label">Fuel Station</label>
+          <input type="text" id="fuel-station" placeholder="e.g., Sainsbury's">
+        </div>
+        <div class="form-group">
+          <label class="label">School 1</label>
+          <input type="text" id="school-1" placeholder="School name">
+        </div>
+        <div class="form-group">
+          <label class="label">School 2 (optional)</label>
+          <input type="text" id="school-2" placeholder="School name">
+        </div>
+      </div>
+
+      <!-- Step 5: Email Verification -->
+      <div class="step" id="step5">
+        <div class="step-title">📧 School Updates</div>
+        <div class="step-desc">Verify your email for school alerts</div>
+
+        <div class="email-verify" id="school-1-email">
+          <div class="email-verify-label">📧 School 1 Email</div>
+          <input type="email" placeholder="Enter email (any provider)">
+          <button class="btn btn-primary" style="margin-top: 8px; flex: none;">Send Code</button>
+        </div>
+
+        <div class="email-verify" id="school-2-email" style="display:none">
+          <div class="email-verify-label">📧 School 2 Email</div>
+          <input type="email" placeholder="Enter email (any provider)">
+          <button class="btn btn-primary" style="margin-top: 8px; flex: none;">Send Code</button>
+        </div>
+      </div>
+
+      <!-- Step 6: Alerts -->
+      <div class="step" id="step6">
+        <div class="step-title">🔔 Alert Preferences</div>
+        <div class="step-desc">Which school updates matter most?</div>
+        <label class="option">
+          <input type="checkbox" checked>
+          <div>
+            <div style="font-weight: 700;">🚨 Urgent Alerts</div>
+            <div style="font-size: 12px; color: #6b7280;">Closures, emergencies</div>
+          </div>
+        </label>
+        <label class="option">
+          <input type="checkbox" checked>
+          <div>
+            <div style="font-weight: 700;">📅 Events</div>
+            <div style="font-size: 12px; color: #6b7280;">School trips, sports days</div>
+          </div>
+        </label>
+        <label class="option">
+          <input type="checkbox">
+          <div>
+            <div style="font-weight: 700;">💰 Payments</div>
+            <div style="font-size: 12px; color: #6b7280;">School fees, lunch money</div>
+          </div>
+        </label>
+        <label class="option">
+          <input type="checkbox">
+          <div>
+            <div style="font-weight: 700;">📰 Newsletters</div>
+            <div style="font-size: 12px; color: #6b7280;">General updates</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Step 7: Success -->
+      <div class="step" id="step7">
+        <div class="success-content">
+          <div class="success-icon">🎉</div>
+          <div class="success-title">You're all set!</div>
+          <div class="success-text">
+            Your personalized brief is ready. School updates will start appearing in 2-3 minutes.
+          </div>
+        </div>
+      </div>
+
+      <div class="buttons">
+        <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
+        <button class="btn btn-primary" onclick="nextStep()" id="next-btn">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+    const totalSteps = 7;
+
+    const modules = {
+      trains: true, fuel: true, schools: true, expense: false,
+      local: true, research: false, library: true, gigs: false, weather: true
+    };
+
+    function updateProgress() {
+      const percent = (currentStep / totalSteps) * 100;
+      document.getElementById('progress').style.width = percent + '%';
+    }
+
+    function showStep(n) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById('step' + n).classList.add('active');
+
+      document.getElementById('next-btn').textContent = n === totalSteps ? '✓ Complete' : 'Next →';
+      document.querySelector('.btn-secondary').style.display = n === 1 ? 'none' : 'block';
+
+      updateProgress();
+    }
+
+    function nextStep() {
+      if (currentStep < totalSteps) {
+        currentStep++;
+        showStep(currentStep);
+      } else {
+        completeOnboarding();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        showStep(currentStep);
+      }
+    }
+
+    function toggleModule(el, key) {
+      modules[key] = !modules[key];
+      el.classList.toggle('selected', modules[key]);
+    }
+
+    function completeOnboarding() {
+      alert('🎉 Onboarding complete! Redirecting to Miru...');
+      window.location.href = '/';
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') nextStep();
+      if (e.key === 'ArrowLeft') prevStep();
+    });
+
+    showStep(1);
+  </script>
+</body>
+</html>

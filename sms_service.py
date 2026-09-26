@@ -44590,9 +44590,8 @@ def api_school_load_static_terms():
 
 @app.route("/onboarding")
 def onboarding():
-    """Serve the SIMPLE 3-step onboarding wizard."""
-    # Check if user already has setup data
-    token = request.args.get('token', '').strip()
+    """Serve the 7-step onboarding wizard with email verification."""
+    return render_template('onboarding_complete.html')
     if token:
         try:
             from miru.routes.onboarding import _get_user_id
