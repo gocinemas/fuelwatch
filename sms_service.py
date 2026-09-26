@@ -21059,26 +21059,43 @@ def api_home_ask():
             app.logger.debug(f"[ask] Train formatting failed: {e}")
 
     try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-                     "Content-Type": "application/json"},
-            json={"model": "qwen/qwen3.8-27b",
-                  "max_tokens": 400 if any(w in q_lower for w in ["show", "recipe", "ingredient", "steps"]) else 120,
-                  "temperature": 0.2, "messages": messages},
-            timeout=8,
-        )
-        answer = r.json()["choices"][0]["message"]["content"].strip()
+        # Try Groq first
+        groq_key = os.environ.get('GROQ_API_KEY', '').strip()
+        if groq_key:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}",
+                         "Content-Type": "application/json"},
+                json={"model": "qwen/qwen3.8-27b",
+                      "max_tokens": 400 if any(w in q_lower for w in ["show", "recipe", "ingredient", "steps"]) else 120,
+                      "temperature": 0.2, "messages": messages},
+                timeout=8,
+            )
+            answer = r.json()["choices"][0]["message"]["content"].strip()
 
-        # Return answer as-is from Groq
-        validated_answer = answer.strip()
-        if validated_answer and not validated_answer.endswith("."):
-            validated_answer += "."
+            # Return answer as-is from Groq
+            validated_answer = answer.strip()
+            if validated_answer and not validated_answer.endswith("."):
+                validated_answer += "."
 
-        app.logger.info(f"[home/ask] Answer: {validated_answer[:100]}")
-        return jsonify({"answer": validated_answer if validated_answer else ""})
+            app.logger.info(f"[home/ask] Groq Answer: {validated_answer[:100]}")
+            return jsonify({"answer": validated_answer if validated_answer else ""})
+        else:
+            raise Exception("No GROQ_API_KEY - using orchestrator fallback")
     except Exception as e:
-        app.logger.warning(f"[home/ask] {e}")
+        # Fallback: Use orchestrator for general questions
+        try:
+            app.logger.info(f"[home/ask] Groq failed ({str(e)[:50]}), trying orchestrator...")
+            from query_orchestrator import get_orchestrator
+            orchestrator = get_orchestrator()
+
+            result = orchestrator.process(question)
+            if result and result.get("message"):
+                app.logger.info(f"[home/ask] Orchestrator answered: {result['message'][:100]}")
+                return jsonify({"answer": result["message"]})
+        except Exception as orch_e:
+            app.logger.warning(f"[home/ask] Orchestrator also failed: {orch_e}")
+
         return jsonify({"answer": "Sorry, couldn't get an answer right now."}), 500
 
 
