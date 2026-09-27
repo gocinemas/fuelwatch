@@ -137,6 +137,14 @@ except Exception as e:
     app.logger.error(f"[library] Failed to register document library: {e}")
     pass
 
+# ── Phase 3: School Email Polling (IMAP monitoring) ──
+try:
+    from miru.routes.school_email_polling import register_school_email_endpoints
+    register_school_email_endpoints(app)
+except Exception as e:
+    app.logger.error(f"[school-email] Failed to register school email polling: {e}")
+    pass
+
 # ── Phase 2: Public Data APIs (v1 endpoints) ──
 try:
     from miru.routes.api_v1 import register_api_v1_endpoints

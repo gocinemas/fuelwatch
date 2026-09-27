@@ -359,17 +359,28 @@
       <div class="step" id="step5">
         <div class="step-title">📧 School Updates</div>
         <div class="step-desc">Verify your email for school alerts</div>
+        <div style="font-size: 12px; color: #6b7280; margin-bottom: 20px;">Works with Gmail, Yahoo, Outlook, or any email provider</div>
 
         <div class="email-verify" id="school-1-email">
           <div class="email-verify-label">📧 School 1 Email</div>
-          <input type="email" placeholder="Enter email (any provider)">
-          <button class="btn btn-primary" style="margin-top: 8px; flex: none;">Send Code</button>
+          <input type="email" id="email-school-1" placeholder="Enter email (any provider)">
+          <input type="password" id="password-school-1" placeholder="Email password or app password" style="margin-top: 8px;">
+          <div id="code-input-1" style="display:none; margin-top: 8px;">
+            <input type="text" id="code-1" placeholder="Enter verification code" maxlength="6">
+          </div>
+          <button class="btn btn-primary" id="btn-verify-1" style="margin-top: 8px; flex: none;" onclick="verifySchoolEmail(1)">Send Code</button>
+          <div id="status-1" style="margin-top: 8px; font-size: 12px; color: #6b7280;"></div>
         </div>
 
         <div class="email-verify" id="school-2-email" style="display:none">
           <div class="email-verify-label">📧 School 2 Email</div>
-          <input type="email" placeholder="Enter email (any provider)">
-          <button class="btn btn-primary" style="margin-top: 8px; flex: none;">Send Code</button>
+          <input type="email" id="email-school-2" placeholder="Enter email (any provider)">
+          <input type="password" id="password-school-2" placeholder="Email password or app password" style="margin-top: 8px;">
+          <div id="code-input-2" style="display:none; margin-top: 8px;">
+            <input type="text" id="code-2" placeholder="Enter verification code" maxlength="6">
+          </div>
+          <button class="btn btn-primary" id="btn-verify-2" style="margin-top: 8px; flex: none;" onclick="verifySchoolEmail(2)">Send Code</button>
+          <div id="status-2" style="margin-top: 8px; font-size: 12px; color: #6b7280;"></div>
         </div>
       </div>
 
@@ -434,6 +445,8 @@
       local: true, research: false, library: true, gigs: false, weather: true
     };
 
+    const verifiedEmails = {}; // Track verified emails: {1: email, 2: email}
+
     function updateProgress() {
       const percent = (currentStep / totalSteps) * 100;
       document.getElementById('progress').style.width = percent + '%';
@@ -446,10 +459,24 @@
       document.getElementById('next-btn').textContent = n === totalSteps ? '✓ Complete' : 'Next →';
       document.querySelector('.btn-secondary').style.display = n === 1 ? 'none' : 'block';
 
+      // Show/hide school 2 email based on step 4
+      if (n === 5) {
+        const school2 = document.getElementById('school-2').value.trim();
+        document.getElementById('school-2-email').style.display = school2 ? 'block' : 'none';
+      }
+
       updateProgress();
     }
 
     function nextStep() {
+      if (currentStep === 5) {
+        // Validate that at least school 1 email is verified
+        if (!verifiedEmails[1]) {
+          alert('Please verify at least School 1 email to continue');
+          return;
+        }
+      }
+
       if (currentStep < totalSteps) {
         currentStep++;
         showStep(currentStep);
@@ -470,7 +497,108 @@
       el.classList.toggle('selected', modules[key]);
     }
 
+    async function verifySchoolEmail(schoolNum) {
+      const emailInput = document.getElementById(`email-school-${schoolNum}`);
+      const passwordInput = document.getElementById(`password-school-${schoolNum}`);
+      const statusDiv = document.getElementById(`status-${schoolNum}`);
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!email || !password) {
+        statusDiv.textContent = '⚠️ Enter email and password';
+        return;
+      }
+
+      statusDiv.textContent = '⏳ Sending verification code...';
+
+      try {
+        // Send verification code
+        const initRes = await fetch('/api/onboarding/email-verify-init', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, school_id: `school-${schoolNum}`})
+        });
+
+        if (!initRes.ok) {
+          statusDiv.textContent = '❌ Failed to send code';
+          return;
+        }
+
+        // Show code input
+        document.getElementById(`code-input-${schoolNum}`).style.display = 'block';
+        document.getElementById(`btn-verify-${schoolNum}`).textContent = 'Verify Code';
+        document.getElementById(`btn-verify-${schoolNum}`).onclick = () => confirmSchoolEmail(schoolNum, email, password);
+        statusDiv.textContent = '✅ Code sent! Enter it below';
+
+      } catch (err) {
+        statusDiv.textContent = `❌ ${err.message}`;
+      }
+    }
+
+    async function confirmSchoolEmail(schoolNum, email, password) {
+      const codeInput = document.getElementById(`code-${schoolNum}`);
+      const statusDiv = document.getElementById(`status-${schoolNum}`);
+      const code = codeInput.value.trim();
+
+      if (!code) {
+        statusDiv.textContent = '⚠️ Enter verification code';
+        return;
+      }
+
+      statusDiv.textContent = '⏳ Verifying...';
+
+      try {
+        // Verify code
+        const confirmRes = await fetch('/api/onboarding/email-verify-confirm', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, code, school_id: `school-${schoolNum}`})
+        });
+
+        if (!confirmRes.ok) {
+          statusDiv.textContent = '❌ Invalid code';
+          return;
+        }
+
+        // Store IMAP credentials
+        const imap = await fetch('/api/onboarding/email-imap-setup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, password, school_id: `school-${schoolNum}`})
+        });
+
+        if (!imap.ok) {
+          statusDiv.textContent = '⚠️ Email verified but IMAP setup failed';
+          verifiedEmails[schoolNum] = email;
+          return;
+        }
+
+        verifiedEmails[schoolNum] = email;
+        statusDiv.textContent = `✅ ${email} verified!`;
+        document.getElementById(`btn-verify-${schoolNum}`).disabled = true;
+
+      } catch (err) {
+        statusDiv.textContent = `❌ ${err.message}`;
+      }
+    }
+
     function completeOnboarding() {
+      // Save prefs to API
+      const postcode = document.getElementById('postcode').value.trim();
+      const fuelStation = document.getElementById('fuel-station').value.trim();
+      const school1 = document.getElementById('school-1').value.trim();
+      const school2 = document.getElementById('school-2').value.trim();
+
+      // Save to database (optional)
+      fetch('/api/user/prefs', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          postcode, fuelStation, school1, school2, modules,
+          schools_emails: verifiedEmails
+        })
+      }).catch(() => {});
+
       alert('🎉 Onboarding complete! Redirecting to Miru...');
       window.location.href = '/';
     }
