@@ -2155,6 +2155,7 @@ def brand_expansion_page():
 @app.route("/company/<company_name>")
 @app.route("/intelligence/<company_name>")
 def company_intelligence_tabbed(company_name):
+    from flask import make_response
     """
     Unified company dashboard: company_details basics (description, industry,
     website, social, key facts — populated by company_data_populator.py in
@@ -2247,7 +2248,7 @@ def company_intelligence_tabbed(company_name):
             app.logger.debug(f"[intelligence_tabbed] Profile lookup failed: {profile_err}")
 
         # Render tabbed interface
-        return render_template(
+        response = make_response(render_template(
             "intelligence_tabbed.html",
             company=tabbed_data["company"],
             competitor=tabbed_data["competitor"],
@@ -2258,7 +2259,12 @@ def company_intelligence_tabbed(company_name):
             company_profile=company_profile,
             ai_opportunities=ai_opportunities if ai_opportunities else company_profile.get("ai_opportunities", {}),
             company_details=company_details
-        )
+        ))
+        # Prevent caching so users always get the latest data
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
     except Exception as e:
         app.logger.error(f"[intelligence_tabbed] Error: {e}")
@@ -19941,8 +19947,10 @@ def api_home_ask():
     rag_processed = False
     try:
         from ask_miru_rag import MiruRAG
+        print(f"[DEBUG api_home_ask] token={token}, from_number={from_number}, question={question[:50]}", flush=True)
         rag = MiruRAG(from_number, lib._sb())
         result = rag.query(question)
+        print(f"[DEBUG api_home_ask] RAG result: answer={result.get('answer')[:80] if result.get('answer') else None}, source={result.get('source')}, found={result.get('found')}", flush=True)
         rag_processed = True  # Mark that RAG attempted to process this
 
         # Return if RAG found an answer
