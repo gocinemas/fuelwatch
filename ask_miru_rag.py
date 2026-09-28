@@ -329,14 +329,8 @@ class MiruRAG:
 
             query = rows
 
-            # Filter by merchant if specified (STRICT matching when merchant is requested)
-            if merchant:
-                # Case-insensitive search: title ILIKE '%{merchant}%'
-                query = query.ilike("title", f"%{merchant}%")
-                # Store flag: if merchant was explicitly requested, we should NOT return other merchants
-                requested_merchant = merchant.lower()
-            else:
-                requested_merchant = None
+            # Store flag: if merchant was explicitly requested, we should NOT return other merchants
+            requested_merchant = merchant.lower() if merchant else None
 
             # Filter by time
             if time_qual == "today":
@@ -357,6 +351,23 @@ class MiruRAG:
                         "reason": f"No receipts found for {requested_merchant}"
                     }
                 return {"found": False, "data": None}
+
+            # Filter by merchant if specified (search in title and summary)
+            if requested_merchant:
+                merchant_matches = []
+                for receipt in rows:
+                    title = receipt.get("title", "").lower().replace("🧾", "").strip()
+                    summary = receipt.get("summary", "").lower()
+                    if requested_merchant in title or requested_merchant in summary:
+                        merchant_matches.append(receipt)
+
+                if not merchant_matches:
+                    return {
+                        "found": False,
+                        "data": None,
+                        "reason": f"No receipts found for {requested_merchant}"
+                    }
+                rows = merchant_matches
 
             # CRITICAL: If item is specified, filter receipts by item content
             if item:
