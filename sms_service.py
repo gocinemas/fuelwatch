@@ -6077,6 +6077,16 @@ def api_company_intelligence():
             result["searched_as"] = suggested_name
             result["original_query"] = name
 
+        # Ensure required fields exist for search results page
+        if not result.get("hq") and result.get("headquarters"):
+            result["hq"] = {"city": result.get("headquarters", ""), "country": ""}
+
+        if not result.get("founded_year") and result.get("founded"):
+            result["founded_year"] = result.get("founded")
+
+        if not result.get("revenue_billions") and result.get("revenue_usd_millions"):
+            result["revenue_billions"] = result.get("revenue_usd_millions", 0) / 1000
+
         # Extract and format AI opportunities if available
         if result and result.get("ai_opportunities"):
             ai_opps = result.get("ai_opportunities", {})
