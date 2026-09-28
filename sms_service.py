@@ -2184,8 +2184,11 @@ def company_intelligence_tabbed(company_name):
             hq_match = re.search(r'headquartered?\s+(?:in|at)\s+([^,\n.]+(?:,\s*[^,\n.]+)?)', extract, re.IGNORECASE)
             founded_match = re.search(r'(?:founded|established)\s+(?:in\s+)?(\d{4})', extract, re.IGNORECASE)
 
+            import re
+            slug = re.sub(r"[^a-z0-9]+", "-", company_name.lower()).strip("-")
             company_details = {
                 "company_name": company_name,
+                "slug": slug,
                 "status": "ready",
                 "description": extract[:500],
                 "headquarters": hq_match.group(1).strip() if hq_match else None,
