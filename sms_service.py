@@ -6106,6 +6106,18 @@ def api_company_intelligence():
                             hq_match = re.search(r'headquartered?\s+(?:in|at)\s+([^,\n.]+(?:,\s*[^,\n.]+)?)', wiki.get("extract", ""), re.IGNORECASE)
                             if hq_match:
                                 result["hq"] = {"city": hq_match.group(1).strip(), "country": ""}
+
+                        # Fetch financial data (revenue, employees) using AI parsing
+                        if not result.get("revenue_billions") or not result.get("employees"):
+                            try:
+                                from financial_data_fetcher import fetch_financial_data
+                                financial = fetch_financial_data(search_name, wiki.get("extract", ""))
+                                if financial.get("revenue_billions"):
+                                    result["revenue_billions"] = financial["revenue_billions"]
+                                if financial.get("employees"):
+                                    result["employees"] = financial["employees"]
+                            except Exception as fin_err:
+                                app.logger.debug(f"[company/intelligence] Financial data fetch failed: {fin_err}")
                 except Exception as wiki_err:
                     app.logger.debug(f"[company/intelligence] Wikipedia fallback failed: {wiki_err}")
 
