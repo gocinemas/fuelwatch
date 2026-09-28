@@ -2268,10 +2268,14 @@ def company_intelligence_tabbed(company_name):
 
     except Exception as e:
         app.logger.error(f"[intelligence_tabbed] Error: {e}")
-        return render_template(
+        response = make_response(render_template(
             "error.html",
             message=f"Error loading intelligence for {company_name}"
-        ), 500
+        ), 500)
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
 
 @app.route("/api/intelligence/<company_name>")
