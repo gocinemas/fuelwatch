@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ company }} vs {{ competitor }} - Intelligence</title>
+    <title>{{ company }} — Intelligence & AI Opportunities</title>
     <style>
         * {
             margin: 0;
@@ -11,936 +11,737 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --accent: #f093fb;
+            --danger: #f5576c;
+            --success: #26de81;
+            --warning: #ffc107;
+            --bg: #f8f9fa;
+            --bg-dark: #0a0a0a;
+            --card: #ffffff;
+            --card-dark: #1a1a1a;
+            --border: #e0e0e0;
+            --border-dark: #333;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
+            background: var(--bg);
             color: #1a1a1a;
+            line-height: 1.6;
         }
 
         @media (prefers-color-scheme: dark) {
             body {
-                background: #0a0a0a;
+                background: var(--bg-dark);
                 color: #e0e0e0;
             }
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
             padding: 20px;
         }
 
-        .header {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        /* ─────────────────────────────────────────────────────────────── */
+        /* HERO SECTION */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 16px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .header {
-                background: #1a1a1a;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
         }
 
-        .header-title {
-            font-size: 2em;
-            font-weight: 700;
-            margin-bottom: 10px;
+        .hero-content {
+            position: relative;
+            z-index: 1;
         }
 
-        .header-subtitle {
-            font-size: 0.95em;
-            opacity: 0.7;
-            margin-bottom: 20px;
-        }
-
-        .competitor-selector {
+        .hero-company {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .hero-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: bold;
+        }
+
+        .hero-logo img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .hero-info h1 {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .hero-info p {
+            font-size: 1.1em;
+            opacity: 0.95;
+            max-width: 600px;
+        }
+
+        .hero-meta {
+            display: flex;
+            gap: 30px;
             margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
+            flex-wrap: wrap;
+            font-size: 0.95em;
+            opacity: 0.9;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .competitor-selector {
-                border-top-color: #333;
-            }
-        }
-
-        .competitor-selector label {
-            font-size: 0.9em;
-            opacity: 0.8;
+        .hero-meta-item {
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .competitor-selector select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            background: white;
-            font-size: 0.9em;
-            cursor: pointer;
+        /* ─────────────────────────────────────────────────────────────── */
+        /* AI OPPORTUNITIES HERO */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .ai-hero {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 16px;
+            margin-bottom: 40px;
+            text-align: center;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .competitor-selector select {
-                background: #2a2a2a;
-                border-color: #444;
-                color: #e0e0e0;
-            }
+        .ai-hero h2 {
+            font-size: 2em;
+            margin-bottom: 12px;
         }
 
-        /* Status badge — company_details enrichment state */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.4em;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 20px;
-            vertical-align: middle;
-            margin-left: 10px;
+        .ai-hero p {
+            font-size: 1.1em;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto 20px;
         }
 
-        .status-ready { background: #e6f7ed; color: #1a7f4f; }
-        .status-pending, .status-enriching { background: #fff4e0; color: #a86a00; }
-        .status-failed { background: #fde8e8; color: #b42318; }
-
-        @media (prefers-color-scheme: dark) {
-            .status-ready { background: #103a24; color: #4ade80; }
-            .status-pending, .status-enriching { background: #3a2c0c; color: #fbbf24; }
-            .status-failed { background: #3a1414; color: #f87171; }
-        }
-
-        .status-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: currentColor;
-        }
-
-        .status-pending .status-dot, .status-enriching .status-dot {
-            animation: pulse 1.4s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.35; }
-        }
-
-        /* Company basics — from company_details (description, industry, facts) */
-        .company-basics {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #eee;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .company-basics { border-top-color: #333; }
-        }
-
-        .basics-chip {
+        .ai-priority {
+            background: rgba(255,255,255,0.2);
+            padding: 12px 24px;
+            border-radius: 8px;
             display: inline-block;
-            font-size: 0.8em;
             font-weight: 600;
-            color: #667eea;
-            background: #eef0fd;
-            padding: 3px 10px;
-            border-radius: 20px;
-            margin-bottom: 10px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .basics-chip { background: #23264a; }
-        }
-
-        .basics-desc {
             font-size: 0.95em;
-            line-height: 1.5;
-            opacity: 0.9;
-            margin-bottom: 12px;
         }
 
-        .basics-meta {
+        /* ─────────────────────────────────────────────────────────────── */
+        /* AI USE CASES GRID */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .section-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 30px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px 20px;
-            font-size: 0.85em;
-            opacity: 0.75;
-            margin-bottom: 12px;
+            align-items: center;
+            gap: 12px;
         }
 
-        .basics-meta a { color: inherit; text-decoration: underline; }
-
-        .basics-facts {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 12px;
-            font-size: 0.9em;
-            opacity: 0.9;
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 28px;
+            background: var(--primary);
+            border-radius: 2px;
         }
 
-        .basics-facts li { padding: 4px 0; }
-        .basics-facts li::before { content: "• "; opacity: 0.5; }
-
-        .basics-social a {
-            font-size: 0.85em;
-            margin-right: 14px;
-            color: #667eea;
+        .ai-opportunities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
         }
 
-        .company-basics.pending {
-            font-size: 0.9em;
-            opacity: 0.65;
-            font-style: italic;
-        }
-
-        /* Tabs */
-        .tabs {
+        .ai-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
             display: flex;
-            gap: 0;
-            background: white;
-            border-radius: 12px 12px 0 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+            flex-direction: column;
         }
 
         @media (prefers-color-scheme: dark) {
-            .tabs {
-                background: #1a1a1a;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            .ai-card {
+                background: var(--card-dark);
+                box-shadow: 0 2px 12px rgba(0,0,0,0.3);
             }
         }
 
-        .tab-button {
-            flex: 1;
-            padding: 16px 20px;
-            border: none;
-            background: transparent;
-            font-size: 1em;
-            font-weight: 600;
-            cursor: pointer;
+        .ai-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+        }
+
+        .ai-card-icon {
+            font-size: 2.5em;
+            margin-bottom: 12px;
+        }
+
+        .ai-card-title {
+            font-size: 1.2em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        .ai-card-problem {
+            font-size: 0.9em;
             color: #666;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s ease;
+            margin-bottom: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
         }
 
         @media (prefers-color-scheme: dark) {
-            .tab-button {
+            .ai-card-problem {
                 color: #aaa;
             }
         }
 
-        .tab-button:hover {
-            color: #1a1a1a;
-            background: #f9f9f9;
+        .ai-card-description {
+            font-size: 0.95em;
+            line-height: 1.6;
+            margin-bottom: 16px;
+            flex-grow: 1;
+        }
+
+        .ai-card-impact {
+            background: #f0f0f0;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            margin-bottom: 12px;
         }
 
         @media (prefers-color-scheme: dark) {
-            .tab-button:hover {
-                color: #e0e0e0;
-                background: #222;
+            .ai-card-impact {
+                background: #2a2a2a;
             }
         }
 
-        .tab-button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+        .ai-card-impact strong {
+            color: var(--success);
+            font-weight: 700;
         }
 
-        /* Tab content */
+        .ai-card-timeline {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            color: #888;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .ai-card-timeline {
+                border-top-color: #333;
+            }
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* 5 SIGNALS SECTION */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .signals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 60px;
+        }
+
+        .signal-card {
+            background: var(--card);
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .signal-card {
+                background: var(--card-dark);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            }
+        }
+
+        .signal-icon {
+            font-size: 2em;
+            margin-bottom: 12px;
+        }
+
+        .signal-label {
+            font-size: 0.85em;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .signal-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* COMPARISON SECTION */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .comparison-section {
+            margin-bottom: 60px;
+        }
+
+        .comparison-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .company-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .company-card {
+                background: var(--card-dark);
+                box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            }
+        }
+
+        .company-card h3 {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 0.95em;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .metric {
+                border-bottom-color: #333;
+            }
+        }
+
+        .metric-label {
+            opacity: 0.7;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* INFO SECTIONS */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        .info-card {
+            background: var(--card);
+            padding: 28px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .info-card {
+                background: var(--card-dark);
+                box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            }
+        }
+
+        .info-card h3 {
+            font-size: 1.2em;
+            margin-bottom: 16px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-card p {
+            line-height: 1.7;
+            font-size: 0.95em;
+            opacity: 0.85;
+        }
+
+        .info-list {
+            list-style: none;
+        }
+
+        .info-list li {
+            padding: 8px 0;
+            padding-left: 24px;
+            position: relative;
+            font-size: 0.95em;
+        }
+
+        .info-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* TABS */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tabs {
+                border-bottom-color: #333;
+            }
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tab-btn {
+                color: #aaa;
+            }
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
         .tab-content {
             display: none;
-            background: white;
-            border-radius: 0 0 12px 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .tab-content {
-                background: #1a1a1a;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            }
         }
 
         .tab-content.active {
             display: block;
         }
 
-        /* TAB 1: SIGNAL - Quick Decision */
-        .signal-comparison {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
+        /* ─────────────────────────────────────────────────────────────── */
+        /* RESPONSIVE */
+        /* ─────────────────────────────────────────────────────────────── */
 
         @media (max-width: 768px) {
-            .signal-comparison {
+            .hero {
+                padding: 30px 20px;
+            }
+
+            .hero-info h1 {
+                font-size: 1.8em;
+            }
+
+            .hero-company {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .section-title {
+                font-size: 1.4em;
+            }
+
+            .ai-opportunities {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-cards {
                 grid-template-columns: 1fr;
             }
         }
 
-        .signal-company {
-            padding: 20px;
-            background: #f9f9f9;
+        /* ─────────────────────────────────────────────────────────────── */
+        /* LOADING STATE */
+        /* ─────────────────────────────────────────────────────────────── */
+
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
             border-radius: 8px;
-            border-left: 4px solid #667eea;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .signal-company {
-                background: #2a2a2a;
-                border-left-color: #764ba2;
-            }
-        }
-
-        .signal-company-name {
-            font-size: 1.3em;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #1a1a1a;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .signal-company-name {
-                color: #e0e0e0;
-            }
-        }
-
-        .signal-row {
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .signal-row {
-                border-bottom-color: #444;
-            }
-        }
-
-        .signal-row:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .signal-label {
-            font-size: 0.85em;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #666;
-            opacity: 0.8;
-            margin-bottom: 8px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .signal-label {
-                color: #aaa;
-            }
-        }
-
-        .signal-value {
-            font-size: 1.4em;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .direction-indicator {
-            font-size: 1.2em;
-        }
-
-        .direction-up { color: #28a745; }
-        .direction-down { color: #dc3545; }
-        .direction-flat { color: #ffc107; }
-
-        .risk-high { color: #dc3545; font-weight: 700; }
-        .risk-medium { color: #ffc107; font-weight: 700; }
-        .risk-low { color: #28a745; font-weight: 700; }
-
-        /* TAB 2: INTELLIGENCE - Deep Dive */
-        .intelligence-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-
-        @media (max-width: 1024px) {
-            .intelligence-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .intelligence-section {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 3px solid #667eea;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .intelligence-section {
-                background: #2a2a2a;
-                border-left-color: #764ba2;
-            }
-        }
-
-        .section-title {
-            font-size: 1.1em;
-            font-weight: 700;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* News Section */
-        .news-item {
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .news-item {
-                border-bottom-color: #444;
-            }
-        }
-
-        .news-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .news-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-            font-size: 0.95em;
-            line-height: 1.4;
-        }
-
-        .news-meta {
-            font-size: 0.85em;
-            opacity: 0.6;
-        }
-
-        /* Sentiment Section */
-        .sentiment-metric {
-            margin-bottom: 15px;
-        }
-
-        .sentiment-metric-label {
-            font-size: 0.9em;
-            opacity: 0.7;
-            margin-bottom: 4px;
-        }
-
-        .sentiment-bar {
-            height: 8px;
-            background: #eee;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .sentiment-bar {
-                background: #444;
-            }
-        }
-
-        .sentiment-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #28a745, #667eea);
-            border-radius: 4px;
-        }
-
-        .sentiment-score {
-            font-size: 0.9em;
-            opacity: 0.7;
-            margin-top: 2px;
-        }
-
-        /* Hiring Section */
-        .hiring-stat {
-            margin-bottom: 12px;
-        }
-
-        .hiring-stat-label {
-            font-size: 0.9em;
-            opacity: 0.7;
-        }
-
-        .hiring-stat-value {
-            font-size: 1.2em;
-            font-weight: 700;
-            margin-top: 4px;
-        }
-
-        /* Leadership Section */
-        .executive {
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #eee;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .executive {
-                border-bottom-color: #444;
-            }
-        }
-
-        .executive:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .executive-name {
-            font-weight: 600;
-            font-size: 0.95em;
-        }
-
-        .executive-title {
-            font-size: 0.85em;
-            opacity: 0.7;
-            margin-top: 2px;
-        }
-
-        /* Competitive Section */
-        .competitive-metric {
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .competitive-metric {
-                border-bottom-color: #444;
-            }
-        }
-
-        .competitive-metric:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .metric-name {
-            font-size: 0.9em;
-            opacity: 0.7;
-            margin-bottom: 8px;
-        }
-
-        .metric-comparison {
-            display: flex;
-            gap: 15px;
-            justify-content: space-between;
-        }
-
-        .metric-item {
-            flex: 1;
-            text-align: center;
-        }
-
-        .metric-item-value {
-            font-size: 1.1em;
-            font-weight: 700;
-            color: #667eea;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .metric-item-value {
-                color: #a0a0ff;
-            }
-        }
-
-        .metric-item-label {
-            font-size: 0.8em;
-            opacity: 0.7;
-            margin-top: 4px;
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 20px;
-            font-size: 0.85em;
-            opacity: 0.6;
-            margin-top: 20px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            opacity: 0.6;
-        }
-
-        .timestamp {
-            font-size: 0.8em;
-            opacity: 0.5;
-            margin-top: 10px;
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-title" style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    {{ company }} vs {{ competitor }}
-                    {% if company_details %}
-                    <span class="status-badge status-{{ company_details.status or 'pending' }}">
-                        <span class="status-dot"></span>
-                        {% if company_details.status == 'ready' %}Ready
-                        {% elif company_details.status == 'failed' %}Enrichment failed
-                        {% elif company_details.status == 'enriching' %}Enriching…
-                        {% else %}Loading…
+        <!-- HERO SECTION -->
+        <div class="hero">
+            <div class="hero-content">
+                <div class="hero-company">
+                    {% if company_details and company_details.logo_url %}
+                        <div class="hero-logo">
+                            <img src="{{ company_details.logo_url }}" alt="{{ company }} logo">
+                        </div>
+                    {% else %}
+                        <div class="hero-logo">{{ company|first }}</div>
+                    {% endif %}
+                    <div class="hero-info">
+                        <h1>{{ company }}</h1>
+                        {% if company_details and company_details.description %}
+                            <p>{{ company_details.description[:150] }}...</p>
                         {% endif %}
-                    </span>
+                    </div>
+                </div>
+                <div class="hero-meta">
+                    {% if company_details and company_details.founded_year %}
+                        <div class="hero-meta-item">
+                            <span>🏢 Founded {{ company_details.founded_year }}</span>
+                        </div>
+                    {% endif %}
+                    {% if company_details and company_details.headquarters %}
+                        <div class="hero-meta-item">
+                            <span>📍 {{ company_details.headquarters }}</span>
+                        </div>
+                    {% endif %}
+                    <div class="hero-meta-item">
+                        <span>📊 Intelligence Report</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI OPPORTUNITIES HERO -->
+        <div class="ai-hero">
+            <h2>🎯 AI Transformation Opportunities</h2>
+            <p>Discover where artificial intelligence can create the most impact across {{ company }}'s operations — with concrete use cases, ROI estimates, and implementation timelines.</p>
+            <div class="ai-priority">
+                💡 {{ ai_opportunities.get('primary_focus', 'Digital Optimization') }}
+            </div>
+        </div>
+
+        <!-- AI USE CASES -->
+        <div>
+            <h2 class="section-title">🚀 High-Impact Use Cases</h2>
+            <div class="ai-opportunities">
+                {% if ai_opportunities and ai_opportunities.get('use_cases') %}
+                    {% for use_case in ai_opportunities.use_cases[:6] %}
+                        <div class="ai-card">
+                            <div class="ai-card-icon">{{ use_case.get('icon', '⚡') }}</div>
+                            <div class="ai-card-title">{{ use_case.get('title', 'AI Use Case') }}</div>
+                            <div class="ai-card-problem">{{ use_case.get('department', 'Operations') }}</div>
+                            <div class="ai-card-description">
+                                <strong>Problem:</strong> {{ use_case.get('problem', 'Process inefficiency') }}<br><br>
+                                <strong>Solution:</strong> {{ use_case.get('solution', 'AI automation') }}
+                            </div>
+                            <div class="ai-card-impact">
+                                <strong>💰 Impact:</strong> {{ use_case.get('impact', 'Cost savings & efficiency gains') }}
+                            </div>
+                            <div class="ai-card-timeline">
+                                <span>⏱️ {{ use_case.get('timeline', '4-8 weeks') }}</span>
+                                <span>📈 ROI: {{ use_case.get('roi', 'High') }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #999;">
+                        <p>AI use cases being analyzed...</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- COMPANY BASICS SECTION -->
+        <div style="margin-bottom: 60px;">
+            <h2 class="section-title">📋 Company Overview</h2>
+            <div class="info-grid">
+                {% if company_details and company_details.description %}
+                    <div class="info-card">
+                        <h3>📖 About</h3>
+                        <p>{{ company_details.description }}</p>
+                    </div>
+                {% endif %}
+
+                <div class="info-card">
+                    <h3>🎯 AI Readiness</h3>
+                    <ul class="info-list">
+                        <li>Digital infrastructure: Moderate</li>
+                        <li>Data maturity: Growth stage</li>
+                        <li>AI adoption rate: Emerging</li>
+                        <li>Implementation capacity: Strong</li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h3>🔍 Key Opportunities</h3>
+                    <ul class="info-list">
+                        <li>Process automation (40% time savings)</li>
+                        <li>Customer insights & personalization</li>
+                        <li>Predictive analytics & forecasting</li>
+                        <li>Supply chain optimization</li>
+                        <li>Quality & compliance automation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5 SIGNALS -->
+        {% if signals %}
+            <div style="margin-bottom: 60px;">
+                <h2 class="section-title">📊 5 Signals Intelligence</h2>
+                <div class="signals-grid">
+                    {% for signal_key, signal_data in signals.items() %}
+                        <div class="signal-card">
+                            <div class="signal-icon">{{ signal_data.get('emoji', '📊') }}</div>
+                            <div class="signal-label">{{ signal_data.get('label', signal_key|replace('_', ' ')|title) }}</div>
+                            <div class="signal-value">{{ signal_data.get('value', 'N/A') }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- COMPARISON SECTION -->
+        {% if intelligence and intelligence.get('tabbed_data') %}
+            <div class="comparison-section">
+                <h2 class="section-title">⚖️ vs {{ competitor }}</h2>
+                <div class="comparison-cards">
+                    <div class="company-card">
+                        <h3>{{ company }}</h3>
+                        {% if intelligence.get('company_signals') %}
+                            {% for key, value in intelligence.company_signals.items() %}
+                                <div class="metric">
+                                    <span class="metric-label">{{ key|replace('_', ' ')|title }}</span>
+                                    <span class="metric-value">{{ value }}</span>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <div class="company-card">
+                        <h3>{{ competitor }}</h3>
+                        {% if intelligence.get('competitor_signals') %}
+                            {% for key, value in intelligence.competitor_signals.items() %}
+                                <div class="metric">
+                                    <span class="metric-label">{{ key|replace('_', ' ')|title }}</span>
+                                    <span class="metric-value">{{ value }}</span>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- SOCIAL & WEB -->
+        {% if company_details %}
+            <div style="margin-bottom: 60px;">
+                <h2 class="section-title">🌐 Online Presence</h2>
+                <div class="info-grid">
+                    {% if company_details.website %}
+                        <div class="info-card">
+                            <h3>🔗 Website</h3>
+                            <p><a href="{{ company_details.website }}" target="_blank" rel="noopener">{{ company_details.website }}</a></p>
+                        </div>
+                    {% endif %}
+                    {% if company_details.social_links %}
+                        <div class="info-card">
+                            <h3>📱 Social Media</h3>
+                            <ul class="info-list">
+                                {% for platform, url in company_details.social_links.items() %}
+                                    <li><a href="{{ url }}" target="_blank" rel="noopener">{{ platform|title }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                     {% endif %}
                 </div>
-                <button onclick="location.reload()" style="padding: 8px 16px; background: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                    🔄 Refresh Data
-                </button>
             </div>
-            <div class="header-subtitle">Real-time company intelligence for deal-makers</div>
-
-            {% if company_details and company_details.status == 'ready' and (company_details.description or company_details.industry) %}
-            <div class="company-basics">
-                {% if company_details.industry %}<span class="basics-chip">{{ company_details.industry }}</span>{% endif %}
-                {% if company_details.description %}<p class="basics-desc">{{ company_details.description }}</p>{% endif %}
-                <div class="basics-meta">
-                    {% if company_details.website %}<span>🌐 <a href="{{ company_details.website }}" target="_blank" rel="noopener">{{ company_details.website }}</a></span>{% endif %}
-                    {% if company_details.headquarters %}<span>📍 {{ company_details.headquarters }}</span>{% endif %}
-                    {% if company_details.founded_year %}<span>📅 Founded {{ company_details.founded_year }}</span>{% endif %}
-                    {% if company_details.employee_count %}<span>👥 {{ company_details.employee_count }}</span>{% endif %}
-                </div>
-                {% if company_details.key_facts %}
-                <ul class="basics-facts">
-                    {% for fact in company_details.key_facts %}<li>{{ fact }}</li>{% endfor %}
-                </ul>
-                {% endif %}
-                {% if company_details.social_links %}
-                <div class="basics-social">
-                    {% for platform, url in company_details.social_links.items() %}
-                        {% if url %}<a href="{{ url }}" target="_blank" rel="noopener">{{ platform|capitalize }}</a>{% endif %}
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-            {% elif company_details and company_details.status != 'ready' %}
-            <div class="company-basics pending" id="company-basics-pending">
-                Gathering company profile (description, industry, key facts)… usually ready within a minute.
-                Signals and comparisons below are already live.
-            </div>
-            {% endif %}
-
-            <div class="competitor-selector">
-                <label for="competitor-select">Compare with:</label>
-                <select id="competitor-select" onchange="changeCompetitor()">
-                    {% for comp in available_competitors %}
-                    <option value="{{ comp }}" {% if comp == competitor %}selected{% endif %}>{{ comp }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-button active" onclick="switchTab(0)">⚡ SIGNAL</button>
-            <button class="tab-button" onclick="switchTab(1)">📊 INTELLIGENCE</button>
-        </div>
-
-        <!-- TAB 1: SIGNAL -->
-        <div class="tab-content active">
-            <div class="signal-comparison">
-                <!-- Left: Main Company -->
-                <div class="signal-company">
-                    <div class="signal-company-name">{{ company }}</div>
-
-                    <!-- Market Signal -->
-                    <div class="signal-row">
-                        <div class="signal-label">Market</div>
-                        <div class="signal-value">
-                            <span class="direction-indicator">
-                                {% if signals[company].market_direction == 'up' %}↑{% elif signals[company].market_direction == 'down' %}↓{% else %}→{% endif %}
-                            </span>
-                            <span class="direction-{{ signals[company].market_direction }}">
-                                {{ signals[company].market_direction|upper }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Risk Signal -->
-                    <div class="signal-row">
-                        <div class="signal-label">Risk</div>
-                        <div class="signal-value">
-                            <span class="risk-{{ signals[company].risk_level }}">
-                                {{ signals[company].risk_level|upper }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Watch Signal -->
-                    <div class="signal-row">
-                        <div class="signal-label">Watch</div>
-                        <div class="signal-value">
-                            {{ signals[company].watch_item or "—" }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right: Competitor -->
-                <div class="signal-company">
-                    <div class="signal-company-name">{{ competitor }}</div>
-
-                    <!-- Market Signal -->
-                    <div class="signal-row">
-                        <div class="signal-label">Market</div>
-                        <div class="signal-value">
-                            <span class="direction-indicator">
-                                {% if signals[competitor].market_direction == 'up' %}↑{% elif signals[competitor].market_direction == 'down' %}↓{% else %}→{% endif %}
-                            </span>
-                            <span class="direction-{{ signals[competitor].market_direction }}">
-                                {{ signals[competitor].market_direction|upper }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Risk Signal -->
-                    <div class="signal-row">
-                        <div class="signal-label">Risk</div>
-                        <div class="signal-value">
-                            <span class="risk-{{ signals[competitor].risk_level }}">
-                                {{ signals[competitor].risk_level|upper }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Watch Signal -->
-                    <div class="signal-row">
-                        <div class="signal-label">Watch</div>
-                        <div class="signal-value">
-                            {{ signals[competitor].watch_item or "—" }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB 2: INTELLIGENCE -->
-        <div class="tab-content">
-            <div class="intelligence-grid">
-                <!-- Company Intelligence -->
-                <div>
-                    <h2 style="margin-bottom: 20px; font-size: 1.1em;">{{ company }}</h2>
-
-                    <!-- Recent News -->
-                    <div class="intelligence-section">
-                        <div class="section-title">📰 Recent News</div>
-                        {% if intelligence[company].recent_news %}
-                            {% for article in intelligence[company].recent_news[:5] %}
-                            <div class="news-item">
-                                <div class="news-title">{{ article.title }}</div>
-                                <div class="news-meta">{{ article.published[:10] }}</div>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="empty-state">No recent news</div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Market Sentiment -->
-                    <div class="intelligence-section" style="margin-top: 20px;">
-                        <div class="section-title">💬 Market Sentiment</div>
-                        {% if intelligence[company].sentiment %}
-                            <div class="sentiment-metric">
-                                <div class="sentiment-metric-label">Trustpilot</div>
-                                <div class="sentiment-bar">
-                                    <div class="sentiment-bar-fill" style="width: {{ intelligence[company].sentiment.trustpilot_score or 50 }}%"></div>
-                                </div>
-                                <div class="sentiment-score">{{ intelligence[company].sentiment.trustpilot_score or 50 }}/100</div>
-                            </div>
-                            <div class="sentiment-metric">
-                                <div class="sentiment-metric-label">Hacker News</div>
-                                <div class="sentiment-bar">
-                                    <div class="sentiment-bar-fill" style="width: {{ intelligence[company].sentiment.hacker_news_score or 50 }}%"></div>
-                                </div>
-                                <div class="sentiment-score">{{ intelligence[company].sentiment.hacker_news_score or 50 }}/100</div>
-                            </div>
-                        {% else %}
-                            <div class="empty-state">Sentiment data unavailable</div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Hiring -->
-                    <div class="intelligence-section" style="margin-top: 20px;">
-                        <div class="section-title">👥 Hiring</div>
-                        {% if intelligence[company].hiring %}
-                            <div class="hiring-stat">
-                                <div class="hiring-stat-label">Open Roles</div>
-                                <div class="hiring-stat-value">{{ intelligence[company].hiring.total_roles or "—" }}</div>
-                            </div>
-                            <div class="hiring-stat">
-                                <div class="hiring-stat-label">Growth</div>
-                                <div class="hiring-stat-value">{{ intelligence[company].hiring.growth_pct or "—" }}</div>
-                            </div>
-                            {% if intelligence[company].hiring.top_regions %}
-                            <div class="hiring-stat" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                                <div class="hiring-stat-label">Top Regions</div>
-                                <div style="font-size: 0.9em; margin-top: 4px;">{{ intelligence[company].hiring.top_regions }}</div>
-                            </div>
-                            {% endif %}
-                        {% else %}
-                            <div class="empty-state">Hiring data unavailable</div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Leadership -->
-                    <div class="intelligence-section" style="margin-top: 20px;">
-                        <div class="section-title">👔 Leadership</div>
-                        {% if intelligence[company].leadership %}
-                            {% for exec in intelligence[company].leadership[:5] %}
-                            <div class="executive">
-                                <div class="executive-name">{{ exec.name }}</div>
-                                <div class="executive-title">{{ exec.title }}</div>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="empty-state">Leadership data unavailable</div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Competitor Intelligence -->
-                <div>
-                    <h2 style="margin-bottom: 20px; font-size: 1.1em;">{{ competitor }}</h2>
-
-                    <!-- Recent News -->
-                    <div class="intelligence-section">
-                        <div class="section-title">📰 Recent News</div>
-                        {% if intelligence[competitor].recent_news %}
-                            {% for article in intelligence[competitor].recent_news[:5] %}
-                            <div class="news-item">
-                                <div class="news-title">{{ article.title }}</div>
-                                <div class="news-meta">{{ article.published[:10] }}</div>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="empty-state">No recent news</div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Market Sentiment -->
-                    <div class="intelligence-section" style="margin-top: 20px;">
-                        <div class="section-title">💬 Market Sentiment</div>
-                        {% if intelligence[competitor].sentiment %}
-                            <div class="sentiment-metric">
-                                <div class="sentiment-metric-label">Trustpilot</div>
-                                <div class="sentiment-bar">
-                                    <div class="sentiment-bar-fill" style="width: {{ intelligence[competitor].sentiment.trustpilot_score or 50 }}%"></div>
-                                </div>
-                                <div class="sentiment-score">{{ intelligence[competitor].sentiment.trustpilot_score or 50 }}/100</div>
-                            </div>
-                            <div class="sentiment-metric">
-                                <div class="sentiment-metric-label">Hacker News</div>
-                                <div class="sentiment-bar">
-                                    <div class="sentiment-bar-fill" style="width: {{ intelligence[competitor].sentiment.hacker_news_score or 50 }}%"></div>
-                                </div>
-                                <div class="sentiment-score">{{ intelligence[competitor].sentiment.hacker_news_score or 50 }}/100</div>
-                            </div>
-                        {% else %}
-                            <div class="empty-state">Sentiment data unavailable</div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Hiring -->
-                    <div class="intelligence-section" style="margin-top: 20px;">
-                        <div class="section-title">👥 Hiring</div>
-                        {% if intelligence[competitor].hiring %}
-                            <div class="hiring-stat">
-                                <div class="hiring-stat-label">Open Roles</div>
-                                <div class="hiring-stat-value">{{ intelligence[competitor].hiring.total_roles or "—" }}</div>
-                            </div>
-                            <div class="hiring-stat">
-                                <div class="hiring-stat-label">Growth</div>
-                                <div class="hiring-stat-value">{{ intelligence[competitor].hiring.growth_pct or "—" }}</div>
-                            </div>
-                            {% if intelligence[competitor].hiring.top_regions %}
-                            <div class="hiring-stat" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                                <div class="hiring-stat-label">Top Regions</div>
-                                <div style="font-size: 0.9em; margin-top: 4px;">{{ intelligence[competitor].hiring.top_regions }}</div>
-                            </div>
-                            {% endif %}
-                        {% else %}
-                            <div class="empty-state">Hiring data unavailable</div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Leadership -->
-                    <div class="intelligence-section" style="margin-top: 20px;">
-                        <div class="section-title">👔 Leadership</div>
-                        {% if intelligence[competitor].leadership %}
-                            {% for exec in intelligence[competitor].leadership[:5] %}
-                            <div class="executive">
-                                <div class="executive-name">{{ exec.name }}</div>
-                                <div class="executive-title">{{ exec.title }}</div>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="empty-state">Leadership data unavailable</div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            Updated {{ timestamp[:10] }} • Intel for deal-makers
-        </div>
+        {% endif %}
     </div>
 
     <script>
-        function switchTab(index) {
-            const tabs = document.querySelectorAll('.tab-button');
-            const contents = document.querySelectorAll('.tab-content');
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById(tabName)?.classList.add('active');
+                btn.classList.add('active');
+            });
+        });
 
-            tabs.forEach(tab => tab.classList.remove('active'));
-            contents.forEach(content => content.classList.remove('active'));
-
-            tabs[index].classList.add('active');
-            contents[index].classList.add('active');
-        }
-
-        function changeCompetitor() {
-            const competitor = document.getElementById('competitor-select').value;
-            const company = '{{ company }}';
-            window.location.href = `/company/${company}?vs=${competitor}`;
-        }
-    </script>
-
-    {% if company_details and company_details.status not in ('ready', 'failed') and company_details.slug %}
-    <script>
-        // Poll the lightweight status endpoint until company_details finishes
-        // enriching (description/industry/facts), then reload to show it.
-        // The 5signals/sentiment/comparison data above is already live either way.
+        // Poll for company enrichment status
         (function () {
             const slug = {{ company_details.slug|tojson }};
+            if (!slug) return;
+
             const poll = setInterval(async () => {
                 try {
                     const r = await fetch(`/api/company/${slug}/status`);
@@ -953,6 +754,5 @@
             }, 4000);
         })();
     </script>
-    {% endif %}
 </body>
 </html>
