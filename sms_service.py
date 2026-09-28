@@ -6051,6 +6051,35 @@ def api_company_intelligence():
         except Exception as profile_err:
             app.logger.debug(f"[company/intelligence] Profile lookup failed: {profile_err}")
 
+        # PRIORITY 1.5: Check company_details table for enriched data (Wikipedia + Claude)
+        if not result or not result.get("founded_year"):
+            try:
+                import library as lib
+                sb = lib._sb()
+                import re
+                slug = re.sub(r"[^a-z0-9]+", "-", search_name.lower()).strip("-")
+                details_result = sb.table("company_details").select("*").eq("slug", slug).limit(1).execute()
+
+                if details_result.data and details_result.data[0].get("status") == "ready":
+                    details = details_result.data[0]
+                    if not result:
+                        result = {}
+                    # Merge company_details enrichment into result
+                    if details.get("founded_year"):
+                        result["founded_year"] = details["founded_year"]
+                    if details.get("headquarters"):
+                        result["hq"] = {"city": details["headquarters"], "country": ""}
+                    if details.get("description") and not result.get("description"):
+                        result["description"] = details["description"]
+                    if details.get("industry") and not result.get("industry"):
+                        result["industry"] = details["industry"]
+                    if details.get("website") and not result.get("website"):
+                        result["website"] = details["website"]
+                    if details.get("logo_url") and not result.get("logo_url"):
+                        result["logo_url"] = details["logo_url"]
+            except Exception as details_err:
+                app.logger.debug(f"[company/intelligence] Company details lookup failed: {details_err}")
+
         # PRIORITY 2: Fall back to external sources if not in database
         if not result or not result.get("name"):
             # If country specified, search that country
