@@ -2195,8 +2195,12 @@ def company_intelligence_tabbed(company_name):
                 "founded_year": int(founded_match.group(1)) if founded_match else None,
                 "logo_url": wiki.get("image"),
             }
-    except Exception:
-        pass
+        else:
+            app.logger.debug(f"[company_intelligence_tabbed] No Wikipedia data found for {company_name}")
+    except Exception as e:
+        app.logger.error(f"[company_intelligence_tabbed] Wikipedia fetch failed for {company_name}: {e}")
+        import traceback
+        traceback.print_exc()
 
     try:
         # Get competitor from query params (default: Henkel for Reckitt, etc.)
