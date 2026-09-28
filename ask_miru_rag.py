@@ -352,19 +352,23 @@ class MiruRAG:
             # FALLBACK: If no rows found, try fetching ALL receipts and filter by phone in Python
             # (handles cases where from_number format doesn't match what's in DB)
             if not rows:
-                print(f"[DEBUG wa_saves] No receipts found with phone variants, trying fallback fetch", flush=True)
+                print(f"[DEBUG wa_saves] No receipts found with phone variants, trying AGGRESSIVE fallback", flush=True)
                 try:
-                    all_rows = self.sb.table("wa_saves").select("title,summary,created_at,from_number").ilike("title", "%🧾%").order("created_at", desc=True).limit(200).execute().data or []
-                    print(f"[DEBUG wa_saves] Fallback: Fetched {len(all_rows)} total receipts, filtering by phone", flush=True)
+                    all_rows = self.sb.table("wa_saves").select("title,summary,created_at,from_number").ilike("title", "%🧾%").order("created_at", desc=True).limit(500).execute().data or []
+                    print(f"[DEBUG wa_saves] Fallback: Fetched {len(all_rows)} TOTAL receipts (all users, trying to find yours)", flush=True)
+
+                    phone_clean = self.phone_original.replace("whatsapp:", "").strip()
+                    print(f"[DEBUG wa_saves] Trying to match phone='{phone_clean}' (or any variant)", flush=True)
 
                     for row in all_rows:
-                        from_num = row.get("from_number", "").lower()
-                        # Check if any phone variant matches this receipt's from_number
-                        for variant in self.phone_variants:
-                            if variant.lower() in from_num or from_num in variant.lower():
-                                rows.append(row)
-                                print(f"[DEBUG wa_saves] Found match: {variant} in {from_num}", flush=True)
-                                break
+                        from_num = row.get("from_number", "")
+                        # Try ANY matching strategy
+                        if (phone_clean in from_num or
+                            from_num in phone_clean or
+                            phone_clean.replace("+", "") in from_num or
+                            from_num.replace("whatsapp:", "").strip() == phone_clean):
+                            rows.append(row)
+                            print(f"[DEBUG wa_saves] MATCH: from_number='{from_num}' matches phone='{phone_clean}'", flush=True)
                 except Exception as e:
                     print(f"[DEBUG wa_saves] Fallback fetch failed: {e}", flush=True)
 
