@@ -6079,27 +6079,35 @@ def api_company_intelligence():
                         result["logo_url"] = details["logo_url"]
             except Exception as details_err:
                 app.logger.debug(f"[company/intelligence] Company details lookup failed: {details_err}")
-                # Fallback: Fetch from Wikipedia directly if database fails
+
+            # Fallback: Always fetch from Wikipedia if key fields are still missing
+            if not result or not result.get("founded_year") or not result.get("hq"):
                 try:
                     from company_data_populator import _fetch_wikipedia_summary
                     wiki = _fetch_wikipedia_summary(search_name)
-                    if wiki and not result:
-                        result = {}
-                        result["name"] = search_name
-                        result["description"] = wiki.get("extract", "")[:500]
-                        result["logo_url"] = wiki.get("image")
+                    if wiki:
+                        if not result:
+                            result = {}
+                        if not result.get("name"):
+                            result["name"] = search_name
+                        if not result.get("description"):
+                            result["description"] = wiki.get("extract", "")[:500]
+                        if not result.get("logo_url"):
+                            result["logo_url"] = wiki.get("image")
 
-                        # Parse founded year from Wikipedia
-                        founded_match = re.search(r'(?:founded|established)\s+(?:in\s+)?(\d{4})', wiki.get("extract", ""), re.IGNORECASE)
-                        if founded_match:
-                            result["founded_year"] = int(founded_match.group(1))
+                        # Parse founded year if missing
+                        if not result.get("founded_year"):
+                            founded_match = re.search(r'(?:founded|established)\s+(?:in\s+)?(\d{4})', wiki.get("extract", ""), re.IGNORECASE)
+                            if founded_match:
+                                result["founded_year"] = int(founded_match.group(1))
 
-                        # Parse headquarters from Wikipedia
-                        hq_match = re.search(r'headquartered?\s+(?:in|at)\s+([^,\n.]+(?:,\s*[^,\n.]+)?)', wiki.get("extract", ""), re.IGNORECASE)
-                        if hq_match:
-                            result["hq"] = {"city": hq_match.group(1).strip(), "country": ""}
+                        # Parse headquarters if missing
+                        if not result.get("hq"):
+                            hq_match = re.search(r'headquartered?\s+(?:in|at)\s+([^,\n.]+(?:,\s*[^,\n.]+)?)', wiki.get("extract", ""), re.IGNORECASE)
+                            if hq_match:
+                                result["hq"] = {"city": hq_match.group(1).strip(), "country": ""}
                 except Exception as wiki_err:
-                    app.logger.debug(f"[company/intelligence] Wikipedia fallback also failed: {wiki_err}")
+                    app.logger.debug(f"[company/intelligence] Wikipedia fallback failed: {wiki_err}")
 
         # PRIORITY 2: Fall back to external sources if not in database
         if not result or not result.get("name"):
