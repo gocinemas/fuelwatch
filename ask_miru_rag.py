@@ -125,18 +125,31 @@ class MiruRAG:
 
         # Handle + prefix variations
         if no_wa.startswith("+"):
-            variants.add(no_wa)  # With +
-            variants.add(no_wa[1:])  # Without +
+            variants.add(no_wa)  # +447595075735
+            no_plus = no_wa[1:]
+            variants.add(no_plus)  # 447595075735
+            variants.add(f"00{no_plus}")  # 00447595075735
+            # UK mobile format: +447595075735 → 07595075735
+            if no_plus.startswith("447"):
+                variants.add("0" + no_plus[2:])  # 07595075735
         else:
-            variants.add(no_wa)  # Without +
-            if no_wa:  # Only add + version if phone is non-empty
+            variants.add(no_wa)  # As-is
+            if no_wa:
                 variants.add(f"+{no_wa}")  # With +
+                # Add UK formats
+                if no_wa.startswith("447"):
+                    variants.add(f"00{no_wa}")  # 00447...
+                    variants.add("0" + no_wa[2:])  # 07...
 
         # Also try with whatsapp: prefix + variations
         no_plus = no_wa.lstrip("+")
         if no_plus:
             variants.add(f"whatsapp:{no_plus}")
             variants.add(f"whatsapp:+{no_plus}")
+            # whatsapp: + UK formats
+            if no_plus.startswith("447"):
+                variants.add(f"whatsapp:00{no_plus}")
+                variants.add(f"whatsapp:0{no_plus[2:]}")
 
         # Remove any empty strings and duplicates
         self.phone_variants = sorted(list(set(v for v in variants if v and v.strip())))
