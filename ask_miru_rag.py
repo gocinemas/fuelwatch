@@ -184,8 +184,43 @@ class MiruRAG:
             time_qual = EntityExtractor.extract_time_qualifier(question)
             item = EntityExtractor.extract_item(question)
 
+            # Check if user is asking about a product type (wines, beers, etc.)
+            product_types = ["wine", "wines", "beer", "beers", "coffee", "tea", "chocolate", "book", "books"]
+            is_product_query = any(pt in q_lower for pt in product_types)
+
             # Route to appropriate handler
-            if any(w in q_lower for w in ["what", "did i", "did you", "have i", "what items"]):
+            if is_product_query:
+                # Search BOTH receipts and saved items for products
+                print(f"[DEBUG] Product type query detected: {question}", flush=True)
+                receipt_result = self._query_receipts(merchant, item, time_qual, question)
+                saved_result = self._query_saved_links(question)
+
+                # Combine results from both sources
+                combined_answer = ""
+                if receipt_result.get("found"):
+                    combined_answer += f"📦 From receipts:\n{receipt_result.get('answer', '')}\n\n"
+                if saved_result.get("found"):
+                    combined_answer += f"💾 From saved items:\n{saved_result.get('answer', '')}\n"
+
+                if combined_answer.strip():
+                    return {
+                        "found": True,
+                        "answer": combined_answer.strip(),
+                        "source": "combined",
+                        "confidence": 0.9,
+                    }
+                elif receipt_result.get("found"):
+                    return receipt_result
+                elif saved_result.get("found"):
+                    return saved_result
+                else:
+                    return {
+                        "answer": f"I didn't find any {item or 'products'} in your receipts or saved items.",
+                        "found": False,
+                        "source": "database",
+                        "confidence": 1.0,
+                    }
+            elif any(w in q_lower for w in ["what", "did i", "did you", "have i", "what items"]):
                 # Question about purchases/items
                 return self._query_receipts(merchant, item, time_qual, question)
             elif any(w in q_lower for w in ["how much", "spent", "cost", "budget"]):
@@ -723,8 +758,19 @@ class MiruRAG:
                     "confidence": 0.8,
                 }
 
-            # Filter by question keywords
+            # Filter by question keywords (with product type expansion)
             q_words = set(question.lower().split())
+
+            # Expand product type keywords
+            if "wine" in q_words:
+                q_words.update(["sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "shiraz"])
+            if "beer" in q_words:
+                q_words.update(["ale", "lager", "stout", "ipa", "pilsner", "cider"])
+            if "coffee" in q_words:
+                q_words.update(["espresso", "cappuccino", "latte", "americano", "mocha"])
+            if "tea" in q_words:
+                q_words.update(["chai", "green", "black", "herbal", "matcha"])
+
             matched = []
 
             for row in rows:
