@@ -344,7 +344,26 @@ class MiruRAG:
                 query = query.gte("created_at", f"{yesterday}T00:00:00").lte("created_at", f"{yesterday}T23:59:59")
 
             rows = query.order("created_at", desc=True).limit(50).execute().data or []  # Fetch more rows to filter by item
-            print(f"[DEBUG wa_saves] Fetched {len(rows)} receipts with 🧾", flush=True)
+            print(f"[DEBUG wa_saves] Fetched {len(rows)} receipts with 🧾 using phone_variants={self.phone_variants}", flush=True)
+
+            # FALLBACK: If no rows found, try fetching ALL receipts and filter by phone in Python
+            # (handles cases where from_number format doesn't match what's in DB)
+            if not rows:
+                print(f"[DEBUG wa_saves] No receipts found with phone variants, trying fallback fetch", flush=True)
+                try:
+                    all_rows = self.sb.table("wa_saves").select("title,summary,created_at,from_number").ilike("title", "%🧾%").order("created_at", desc=True).limit(200).execute().data or []
+                    print(f"[DEBUG wa_saves] Fallback: Fetched {len(all_rows)} total receipts, filtering by phone", flush=True)
+
+                    for row in all_rows:
+                        from_num = row.get("from_number", "").lower()
+                        # Check if any phone variant matches this receipt's from_number
+                        for variant in self.phone_variants:
+                            if variant.lower() in from_num or from_num in variant.lower():
+                                rows.append(row)
+                                print(f"[DEBUG wa_saves] Found match: {variant} in {from_num}", flush=True)
+                                break
+                except Exception as e:
+                    print(f"[DEBUG wa_saves] Fallback fetch failed: {e}", flush=True)
 
             if not rows:
                 # If merchant was explicitly requested and not found, return clear "not found"
