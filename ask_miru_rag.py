@@ -323,6 +323,9 @@ class MiruRAG:
     def _query_wa_saves(self, merchant: Optional[str], item: Optional[str], time_qual: Optional[str]) -> Dict:
         """Query wa_saves table (🧾 receipts) — works with all phone formats"""
         try:
+            # Debug: log what we're searching for
+            print(f"[DEBUG] _query_wa_saves: phone_variants={self.phone_variants}, merchant={merchant}, item={item}", flush=True)
+
             rows = self.sb.table("wa_saves").select("title,summary,created_at").in_(
                 "from_number", self.phone_variants
             ).ilike("title", "%🧾%")
@@ -341,6 +344,7 @@ class MiruRAG:
                 query = query.gte("created_at", f"{yesterday}T00:00:00").lte("created_at", f"{yesterday}T23:59:59")
 
             rows = query.order("created_at", desc=True).limit(50).execute().data or []  # Fetch more rows to filter by item
+            print(f"[DEBUG wa_saves] Fetched {len(rows)} receipts with 🧾", flush=True)
 
             if not rows:
                 # If merchant was explicitly requested and not found, return clear "not found"
@@ -355,12 +359,16 @@ class MiruRAG:
             # Filter by merchant if specified (search in title and summary)
             if requested_merchant:
                 merchant_matches = []
-                for receipt in rows:
+                print(f"[DEBUG wa_saves] Filtering by merchant='{requested_merchant}'", flush=True)
+                for i, receipt in enumerate(rows):
                     title = receipt.get("title", "").lower().replace("🧾", "").strip()
                     summary = receipt.get("summary", "").lower()
-                    if requested_merchant in title or requested_merchant in summary:
+                    match = requested_merchant in title or requested_merchant in summary
+                    print(f"[DEBUG wa_saves]   Receipt {i}: title='{title[:40]}...' match={match}", flush=True)
+                    if match:
                         merchant_matches.append(receipt)
 
+                print(f"[DEBUG wa_saves] Found {len(merchant_matches)} receipts matching merchant '{requested_merchant}'", flush=True)
                 if not merchant_matches:
                     return {
                         "found": False,
@@ -438,6 +446,8 @@ class MiruRAG:
             # Remove whatsapp: prefix for receipts table (uses plain phone only)
             phone_variants_plain = [v.replace("whatsapp:", "").strip() for v in self.phone_variants]
             phone_variants_plain = [v for v in phone_variants_plain if v]  # Remove empty
+
+            print(f"[DEBUG receipts_table] phone_variants_plain={phone_variants_plain}, merchant={merchant}, item={item}", flush=True)
 
             query = self.sb.table("receipts").select("merchant,items,shop_date,total,created_at").in_(
                 "phone", phone_variants_plain
