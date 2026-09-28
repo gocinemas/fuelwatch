@@ -483,6 +483,25 @@ class MiruRAG:
                 query = query.gte("shop_date", today).lt("shop_date", (date.today() + timedelta(days=1)).isoformat())
 
             rows = query.order("shop_date", desc=True).limit(200).execute().data or []  # Fetch more to filter by item
+            print(f"[DEBUG receipts_table] Fetched {len(rows)} receipts", flush=True)
+
+            # FALLBACK: If no rows, try fetching ALL receipts and filtering by phone in Python
+            if not rows:
+                print(f"[DEBUG receipts_table] No receipts found, trying fallback fetch", flush=True)
+                try:
+                    all_rows = self.sb.table("receipts").select("merchant,items,shop_date,total,created_at,phone").order("shop_date", desc=True).limit(500).execute().data or []
+                    print(f"[DEBUG receipts_table] Fallback: Fetched {len(all_rows)} total receipts", flush=True)
+
+                    for row in all_rows:
+                        row_phone = row.get("phone", "").lower().strip()
+                        # Check if any phone variant matches
+                        for variant in phone_variants_plain:
+                            if variant.lower() in row_phone or row_phone in variant.lower():
+                                print(f"[DEBUG receipts_table] Fallback match: {variant} in {row_phone}", flush=True)
+                                rows.append(row)
+                                break
+                except Exception as e:
+                    print(f"[DEBUG receipts_table] Fallback fetch failed: {e}", flush=True)
 
             if not rows:
                 # If merchant was explicitly requested and not found, return clear "not found"
