@@ -421,13 +421,20 @@ class MiruRAG:
                 item_lower = item.lower()
                 item_words = [w.lower().strip() for w in item_lower.split() if w.strip() and len(w.strip()) > 1]
 
+                # Special handling for "wine" — expand to wine-related keywords
+                if "wine" in item_words:
+                    wine_keywords = ["wine", "sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "red", "white", "sparkling", "shiraz", "claret", "burgundy"]
+                    item_words = list(set(item_words + wine_keywords))
+                    print(f"[DEBUG wa_saves] Wine search expanded to keywords: {item_words[:5]}...", flush=True)
+
                 matching_receipts = []
                 for receipt in rows:
                     summary = receipt.get("summary", "").lower()
                     title = receipt.get("title", "").lower()
-                    # ALL search words must match in title or summary
-                    if all(word in (title + " " + summary) for word in item_words):
+                    # Check if ANY search word matches in title or summary
+                    if any(word in (title + " " + summary) for word in item_words):
                         matching_receipts.append(receipt)
+                        print(f"[DEBUG wa_saves] Item match found: {item_lower}", flush=True)
 
                 # If no receipts match the item, return "not found"
                 if not matching_receipts:
@@ -537,6 +544,11 @@ class MiruRAG:
                 item_lower = item.lower()
                 item_words = [w.lower().strip() for w in item_lower.split() if w.strip() and len(w.strip()) > 1]
 
+                # Special handling for "wine" — expand to wine-related keywords
+                if "wine" in item_words:
+                    wine_keywords = ["wine", "sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "red", "white", "sparkling", "shiraz", "claret", "burgundy"]
+                    item_words = list(set(item_words + wine_keywords))
+
                 matching_receipts = []
                 for receipt in rows:
                     try:
@@ -545,13 +557,13 @@ class MiruRAG:
                     except:
                         items_list = []
 
-                    # Check if ANY item in the receipt matches ALL search words
+                    # Check if ANY search word matches ANY item in the receipt
                     for it in items_list:
                         item_name = it.get("name", "") if isinstance(it, dict) else str(it)
                         item_name_lower = item_name.lower()
 
-                        # ALL search words must match this item
-                        if all(word in item_name_lower for word in item_words):
+                        # ANY search word matches this item
+                        if any(word in item_name_lower for word in item_words):
                             matching_receipts.append(receipt)
                             break  # Found a match for this receipt, move to next
 
