@@ -113,6 +113,7 @@ class MiruRAG:
 
     def _generate_phone_variants(self):
         """Generate all possible phone number formats for flexible database matching"""
+        print(f"[DEBUG _generate_phone_variants] phone_original={self.phone_original}", flush=True)
         variants = set()
 
         # Start with original
@@ -144,6 +145,8 @@ class MiruRAG:
         if len(self.phone_variants) == 0:
             # Fallback: at least include the original
             self.phone_variants = [self.phone_original] if self.phone_original else []
+
+        print(f"[DEBUG _generate_phone_variants] Generated variants: {self.phone_variants}", flush=True)
 
     def query(self, question: str) -> Dict[str, Any]:
         """
