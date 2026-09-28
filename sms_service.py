@@ -2212,6 +2212,12 @@ def company_intelligence_tabbed(company_name):
         company_signals = get_5_signals(company_name)
         competitor_signals = get_5_signals(competitor)
 
+        # Fetch AI opportunities for this company
+        from ai_opportunities_db import get_opportunities_for_industry
+        ai_opportunities = {}
+        if company_details and company_details.get("industry"):
+            ai_opportunities = get_opportunities_for_industry(company_details["industry"])
+
         # Aggregate data for both tabs
         tabbed_data = TabbedIntelligenceService.aggregate_for_both_tabs(
             company_name, competitor, company_signals, competitor_signals
@@ -2246,7 +2252,7 @@ def company_intelligence_tabbed(company_name):
             available_competitors=tabbed_data["available_competitors"],
             timestamp=tabbed_data["timestamp"],
             company_profile=company_profile,
-            ai_opportunities=ai_opportunities,
+            ai_opportunities=ai_opportunities if ai_opportunities else company_profile.get("ai_opportunities", {}),
             company_details=company_details
         )
 
