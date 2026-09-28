@@ -188,6 +188,17 @@ def populate_company_data(company_name: str, slug: str = None, requested_by: str
         sb.table("company_details").update({"status": "enriching"}).eq("slug", slug).execute()
     except Exception as e:
         print(f"[company_populator] could not mark '{slug}' as enriching: {e}")
+        # If update fails, try insert as fallback
+        try:
+            sb.table("company_details").insert({
+                "company_name": company_name.strip().title(),
+                "slug": slug,
+                "status": "enriching",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception as e2:
+            print(f"[company_populator] could not insert placeholder for '{slug}': {e2}")
 
     try:
         wiki = _fetch_wikipedia_summary(company_name)
@@ -219,14 +230,19 @@ def populate_company_data(company_name: str, slug: str = None, requested_by: str
         if requested_by:
             record["requested_by"] = requested_by
 
-        sb.table("company_details").upsert(record, on_conflict="slug").execute()
-        print(f"[company_populator] enriched '{company_name}' (slug={slug})")
-        return record
+        try:
+            sb.table("company_details").upsert(record, on_conflict="slug").execute()
+            print(f"[company_populator] enriched '{company_name}' (slug={slug})")
+            return record
+        except Exception as upsert_err:
+            print(f"[company_populator] upsert failed: {upsert_err}")
+            raise
 
     except Exception as e:
         print(f"[company_populator] enrichment failed for '{company_name}': {e}")
         traceback.print_exc()
         try:
+            # Try to mark as failed so the page can show an error instead of loading forever
             sb.table("company_details").update(
                 {
                     "status": "failed",
@@ -234,8 +250,8 @@ def populate_company_data(company_name: str, slug: str = None, requested_by: str
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 }
             ).eq("slug", slug).execute()
-        except Exception:
-            pass
+        except Exception as update_err:
+            print(f"[company_populator] could not mark '{slug}' as failed: {update_err}")
         return None
 
 

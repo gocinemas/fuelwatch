@@ -107,10 +107,35 @@ def _ensure_row(company_name: str, requested_by: str = None):
     slug = slugify(company_name)
     row = _get_company(slug)
 
-    # Company enrichment disabled due to persistent Supabase schema cache issues (PGRST205)
-    # The old intelligence system (5signals, SWOT, AI opportunities) is working fine
-    # Return None instead of trying to fetch from broken table
-    return None, False
+    # If row doesn't exist, create a pending placeholder and trigger background fetch
+    if not row:
+        try:
+            row = {
+                "company_name": (company_name or "").strip().title(),
+                "slug": slug,
+                "status": "pending",
+                "requested_by": requested_by,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            _sb().table("company_details").insert(row).execute()
+            _trigger_background_fetch(company_name, slug, requested_by)
+            return row, True
+        except Exception as e:
+            print(f"[company_routes] Failed to create row for '{slug}': {e}")
+            # Return a minimal dict so the page still works
+            return {
+                "company_name": (company_name or "").strip().title(),
+                "slug": slug,
+                "status": "error",
+                "description": f"Could not load profile: {str(e)[:100]}"
+            }, False
+
+    # Row exists; check if it's stale and needs a refresh
+    if _is_stale(row):
+        _trigger_background_fetch(company_name, slug, requested_by)
+
+    return row, False
 
 
 # Public entry point for sms_service.py's unified /company/<name> ↔
@@ -120,7 +145,7 @@ def ensure_company_row(company_name: str, requested_by: str = None):
     display_name = (company_name or "").replace("-", " ").replace("_", " ").strip()
     row, just_created = _ensure_row(display_name, requested_by=requested_by)
 
-    if not just_created and row.get("status") == "ready":
+    if row and not just_created and row.get("status") == "ready":
         try:
             _sb().table("company_details").update(
                 {"view_count": (row.get("view_count") or 0) + 1}
@@ -139,6 +164,8 @@ def register_company_intelligence_endpoints(app):
             company_name.replace("-", " ").replace("_", " ").strip(),
             requested_by=request.remote_addr,
         )
+        if not row:
+            return jsonify({"error": "Could not load company data"}), 500
         status_code = 202 if row.get("status") in ("pending", "enriching") else 200
         return jsonify(row), status_code
 
@@ -146,18 +173,23 @@ def register_company_intelligence_endpoints(app):
     def api_company_status(company_name):
         """Cheap polling target for the pending page — avoid re-selecting * every 3s."""
         slug = slugify(company_name.replace("-", " ").replace("_", " ").strip())
-        res = (
-            _sb()
-            .table("company_details")
-            .select("status,updated_at")
-            .eq("slug", slug)
-            .limit(1)
-            .execute()
-        )
-        rows = res.data or []
-        if not rows:
-            return jsonify({"status": "not_found"}), 404
-        return jsonify(rows[0])
+        try:
+            res = (
+                _sb()
+                .table("company_details")
+                .select("status,updated_at")
+                .eq("slug", slug)
+                .limit(1)
+                .execute()
+            )
+            rows = res.data or []
+            if not rows:
+                # Row not yet created — return pending so polling continues
+                return jsonify({"status": "pending"}), 202
+            return jsonify(rows[0])
+        except Exception as e:
+            print(f"[company_routes] status poll failed for '{slug}': {e}")
+            return jsonify({"status": "pending", "error": str(e)[:100]}), 202
 
     @app.route("/api/companies/search")
     def api_company_search():
@@ -183,6 +215,9 @@ def handle_company_lookup_command(company_query: str, from_number: str) -> str:
     Returns plain text suitable for resp.message(...).
     """
     row, just_created = _ensure_row(company_query.strip(), requested_by=from_number)
+    if not row:
+        return f"🏢 Could not process company lookup for '{company_query}'"
+
     link = f"https://miru.humanagency.co/company/{row['slug']}"
 
     if row.get("status") == "ready" and not just_created:
