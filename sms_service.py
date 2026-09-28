@@ -44599,26 +44599,8 @@ def api_school_load_static_terms():
 @app.route("/onboarding")
 def onboarding():
     """Serve the 7-step onboarding wizard with email verification."""
-    return render_template('onboarding_complete.html')
-    if token:
-        try:
-            from miru.routes.onboarding import _get_user_id
-            from_number = _get_user_id(token)
-            if from_number:
-                # Check if they've already set postcode
-                try:
-                    all_rows = lib._sb().table("ma_details").select("id,data") \
-                        .eq("device_id", from_number).eq("type", "v2_prefs").execute().data or []
-                    if all_rows and all_rows[0].get("data", {}).get("postcode"):
-                        # Already has postcode, skip to homepage
-                        return redirect("/?token=" + token)
-                except:
-                    pass  # Continue to onboarding
-        except:
-            pass  # Continue to onboarding
-
-    app.logger.info(f"[onboarding] Serving simple 3-step onboarding")
-    resp = make_response(render_template("onboarding_simple.html"))
+    app.logger.info(f"[onboarding] Serving 7-step onboarding with email verification")
+    resp = make_response(render_template("onboarding_complete.html"))
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
