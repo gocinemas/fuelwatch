@@ -215,17 +215,7 @@ class MiruRAG:
                 self.context_history.append({"type": "receipt", "merchant": merchant, "items": wa_result.get("items")})
                 return wa_result
 
-            # If wa_saves explicitly searched for merchant and found nothing, don't fall back
-            if merchant and wa_result.get("reason"):
-                return {
-                    "answer": f"I didn't find {merchant} in your receipts.",
-                    "data": None,
-                    "source": "database",
-                    "confidence": 1.0,
-                    "found": False,
-                }
-
-            # 2. FALLBACK to receipts table
+            # 2. FALLBACK to receipts table (includes PDF imports)
             rcpt_result = self._query_receipts_table(merchant, item, time_qual)
             if rcpt_result.get("found"):
                 self.context_history.append({"type": "receipt", "merchant": merchant, "items": rcpt_result.get("items")})
