@@ -15,6 +15,15 @@ try:
 except ImportError:
     get_algolia = lambda: None
 
+try:
+    from pdf_rag_module import PDFRAGEngine
+    _pdf_rag = PDFRAGEngine()
+    _PDF_RAG_OK = True
+except Exception as e:
+    print(f"[WARNING] PDF RAG not available: {e}")
+    _PDF_RAG_OK = False
+    _pdf_rag = None
+
 
 class EntityExtractor:
     """Extract structured data from natural language queries"""
@@ -235,6 +244,9 @@ class MiruRAG:
             elif any(w in q_lower for w in ["save", "saved", "bookmark", "recipe", "article", "link"]):
                 # Question about saved links/bookmarks
                 return self._query_saved_links(question)
+            elif any(w in q_lower for w in ["pdf", "research", "document", "paper", "study", "notes", "learn", "learnt", "learned", "know", "knowledge"]):
+                # Question about research PDFs
+                return self._query_pdfs(question)
             elif merchant:
                 # If a merchant name is mentioned alone (e.g., "kokoro"), treat as receipt query
                 return self._query_receipts(merchant, None, None, question)
@@ -775,6 +787,47 @@ class MiruRAG:
                 "confidence": result.get("confidence"),
             }
         return result
+
+    def _query_pdfs(self, question: str) -> Dict:
+        """Query personal research PDFs using RAG"""
+        try:
+            if not _PDF_RAG_OK or not _pdf_rag:
+                return {"found": False, "answer": "PDF search not available"}
+
+            # Search PDFs
+            results = _pdf_rag.search(question, top_k=5)
+
+            if not results:
+                return {
+                    "found": False,
+                    "answer": "No matching content found in your PDFs",
+                    "source": "pdfs",
+                    "confidence": 0.8,
+                }
+
+            # Format results
+            answer = "📚 From your research PDFs:\n"
+            for i, result in enumerate(results[:3], 1):
+                score = result.get("score", 0)
+                filename = result.get("filename", "Unknown").replace(".pdf", "")
+                content = result.get("content", "")[:150]
+                answer += f"\n{i}. **{filename}** (relevance: {score:.2f})\n   {content}..."
+
+            return {
+                "found": True,
+                "answer": answer.strip(),
+                "data": {"results": results},
+                "source": "pdfs",
+                "confidence": 0.85,
+            }
+
+        except Exception as e:
+            return {
+                "found": False,
+                "answer": f"Error searching PDFs: {str(e)[:50]}",
+                "source": "error",
+                "confidence": 0.0,
+            }
 
     def _query_saved_links(self, question: str) -> Dict:
         """Query saved links/bookmarks/recipes using Algolia"""
