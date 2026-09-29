@@ -877,16 +877,28 @@ class MiruRAG:
         if not summary:
             return []
 
-        lines = summary.split("\n")
         items = []
 
-        for line in lines:
-            line = line.strip()
-            # Skip empty lines and lines that are just totals/prices
-            if not line or line.startswith("Total") or line.startswith("TOTAL"):
-                continue
-            # Include lines that look like items (contain product names, prices optional)
-            if len(line) > 3 and not line.startswith("---"):
-                items.append(line)
+        # First try to extract from "Main items include:" format (comma-separated)
+        if "Main items include:" in summary.lower():
+            # Extract the part after "Main items include:"
+            start = summary.lower().find("main items include:") + len("main items include:")
+            # Find where items section ends (usually before a date or "Date:")
+            end = summary.find("Date:") if "Date:" in summary else len(summary)
+            items_text = summary[start:end].strip()
+
+            # Split by comma
+            items = [item.strip() for item in items_text.split(",")]
+            items = [i for i in items if i and len(i) > 3 and not i.startswith("•")]
+
+        # Fallback: split by newlines
+        if not items:
+            lines = summary.split("\n")
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith("Total") or line.startswith("TOTAL") or line.startswith("Date"):
+                    continue
+                if len(line) > 3 and not line.startswith("---"):
+                    items.append(line)
 
         return items[:20]  # Limit to 20 items
