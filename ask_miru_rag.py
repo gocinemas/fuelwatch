@@ -461,11 +461,18 @@ class MiruRAG:
                 item_lower = item.lower()
                 item_words = [w.lower().strip() for w in item_lower.split() if w.strip() and len(w.strip()) > 1]
 
-                # Special handling for "wine" — expand to wine-related keywords
-                if "wine" in item_words:
-                    wine_keywords = ["wine", "sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "red", "white", "sparkling", "shiraz", "claret", "burgundy"]
+                # Special handling for product types — expand to related keywords
+                # Check for both singular and plural
+                if "wine" in item_words or "wines" in item_words:
+                    wine_keywords = ["wine", "wines", "sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "red", "white", "sparkling", "shiraz", "claret", "burgundy"]
                     item_words = list(set(item_words + wine_keywords))
                     print(f"[DEBUG wa_saves] Wine search expanded to keywords: {item_words[:5]}...", flush=True)
+                elif "beer" in item_words or "beers" in item_words:
+                    beer_keywords = ["beer", "beers", "ale", "lager", "stout", "ipa", "pilsner", "cider"]
+                    item_words = list(set(item_words + beer_keywords))
+                elif "coffee" in item_words or "coffees" in item_words:
+                    coffee_keywords = ["coffee", "coffees", "espresso", "cappuccino", "latte", "americano", "mocha"]
+                    item_words = list(set(item_words + coffee_keywords))
 
                 matching_receipts = []
                 for receipt in rows:
@@ -584,10 +591,17 @@ class MiruRAG:
                 item_lower = item.lower()
                 item_words = [w.lower().strip() for w in item_lower.split() if w.strip() and len(w.strip()) > 1]
 
-                # Special handling for "wine" — expand to wine-related keywords
-                if "wine" in item_words:
-                    wine_keywords = ["wine", "sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "red", "white", "sparkling", "shiraz", "claret", "burgundy"]
+                # Special handling for product types — expand to related keywords
+                # Check for both singular and plural
+                if "wine" in item_words or "wines" in item_words:
+                    wine_keywords = ["wine", "wines", "sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "red", "white", "sparkling", "shiraz", "claret", "burgundy"]
                     item_words = list(set(item_words + wine_keywords))
+                elif "beer" in item_words or "beers" in item_words:
+                    beer_keywords = ["beer", "beers", "ale", "lager", "stout", "ipa", "pilsner", "cider"]
+                    item_words = list(set(item_words + beer_keywords))
+                elif "coffee" in item_words or "coffees" in item_words:
+                    coffee_keywords = ["coffee", "coffees", "espresso", "cappuccino", "latte", "americano", "mocha"]
+                    item_words = list(set(item_words + coffee_keywords))
 
                 matching_receipts = []
                 for receipt in rows:
