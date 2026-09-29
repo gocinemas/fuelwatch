@@ -201,6 +201,10 @@ register_personal_messages_endpoints(app)
 from company_intelligence_routes import register_company_intelligence_endpoints
 register_company_intelligence_endpoints(app)
 
+# Register complete intelligence hub with chat & caching
+from company_api_complete import register_company_api_complete
+register_company_api_complete(app)
+
 # ── FrameWork: App Idea Validator (Stealth) ──
 from idea_analyzer import generate_report
 
