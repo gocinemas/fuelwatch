@@ -504,12 +504,31 @@ class MiruRAG:
             # Extract items from summary
             items = self._parse_receipt_items(summary)
 
-            # Extract amount
+            # If we're filtering by item type (wine, beer, etc), show only matching items
+            if item:
+                wine_keywords = ["wine", "wines", "sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "burgundy"]
+                beer_keywords = ["beer", "beers", "ale", "lager", "stout", "ipa", "pilsner", "cider"]
+                coffee_keywords = ["coffee", "coffees", "espresso", "cappuccino", "latte", "americano", "mocha"]
+
+                # Filter items by product type
+                filtered_items = []
+                if any(kw in item.lower() for kw in wine_keywords):
+                    filtered_items = [i for i in items if any(kw in i.lower() for kw in wine_keywords)]
+                elif any(kw in item.lower() for kw in beer_keywords):
+                    filtered_items = [i for i in items if any(kw in i.lower() for kw in beer_keywords)]
+                elif any(kw in item.lower() for kw in coffee_keywords):
+                    filtered_items = [i for i in items if any(kw in i.lower() for kw in coffee_keywords)]
+
+                # Use filtered items if we found any, otherwise use all items
+                if filtered_items:
+                    items = filtered_items
+
+            # Extract amount (only for matching items if filtered)
             amount_match = re.search(r"£([\d,]+\.?\d{0,2})", summary)
             amount = f"£{amount_match.group(1)}" if amount_match else None
 
-            # Format cleanly: merchant + date, then items
-            items_text = "\n".join([f"  • {item}" for item in items[:12]]) if items else ""
+            # Format cleanly: show only matching items
+            items_text = "\n".join([f"  🍷 {item}" if "wine" in item.lower() or "sauvignon" in item.lower() else f"  • {item}" for item in items[:12]]) if items else ""
             answer = f"🧾 {merchant_name} on {created_at}"
             if items_text:
                 answer += f"\n{items_text}"
@@ -653,11 +672,28 @@ class MiruRAG:
                 if name:
                     items.append(name)
 
+            # If filtering by item type, show only matching items
+            if item:
+                wine_keywords = ["wine", "wines", "sauvignon", "blanc", "merlot", "cabernet", "pinot", "chardonnay", "prosecco", "champagne", "rosé", "burgundy"]
+                beer_keywords = ["beer", "beers", "ale", "lager", "stout", "ipa", "pilsner", "cider"]
+                coffee_keywords = ["coffee", "coffees", "espresso", "cappuccino", "latte", "americano", "mocha"]
+
+                filtered_items = []
+                if any(kw in item.lower() for kw in wine_keywords):
+                    filtered_items = [i for i in items if any(kw in i.lower() for kw in wine_keywords)]
+                elif any(kw in item.lower() for kw in beer_keywords):
+                    filtered_items = [i for i in items if any(kw in i.lower() for kw in beer_keywords)]
+                elif any(kw in item.lower() for kw in coffee_keywords):
+                    filtered_items = [i for i in items if any(kw in i.lower() for kw in coffee_keywords)]
+
+                if filtered_items:
+                    items = filtered_items
+
             amount = receipt.get("total")
             amount_str = f"£{amount:.2f}" if amount else None
 
             # Format cleanly: merchant + date, then items
-            items_text = "\n".join([f"  • {item}" for item in items[:12]]) if items else ""
+            items_text = "\n".join([f"  🍷 {item}" if "wine" in item.lower() or "sauvignon" in item.lower() else f"  • {item}" for item in items[:12]]) if items else ""
             answer = f"🧾 {merchant_name} on {shop_date}"
             if items_text:
                 answer += f"\n{items_text}"
