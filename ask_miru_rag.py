@@ -184,6 +184,8 @@ class MiruRAG:
             time_qual = EntityExtractor.extract_time_qualifier(question)
             item = EntityExtractor.extract_item(question)
 
+            print(f"[DEBUG query] question='{question}' → merchant={merchant}, item={item}, time_qual={time_qual}", flush=True)
+
             # Check if user is asking about a product type (wines, beers, etc.)
             product_types = ["wine", "wines", "beer", "beers", "coffee", "tea", "chocolate", "book", "books"]
             is_product_query = any(pt in q_lower for pt in product_types)
@@ -192,8 +194,11 @@ class MiruRAG:
             if is_product_query:
                 # Search BOTH receipts and saved items for products
                 print(f"[DEBUG] Product type query detected: {question}", flush=True)
+                print(f"[DEBUG] Calling _query_receipts with merchant={merchant}, item={item}", flush=True)
                 receipt_result = self._query_receipts(merchant, item, time_qual, question)
+                print(f"[DEBUG] Receipt result: found={receipt_result.get('found')}, answer={receipt_result.get('answer', '')[:80]}", flush=True)
                 saved_result = self._query_saved_links(question)
+                print(f"[DEBUG] Saved result: found={saved_result.get('found')}, answer={saved_result.get('answer', '')[:80]}", flush=True)
 
                 # Combine results from both sources
                 combined_answer = ""
