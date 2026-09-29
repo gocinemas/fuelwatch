@@ -20,6 +20,10 @@ def chat_with_company(company_name: str, question: str, company_context: dict) -
         client = Groq(api_key=GROQ_API_KEY)
         
         # Build context from company data
+        employees = company_context.get('employees', 'N/A')
+        if isinstance(employees, int):
+            employees = f"{employees:,}"
+
         context = f"""
 You are an expert company analyst. Answer questions about {company_name} based on this data:
 
@@ -27,7 +31,7 @@ Name: {company_context.get('name', 'N/A')}
 Founded: {company_context.get('founded_year', 'N/A')}
 Headquarters: {company_context.get('headquarters', 'N/A')}
 Revenue: ${company_context.get('revenue_billions', 'N/A')}B
-Employees: {company_context.get('employees', 'N/A'):,}
+Employees: {employees}
 Description: {company_context.get('description', 'N/A')}
 
 Be specific and factual. If you don't know, say so."""
