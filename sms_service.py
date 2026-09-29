@@ -6107,17 +6107,26 @@ def api_company_intelligence():
                             if hq_match:
                                 result["hq"] = {"city": hq_match.group(1).strip(), "country": ""}
 
-                        # Fetch financial data (revenue, employees) using AI parsing
+                        # Fetch REAL data from EDGAR + Wikipedia (no fake data)
                         if not result.get("revenue_billions") or not result.get("employees"):
                             try:
-                                from financial_data_fetcher import fetch_financial_data
-                                financial = fetch_financial_data(search_name, wiki.get("extract", ""))
-                                if financial.get("revenue_billions"):
-                                    result["revenue_billions"] = financial["revenue_billions"]
-                                if financial.get("employees"):
-                                    result["employees"] = financial["employees"]
-                            except Exception as fin_err:
-                                app.logger.debug(f"[company/intelligence] Financial data fetch failed: {fin_err}")
+                                from real_company_enricher import get_real_company_data
+                                real_data = get_real_company_data(search_name, wiki.get("extract", ""))
+                                # Only update with real data that was found
+                                if real_data.get("revenue_billions"):
+                                    result["revenue_billions"] = real_data["revenue_billions"]
+                                if real_data.get("employees"):
+                                    result["employees"] = real_data["employees"]
+                                if real_data.get("revenue"):  # EDGAR data in actual dollars
+                                    result["revenue"] = real_data["revenue"]
+                                if real_data.get("total_assets"):
+                                    result["total_assets"] = real_data["total_assets"]
+                                if real_data.get("net_income"):
+                                    result["net_income"] = real_data["net_income"]
+                                if real_data.get("cik"):
+                                    result["sec_cik"] = real_data["cik"]
+                            except Exception as real_err:
+                                app.logger.debug(f"[company/intelligence] Real data fetch failed: {real_err}")
                 except Exception as wiki_err:
                     app.logger.debug(f"[company/intelligence] Wikipedia fallback failed: {wiki_err}")
 
