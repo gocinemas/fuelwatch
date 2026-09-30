@@ -20034,9 +20034,12 @@ def _ask_miru_claude_fallback(question: str, context: dict = None) -> str:
         Answer string or empty string if Claude unavailable
     """
     try:
+        print(f"[CLAUDE] Function called with: {question[:50]}", flush=True)
         from anthropic import Anthropic
 
+        print(f"[CLAUDE] Creating Anthropic client...", flush=True)
         client = Anthropic()
+        print(f"[CLAUDE] Client created successfully", flush=True)
 
         # Build context-aware system message
         context = context or {}
@@ -20065,7 +20068,9 @@ def _ask_miru_claude_fallback(question: str, context: dict = None) -> str:
                     messages.append({"role": "assistant", "content": msg["a"]})
             messages.append({"role": "user", "content": question})
 
-        app.logger.debug(f"[ask/claude] Calling Claude API with: {question[:60]}")
+        app.logger.info(f"[ask/claude] Calling Claude with: {question[:60]}")
+        app.logger.debug(f"[ask/claude] Model: claude-opus-5-5, messages: {len(messages)}, system: {system_msg[:80]}")
+
         response = client.messages.create(
             model="claude-opus-5-5",
             max_tokens=300,
@@ -20074,16 +20079,27 @@ def _ask_miru_claude_fallback(question: str, context: dict = None) -> str:
             timeout=15
         )
 
-        answer = response.content[0].text.strip()
+        app.logger.debug(f"[ask/claude] Response received: {response}")
+        app.logger.debug(f"[ask/claude] Response content: {response.content if response else 'None'}")
+
+        if not response or not response.content:
+            app.logger.error(f"[ask/claude] No content in response")
+            return ""
+
+        answer = response.content[0].text.strip() if response.content else ""
+        app.logger.info(f"[ask/claude] Raw answer: '{answer}' (len={len(answer)})")
+
         if answer:
-            app.logger.info(f"[ask/claude] Claude answered: {answer[:80]}")
+            app.logger.info(f"[ask/claude] ✓ Claude answered: {answer[:80]}")
             return answer
         else:
-            app.logger.warning(f"[ask/claude] Claude returned empty text")
+            app.logger.warning(f"[ask/claude] ✗ Claude returned empty text")
             return ""
 
     except Exception as e:
-        app.logger.error(f"[ask/claude] Exception: {type(e).__name__}: {str(e)[:100]}")
+        import traceback
+        app.logger.error(f"[ask/claude] ✗ Exception: {type(e).__name__}: {str(e)}")
+        app.logger.error(f"[ask/claude] Traceback: {traceback.format_exc()}")
         return ""
 
 
@@ -21302,12 +21318,18 @@ def api_home_ask():
                     app.logger.info(f"[home/ask] Orchestrator answered: {answer[:100]}")
                     return jsonify({"answer": answer})
         except Exception as orch_e:
-            app.logger.debug(f"[home/ask] Orchestrator failed: {orch_e}")
+            app.logger.warning(f"[home/ask] Orchestrator exception: {orch_e}")
 
         # Fallback 2: Use Claude API as ultimate fallback
+        app.logger.warning(f"[home/ask] === ABOUT TO TRY CLAUDE FALLBACK ===")
         try:
-            app.logger.info(f"[home/ask] Orchestrator exhausted, trying Claude API fallback...")
+            import sys
+            sys.stderr.write(f"[CLAUDE-FALLBACK-START] Calling Claude\n")
+            sys.stderr.flush()
+            app.logger.warning(f"[home/ask] ORCHESTRATOR EXHAUSTED, trying Claude...")
             claude_answer = _ask_miru_claude_fallback(question, ctx)
+            sys.stderr.write(f"[CLAUDE-FALLBACK-END] Got response: {len(claude_answer) if claude_answer else 0} chars\n")
+            sys.stderr.flush()
             app.logger.info(f"[home/ask] Claude returned: {repr(claude_answer[:80] if claude_answer else 'EMPTY')}")
             if claude_answer and len(claude_answer) > 2:
                 app.logger.info(f"[home/ask] Claude fallback success!")
