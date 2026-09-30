@@ -20023,6 +20023,70 @@ def api_recipe():
     return jsonify({"recipe": text})
 
 
+def _ask_miru_claude_fallback(question: str, context: dict = None) -> str:
+    """Claude API fallback for Ask Miru when Groq/Supabase unavailable.
+
+    Args:
+        question: User's question
+        context: Optional context dict with personal data
+
+    Returns:
+        Answer string or empty string if Claude unavailable
+    """
+    try:
+        from anthropic import Anthropic
+
+        client = Anthropic()
+
+        # Build context-aware system message
+        context = context or {}
+        system_msg = "You are Miru, a helpful UK personal assistant. "
+
+        if context.get("school"):
+            system_msg += f"The user has school events and family. "
+        if context.get("commutes"):
+            system_msg += f"The user commutes regularly. "
+        if context.get("spend"):
+            system_msg += f"You can discuss their spending and budgeting. "
+
+        system_msg += "Be concise (1-3 sentences). If you don't know something, say so."
+
+        # Build messages
+        messages = [{"role": "user", "content": question}]
+
+        # Add thread context if available
+        thread = context.get("thread", [])
+        if thread:
+            messages = []
+            for msg in thread[-3:]:  # Last 3 exchanges for context
+                if msg.get("q"):
+                    messages.append({"role": "user", "content": msg["q"]})
+                if msg.get("a"):
+                    messages.append({"role": "assistant", "content": msg["a"]})
+            messages.append({"role": "user", "content": question})
+
+        app.logger.debug(f"[ask/claude] Calling Claude API with: {question[:60]}")
+        response = client.messages.create(
+            model="claude-opus-5-5",
+            max_tokens=300,
+            system=system_msg,
+            messages=messages,
+            timeout=15
+        )
+
+        answer = response.content[0].text.strip()
+        if answer:
+            app.logger.info(f"[ask/claude] Claude answered: {answer[:80]}")
+            return answer
+        else:
+            app.logger.warning(f"[ask/claude] Claude returned empty text")
+            return ""
+
+    except Exception as e:
+        app.logger.error(f"[ask/claude] Exception: {type(e).__name__}: {str(e)[:100]}")
+        return ""
+
+
 @app.route("/api/home/ask", methods=["POST"])
 def api_home_ask():
     """Answer questions using personal context + general LLM knowledge.
@@ -21219,18 +21283,39 @@ def api_home_ask():
         else:
             raise Exception("No GROQ_API_KEY - using orchestrator fallback")
     except Exception as e:
-        # Fallback: Use orchestrator for general questions
+        # Fallback 1: Use orchestrator for general questions
         try:
             app.logger.info(f"[home/ask] Groq failed ({str(e)[:50]}), trying orchestrator...")
             from query_orchestrator import get_orchestrator
             orchestrator = get_orchestrator()
 
             result = orchestrator.route(question, from_number)
-            if result and result.get("message"):
-                app.logger.info(f"[home/ask] Orchestrator answered: {result['message'][:100]}")
-                return jsonify({"answer": result["message"]})
+            if result:
+                # Orchestrator returns {'text': ..., 'handled': True} or {'message': ...}
+                answer = result.get("message") or result.get("text") or ""
+                # Filter out empty/malformed responses like "📊 {}" or "📊"
+                is_empty = (not answer or
+                           answer in ["", "📊 {}", "📊"] or
+                           answer.strip().startswith("📊") or
+                           len(answer.strip()) < 3)
+                if not is_empty:
+                    app.logger.info(f"[home/ask] Orchestrator answered: {answer[:100]}")
+                    return jsonify({"answer": answer})
         except Exception as orch_e:
-            app.logger.warning(f"[home/ask] Orchestrator also failed: {orch_e}")
+            app.logger.debug(f"[home/ask] Orchestrator failed: {orch_e}")
+
+        # Fallback 2: Use Claude API as ultimate fallback
+        try:
+            app.logger.info(f"[home/ask] Orchestrator exhausted, trying Claude API fallback...")
+            claude_answer = _ask_miru_claude_fallback(question, ctx)
+            app.logger.info(f"[home/ask] Claude returned: {repr(claude_answer[:80] if claude_answer else 'EMPTY')}")
+            if claude_answer and len(claude_answer) > 2:
+                app.logger.info(f"[home/ask] Claude fallback success!")
+                return jsonify({"answer": claude_answer})
+            else:
+                app.logger.warning(f"[home/ask] Claude returned empty response")
+        except Exception as claude_e:
+            app.logger.error(f"[home/ask] Claude fallback exception: {claude_e}", exc_info=True)
 
         return jsonify({"answer": "Sorry, couldn't get an answer right now."}), 500
 
