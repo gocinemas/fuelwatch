@@ -20044,27 +20044,37 @@ def api_home_ask():
     rag_processed = False
     try:
         from ask_miru_rag import MiruRAG
-        print(f"[DEBUG api_home_ask] token={token}, from_number={from_number}, question={question[:50]}", flush=True)
-        rag = MiruRAG(from_number, lib._sb())
-        result = rag.query(question)
-        print(f"[DEBUG api_home_ask] RAG result: answer={result.get('answer')[:80] if result.get('answer') else None}, source={result.get('source')}, found={result.get('found')}", flush=True)
-        rag_processed = True  # Mark that RAG attempted to process this
+        # Only attempt RAG if Supabase is properly configured
+        try:
+            sb = lib._sb() if lib else None
+            if sb:
+                print(f"[DEBUG api_home_ask] token={token}, from_number={from_number}, question={question[:50]}", flush=True)
+                rag = MiruRAG(from_number, sb)
+                result = rag.query(question)
+                print(f"[DEBUG api_home_ask] RAG result: answer={result.get('answer')[:80] if result.get('answer') else None}, source={result.get('source')}, found={result.get('found')}", flush=True)
+                rag_processed = True  # Mark that RAG attempted to process this
 
-        # Return if RAG found an answer
-        # Accept any answer EXCEPT when it's a receipt/personal query we should handle differently
-        if result.get("answer"):
-            # Skip system source ONLY if it's a personal/receipt query (let fallback handlers try)
-            is_personal_q = any(w in q_lower for w in ["receipt", "did i", "what did i", "when did i",
-                                                        "bought", "shop", "tesco", "waitrose", "kokoro"])
-            if result.get("source") == "system" and is_personal_q:
-                # System can't help with personal queries, let fallback handlers try
-                pass
+                # Return if RAG found an answer
+                # Accept any answer EXCEPT when it's a receipt/personal query we should handle differently
+                if result.get("answer"):
+                    # Skip system source ONLY if it's a personal/receipt query (let fallback handlers try)
+                    is_personal_q = any(w in q_lower for w in ["receipt", "did i", "what did i", "when did i",
+                                                                "bought", "shop", "tesco", "waitrose", "kokoro"])
+                    if result.get("source") == "system" and is_personal_q:
+                        # System can't help with personal queries, let fallback handlers try
+                        pass
+                    else:
+                        app.logger.info(f"[ask] RAG answered ({result.get('source')}): {question[:50]}")
+                        return jsonify({"answer": result.get("answer")})
             else:
-                app.logger.info(f"[ask] RAG answered ({result.get('source')}): {question[:50]}")
-                return jsonify({"answer": result.get("answer")})
+                app.logger.debug("[ask] Supabase not configured, skipping RAG")
+                rag_processed = False
+        except Exception as sb_e:
+            app.logger.debug(f"[ask] Supabase initialization failed: {sb_e}, skipping RAG")
+            rag_processed = False
     except Exception as e:
         app.logger.error(f"[ask] RAG query failed: {e}")
-        rag_processed = True  # Mark that RAG was attempted (even if it failed)
+        rag_processed = False
 
     # ── LOCATION EXTRACTION — learn where user is from conversation ──
     # Extract "at Costa", "in Tesco", etc. and store for next 30 mins
@@ -21215,7 +21225,7 @@ def api_home_ask():
             from query_orchestrator import get_orchestrator
             orchestrator = get_orchestrator()
 
-            result = orchestrator.process(question)
+            result = orchestrator.route(question, from_number)
             if result and result.get("message"):
                 app.logger.info(f"[home/ask] Orchestrator answered: {result['message'][:100]}")
                 return jsonify({"answer": result["message"]})
