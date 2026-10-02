@@ -19257,16 +19257,16 @@ let _savesAll = [];
       var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc) + (forceRefresh ? "&refresh=1" : "");
       if (gpsLat !== null && gpsLng !== null) url += "&lat=" + gpsLat + "&lng=" + gpsLng;
 
-      // Timeout fallback — if brief hasn't loaded in 15s, show a retry prompt
+      // Timeout fallback — if brief hasn't loaded in 12s, show a retry prompt
       var _briefTimeoutId = setTimeout(function() {
         if (shimmer && shimmer.style.display !== "none") {
           shimmer.style.display = "none";
           if (briefText) {
-            briefText.innerHTML = 'Brief is taking longer than usual. <span onclick="_briefInit()" style="text-decoration:underline;cursor:pointer">Tap to retry</span>';
+            briefText.innerHTML = 'Brief is loading. Sometimes it takes a few seconds if you have lots of data. <span onclick="_briefInit()" style="text-decoration:underline;cursor:pointer">Try again</span>';
             briefText.style.display = "block";
           }
         }
-      }, 15000);
+      }, 12000);
 
       fetch(url)
         .then(function(r) { return r.json(); })

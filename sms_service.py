@@ -17748,12 +17748,30 @@ def api_home_brief():
             # This removes unnecessary Places API calls
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
-        # Wait up to 15s for ALL futures collectively (not 15s each), then take whatever finished
+        # Critical futures (fuel, weather, trains) should be fast (<2s typical)
+        # Non-critical futures (calendar, gmail, etc.) can timeout without blocking brief
+        _critical_keys = {"fuel", "weather", "trains", "trains_home", "spend", "school", "saves"}
+        _critical_futures = {k: futures[k] for k in _critical_keys if k in futures}
+        _noncritical_futures = {k: futures[k] for k in futures if k not in _critical_keys}
+
+        # Wait up to 8s for critical data (reduced from 15s to avoid frontend timeout)
         import time as _timing
         _start_wait = _timing.time()
-        _done, _pending = _cf.wait(futures.values(), timeout=15)
+        if _critical_futures:
+            _done_crit, _pending_crit = _cf.wait(_critical_futures.values(), timeout=8)
+        else:
+            _done_crit, _pending_crit = set(), set()
+
+        # Wait up to 2s more for non-critical (total budget 10s, frontend timeout is 15s)
+        _done_noncrit, _pending_noncrit = _cf.wait(_noncritical_futures.values(), timeout=2) if _noncritical_futures else (set(), set())
+
         _wait_time = _timing.time() - _start_wait
-        app.logger.warning(f"[brief-profile] Waited {_wait_time:.2f}s. Done: {len(_done)}, Pending: {len(_pending)}")
+        _total_done = len(_done_crit) + len(_done_noncrit)
+        _total_pending = len(_pending_crit) + len(_pending_noncrit)
+        app.logger.warning(f"[brief-profile] Waited {_wait_time:.2f}s. Done: {_total_done}, Pending: {_total_pending}")
+
+        # Collect all results
+        _done = _done_crit | _done_noncrit
         for k, f in futures.items():
             if f in _done:
                 try: ctx[k] = f.result()
