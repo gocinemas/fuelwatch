@@ -91,6 +91,10 @@ except:
 
 app = Flask(__name__)
 
+# Enable gzip + brotli compression for all responses >500 bytes (reduces 1.6MB HTML by 75%)
+from flask_compress import Compress
+Compress(app)
+
 # Custom JSON serialization to handle time/datetime objects
 import json
 from datetime import datetime, time as datetime_time, date
@@ -17568,31 +17572,37 @@ def api_home_brief():
     _active_trip_early = None
 
     if from_number:
-        def _run_preflight():
-            nonlocal prefs, _loc_profile, _active_trip_early
-            # Normalize device_id to whatsapp: format (matches how prefs are stored)
+        def _fetch_prefs():
             _normalized_device_id = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
             try:
                 all_rows = lib._sb().table("ma_details").select("device_id,data") \
                     .eq("type", "v2_prefs").execute().data or []
                 rows = [r for r in all_rows if r.get("device_id") == _normalized_device_id]
-                prefs = rows[0]["data"] if rows else {}
-            except Exception: pass
+                return rows[0]["data"] if rows else {}
+            except Exception:
+                return {}
+
+        def _fetch_location_profile():
+            _normalized_device_id = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
             try:
                 _all_lp = lib._sb().table("ma_details").select("device_id,data") \
                     .eq("type", "location_profile").execute().data or []
                 _lp = [r for r in _all_lp if r.get("device_id") == _normalized_device_id]
-                _loc_profile = _lp[0]["data"] if _lp else {}
-            except Exception: pass
-            # Also try loading user_commutes for traffic
+                return _lp[0]["data"] if _lp else {}
+            except Exception:
+                return {}
+
+        def _fetch_commutes():
             try:
                 _fn_plain = from_number.replace("whatsapp:", "").strip()
                 _uc = lib._sb().table("user_commutes").select("*").eq("phone", _fn_plain).limit(10).execute().data or []
                 if not _uc:
                     _uc = lib._sb().table("user_commutes").select("*").eq("phone", from_number).limit(10).execute().data or []
-                if _uc and "user_commutes" not in prefs:
-                    prefs["user_commutes"] = _uc
-            except Exception: pass
+                return _uc
+            except Exception:
+                return []
+
+        def _fetch_active_trip():
             try:
                 _atp = from_number.replace("whatsapp:", "").strip()
                 _atr = lib._sb().table("ma_details").select("data").eq("device_id", _atp) \
@@ -17601,12 +17611,29 @@ def api_home_brief():
                     _at2 = (_atr.data[0].get("data") or {})
                     _exp2 = _at2.get("expires_at", "")
                     if _exp2 and _atdt2.datetime.utcnow().isoformat() < _exp2:
-                        _active_trip_early = _at2
-            except Exception: pass
+                        return _at2
+                return None
+            except Exception:
+                return None
 
-        _pf = _thr.Thread(target=_run_preflight, daemon=True)
-        _pf.start()
-        _pf.join(timeout=5)  # give up after 5s; thread keeps running harmlessly
+        # Parallel execution: all 4 Supabase queries at once with 4s timeout
+        with ThreadPoolExecutor(max_workers=4) as _ex:
+            _pf_prefs = _ex.submit(_fetch_prefs)
+            _pf_lp = _ex.submit(_fetch_location_profile)
+            _pf_commutes = _ex.submit(_fetch_commutes)
+            _pf_trip = _ex.submit(_fetch_active_trip)
+
+            try:
+                prefs = _pf_prefs.result(timeout=4) or {}
+                _loc_profile = _pf_lp.result(timeout=4) or {}
+                _uc = _pf_commutes.result(timeout=4) or []
+                _active_trip_early = _pf_trip.result(timeout=4)
+
+                if _uc and "user_commutes" not in prefs:
+                    prefs["user_commutes"] = _uc
+            except FuturesTimeoutError:
+                # Fallback: use empty dicts if any query times out
+                pass
 
     # Load location profile and classify current GPS
     _loc_classification: dict = {"context": "unknown", "label": None, "anchor": None, "save": None, "dist_km": None}

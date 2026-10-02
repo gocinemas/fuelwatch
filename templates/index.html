@@ -4557,14 +4557,16 @@
 
     async function _fromIP() {
       const svcs = [
-        () => fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null),
-        () => fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null),
-        () => fetch("https://freeipapi.com/api/json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null),
+        fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null).catch(_=>null),
+        fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null).catch(_=>null),
+        fetch("https://freeipapi.com/api/json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null).catch(_=>null),
       ];
-      for (const svc of svcs) {
-        try { const c = await svc(); if (c) return c; } catch (_) {}
+      try {
+        const result = await Promise.race(svcs.map(p => p.then(r => r || Promise.reject())));
+        return result;
+      } catch (_) {
+        return null;
       }
-      return null;
     }
 
     async function _build(lat, lon) {
