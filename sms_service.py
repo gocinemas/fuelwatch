@@ -2277,6 +2277,7 @@ def company_intelligence_tabbed(company_name):
             available_competitors=tabbed_data["available_competitors"],
             timestamp=tabbed_data["timestamp"],
             company_profile=company_profile,
+            full_company_data=full_company_data,
             ai_opportunities=ai_opportunities if ai_opportunities else company_profile.get("ai_opportunities", {}),
             company_details=company_details
         ))

@@ -535,20 +535,44 @@
                     <div class="company-stats">
                         <div class="stat">
                             <div class="stat-label">Founded</div>
-                            <div class="stat-value">{{ company_details.founded_year if company_details and company_details.founded_year else company_profile.founded_year if company_profile and company_profile.founded_year else '—' }}</div>
+                            <div class="stat-value">
+                                {% if company_details and company_details.founded_year %}
+                                    {{ company_details.founded_year }}
+                                {% elif company_profile and company_profile.founded_year %}
+                                    {{ company_profile.founded_year }}
+                                {% elif company_profile and company_profile.founded %}
+                                    {{ company_profile.founded }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
                         </div>
-                        {% if company_profile and company_profile.employees %}
                         <div class="stat">
                             <div class="stat-label">Employees</div>
-                            <div class="stat-value">{{ (company_profile.employees / 1000) | round(0) | int }}K</div>
+                            <div class="stat-value">
+                                {% if company_profile and company_profile.employees %}
+                                    {{ (company_profile.employees / 1000) | round(0) | int }}K
+                                {% elif company_profile and company_profile.employee_count %}
+                                    {{ (company_profile.employee_count / 1000) | round(0) | int }}K
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
                         </div>
-                        {% endif %}
-                        {% if company_profile and (company_profile.revenue_billions or company_profile.revenue_millions) %}
                         <div class="stat">
                             <div class="stat-label">Revenue</div>
-                            <div class="stat-value">${{ company_profile.revenue_billions if company_profile.revenue_billions else (company_profile.revenue_millions / 1000) | round(1) }}B</div>
+                            <div class="stat-value">
+                                {% if company_profile and company_profile.revenue_billions %}
+                                    ${{ company_profile.revenue_billions }}B
+                                {% elif company_profile and company_profile.revenue_millions %}
+                                    ${{ (company_profile.revenue_millions / 1000) | round(1) }}B
+                                {% elif company_profile and company_profile.revenue %}
+                                    ${{ (company_profile.revenue / 1000000000) | round(1) }}B
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
                         </div>
-                        {% endif %}
                     </div>
 
                     {% if company_details and company_details.headquarters %}
@@ -576,44 +600,42 @@
 
             <!-- Brands & Divisions -->
             <div class="grid-2">
-                {% if company_profile and company_profile.brands %}
                 <div class="card">
                     <h3>🏷️ Brands & Products</h3>
+                    {% set brands = company_profile.brands if company_profile and company_profile.brands else (full_company_data.brands if full_company_data and full_company_data.brands else []) %}
+                    {% if brands %}
                     <div class="brands-grid">
-                        {% for brand in company_profile.brands %}
-                        <div class="brand-tag">{{ brand }}</div>
+                        {% for brand in brands %}
+                        <div class="brand-tag">{{ brand if brand is string else brand.name }}</div>
                         {% endfor %}
                     </div>
-                </div>
-                {% else %}
-                <div class="card">
-                    <h3>🏷️ Brands & Products</h3>
+                    {% else %}
                     <p style="color: var(--text-secondary);">— No brand data available</p>
+                    {% endif %}
                 </div>
-                {% endif %}
 
-                {% if company_profile and company_profile.divisions %}
                 <div class="card">
                     <h3>📊 Business Divisions</h3>
+                    {% set divisions = company_profile.divisions if company_profile and company_profile.divisions else (full_company_data.divisions if full_company_data and full_company_data.divisions else []) %}
+                    {% if divisions %}
                     <div>
-                        {% for div in company_profile.divisions %}
+                        {% for div in divisions %}
                         <div class="division">
-                            <div class="division-name">{{ div.name }}</div>
+                            <div class="division-name">{{ div.name if div is mapping else div }}</div>
+                            {% if div is mapping %}
                             <div class="division-stats">
                                 <div>Revenue: ${{ div.revenue_billions }}B</div>
                                 <div>Growth: {{ div.growth_rate }}</div>
                                 <div>Position: {{ div.market_position }}</div>
                             </div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
-                </div>
-                {% else %}
-                <div class="card">
-                    <h3>📊 Business Divisions</h3>
+                    {% else %}
                     <p style="color: var(--text-secondary);">— No division data available</p>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
 
             <!-- AI Opportunities -->
