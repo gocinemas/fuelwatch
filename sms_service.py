@@ -2144,8 +2144,8 @@ def brand_search():
 @app.route("/company")
 @app.route("/company/")
 def company_intelligence():
-    """Company Intelligence — Premium AI Strategy Platform (UNIFIED)"""
-    return render_template("company_premium.html")
+    """Company Intelligence — Unified search & detail view"""
+    return render_template("company_intelligence_unified.html")
 
 
 @app.route("/brand/intelligence")
@@ -2255,9 +2255,9 @@ def company_intelligence_tabbed(company_name):
         except Exception as profile_err:
             app.logger.debug(f"[intelligence_tabbed] Profile lookup failed: {profile_err}")
 
-        # Render tabbed interface
+        # Render unified interface with all details populated
         response = make_response(render_template(
-            "intelligence_tabbed.html",
+            "company_intelligence_unified.html",
             company=tabbed_data["company"],
             competitor=tabbed_data["competitor"],
             signals=tabbed_data["signals"],
