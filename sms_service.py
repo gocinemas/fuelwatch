@@ -2242,6 +2242,14 @@ def company_intelligence_tabbed(company_name):
                 message=f"Error loading intelligence for {company_name}"
             ), 500
 
+        # Fetch full company intelligence data (has all enriched fields)
+        full_company_data = {}
+        try:
+            from company_intelligence import fetch_company_intelligence
+            full_company_data = fetch_company_intelligence(company_name, "INT") or {}
+        except Exception as intel_err:
+            app.logger.debug(f"[intelligence_tabbed] Full intel fetch failed: {intel_err}")
+
         # Fetch company profile data (name, employees, revenue, stock, AI opportunities)
         company_profile = {}
         ai_opportunities = {}
@@ -2254,6 +2262,10 @@ def company_intelligence_tabbed(company_name):
                 ai_opportunities = company_profile.get("ai_opportunities", {})
         except Exception as profile_err:
             app.logger.debug(f"[intelligence_tabbed] Profile lookup failed: {profile_err}")
+
+        # Merge full_company_data into company_profile to ensure all fields are populated
+        if full_company_data:
+            company_profile = {**full_company_data, **company_profile}  # company_profile overrides full_company_data
 
         # Render unified interface with all details populated
         response = make_response(render_template(

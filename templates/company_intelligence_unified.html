@@ -535,7 +535,7 @@
                     <div class="company-stats">
                         <div class="stat">
                             <div class="stat-label">Founded</div>
-                            <div class="stat-value">{{ company_details.founded_year if company_details and company_details.founded_year else '—' }}</div>
+                            <div class="stat-value">{{ company_details.founded_year if company_details and company_details.founded_year else company_profile.founded_year if company_profile and company_profile.founded_year else '—' }}</div>
                         </div>
                         {% if company_profile and company_profile.employees %}
                         <div class="stat">
@@ -543,10 +543,10 @@
                             <div class="stat-value">{{ (company_profile.employees / 1000) | round(0) | int }}K</div>
                         </div>
                         {% endif %}
-                        {% if company_profile and company_profile.revenue_millions %}
+                        {% if company_profile and (company_profile.revenue_billions or company_profile.revenue_millions) %}
                         <div class="stat">
                             <div class="stat-label">Revenue</div>
-                            <div class="stat-value">${{ (company_profile.revenue_millions / 1000) | round(1) }}B</div>
+                            <div class="stat-value">${{ company_profile.revenue_billions if company_profile.revenue_billions else (company_profile.revenue_millions / 1000) | round(1) }}B</div>
                         </div>
                         {% endif %}
                     </div>
@@ -559,14 +559,14 @@
                     {% endif %}
                 </div>
 
-                {% if company_profile and company_profile.stock %}
+                {% if company_profile and (company_profile.stock_price or company_profile.is_public) %}
                 <div class="stock-section">
                     <div class="stock-price">
-                        <h2>${{ company_profile.stock.price if company_profile.stock.price else 'N/A' }}</h2>
-                        {% if company_profile.stock.change_percent %}
-                        <div class="stock-change {% if company_profile.stock.change_percent | float > 0 %}up{% else %}down{% endif %}">
-                            {{ '📈' if company_profile.stock.change_percent | float > 0 else '📉' }}
-                            {{ company_profile.stock.change_percent }}% (1D)
+                        <h2>${{ company_profile.stock_price if company_profile.stock_price else 'N/A' }}</h2>
+                        {% if company_profile.stock_change_percent %}
+                        <div class="stock-change {% if company_profile.stock_change_percent | float > 0 %}up{% else %}down{% endif %}">
+                            {{ '📈' if company_profile.stock_change_percent | float > 0 else '📉' }}
+                            {{ company_profile.stock_change_percent }}% (1D)
                         </div>
                         {% endif %}
                     </div>

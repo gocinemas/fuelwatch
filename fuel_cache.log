@@ -8289,3 +8289,2433 @@
 [fuel-cache] Fetched 0 prices
 [fuel-cache] Total: 0 valid stations
 ✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-30 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8068 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-09-30 23:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8068 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 06:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8067 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 06:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8068 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 10:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8062 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8067 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 11:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8068 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 11:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8068 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8068 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 13:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8074 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7865 prices
+[fuel-cache] Total: 8065 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 14:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8068 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 14:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8067 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 16:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8075 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7866 prices
+[fuel-cache] Total: 8068 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 17:00:02] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8124 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7910 prices
+[fuel-cache] Total: 8112 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 17:31:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8124 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7910 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 18:00:49] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 1000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 967 prices
+[fuel-cache] Total: 998 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 19:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8124 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 3962 prices
+[fuel-cache] Total: 4000 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 20:01:59] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 3000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 2906 prices
+[fuel-cache] Total: 2996 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 20:31:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 6000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 5852 prices
+[fuel-cache] Total: 5990 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 21:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8124 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 21:30:21] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8124 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7910 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 22:03:28] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 989 prices
+[fuel-cache] Total: 1000 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-01 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 07:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 08:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 08:30:40] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8110 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 09:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 0 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 09:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 11:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8108 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 11:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8097 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 12:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8105 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 12:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8106 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 13:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 6893 prices
+[fuel-cache] Total: 6995 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 15:02:17] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 1500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 1451 prices
+[fuel-cache] Total: 1498 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 16:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8103 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 16:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 17:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 7500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7308 prices
+[fuel-cache] Total: 7479 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 17:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 18:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 1491 prices
+[fuel-cache] Total: 1498 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 19:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 4000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 20:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 4500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 20:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 3000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 21:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 21:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8101 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 22:03:48] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-02 23:30:35] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 12:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 13:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8111 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 14:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 14:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8112 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 15:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 15:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 17:38:41] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 20:30:03] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 21:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 21:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-03 23:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 07:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 08:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 08:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 09:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 10:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 11:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 2500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 2418 prices
+[fuel-cache] Total: 2496 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 12:03:08] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 15:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 19:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 500 prices
+[fuel-cache] Total: 500 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 21:00:26] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 21:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-04 23:01:21] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 7500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7307 prices
+[fuel-cache] Total: 7490 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='uqwidlptkgmbxgaivafi.supabase.co', port=443): Read timed out. (read timeout=10)
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 01:05:55] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 08:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 09:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 09:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8110 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 10:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8111 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 11:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 11:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 12:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 13:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 13:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 14:03:59] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8124 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7910 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 15:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 16:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8112 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 16:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 17:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 17:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 18:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 18:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 19:01:39] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 19:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 20:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 20:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 22:05:35] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-05 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 05:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 05:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 2500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 2418 prices
+[fuel-cache] Total: 2496 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 09:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8111 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 09:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 11:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8124 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7910 prices
+[fuel-cache] Total: 8106 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8125 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7910 prices
+[fuel-cache] Total: 8105 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 12:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8126 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7911 prices
+[fuel-cache] Total: 8114 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 15:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8128 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8112 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 16:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8128 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 16:32:59] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8128 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 17:00:06] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 4500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 4398 prices
+[fuel-cache] Total: 4494 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 18:33:44] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 19:03:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 0 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 20:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 20:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 22:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-06 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 08:04:58] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 08:31:04] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 09:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 09:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 10:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 11:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8129 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 11:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 12:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 13:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 13:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7912 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 14:00:02] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 978 prices
+[fuel-cache] Total: 1000 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 14:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 15:00:57] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 1500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 1450 prices
+[fuel-cache] Total: 1498 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 15:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 16:00:59] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8121 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 18:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 4500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 4396 prices
+[fuel-cache] Total: 4494 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 18:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8121 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 19:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 19:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8121 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 20:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8121 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 20:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8121 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 21:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8121 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 21:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 6500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 6338 prices
+[fuel-cache] Total: 6490 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 22:00:35] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 1000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 967 prices
+[fuel-cache] Total: 998 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-07 23:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8121 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 07:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 08:30:02] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 3000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 2903 prices
+[fuel-cache] Total: 2996 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 09:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 10:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 11:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 11:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8120 valid stations
+✗ Exception uploading: ('Connection aborted.', timeout('The write operation timed out'))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 3943 prices
+[fuel-cache] Total: 3996 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='uqwidlptkgmbxgaivafi.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache?id=eq.current (Caused by NameResolutionError("HTTPSConnection(host='uqwidlptkgmbxgaivafi.supabase.co', port=443): Failed to resolve 'uqwidlptkgmbxgaivafi.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 13:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 14:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 14:31:10] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 15:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 15:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 6500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 6336 prices
+[fuel-cache] Total: 6489 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 16:00:48] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 16:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8132 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 6396 prices
+[fuel-cache] Total: 6494 valid stations
+✗ Exception uploading: HTTPSConnectionPool(host='uqwidlptkgmbxgaivafi.supabase.co', port=443): Max retries exceeded with url: /rest/v1/fuel_prices_cache?id=eq.current (Caused by NameResolutionError("HTTPSConnection(host='uqwidlptkgmbxgaivafi.supabase.co', port=443): Failed to resolve 'uqwidlptkgmbxgaivafi.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-08 23:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 00:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 3500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 09:30:02] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 10:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 11:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7913 prices
+[fuel-cache] Total: 8108 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 11:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 12:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 13:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 13:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 14:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 14:30:02] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 5500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 5370 prices
+[fuel-cache] Total: 5492 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 15:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 16:30:02] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 17:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 17:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8107 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 18:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 18:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 19:04:59] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 1000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 967 prices
+[fuel-cache] Total: 998 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 19:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 20:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 6500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 20:33:49] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 21:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 2500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 21:35:57] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 22:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 6883 prices
+[fuel-cache] Total: 6993 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 23:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8112 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-09 23:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 00:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 00:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 01:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 01:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 10:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 11:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 0 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 11:33:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 14:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 14:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 15:02:38] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 1991 prices
+[fuel-cache] Total: 2000 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 16:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 1500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 16:30:02] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 17:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 1000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 967 prices
+[fuel-cache] Total: 998 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 18:01:08] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 19:00:14] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 3500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 3398 prices
+[fuel-cache] Total: 3494 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 20:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 21:02:16] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 485 prices
+[fuel-cache] Total: 499 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 21:33:58] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 23:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-10 23:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 09:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 7000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 09:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 10:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8115 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 10:33:37] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 12:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 13:02:58] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 14:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 15:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 2000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 1927 prices
+[fuel-cache] Total: 1997 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 18:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 19:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 19:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 2500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 2415 prices
+[fuel-cache] Total: 2496 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 20:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 21:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 21:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 22:03:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 22:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 23:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-11 23:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 08:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 08:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8118 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 09:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8117 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 10:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 3500 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 10:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 11:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 11:30:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 12:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7811 prices
+[fuel-cache] Total: 7990 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 12:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8108 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 14:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8113 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 14:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 15:00:01] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8130 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 16:07:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8131 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7914 prices
+[fuel-cache] Total: 8120 valid stations
+✓ Uploaded to Supabase
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 16:30:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 5000 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 0 prices
+[fuel-cache] Total: 0 valid stations
+✗ No fuel data fetched
+/Users/srevi/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[2026-10-12 17:00:00] Refreshing fuel prices cache...
+[fuel-cache] Fetching PFS locations...
+[fuel-cache] Fetched 8133 locations
+[fuel-cache] Fetching fuel prices...
+[fuel-cache] Fetched 7915 prices
+[fuel-cache] Total: 8119 valid stations
+✓ Uploaded to Supabase
