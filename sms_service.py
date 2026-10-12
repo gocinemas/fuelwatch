@@ -2237,10 +2237,7 @@ def company_intelligence_tabbed(company_name):
         )
 
         if "error" in tabbed_data:
-            return render_template(
-                "error.html",
-                message=f"Error loading intelligence for {company_name}"
-            ), 500
+            return jsonify({"error": f"Error loading intelligence for {company_name}"}), 500
 
         # Fetch full company intelligence data (has all enriched fields)
         full_company_data = {}
@@ -2289,14 +2286,11 @@ def company_intelligence_tabbed(company_name):
 
     except Exception as e:
         app.logger.error(f"[intelligence_tabbed] Error: {e}")
-        response = make_response(render_template(
-            "error.html",
-            message=f"Error loading intelligence for {company_name}"
-        ), 500)
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        return response
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "error": f"Error loading intelligence for {company_name}: {str(e)}"
+        }), 500
 
 
 @app.route("/api/intelligence/<company_name>")

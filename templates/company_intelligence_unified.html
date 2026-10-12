@@ -551,9 +551,9 @@
                             <div class="stat-label">Employees</div>
                             <div class="stat-value">
                                 {% if company_profile and company_profile.employees %}
-                                    {{ (company_profile.employees / 1000) | round(0) | int }}K
+                                    {{ ((company_profile.employees | int) / 1000) | round(0) | int }}K
                                 {% elif company_profile and company_profile.employee_count %}
-                                    {{ (company_profile.employee_count / 1000) | round(0) | int }}K
+                                    {{ ((company_profile.employee_count | int) / 1000) | round(0) | int }}K
                                 {% else %}
                                     —
                                 {% endif %}
