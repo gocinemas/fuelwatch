@@ -2264,6 +2264,19 @@ def company_intelligence_tabbed(company_name):
         if full_company_data:
             company_profile = {**full_company_data, **company_profile}  # company_profile overrides full_company_data
 
+        # Add fallback brands/divisions for major companies if not in database
+        if not company_profile.get("brands"):
+            brands_map = {
+                "unilever": ["Dove", "Axe", "Lipton", "Ben & Jerry's", "Hellmann's", "Knorr", "Vaseline"],
+                "reckitt": ["Dettol", "Lysol", "Air Wick", "Nurofen", "Durex", "Mucinex", "Harpic"],
+                "procter & gamble": ["Tide", "Gillette", "Pampers", "Ariel", "Olay", "SK-II", "Always"],
+                "nestlé": ["Nescafé", "KitKat", "Purina", "Häagen-Dazs", "Perrier", "Nespresso", "L'Oréal"],
+                "mars": ["Snickers", "M&M's", "Milky Way", "3 Musketeers", "Twix", "Pedigree", "Whiskas"],
+            }
+            company_lower = company_name.lower()
+            if company_lower in brands_map:
+                company_profile["brands"] = brands_map[company_lower]
+
         # Render unified interface with all details populated
         response = make_response(render_template(
             "company_intelligence_unified.html",
