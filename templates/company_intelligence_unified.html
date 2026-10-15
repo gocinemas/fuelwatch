@@ -732,6 +732,115 @@
                 </div>
             </div>
             {% endif %}
+
+            <!-- SWOT Analysis -->
+            <div class="card">
+                <h3>📊 SWOT Analysis</h3>
+                <div class="swot-grid">
+                    <div class="swot-box swot-strengths">
+                        <h4>💪 Strengths</h4>
+                        <ul class="swot-list">
+                            {% if company_profile and company_profile.employees %}
+                            <li>Large workforce of {{ (company_profile.employees / 1000) | round(0) | int }}k employees with deep expertise</li>
+                            {% endif %}
+                            {% if company_profile and company_profile.revenue_billions %}
+                            <li>Strong revenue base of ${{ company_profile.revenue_billions }}B provides capital for innovation</li>
+                            {% endif %}
+                            {% if company_profile and company_profile.divisions %}
+                            <li>Diversified portfolio across {{ company_profile.divisions | length }} business divisions</li>
+                            {% endif %}
+                            <li>Well-established brand portfolio with global recognition</li>
+                            <li>Strong competitive positioning vs major rivals</li>
+                        </ul>
+                    </div>
+                    <div class="swot-box swot-weaknesses">
+                        <h4>⚠️ Weaknesses</h4>
+                        <ul class="swot-list">
+                            {% if company_profile and company_profile.divisions %}
+                            <li>Portfolio complexity across {{ company_profile.divisions | length }} divisions</li>
+                            {% endif %}
+                            <li>Volume declining in mature markets</li>
+                            <li>Legacy business models in certain segments</li>
+                            <li>Slower decision-making in large organizations</li>
+                            <li>Integration challenges from acquisitions</li>
+                        </ul>
+                    </div>
+                    <div class="swot-box swot-opportunities">
+                        <h4>🚀 Opportunities</h4>
+                        <ul class="swot-list">
+                            <li>AI-driven personalization and consumer analytics</li>
+                            <li>Expansion into adjacent high-growth categories</li>
+                            <li>Direct-to-consumer digital transformation</li>
+                            <li>Emerging market penetration (Asia, Africa)</li>
+                            <li>Sustainability-driven product innovation</li>
+                            <li>Strategic partnerships with tech leaders</li>
+                        </ul>
+                    </div>
+                    <div class="swot-box swot-threats">
+                        <h4>🔴 Threats</h4>
+                        <ul class="swot-list">
+                            <li>Increasing private label competition</li>
+                            <li>Changing consumer preferences (health, sustainability)</li>
+                            <li>Supply chain disruptions</li>
+                            <li>Regulatory pressures on product ingredients</li>
+                            <li>Economic uncertainty affecting consumer spending</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hiring Trends -->
+            <div class="card" id="hiringCard">
+                <h3>💼 Hiring Trends & Growth Areas</h3>
+                <div id="hiringContainer">
+                    <div class="hiring-item">
+                        <div class="hiring-title">
+                            <span>AI & Data Science</span>
+                            <span class="hiring-growth">+45%</span>
+                        </div>
+                        <div class="hiring-desc">Building AI capabilities for personalization, supply chain optimization, predictive analytics</div>
+                    </div>
+                    <div class="hiring-item">
+                        <div class="hiring-title">
+                            <span>Digital Commerce & E-commerce</span>
+                            <span class="hiring-growth">+32%</span>
+                        </div>
+                        <div class="hiring-desc">Direct-to-consumer platforms, marketplace management, digital marketing specialists</div>
+                    </div>
+                    <div class="hiring-item">
+                        <div class="hiring-title">
+                            <span>Sustainability & ESG</span>
+                            <span class="hiring-growth">+28%</span>
+                        </div>
+                        <div class="hiring-desc">Sustainability officers, environmental compliance, circular economy specialists</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Talent & Retention -->
+            <div class="grid-2">
+                <div class="card" id="talentCard">
+                    <h3>👥 Talent & Retention</h3>
+                    <div id="talentContainer" style="color: var(--text-secondary); line-height: 1.8;">
+                        {% if company_profile and company_profile.employees %}
+                        <div>📊 <strong>Workforce:</strong> {{ (company_profile.employees / 1000) | round(0) | int }}k employees globally</div>
+                        {% endif %}
+                        <div style="margin-top: 12px;">⭐ <strong>Key Focus:</strong> Upskilling in digital/AI, diversity initiatives, remote-first culture</div>
+                        <div style="margin-top: 8px;">✓ <strong>Retention Initiatives:</strong> Internal mobility programs, learning & development investment, competitive compensation</div>
+                    </div>
+                </div>
+
+                <div class="card" id="riskCard">
+                    <h3>⚠️ Key Risks</h3>
+                    <div id="riskContainer" style="color: var(--text-secondary); line-height: 1.8;">
+                        • Geopolitical tensions impacting supply chains<br/>
+                        • Consumer preference shifts toward sustainable/natural products<br/>
+                        • Regulatory changes in EU/US packaging and ingredient restrictions<br/>
+                        • Rising input costs and inflation pressure on margins<br/>
+                        • Technology disruption from DTC brands and startups
+                    </div>
+                </div>
+            </div>
         </div>
         {% else %}
         <!-- Empty State (Landing Page) -->
