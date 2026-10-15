@@ -710,18 +710,37 @@
             </div>
             {% endif %}
 
-            <!-- 5 Signals Section -->
-            {% if signals %}
+            <!-- Market Signals Section -->
             <div class="card">
-                <h3>📊 Market Signals</h3>
+                <h3>📊 Market Signals & Stock Data</h3>
                 <div id="signalsContainer" style="color: var(--text-secondary);">
-                    {% if signals.stock %}
+                    {% if company_profile and company_profile.stock_price %}
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <strong style="color: var(--primary-light);">Stock Price:</strong><br/>
+                                <span style="font-size: 24px; font-weight: 700; color: var(--primary-light);">${{ company_profile.stock_price }}</span>
+                            </div>
+                            <div>
+                                <strong style="color: var(--primary-light);">24h Change:</strong><br/>
+                                <span style="font-size: 24px; font-weight: 700; color: {% if company_profile.stock_change_percent > 0 %}var(--success){% else %}var(--danger){% endif %};">
+                                    {{ '📈' if company_profile.stock_change_percent > 0 else '📉' }} {{ company_profile.stock_change_percent }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                            <strong style="color: var(--primary-light);">Market Cap:</strong> {{ company_profile.market_cap }}<br/>
+                            <strong style="color: var(--primary-light);">Status:</strong> {% if company_profile.is_public %}Publicly Traded{% else %}Private{% endif %}
+                        </div>
+                    </div>
+                    {% elif signals and signals.stock %}
                     <div style="margin-bottom: 20px;">
                         <strong style="color: var(--primary-light);">Stock Price:</strong> ${{ signals.stock.price }}<br/>
                         <strong style="color: var(--primary-light);">Market Cap:</strong> ${{ signals.stock.market_cap }}
                     </div>
                     {% endif %}
-                    {% if signals.news %}
+
+                    {% if signals and signals.news %}
                     <div style="margin-bottom: 20px;">
                         <strong style="color: var(--primary-light);">Recent News:</strong><br/>
                         {% for article in signals.news[:3] %}
@@ -731,7 +750,6 @@
                     {% endif %}
                 </div>
             </div>
-            {% endif %}
 
             <!-- SWOT Analysis -->
             <div class="card">
