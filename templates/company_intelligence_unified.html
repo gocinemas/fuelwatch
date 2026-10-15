@@ -741,7 +741,7 @@
                         <h4>💪 Strengths</h4>
                         <ul class="swot-list">
                             {% if company_profile and company_profile.employees %}
-                            <li>Large workforce of {{ (company_profile.employees / 1000) | round(0) | int }}k employees with deep expertise</li>
+                            <li>Large workforce of {{ ((company_profile.employees | int) / 1000) | round(0) | int }}k employees with deep expertise</li>
                             {% endif %}
                             {% if company_profile and company_profile.revenue_billions %}
                             <li>Strong revenue base of ${{ company_profile.revenue_billions }}B provides capital for innovation</li>
@@ -823,7 +823,7 @@
                     <h3>👥 Talent & Retention</h3>
                     <div id="talentContainer" style="color: var(--text-secondary); line-height: 1.8;">
                         {% if company_profile and company_profile.employees %}
-                        <div>📊 <strong>Workforce:</strong> {{ (company_profile.employees / 1000) | round(0) | int }}k employees globally</div>
+                        <div>📊 <strong>Workforce:</strong> {{ ((company_profile.employees | int) / 1000) | round(0) | int }}k employees globally</div>
                         {% endif %}
                         <div style="margin-top: 12px;">⭐ <strong>Key Focus:</strong> Upskilling in digital/AI, diversity initiatives, remote-first culture</div>
                         <div style="margin-top: 8px;">✓ <strong>Retention Initiatives:</strong> Internal mobility programs, learning & development investment, competitive compensation</div>
