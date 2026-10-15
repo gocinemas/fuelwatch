@@ -6105,6 +6105,9 @@ def api_company_intelligence():
             "kelloggs": "Kellanov",
             "kellogg": "Kellanov",
             "kraft": "Kraft Heinz",
+            # Disambiguation
+            "mars": "Mars Inc.",  # Not the planet!
+            "mars inc": "Mars Inc.",
         }
 
         search_name = name
@@ -6225,6 +6228,19 @@ def api_company_intelligence():
                     result = fetch_company_intelligence(search_name, search_country)
                     if result and result.get("name"):
                         break
+
+        # Filter out non-company results (planets, movies, etc.)
+        if result:
+            description = (result.get("description") or "").lower()
+            # Reject if clearly not a company
+            non_company_keywords = ["planet", "astronomical", "celestial", "solar system", "movie", "film", "television", "tv show"]
+            if any(keyword in description for keyword in non_company_keywords):
+                # It's a planet, movie, etc. - try the alias instead
+                if "mars" in name.lower() and name.lower() != "Mars Inc.":
+                    result = None  # Reset and try alias
+                    search_name = "Mars Inc."
+                elif not suggested_name:
+                    suggested_name = "Mars Inc." if "mars" in name.lower() else None
 
         if not result or not result.get("name"):
             # If search failed and we have a suggestion, inform user
