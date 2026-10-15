@@ -6316,6 +6316,17 @@ def api_company_intelligence():
                 else:
                     result["is_public"] = False
 
+        # Trigger background enrichment for this company if data is incomplete
+        # This populates brands, divisions, stock data over time for any searched company
+        try:
+            from enrich_company_background import enrich_company_async
+            # Only enrich if missing key fields
+            if not result.get("brands") or not result.get("divisions"):
+                enrich_company_async(search_name)
+                app.logger.debug(f"[company/intelligence] Queued background enrichment for {search_name}")
+        except Exception as enrich_err:
+            app.logger.debug(f"[company/intelligence] Background enrichment failed: {enrich_err}")
+
         # Extract and format AI opportunities if available
         if result and result.get("ai_opportunities"):
             ai_opps = result.get("ai_opportunities", {})
