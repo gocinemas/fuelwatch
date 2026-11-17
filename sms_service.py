@@ -14290,7 +14290,17 @@ def _v2_fetch_school(from_number: str) -> dict:
                 "id,profile_id,event_title,event_date,event_time,event_type,action_needed,location"
             ).in_("profile_id", pids).gte("event_date", _win_start).lte("event_date", _win_end) \
              .order("event_date").execute().data or [])]
-            this_and_last_week = _school_dedup_events(_lw_rows)
+            # Many school emails have no event date in them. Fall back to the day the
+            # email arrived, so they still show under the right week (marked as such).
+            _undated_rows = [_enrich(e) for e in (lib._sb().table("school_events").select(
+                "id,profile_id,event_title,event_date,event_time,event_type,action_needed,location,created_at"
+            ).in_("profile_id", pids).is_("event_date", "null")
+             .gte("created_at", _win_start + "T00:00:00").lte("created_at", _win_end + "T23:59:59")
+             .order("created_at").execute().data or [])]
+            for _e in _undated_rows:
+                _e["event_date"] = (_e.get("created_at") or "")[:10]
+                _e["date_from_email"] = True
+            this_and_last_week = _school_dedup_events(_lw_rows + _undated_rows)
         except Exception:
             this_and_last_week = []
 
