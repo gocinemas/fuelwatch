@@ -23578,7 +23578,7 @@ def _groq_place_summary(name: str, category: str, address: str,
 _PLACES_CACHE: dict = {}
 _PLACES_CACHE_TTL = 3600  # 1 hour
 
-_GOOGLE_PLACES_KEY = ""  # DISABLED DUE TO £73 BILLING ISSUE
+_GOOGLE_PLACES_KEY = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")  # Re-enabled 2026-11-14 (was hard-disabled after £73 billing issue). Remove the key from Railway to switch off.
 
 
 def _lookup_venue(name: str, lat: float = None, lon: float = None) -> dict:

@@ -8,6 +8,7 @@ import os
 import sys
 import requests
 import json
+import time
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -49,107 +50,116 @@ def get_fresh_access_token() -> Optional[str]:
         return None
 
 
+PFS_URL = "https://www.fuel-finder.service.gov.uk/api/v1/pfs"
+PRICES_URL = "https://www.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices"
+MAX_PAGES = 20
+MAX_TRIES = 3
+# A full national list is ~8,000 stations. Anything much smaller is a partial pull.
+MIN_STATIONS = 5000
+
+
+def _get_page(url: str, token: str, batch_number: int):
+    """Fetch one page of the Fuel Finder API, retrying transient failures.
+    Returns (items, ok). ok=False means the page could not be fetched at all."""
+    last_err = ""
+    for attempt in range(1, MAX_TRIES + 1):
+        try:
+            resp = requests.get(
+                url,
+                params={"batch-number": batch_number},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=15
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return (data if isinstance(data, list) else []), True
+            last_err = f"HTTP {resp.status_code}"
+        except (requests.exceptions.RequestException, ValueError) as e:
+            last_err = str(e)[:120]
+        time.sleep(2 * attempt)
+    print(f"✗ page {batch_number} failed after {MAX_TRIES} tries: {last_err}")
+    return None, False
+
+
 def fetch_fuel_prices(token: str) -> dict:
-    """Fetch all fuel prices from Fuel Finder API (paginated, ~8000 stations)."""
+    """Fetch all fuel prices from Fuel Finder API (paginated, ~8000 stations).
+    Returns complete=False if any page could not be fetched, so the caller
+    can refuse to overwrite good data with a partial pull."""
     stations_by_id = {}
-    prices_by_id = {}
+    complete = True
 
     print("[fuel-cache] Fetching PFS locations...")
     batch_number = 1
-    while batch_number <= 20:
-        try:
-            resp = requests.get(
-                "https://www.fuel-finder.service.gov.uk/api/v1/pfs",
-                params={"batch-number": batch_number},
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=15
-            )
-
-            if resp.status_code != 200:
-                break
-
-            data = resp.json()
-            if not data or len(data) == 0:
-                break
-
-            for item in data:
-                try:
-                    node_id = item.get("node_id", "")
-                    if not node_id:
-                        continue
-
-                    location = item.get("location", {})
-                    lat = float(location.get("latitude") or 0)
-                    lon = float(location.get("longitude") or 0)
-
-                    stations_by_id[node_id] = {
-                        "node_id": node_id,
-                        "brand": item.get("brand_name", item.get("trading_name", "Unknown")),
-                        "address": location.get("address_line_1", ""),
-                        "postcode": location.get("postcode", ""),
-                        "lat": lat,
-                        "lon": lon,
-                        "petrol": None,
-                        "diesel": None,
-                    }
-                except (ValueError, TypeError, KeyError):
-                    continue
-
-            batch_number += 1
-        except requests.exceptions.RequestException:
+    while True:
+        if batch_number > MAX_PAGES:
+            print("✗ location list longer than page limit — treating as incomplete")
+            complete = False
             break
+        data, ok = _get_page(PFS_URL, token, batch_number)
+        if not ok:
+            complete = False
+            break
+        if not data:
+            break
+        for item in data:
+            try:
+                node_id = item.get("node_id", "")
+                if not node_id:
+                    continue
+                location = item.get("location", {})
+                stations_by_id[node_id] = {
+                    "node_id": node_id,
+                    "brand": item.get("brand_name", item.get("trading_name", "Unknown")),
+                    "address": location.get("address_line_1", ""),
+                    "postcode": location.get("postcode", ""),
+                    "lat": float(location.get("latitude") or 0),
+                    "lon": float(location.get("longitude") or 0),
+                    "petrol": None,
+                    "diesel": None,
+                }
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+        batch_number += 1
 
     print(f"[fuel-cache] Fetched {len(stations_by_id)} locations")
 
-    # Fetch prices
     print("[fuel-cache] Fetching fuel prices...")
-    batch_number = 1
     price_count = 0
-
-    while batch_number <= 20:
-        try:
-            resp = requests.get(
-                "https://www.fuel-finder.service.gov.uk/api/v1/pfs/fuel-prices",
-                params={"batch-number": batch_number},
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=15
-            )
-
-            if resp.status_code != 200:
-                break
-
-            data = resp.json()
-            if not data or len(data) == 0:
-                break
-
-            for item in data:
-                try:
-                    node_id = item.get("node_id", "")
-                    fuel_prices = item.get("fuel_prices", [])
-
-                    if node_id in stations_by_id and fuel_prices:
-                        for fuel in fuel_prices:
-                            fuel_type = fuel.get("fuel_type", "")
-                            price = float(fuel.get("price") or 0)
-                            if fuel_type == "E10" and price > 0:
-                                stations_by_id[node_id]["petrol"] = price
-                                price_count += 1
-                            elif fuel_type in ("B7S", "B7P", "B7_STANDARD", "B7_PREMIUM") and price > 0:
-                                stations_by_id[node_id]["diesel"] = price
-                except (ValueError, TypeError, KeyError):
-                    continue
-
-            batch_number += 1
-        except requests.exceptions.RequestException:
+    batch_number = 1
+    while True:
+        if batch_number > MAX_PAGES:
+            print("✗ price list longer than page limit — treating as incomplete")
+            complete = False
             break
+        data, ok = _get_page(PRICES_URL, token, batch_number)
+        if not ok:
+            complete = False
+            break
+        if not data:
+            break
+        for item in data:
+            try:
+                node_id = item.get("node_id", "")
+                fuel_prices = item.get("fuel_prices", [])
+                if node_id in stations_by_id and fuel_prices:
+                    for fuel in fuel_prices:
+                        fuel_type = fuel.get("fuel_type", "")
+                        price = float(fuel.get("price") or 0)
+                        if fuel_type == "E10" and price > 0:
+                            stations_by_id[node_id]["petrol"] = price
+                            price_count += 1
+                        elif fuel_type in ("B7S", "B7P", "B7_STANDARD", "B7_PREMIUM") and price > 0:
+                            stations_by_id[node_id]["diesel"] = price
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+        batch_number += 1
 
     print(f"[fuel-cache] Fetched {price_count} prices")
 
-    # Filter: only valid stations
     all_stations = [s for s in stations_by_id.values() if (s["lat"] and s["lon"]) and (s["petrol"] or s["diesel"])]
-    print(f"[fuel-cache] Total: {len(all_stations)} valid stations")
+    print(f"[fuel-cache] Total: {len(all_stations)} valid stations (complete={complete})")
 
-    return {"stations": all_stations, "updated_at": datetime.utcnow().isoformat()}
+    return {"stations": all_stations, "complete": complete, "updated_at": datetime.utcnow().isoformat()}
 
 
 def upload_to_supabase(fuel_data: dict) -> bool:
@@ -192,7 +202,7 @@ def upload_to_supabase(fuel_data: dict) -> bool:
 
 
 def refresh_cache():
-    """Single refresh cycle."""
+    """Single refresh cycle. Only overwrites the cache with a complete, full-sized pull."""
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Refreshing fuel prices cache...")
 
     token = get_fresh_access_token()
@@ -201,8 +211,12 @@ def refresh_cache():
         return False
 
     fuel_data = fetch_fuel_prices(token)
-    if not fuel_data.get("stations"):
-        print("✗ No fuel data fetched")
+    n = len(fuel_data.get("stations", []))
+    if not fuel_data.get("complete"):
+        print("✗ Fuel Finder pull was incomplete — keeping the previous cache, not uploading")
+        return False
+    if n < MIN_STATIONS:
+        print(f"✗ Only {n} stations (need at least {MIN_STATIONS}) — keeping the previous cache")
         return False
 
     return upload_to_supabase(fuel_data)
