@@ -20348,7 +20348,10 @@ let _savesAll = [];
     }
 
     const school = briefData.context.school || {};
-    const upcoming = school.upcoming || [];
+    // Last week + this week (from the server) merged with upcoming, de-duplicated
+    const _seenEv = new Set();
+    const upcoming = [...(school.this_and_last_week || []), ...(school.upcoming || [])]
+      .filter(e => { const k = e.id || ((e.event_date || "") + "|" + (e.event_title || "")); if (_seenEv.has(k)) return false; _seenEv.add(k); return true; });
     const holidays = school.holiday_status;
 
     // Show card if there are upcoming events OR a holiday status
@@ -20401,7 +20404,11 @@ let _savesAll = [];
         let weekLabel = "📋 SUMMARY OF WEEK AHEAD";
         const todayDate = new Date();
         todayDate.setHours(0,0,0,0);
-        if (weekMonday <= todayDate && todayDate <= weekSunday) {
+        const thisMonday = new Date(todayDate);
+        thisMonday.setDate(thisMonday.getDate() - ((todayDate.getDay() + 6) % 7));
+        if (weekMonday < thisMonday) {
+          weekLabel = "📋 LAST WEEK";
+        } else if (weekMonday.getTime() === thisMonday.getTime()) {
           weekLabel = "📋 THIS WEEK";
         }
 

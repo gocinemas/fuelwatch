@@ -14280,8 +14280,23 @@ def _v2_fetch_school(from_number: str) -> dict:
             if e.get("action_needed") and e.get("event_date") <= (today + timedelta(days=7)).isoformat()
         ]
 
+        # Last week + this week (Monday of last week to Sunday of this week),
+        # so the school summary card can show what already happened as well as what's coming.
+        _mon_this = today - timedelta(days=today.weekday())
+        _win_start = (_mon_this - timedelta(days=7)).isoformat()
+        _win_end = (_mon_this + timedelta(days=6)).isoformat()
+        try:
+            _lw_rows = [_enrich(e) for e in (lib._sb().table("school_events").select(
+                "id,profile_id,event_title,event_date,event_time,event_type,action_needed,location"
+            ).in_("profile_id", pids).gte("event_date", _win_start).lte("event_date", _win_end) \
+             .order("event_date").execute().data or [])]
+            this_and_last_week = _school_dedup_events(_lw_rows)
+        except Exception:
+            this_and_last_week = []
+
         return {"schools": schools, "upcoming": upcoming, "recent": recent_rows,
-                "events": upcoming, "actions": action_items, "holiday_status": holiday_status}
+                "events": upcoming, "actions": action_items, "holiday_status": holiday_status,
+                "this_and_last_week": this_and_last_week}
     except Exception:
         return {"schools": [], "upcoming": [], "recent": [], "events": [], "holiday_status": None}
 
