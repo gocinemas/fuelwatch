@@ -41858,6 +41858,203 @@ def api_factory_schools_near():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/onboarding")
+def onboarding():
+    """Serve the 7-step onboarding wizard with email verification."""
+    app.logger.info(f"[onboarding] Serving 7-step onboarding with email verification")
+    resp = make_response(render_template("onboarding_complete.html"))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
+@app.route("/sectors")
+@app.route("/sectors/")
+def sectors_page():
+    """Browse AI opportunities by sector."""
+    return render_template("sectors.html")
+
+
+@app.route("/sector/<sector_name>")
+@app.route("/sector/<sector_name>/")
+def sector_detail(sector_name):
+    """Sector intelligence detail page."""
+    # Sector detail would be similar to sectors but filtered
+    return render_template("sectors.html")  # For now, use same template
+
+
+@app.route("/ideas")
+@app.route("/ideas/")
+def ideas_library():
+    """Browse all AI ideas with filters."""
+    return render_template("ideas_library.html")
+
+
+@app.route("/compare")
+@app.route("/compare/")
+def compare_tool():
+    """Compare company AI strategies side-by-side."""
+    return render_template("compare.html")
+
+
+@app.route("/api/all-companies", methods=["GET"])
+def api_all_companies():
+    """Get list of all companies in database for dropdowns."""
+    try:
+        import library as lib
+        sb = lib._sb()
+        result = sb.table("company_profiles").select("company_name").execute()
+        companies = sorted([row["company_name"] for row in result.data])
+        return jsonify({"companies": companies})
+    except Exception as e:
+        return jsonify({"error": str(e), "companies": []}), 500
+
+
+@app.route("/setup/claude")
+@app.route("/setup/claude/")
+def setup_claude():
+    """Claude CLI installation guide."""
+    return render_template("setup_claude.html")
+
+
+@app.route("/setup/codex")
+@app.route("/setup/codex/")
+def setup_codex():
+    """Codex installation guide."""
+    return render_template("setup_codex.html")
+
+
+@app.route("/setup/portfolio")
+@app.route("/setup/portfolio/")
+def setup_portfolio():
+    """Personal portfolio builder guide."""
+    return render_template("setup_portfolio.html")
+
+
+@app.route("/setup/integrations")
+@app.route("/setup/integrations/")
+def setup_integrations():
+    """GitHub + Supabase + Railway integration guide."""
+    return render_template("setup_integrations.html")
+
+
+@app.route("/agent")
+def agent_ui():
+    """Agent chat interface."""
+    return """
+    <!DOCTYPE html>
+    <html><head><title>UK Agent</title><style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI'; background: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; }
+    .header { padding: 20px; background: #007AFF; color: white; text-align: center; }
+    .header h1 { font-size: 24px; }
+    .chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .msg { padding: 12px 16px; border-radius: 12px; max-width: 85%; word-wrap: break-word; }
+    .user { align-self: flex-end; background: #007AFF; color: white; }
+    .bot { align-self: flex-start; background: #e5e5ea; color: black; }
+    .input-area { padding: 20px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
+    .input-area input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 24px; }
+    .input-area button { padding: 12px 24px; background: #007AFF; color: white; border: none; border-radius: 24px; cursor: pointer; font-weight: 600; }
+    </style></head><body>
+    <div class="container">
+        <div class="header"><h1>🇬🇧 UK Agent</h1><p>Trains • Fuel • Schools</p></div>
+        <div class="chat" id="chat"></div>
+        <div class="input-area">
+            <input type="text" id="input" placeholder="Ask about trains, fuel, schools...">
+            <button onclick="send()">Send</button>
+        </div>
+    </div>
+    <script>
+    const sid = "user-" + Date.now();
+    function add(text, isUser) {
+        const d = document.createElement("div");
+        d.className = "msg " + (isUser ? "user" : "bot");
+        d.textContent = text;
+        document.getElementById("chat").appendChild(d);
+        document.getElementById("chat").scrollTop = 999999;
+    }
+    async function send() {
+        const msg = document.getElementById("input").value.trim();
+        if (!msg) return;
+        add(msg, true);
+        document.getElementById("input").value = "";
+        try {
+            const r = await fetch("/api/agent/chat", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({message: msg, session_id: sid})
+            });
+            const d = await r.json();
+            add(d.response || "Error", false);
+        } catch (e) {
+            add("Error: " + e.message, false);
+        }
+    }
+    document.getElementById("input").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") send();
+    });
+    add("Hi! Ask me about trains, fuel prices, or school events.", false);
+    </script>
+    </body></html>
+    """
+
+
+@app.route("/api/stations-by-postcode")
+def api_stations_by_postcode():
+    """Find nearby train stations for a postcode (for onboarding station picker)."""
+    postcode = request.args.get("postcode", "").strip().upper()
+
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+
+    try:
+        from search import postcode_to_latlon, haversine_km
+        from uk_stations import UK_STATIONS
+
+        coords = postcode_to_latlon(postcode)
+        if not coords:
+            return jsonify({"stations": []})
+
+        lat, lon = coords
+
+        # Use UK_STATIONS dictionary (complete list of all UK train stations)
+        all_stations = list(UK_STATIONS.values())
+        if not all_stations:
+            return jsonify({"stations": []})
+
+        nearby = []
+        for s in all_stations:
+            # UK_STATIONS uses lat/lon fields
+            s_lat = s.get("lat")
+            s_lon = s.get("lon")
+            if not (s_lat and s_lon):
+                continue
+
+            dist = haversine_km(lat, lon, s_lat, s_lon)
+            if dist <= 10:  # Within 10km
+                nearby.append({
+                    "name": s.get("name", ""),
+                    "crs": s.get("crs", ""),
+                    "distance_km": round(dist, 1),
+                    "lat": s_lat,
+                    "lon": s_lon
+                })
+        
+        nearby.sort(key=lambda x: x["distance_km"])
+        
+        return jsonify({
+            "postcode": postcode,
+            "stations": nearby[:10],
+            "count": len(nearby)
+        })
+    
+    except Exception as e:
+        app.logger.error(f"[stations] Error: {e}")
+        return jsonify({"stations": []}), 200
+
+
 if __name__ == "__main__":
     print("\nFuelWatch UK — SMS Service")
 @app.route("/api/library/books", methods=["GET"])
@@ -45255,15 +45452,6 @@ def api_school_load_static_terms():
 
 # ── ONBOARDING WIZARD (must be AFTER catch-all to override /<company_slug>) ─
 
-@app.route("/onboarding")
-def onboarding():
-    """Serve the 7-step onboarding wizard with email verification."""
-    app.logger.info(f"[onboarding] Serving 7-step onboarding with email verification")
-    resp = make_response(render_template("onboarding_complete.html"))
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
-    return resp
 
 
 # ── SCHOOL COMMS V2: OAuth handlers & webhook (Phase 1 foundation) ──
@@ -45274,135 +45462,23 @@ register_config_routes(app, lib)
 
 # ═══ COMMERCIAL INTELLIGENCE PLATFORM ═══
 
-@app.route("/sectors")
-@app.route("/sectors/")
-def sectors_page():
-    """Browse AI opportunities by sector."""
-    return render_template("sectors.html")
-
-@app.route("/sector/<sector_name>")
-@app.route("/sector/<sector_name>/")
-def sector_detail(sector_name):
-    """Sector intelligence detail page."""
-    # Sector detail would be similar to sectors but filtered
-    return render_template("sectors.html")  # For now, use same template
-
-@app.route("/ideas")
-@app.route("/ideas/")
-def ideas_library():
-    """Browse all AI ideas with filters."""
-    return render_template("ideas_library.html")
-
-@app.route("/compare")
-@app.route("/compare/")
-def compare_tool():
-    """Compare company AI strategies side-by-side."""
-    return render_template("compare.html")
 
 
-@app.route("/api/all-companies", methods=["GET"])
-def api_all_companies():
-    """Get list of all companies in database for dropdowns."""
-    try:
-        import library as lib
-        sb = lib._sb()
-        result = sb.table("company_profiles").select("company_name").execute()
-        companies = sorted([row["company_name"] for row in result.data])
-        return jsonify({"companies": companies})
-    except Exception as e:
-        return jsonify({"error": str(e), "companies": []}), 500
+
+
+
 
 
 # ═══ AI LEARNING PLATFORM (ai.humanagency.co) ═══
 
-@app.route("/setup/claude")
-@app.route("/setup/claude/")
-def setup_claude():
-    """Claude CLI installation guide."""
-    return render_template("setup_claude.html")
 
-@app.route("/setup/codex")
-@app.route("/setup/codex/")
-def setup_codex():
-    """Codex installation guide."""
-    return render_template("setup_codex.html")
 
-@app.route("/setup/portfolio")
-@app.route("/setup/portfolio/")
-def setup_portfolio():
-    """Personal portfolio builder guide."""
-    return render_template("setup_portfolio.html")
 
-@app.route("/setup/integrations")
-@app.route("/setup/integrations/")
-def setup_integrations():
-    """GitHub + Supabase + Railway integration guide."""
-    return render_template("setup_integrations.html")
 
 # Autonomous Agent
 from agent_framework import UKAgent
 _agent = UKAgent()
 
-@app.route("/agent")
-def agent_ui():
-    """Agent chat interface."""
-    return """
-    <!DOCTYPE html>
-    <html><head><title>UK Agent</title><style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI'; background: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; }
-    .header { padding: 20px; background: #007AFF; color: white; text-align: center; }
-    .header h1 { font-size: 24px; }
-    .chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-    .msg { padding: 12px 16px; border-radius: 12px; max-width: 85%; word-wrap: break-word; }
-    .user { align-self: flex-end; background: #007AFF; color: white; }
-    .bot { align-self: flex-start; background: #e5e5ea; color: black; }
-    .input-area { padding: 20px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
-    .input-area input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 24px; }
-    .input-area button { padding: 12px 24px; background: #007AFF; color: white; border: none; border-radius: 24px; cursor: pointer; font-weight: 600; }
-    </style></head><body>
-    <div class="container">
-        <div class="header"><h1>🇬🇧 UK Agent</h1><p>Trains • Fuel • Schools</p></div>
-        <div class="chat" id="chat"></div>
-        <div class="input-area">
-            <input type="text" id="input" placeholder="Ask about trains, fuel, schools...">
-            <button onclick="send()">Send</button>
-        </div>
-    </div>
-    <script>
-    const sid = "user-" + Date.now();
-    function add(text, isUser) {
-        const d = document.createElement("div");
-        d.className = "msg " + (isUser ? "user" : "bot");
-        d.textContent = text;
-        document.getElementById("chat").appendChild(d);
-        document.getElementById("chat").scrollTop = 999999;
-    }
-    async function send() {
-        const msg = document.getElementById("input").value.trim();
-        if (!msg) return;
-        add(msg, true);
-        document.getElementById("input").value = "";
-        try {
-            const r = await fetch("/api/agent/chat", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({message: msg, session_id: sid})
-            });
-            const d = await r.json();
-            add(d.response || "Error", false);
-        } catch (e) {
-            add("Error: " + e.message, false);
-        }
-    }
-    document.getElementById("input").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") send();
-    });
-    add("Hi! Ask me about trains, fuel prices, or school events.", false);
-    </script>
-    </body></html>
-    """
 
 @app.route("/api/agent/chat", methods=["POST"])
 def agent_chat():
@@ -45419,58 +45495,6 @@ def agent_chat():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/stations-by-postcode")
-def api_stations_by_postcode():
-    """Find nearby train stations for a postcode (for onboarding station picker)."""
-    postcode = request.args.get("postcode", "").strip().upper()
-
-    if not postcode:
-        return jsonify({"error": "postcode required"}), 400
-
-    try:
-        from search import postcode_to_latlon, haversine_km
-        from uk_stations import UK_STATIONS
-
-        coords = postcode_to_latlon(postcode)
-        if not coords:
-            return jsonify({"stations": []})
-
-        lat, lon = coords
-
-        # Use UK_STATIONS dictionary (complete list of all UK train stations)
-        all_stations = list(UK_STATIONS.values())
-        if not all_stations:
-            return jsonify({"stations": []})
-
-        nearby = []
-        for s in all_stations:
-            # UK_STATIONS uses lat/lon fields
-            s_lat = s.get("lat")
-            s_lon = s.get("lon")
-            if not (s_lat and s_lon):
-                continue
-
-            dist = haversine_km(lat, lon, s_lat, s_lon)
-            if dist <= 10:  # Within 10km
-                nearby.append({
-                    "name": s.get("name", ""),
-                    "crs": s.get("crs", ""),
-                    "distance_km": round(dist, 1),
-                    "lat": s_lat,
-                    "lon": s_lon
-                })
-        
-        nearby.sort(key=lambda x: x["distance_km"])
-        
-        return jsonify({
-            "postcode": postcode,
-            "stations": nearby[:10],
-            "count": len(nearby)
-        })
-    
-    except Exception as e:
-        app.logger.error(f"[stations] Error: {e}")
-        return jsonify({"stations": []}), 200
 
 
 # ════════════════════════════════════════════════════════════════════════════════
