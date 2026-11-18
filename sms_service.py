@@ -41788,6 +41788,76 @@ def admin_fix_receipt_summaries():
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def _real_schools_near(postcode: str, limit: int = 10) -> list:
+    """Real schools (DfE register, Supabase `schools`) in the same postcode area,
+    geocoded with postcodes.io and sorted by straight-line distance."""
+    from search import postcode_to_latlon, haversine_km
+    pc = postcode.replace(" ", "").upper()
+    if len(pc) < 5:
+        return []
+    outward = pc[:-3]
+    coords = postcode_to_latlon(pc)
+    if not coords:
+        return []
+    lat, lon = coords
+    rows = (lib._sb().table("schools").select("name,type,address,postcode")
+            .ilike("postcode", f"{outward}%").limit(400).execute().data or [])
+    rows = [r for r in rows if r.get("postcode")]
+    if not rows:
+        return []
+    # postcodes.io bulk lookup (max 100 per call)
+    geo = {}
+    codes = list({r["postcode"].upper() for r in rows})
+    for i in range(0, len(codes), 100):
+        try:
+            r = requests.post("https://api.postcodes.io/postcodes",
+                              json={"postcodes": codes[i:i+100]}, timeout=10)
+            for item in (r.json().get("result") or []):
+                res = item.get("result")
+                if res and res.get("latitude") is not None:
+                    geo[item["query"].upper()] = (res["latitude"], res["longitude"])
+        except Exception:
+            pass
+    out = []
+    for r in rows:
+        g = geo.get(r["postcode"].upper())
+        if not g:
+            continue
+        d = haversine_km(lat, lon, g[0], g[1])
+        out.append({"name": r.get("name", ""), "type": r.get("type", "") or "",
+                    "address": r.get("address", ""), "postcode": r["postcode"],
+                    "lat": g[0], "lon": g[1], "distance_km": round(d, 2)})
+    out.sort(key=lambda x: x["distance_km"])
+    return out[:limit]
+
+
+@app.route("/api/schools-by-postcode")
+def api_schools_by_postcode():
+    """Real schools near a postcode (onboarding school picker)."""
+    postcode = request.args.get("postcode", "").strip().upper()
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+    try:
+        nearby = _real_schools_near(postcode, 10)
+        return jsonify({"schools": nearby, "count": len(nearby)})
+    except Exception as e:
+        app.logger.warning(f"[schools-by-postcode] {e}")
+        return jsonify({"schools": []}), 200
+
+
+@app.route("/api/factory/schools-near")
+def api_factory_schools_near():
+    """Public, read-only: nearest real schools for the Factory page."""
+    postcode = request.args.get("postcode", "").strip().upper()
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+    try:
+        nearby = _real_schools_near(postcode, 8)
+        return jsonify({"postcode": postcode, "schools": nearby, "count": len(nearby)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("\nFuelWatch UK — SMS Service")
 @app.route("/api/library/books", methods=["GET"])
@@ -45345,76 +45415,6 @@ def agent_chat():
             return jsonify({"error": "Empty message"}), 400
         response = _agent.chat(msg)
         return jsonify({"response": response, "session_id": sid})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-def _real_schools_near(postcode: str, limit: int = 10) -> list:
-    """Real schools (DfE register, Supabase `schools`) in the same postcode area,
-    geocoded with postcodes.io and sorted by straight-line distance."""
-    from search import postcode_to_latlon, haversine_km
-    pc = postcode.replace(" ", "").upper()
-    if len(pc) < 5:
-        return []
-    outward = pc[:-3]
-    coords = postcode_to_latlon(pc)
-    if not coords:
-        return []
-    lat, lon = coords
-    rows = (lib._sb().table("schools").select("name,type,address,postcode")
-            .ilike("postcode", f"{outward}%").limit(400).execute().data or [])
-    rows = [r for r in rows if r.get("postcode")]
-    if not rows:
-        return []
-    # postcodes.io bulk lookup (max 100 per call)
-    geo = {}
-    codes = list({r["postcode"].upper() for r in rows})
-    for i in range(0, len(codes), 100):
-        try:
-            r = requests.post("https://api.postcodes.io/postcodes",
-                              json={"postcodes": codes[i:i+100]}, timeout=10)
-            for item in (r.json().get("result") or []):
-                res = item.get("result")
-                if res and res.get("latitude") is not None:
-                    geo[item["query"].upper()] = (res["latitude"], res["longitude"])
-        except Exception:
-            pass
-    out = []
-    for r in rows:
-        g = geo.get(r["postcode"].upper())
-        if not g:
-            continue
-        d = haversine_km(lat, lon, g[0], g[1])
-        out.append({"name": r.get("name", ""), "type": r.get("type", "") or "",
-                    "address": r.get("address", ""), "postcode": r["postcode"],
-                    "lat": g[0], "lon": g[1], "distance_km": round(d, 2)})
-    out.sort(key=lambda x: x["distance_km"])
-    return out[:limit]
-
-
-@app.route("/api/schools-by-postcode")
-def api_schools_by_postcode():
-    """Real schools near a postcode (onboarding school picker)."""
-    postcode = request.args.get("postcode", "").strip().upper()
-    if not postcode:
-        return jsonify({"error": "postcode required"}), 400
-    try:
-        nearby = _real_schools_near(postcode, 10)
-        return jsonify({"schools": nearby, "count": len(nearby)})
-    except Exception as e:
-        app.logger.warning(f"[schools-by-postcode] {e}")
-        return jsonify({"schools": []}), 200
-
-
-@app.route("/api/factory/schools-near")
-def api_factory_schools_near():
-    """Public, read-only: nearest real schools for the Factory page."""
-    postcode = request.args.get("postcode", "").strip().upper()
-    if not postcode:
-        return jsonify({"error": "postcode required"}), 400
-    try:
-        nearby = _real_schools_near(postcode, 8)
-        return jsonify({"postcode": postcode, "schools": nearby, "count": len(nearby)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
