@@ -8940,7 +8940,8 @@ def _get_cheapest_fuel(postcode: str, fuel: str, radius_miles: float = 5):
 
 
 # ── Public read-only data for the Factory page (humanagency.co/factory) ──────
-_FACTORY_CORS_PATHS = {"/api/mp", "/api/councillor", "/api/myarea/place-search", "/api/factory/fuel-near"}
+_FACTORY_CORS_PATHS = {"/api/mp", "/api/councillor", "/api/myarea/place-search", "/api/factory/fuel-near",
+                       "/api/train/nearest-by-postcode", "/api/train/departures"}
 
 
 @app.after_request
