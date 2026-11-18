@@ -73,6 +73,9 @@ def _get_page(url: str, token: str, batch_number: int):
             if resp.status_code == 200:
                 data = resp.json()
                 return (data if isinstance(data, list) else []), True
+            if resp.status_code == 404:
+                # The API answers 404 for the page after the last one: end of list, not a failure.
+                return [], True
             last_err = f"HTTP {resp.status_code}"
         except (requests.exceptions.RequestException, ValueError) as e:
             last_err = str(e)[:120]
