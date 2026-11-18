@@ -8939,6 +8939,41 @@ def _get_cheapest_fuel(postcode: str, fuel: str, radius_miles: float = 5):
     return nearby[0]["price"], nearby[0]
 
 
+# ── Public read-only data for the Factory page (humanagency.co/factory) ──────
+_FACTORY_CORS_PATHS = {"/api/mp", "/api/councillor", "/api/myarea/place-search", "/api/factory/fuel-near"}
+
+
+@app.after_request
+def _factory_cors(resp):
+    if request.path in _FACTORY_CORS_PATHS:
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Methods"] = "GET"
+    return resp
+
+
+@app.route("/api/factory/fuel-near")
+def api_factory_fuel_near():
+    """Cheapest stations near a UK postcode, from the cached Fuel Finder list."""
+    pc = request.args.get("postcode", "").strip().upper().replace(" ", "")
+    fuel = request.args.get("fuel", "petrol").lower()
+    if not pc:
+        return jsonify({"error": "postcode required"}), 400
+    latlon = postcode_to_latlon(pc)
+    if not latlon:
+        return jsonify({"error": "postcode not found"}), 404
+    near = _nearby_stations(latlon[0], latlon[1], fuel, 8)
+    near.sort(key=lambda x: x["price"])
+    stations = [{
+        "brand": s.get("brand", ""),
+        "address": s.get("address", ""),
+        "postcode": s.get("postcode", ""),
+        "distance_mi": s.get("dist_mi"),
+        "price_p": round(s["price"], 1),
+    } for s in near[:5]]
+    return jsonify({"postcode": pc, "fuel": fuel, "stations": stations,
+                    "station_count": len(near)})
+
+
 @app.route("/api/fuel/refresh")
 def api_fuel_refresh():
     """Pre-warm station cache. Call every 30 min via cron-job.org."""
