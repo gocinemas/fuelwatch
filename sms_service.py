@@ -10287,8 +10287,7 @@ def api_myarea_place_search():
     # Try Google Places if key is set
     if _GOOGLE_PLACES_KEY:
         try:
-            ts = requests.get(
-                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            ts = _gp_get("textsearch",
                 params={"query": query + " UK", "key": _GOOGLE_PLACES_KEY, "region": "uk"},
                 timeout=8,
             )
@@ -10296,8 +10295,7 @@ def api_myarea_place_search():
                 place_id = p.get("place_id")
                 if not place_id:
                     continue
-                det = requests.get(
-                    "https://maps.googleapis.com/maps/api/place/details/json",
+                det = _gp_get("details",
                     params={
                         "place_id": place_id,
                         "fields": "name,formatted_address,international_phone_number",
@@ -13550,8 +13548,7 @@ def api_v2_recurring_add():
             try:
                 gkey = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")
                 if gkey:
-                    r = requests.get(
-                        "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                    r = _gp_get("textsearch",
                         params={"query": raw_location + " UK", "key": gkey, "region": "uk"},
                         timeout=5,
                     )
@@ -15156,8 +15153,7 @@ def _v2_fetch_rated_places(postcode: str, min_rating: float = 4.6) -> list:
 
         for place_type in place_types:
             try:
-                r = requests.get(
-                    "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                r = _gp_get("nearbysearch",
                     params={
                         "location": f"{lat},{lon}",
                         "radius": 2000,  # 2km radius
@@ -15238,8 +15234,7 @@ def _v2_fetch_nearby_shop(postcode: str) -> dict:
                   or os.environ.get("GOOGLE_API_KEY", ""))
         if not gm_key:
             return {}
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+        r = _gp_get("nearbysearch",
             params={"location": f"{lat},{lon}", "radius": 2000, "type": "supermarket", "key": gm_key},
             timeout=5,
         )
@@ -16991,8 +16986,7 @@ def api_brief_nearby():
         }
         if cfg.get("type"):
             params["type"] = cfg["type"]
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+        r = _gp_get("nearbysearch",
             params=params, timeout=10,
         )
         data = r.json()
@@ -18952,8 +18946,7 @@ def api_home_brief():
             if gm_key and search_types:
                 for place_type in search_types[:2]:  # Limit to 2 types per brief
                     try:
-                        r = requests.get(
-                            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                        r = _gp_get("nearbysearch",
                             params={
                                 "location": f"{search_lat},{search_lng}",
                                 "radius": 2000,  # 2km radius
@@ -23122,8 +23115,7 @@ def _google_places_search(query: str, limit: int = 3) -> list:
     if not _GOOGLE_PLACES_KEY:
         return []
     try:
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        r = _gp_get("textsearch",
             params={"query": query + " UK", "key": _GOOGLE_PLACES_KEY, "region": "uk"},
             timeout=8,
         )
@@ -23323,8 +23315,7 @@ def _google_place_details(name: str, lat: float, lon: float) -> dict | None:
     if not _GOOGLE_PLACES_KEY:
         return None
     try:
-        ts = requests.get(
-            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        ts = _gp_get("textsearch",
             params={"query": f"{name}", "key": _GOOGLE_PLACES_KEY, "region": "uk",
                     "location": f"{lat},{lon}", "radius": 500},
             timeout=8,
@@ -23335,8 +23326,7 @@ def _google_place_details(name: str, lat: float, lon: float) -> dict | None:
         place_id = results[0]["place_id"]
         gp_name  = results[0].get("name", name)
 
-        det = requests.get(
-            "https://maps.googleapis.com/maps/api/place/details/json",
+        det = _gp_get("details",
             params={
                 "place_id": place_id,
                 "fields":   "name,formatted_address,formatted_phone_number,website,opening_hours,types,editorial_summary,rating,user_ratings_total,reviews",
@@ -23581,6 +23571,111 @@ _PLACES_CACHE_TTL = 3600  # 1 hour
 _GOOGLE_PLACES_KEY = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")  # Re-enabled 2026-11-14 (was hard-disabled after £73 billing issue). Remove the key from Railway to switch off.
 
 
+# ── Google Places (New) compatibility layer ───────────────────────────────────
+# The legacy Places endpoints (maps/api/place/...) are closed to new projects.
+# These helpers call Places API (New) and return the legacy response shape, so the
+# existing callers only need their URL swapped for _gp_get(kind, ...).
+_GP_NEW_BASE = "https://places.googleapis.com/v1"
+_GP_SEARCH_FIELDS = ("places.id,places.displayName,places.formattedAddress,places.rating,"
+                     "places.userRatingCount,places.location,places.regularOpeningHours.openNow,"
+                     "places.types,places.internationalPhoneNumber")
+
+
+class _GPResponse:
+    def __init__(self, status_code: int, body: dict):
+        self.status_code = status_code
+        self._body = body
+
+    def json(self):
+        return self._body
+
+
+def _gp_place_to_legacy(p: dict) -> dict:
+    loc = p.get("location") or {}
+    hours = p.get("regularOpeningHours") or {}
+    out = {
+        "place_id": p.get("id", ""),
+        "name": (p.get("displayName") or {}).get("text", ""),
+        "formatted_address": p.get("formattedAddress", ""),
+        "rating": p.get("rating", 0),
+        "user_ratings_total": p.get("userRatingCount", 0),
+        "geometry": {"location": {"lat": loc.get("latitude"), "lng": loc.get("longitude")}},
+        "types": p.get("types", []),
+        "international_phone_number": p.get("internationalPhoneNumber", ""),
+    }
+    if "openNow" in hours:
+        out["opening_hours"] = {"open_now": hours.get("openNow")}
+    return out
+
+
+def _gp_get(kind: str, params: dict = None, timeout: int = 10) -> _GPResponse:
+    """Drop-in replacement for requests.get on the legacy Places URLs.
+    kind: 'textsearch' | 'nearbysearch' | 'details'."""
+    params = dict(params or {})
+    key = params.get("key") or _GOOGLE_PLACES_KEY
+    if not key:
+        return _GPResponse(403, {"status": "REQUEST_DENIED", "results": []})
+    headers = {"X-Goog-Api-Key": key, "Content-Type": "application/json"}
+    try:
+        if kind == "details":
+            place_id = params.get("place_id", "")
+            fields = params.get("fields") or "displayName,formattedAddress,internationalPhoneNumber"
+            # Map legacy field names to Places API (New) field names
+            _fmap = {"name": "displayName", "formatted_address": "formattedAddress",
+                     "international_phone_number": "internationalPhoneNumber",
+                     "rating": "rating", "geometry": "location", "opening_hours": "regularOpeningHours",
+                     "place_id": "id", "types": "types", "user_ratings_total": "userRatingCount"}
+            mask = ",".join(_fmap.get(f.strip(), f.strip()) for f in fields.split(",") if f.strip())
+            headers["X-Goog-FieldMask"] = mask
+            r = requests.get(f"{_GP_NEW_BASE}/places/{place_id}", headers=headers, timeout=timeout)
+            if r.status_code != 200:
+                return _GPResponse(r.status_code, {"status": "ERROR", "result": {}})
+            return _GPResponse(200, {"status": "OK", "result": _gp_place_to_legacy(r.json())})
+
+        headers["X-Goog-FieldMask"] = _GP_SEARCH_FIELDS
+        if kind == "textsearch":
+            body = {"textQuery": params.get("query", ""), "maxResultCount": 20,
+                    "languageCode": params.get("language", "en-GB")}
+            if params.get("region", "").lower() == "uk":
+                body["regionCode"] = "GB"
+            if params.get("location") and params.get("radius"):
+                lat, lng = [float(x) for x in str(params["location"]).split(",")]
+                body["locationBias"] = {"circle": {"center": {"latitude": lat, "longitude": lng},
+                                                   "radius": float(params["radius"])}}
+            url = f"{_GP_NEW_BASE}/places:searchText"
+        elif kind == "nearbysearch":
+            lat, lng = [float(x) for x in str(params.get("location", "0,0")).split(",")]
+            radius = float(params.get("radius", 2000))
+            keyword = params.get("keyword")
+            if keyword:
+                # Legacy keyword search -> text search biased to the same circle
+                body = {"textQuery": keyword, "maxResultCount": 20,
+                        "languageCode": params.get("language", "en-GB"), "regionCode": "GB",
+                        "locationBias": {"circle": {"center": {"latitude": lat, "longitude": lng},
+                                                    "radius": radius}}}
+                if params.get("type"):
+                    body["includedType"] = params["type"]
+                url = f"{_GP_NEW_BASE}/places:searchText"
+            else:
+                body = {"maxResultCount": 20,
+                        "locationRestriction": {"circle": {"center": {"latitude": lat, "longitude": lng},
+                                                           "radius": radius}}}
+                if params.get("type"):
+                    body["includedTypes"] = [params["type"]]
+                url = f"{_GP_NEW_BASE}/places:searchNearby"
+        else:
+            return _GPResponse(400, {"status": "INVALID_REQUEST", "results": []})
+
+        r = requests.post(url, json=body, headers=headers, timeout=timeout)
+        if r.status_code != 200:
+            return _GPResponse(r.status_code, {"status": "REQUEST_DENIED", "results": []})
+        places = [_gp_place_to_legacy(p) for p in (r.json().get("places") or [])]
+        return _GPResponse(200, {"status": "OK" if places else "ZERO_RESULTS", "results": places})
+    except Exception as e:
+        app.logger.warning(f"[places] {kind} failed: {e}")
+        return _GPResponse(500, {"status": "ERROR", "results": []})
+
+
 def _lookup_venue(name: str, lat: float = None, lon: float = None) -> dict:
     """Look up phone, website, address, hours, rating for a venue via Google Places."""
     out = {"phone": "", "website": "", "address": "", "maps_url": "",
@@ -23595,8 +23690,7 @@ def _lookup_venue(name: str, lat: float = None, lon: float = None) -> dict:
         if lat is not None and lon is not None:
             params["location"] = f"{lat},{lon}"
             params["radius"] = 5000  # 5km — strong local bias
-        ts = requests.get(
-            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        ts = _gp_get("textsearch",
             params=params,
             timeout=6,
         )
@@ -23611,8 +23705,7 @@ def _lookup_venue(name: str, lat: float = None, lon: float = None) -> dict:
         if loc:
             out["maps_url"] = f"https://maps.google.com/?q={loc['lat']},{loc['lng']}"
 
-        det = requests.get(
-            "https://maps.googleapis.com/maps/api/place/details/json",
+        det = _gp_get("details",
             params={
                 "place_id": place_id,
                 "fields":   "name,formatted_phone_number,website,formatted_address,opening_hours,rating,user_ratings_total",
@@ -23661,8 +23754,7 @@ def api_places_google():
         query = name
         if lat and lon:
             query += f" near {lat},{lon}"
-        ts = requests.get(
-            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        ts = _gp_get("textsearch",
             params={"query": query, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
             timeout=8,
         )
@@ -23672,8 +23764,7 @@ def api_places_google():
         place_id = results[0]["place_id"]
 
         # Place Details
-        det = requests.get(
-            "https://maps.googleapis.com/maps/api/place/details/json",
+        det = _gp_get("details",
             params={
                 "place_id": place_id,
                 "fields":   "name,rating,user_ratings_total,reviews,url,price_level,website",
@@ -23882,8 +23973,7 @@ def api_debug_places_search():
     gp_raw, gp_error = {}, ""
     if _GOOGLE_PLACES_KEY:
         try:
-            r = requests.get(
-                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            r = _gp_get("textsearch",
                 params={"query": q + " UK", "key": _GOOGLE_PLACES_KEY, "region": "uk"},
                 timeout=8,
             )
@@ -23999,8 +24089,7 @@ def api_places_nearby():
         t = override_type or cfg.get("type")
         if t:
             params["type"] = t
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+        r = _gp_get("nearbysearch",
             params=params, timeout=10,
         )
         return r.json()
@@ -24099,8 +24188,7 @@ def api_places_save():
     phone = website = hours_today = top_review = full_address = None
     if place_id and _GOOGLE_PLACES_KEY:
         try:
-            det = requests.get(
-                "https://maps.googleapis.com/maps/api/place/details/json",
+            det = _gp_get("details",
                 params={
                     "place_id": place_id,
                     "fields":   "name,formatted_address,formatted_phone_number,website,"
@@ -24418,8 +24506,7 @@ def _gplaces_details(place_id: str) -> dict:
     if not _GOOGLE_PLACES_KEY or not place_id:
         return {}
     try:
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/details/json",
+        r = _gp_get("details",
             params={"place_id": place_id,
                     "fields": "formatted_phone_number,website,opening_hours",
                     "key": _GOOGLE_PLACES_KEY},
@@ -24440,8 +24527,7 @@ def _gplaces_details(place_id: str) -> dict:
 def _gplaces_text_search(query: str, lat: float, lon: float, radius: int) -> list:
     """Run a single Google Places Text Search and return raw result list."""
     try:
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        r = _gp_get("textsearch",
             params={"query": query, "location": f"{lat},{lon}",
                     "radius": radius, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
             timeout=8,
@@ -24454,8 +24540,7 @@ def _gplaces_text_search(query: str, lat: float, lon: float, radius: int) -> lis
 def _gplaces_nearby_search(keyword: str, lat: float, lon: float, radius: int) -> list:
     """Run a Google Places Nearby Search and return raw result list."""
     try:
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+        r = _gp_get("nearbysearch",
             params={"keyword": keyword, "location": f"{lat},{lon}",
                     "radius": radius, "key": _GOOGLE_PLACES_KEY},
             timeout=8,
@@ -25598,8 +25683,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str, is_book
             try:
                 _gm_key = os.environ.get("GOOGLE_PLACES_KEY", "") or os.environ.get("GOOGLE_MAPS_KEY", "")
                 if _gm_key:
-                    _nr = requests.get(
-                        "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                    _nr = _gp_get("nearbysearch",
                         params={
                             "location": f"{_loc['lat']},{_loc['lon']}",
                             "rankby": "distance",
@@ -27123,16 +27207,14 @@ def _wa_menu_lookup_pc(name: str, home_pc: str = "") -> str:
             if lat and lon:
                 params["location"] = f"{lat},{lon}"
                 params["radius"] = 20000
-            ts = requests.get(
-                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            ts = _gp_get("textsearch",
                 params=params, timeout=6,
             )
             results = ts.json().get("results", [])
             if results:
                 place_id = results[0]["place_id"]
                 place_name = results[0].get("name", name)
-                det = requests.get(
-                    "https://maps.googleapis.com/maps/api/place/details/json",
+                det = _gp_get("details",
                     params={
                         "place_id": place_id,
                         "fields": "name,formatted_address,formatted_phone_number,website",
@@ -28273,8 +28355,7 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                   "type": place_type, "key": key}
         if kw:
             params["keyword"] = kw
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+        r = _gp_get("nearbysearch",
             params=params, timeout=10,
         )
         return r.json().get("results", [])
@@ -28469,8 +28550,7 @@ def _places_review_snippet(place_id: str, keywords: list) -> str:
     if not key or not place_id:
         return ""
     try:
-        r = requests.get(
-            "https://maps.googleapis.com/maps/api/place/details/json",
+        r = _gp_get("details",
             params={"place_id": place_id, "fields": "reviews", "key": key},
             timeout=4,
         )
@@ -28514,8 +28594,7 @@ def _fetch_place_hours(destination: str) -> dict:
         return {}
     try:
         # Text search to get place_id
-        ts = requests.get(
-            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        ts = _gp_get("textsearch",
             params={"query": destination + " UK", "key": key, "region": "uk"},
             timeout=6,
         )
@@ -28526,8 +28605,7 @@ def _fetch_place_hours(destination: str) -> dict:
         if not place_id:
             return {}
         # Place Details for opening hours
-        pd = requests.get(
-            "https://maps.googleapis.com/maps/api/place/details/json",
+        pd = _gp_get("details",
             params={"place_id": place_id, "fields": "name,opening_hours", "key": key},
             timeout=6,
         )
@@ -28916,8 +28994,7 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
         if home_geo and gkey:
             try:
                 import math as _math
-                r = requests.get(
-                    "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                r = _gp_get("nearbysearch",
                     params={
                         "location": f"{home_geo[0]},{home_geo[1]}",
                         "keyword":  destination,
