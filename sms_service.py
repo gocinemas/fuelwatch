@@ -205,6 +205,14 @@ register_personal_messages_endpoints(app)
 from company_intelligence_routes import register_company_intelligence_endpoints
 register_company_intelligence_endpoints(app)
 
+# Code-based sign-in (WhatsApp code, 30-day session)
+from miru_auth import register_auth
+register_auth(app)
+
+# ── Personal intel test page: /me ──
+from personal_intel_routes import register_personal_intel_endpoints
+register_personal_intel_endpoints(app)
+
 # Register complete intelligence hub with chat & caching
 from company_api_complete import register_company_api_complete
 register_company_api_complete(app)
