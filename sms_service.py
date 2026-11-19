@@ -41807,6 +41807,26 @@ def admin_fix_receipt_summaries():
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+_OFSTED = None
+
+
+def _ofsted_for(urn):
+    """Ofsted overall rating and report link for a school URN (from ofsted_ratings.csv).
+    The file is Ofsted's open data for state-funded schools. Returns None if not listed."""
+    global _OFSTED
+    if _OFSTED is None:
+        _OFSTED = {}
+        try:
+            import csv as _csv
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ofsted_ratings.csv")
+            with open(path, encoding="utf-8") as f:
+                for row in _csv.DictReader(f):
+                    _OFSTED[row["urn"]] = row
+        except Exception as e:
+            app.logger.warning(f"[ofsted] could not load ratings: {e}")
+    return _OFSTED.get(str(urn or "").strip())
+
+
 def _real_schools_near(postcode: str, limit: int = 10) -> list:
     """Real schools (DfE register, Supabase `schools`) in the same postcode area,
     geocoded with postcodes.io and sorted by straight-line distance."""
@@ -41845,7 +41865,9 @@ def _real_schools_near(postcode: str, limit: int = 10) -> list:
         d = haversine_km(lat, lon, g[0], g[1])
         out.append({"name": r.get("name", ""), "type": r.get("type", "") or "",
                     "address": r.get("address", ""), "postcode": r["postcode"],
-                    "lat": g[0], "lon": g[1], "distance_km": round(d, 2)})
+                    "lat": g[0], "lon": g[1], "distance_km": round(d, 2),
+                    "ofsted_rating": (_ofsted_for(r.get("urn")) or {}).get("rating", ""),
+                    "ofsted_report": (_ofsted_for(r.get("urn")) or {}).get("report", "")})
     out.sort(key=lambda x: x["distance_km"])
     return out[:limit]
 
