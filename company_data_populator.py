@@ -191,7 +191,7 @@ def populate_company_data(company_name: str, slug: str = None, requested_by: str
         # If update fails, try insert as fallback
         try:
             sb.table("company_details").insert({
-                "company_name": company_name.strip().title(),
+                "display_name": company_name.strip().title(),
                 "slug": slug,
                 "status": "enriching",
                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -209,20 +209,16 @@ def populate_company_data(company_name: str, slug: str = None, requested_by: str
             description = wiki["extract"][:500]
 
         record = {
-            "company_name": (company_name or slug).strip().title(),
+            "display_name": (company_name or slug).strip().title(),
             "slug": slug,
             "description": description,
             "industry": enriched.get("industry"),
             "website": enriched.get("website"),
-            "logo_url": (wiki or {}).get("image"),
             "headquarters": enriched.get("headquarters"),
-            "founded_year": enriched.get("founded_year"),
-            "employee_count": enriched.get("employee_count"),
             "social_links": enriched.get("social_links") or {},
             "key_facts": enriched.get("key_facts") or [],
             "sources": [u for u in [(wiki or {}).get("wikipedia_url")] if u],
             "status": "ready",
-            "confidence_score": enriched.get("confidence_score"),
             "fetch_error": None,
             "last_enriched_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -267,7 +263,7 @@ def populate_stale_companies(limit: int = 20):
     # 1. Never-completed rows (pending from a page view, or a previous failure)
     res = (
         sb.table("company_details")
-        .select("company_name,slug,status")
+        .select("display_name,slug,status")
         .in_("status", ["pending", "failed"])
         .limit(limit)
         .execute()
@@ -279,7 +275,7 @@ def populate_stale_companies(limit: int = 20):
         cutoff = (datetime.now(timezone.utc) - timedelta(days=STALE_AFTER_DAYS)).isoformat()
         res2 = (
             sb.table("company_details")
-            .select("company_name,slug,status,last_enriched_at")
+            .select("display_name,slug,status,last_enriched_at")
             .eq("status", "ready")
             .lt("last_enriched_at", cutoff)
             .order("last_enriched_at")
