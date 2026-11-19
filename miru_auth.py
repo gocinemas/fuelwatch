@@ -123,15 +123,31 @@ def register_auth(app):
             app.logger.warning(f"[me/messages] {e}")
             return jsonify({"error": "Could not load messages"}), 500
         # Newest first, up to 40, with the action and deadline when the email had one
+        # The child and school live on the profile, not on each message
+        wa = f"whatsapp:{phone}"
+        profiles = {}
+        try:
+            for p in (_sb().table("school_profiles").select("id,child_name,school_name")
+                      .eq("from_number", wa).execute().data or []):
+                profiles[p["id"]] = p
+        except Exception as e:
+            app.logger.warning(f"[me/messages] profiles: {e}")
         items = sorted(events, key=lambda e: e.get("event_date") or e.get("created_at") or "", reverse=True)[:40]
-        return jsonify({"messages": [{
-            "title": e.get("event_title"),
-            "date": e.get("event_date") or (e.get("created_at") or "")[:10],
-            "child": e.get("child_name") or "Other",
-            "school": e.get("school_name") or "",
-            "action": e.get("action_needed") or "",
-            "deadline": e.get("deadline") or "",
-        } for e in items]})
+        def _action(a):
+            a = (a or "").strip()
+            return "" if a.lower().startswith("see school email") else a
+        out = []
+        for e in items:
+            prof = profiles.get(e.get("profile_id"), {})
+            out.append({
+                "title": e.get("event_title"),
+                "date": e.get("event_date") or (e.get("created_at") or "")[:10],
+                "child": prof.get("child_name") or e.get("child_name") or "Other",
+                "school": prof.get("school_name") or e.get("school_name") or "",
+                "action": _action(e.get("action_needed")),
+                "deadline": e.get("deadline") or "",
+            })
+        return jsonify({"messages": out})
 
     @app.route("/api/auth/request-code", methods=["POST"])
     def auth_request_code():
