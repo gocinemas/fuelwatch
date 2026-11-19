@@ -8606,6 +8606,9 @@ def _resolve_councillors(postcode: str) -> dict:
         council   = ward_data.get("council") or council
 
     rows = _get_councillors_for_ward(ward_gss)
+    # Redrawn wards have no official code yet: they are stored under the ballot id
+    if not rows and ward_data and ward_data.get("ballot_paper_id"):
+        rows = _get_councillors_for_ward(ward_data["ballot_paper_id"])
     if rows:
         return {"councillors": rows, "ward": ward_name, "council": council}
 
