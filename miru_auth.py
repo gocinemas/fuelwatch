@@ -90,7 +90,41 @@ def session_phone():
     return rows[0]["phone"] if exp > _now() else None
 
 
+FACTORY_ORIGIN = "https://humanagency.co"
+CROSS_SITE_PATHS = ("/api/auth/", "/api/factory/me/")
+
+
+def _cors_for_factory(resp):
+    """Let the Factory page (humanagency.co) use the sign-in cookie. Only that origin is allowed."""
+    if request.path.startswith(CROSS_SITE_PATHS) and request.headers.get("Origin", "") == FACTORY_ORIGIN:
+        resp.headers["Access-Control-Allow-Origin"] = FACTORY_ORIGIN
+        resp.headers["Access-Control-Allow-Credentials"] = "true"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        resp.headers["Vary"] = "Origin"
+    return resp
+
+
 def register_auth(app):
+    app.after_request(_cors_for_factory)
+
+    @app.route("/api/factory/me/messages", methods=["GET"])
+    def factory_me_messages():
+        phone = session_phone()
+        if not phone:
+            return jsonify({"error": "Sign in first"}), 401
+        try:
+            import school_service  # already loaded by the app
+            events = school_service._get_events(f"whatsapp:{phone}", days_ahead=30, days_back=14)
+        except Exception as e:
+            app.logger.warning(f"[me/messages] {e}")
+            return jsonify({"error": "Could not load messages"}), 500
+        items = sorted(events, key=lambda e: e.get("event_date") or "9999-12-31")[:5]
+        return jsonify({"messages": [{
+            "title": e.get("event_title"), "date": e.get("event_date"),
+            "child": e.get("child_name"), "school": e.get("school_name"),
+        } for e in items]})
+
     @app.route("/api/auth/request-code", methods=["POST"])
     def auth_request_code():
         body = request.get_json(force=True, silent=True) or {}

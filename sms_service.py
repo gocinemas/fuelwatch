@@ -1443,7 +1443,8 @@ def _nearest_tube_station(lat: float, lon: float, radius_m: int = 2000):
         stops = r.json().get("stopPoints", [])
         if stops:
             s = stops[0]
-            return s["id"], s["commonName"], round(s.get("distance", 0))
+            # TfL now returns naptanId (older responses used id)
+            return (s.get("naptanId") or s.get("id")), s.get("commonName", ""), round(s.get("distance", 0))
     except Exception as e:
         print(f"[tube nearest] {e}")
     return None, None, None
@@ -14629,6 +14630,17 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
         }
     except Exception:
         return {}
+
+
+@app.route("/api/factory/me/spend", methods=["GET"])
+def factory_me_spend():
+    """Signed-in user's spend this period: total and label only (no merchants or receipts)."""
+    from miru_auth import session_phone
+    phone = session_phone()
+    if not phone:
+        return jsonify({"error": "Sign in first"}), 401
+    d = _v2_fetch_spend(f"whatsapp:{phone}")
+    return jsonify({"total": d.get("total", 0), "period": d.get("period", "")})
 
 
 def _v2_fetch_spend_this_week(from_number: str) -> dict:
