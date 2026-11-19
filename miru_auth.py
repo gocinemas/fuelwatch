@@ -56,8 +56,8 @@ def _mask(phone: str) -> str:
 
 
 def _sb():
-    import lib  # the existing Supabase helper module
-    return lib._sb()
+    import library  # the existing Supabase helper module (imported as `lib` in sms_service)
+    return library._sb()
 
 
 def _send_code_whatsapp(phone: str, code: str) -> bool:
