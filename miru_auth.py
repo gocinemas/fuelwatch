@@ -118,7 +118,7 @@ def register_auth(app):
             return jsonify({"error": "Sign in first"}), 401
         try:
             import school_service  # already loaded by the app
-            events = school_service._get_events(f"whatsapp:{phone}", days_ahead=30, days_back=14)
+            events = school_service._get_events(f"whatsapp:{phone}", days_ahead=0, days_back=10)
         except Exception as e:
             app.logger.warning(f"[me/messages] {e}")
             return jsonify({"error": "Could not load messages"}), 500
