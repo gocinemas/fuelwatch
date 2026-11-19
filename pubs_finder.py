@@ -162,24 +162,36 @@ def get_nearby_pubs(postcode: str, limit: int = 5, confidence_tier: str = None) 
 
         # Query Supabase pubs table with pagination (fetch ALL 38k+ pubs)
         sb = lib._sb()
-        all_rows = []
-        page = 0
-        page_size = 1000
 
-        while True:
-            query = sb.table("pubs").select("*").range(page * page_size, (page + 1) * page_size - 1)
+        def _fetch_pages(use_box: bool) -> List[Dict]:
+            """Pull pubs page by page. With use_box, only pubs in a box around the
+            postcode (about 22 km) are requested, so far fewer rows move over."""
+            rows_out = []
+            page = 0
+            page_size = 1000
+            d_lat = 0.2
+            d_lon = d_lat * 1.6
+            while True:
+                query = sb.table("pubs").select("*")
+                if use_box:
+                    query = (query.gte("lat", user_lat - d_lat).lte("lat", user_lat + d_lat)
+                                  .gte("lon", user_lon - d_lon).lte("lon", user_lon + d_lon))
+                query = query.range(page * page_size, (page + 1) * page_size - 1)
+                # Filter by confidence tier if specified
+                if confidence_tier:
+                    query = query.eq("confidence_tier", confidence_tier)
+                rows = query.execute().data or []
+                if not rows:
+                    break
+                rows_out.extend(rows)
+                page += 1
+            return rows_out
 
-            # Filter by confidence tier if specified
-            if confidence_tier:
-                query = query.eq("confidence_tier", confidence_tier)
-
-            rows = query.execute().data or []
-            if not rows:
-                break
-
-            all_rows.extend(rows)
-            page += 1
-            print(f"[pubs] Fetched page {page} ({len(all_rows)} total)")
+        all_rows = _fetch_pages(use_box=True)
+        if not all_rows:
+            # Safety net: if the box query finds nothing, fall back to the full scan
+            all_rows = _fetch_pages(use_box=False)
+        print(f"[pubs] Pulled {len(all_rows)} pubs")
 
         print(f"[pubs] Total pubs to search: {len(all_rows)}")
 
