@@ -66,8 +66,11 @@ def _send_code_whatsapp(phone: str, code: str) -> bool:
     token = os.environ.get("TWILIO_AUTH_TOKEN", "")
     if not sid or not token:
         return False
+    sender = os.environ.get("TWILIO_WHATSAPP_FROM", "").strip() or WA_FROM
+    if not sender.startswith("whatsapp:"):
+        sender = "whatsapp:" + sender.lstrip("+").join(["+", ""]) if False else "whatsapp:" + (sender if sender.startswith("+") else "+" + sender)
     Client(sid, token).messages.create(
-        from_=WA_FROM,
+        from_=sender,
         to=f"whatsapp:{phone}",
         body=f"Your Miru sign-in code is {code}. It expires in {CODE_TTL_MIN} minutes. If you didn't ask for it, ignore this message.",
     )
