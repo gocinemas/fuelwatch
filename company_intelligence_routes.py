@@ -111,7 +111,7 @@ def _ensure_row(company_name: str, requested_by: str = None):
     if not row:
         try:
             row = {
-                "company_name": (company_name or "").strip().title(),
+                "display_name": (company_name or "").strip().title(),
                 "slug": slug,
                 "status": "pending",
                 "requested_by": requested_by,
@@ -125,7 +125,7 @@ def _ensure_row(company_name: str, requested_by: str = None):
             print(f"[company_routes] Failed to create row for '{slug}': {e}")
             # Return a minimal dict so the page still works
             return {
-                "company_name": (company_name or "").strip().title(),
+                "display_name": (company_name or "").strip().title(),
                 "slug": slug,
                 "status": "error",
                 "description": f"Could not load profile: {str(e)[:100]}"
@@ -147,8 +147,9 @@ def ensure_company_row(company_name: str, requested_by: str = None):
 
     if row and not just_created and row.get("status") == "ready":
         try:
+            # view counts aren't stored in the live table; just record that the page was read
             _sb().table("company_details").update(
-                {"view_count": (row.get("view_count") or 0) + 1}
+                {"updated_at": datetime.utcnow().isoformat()}
             ).eq("slug", row["slug"]).execute()
         except Exception:
             pass  # view counting is best-effort, never block the page on it
@@ -199,10 +200,10 @@ def register_company_intelligence_endpoints(app):
         res = (
             _sb()
             .table("company_details")
-            .select("company_name,slug,industry,description,logo_url,status,view_count")
-            .ilike("company_name", f"%{q}%")
+            .select("display_name,slug,industry,description,status")
+            .ilike("display_name", f"%{q}%")
             .eq("status", "ready")
-            .order("view_count", desc=True)
+            .order("updated_at", desc=True)
             .limit(20)
             .execute()
         )
@@ -223,10 +224,10 @@ def handle_company_lookup_command(company_query: str, from_number: str) -> str:
     if row.get("status") == "ready" and not just_created:
         desc = (row.get("description") or "").strip()
         preview = f"\n\n{desc[:180]}{'…' if len(desc) > 180 else ''}" if desc else ""
-        return f"🏢 *{row.get('company_name')}*{preview}\n\n🔗 {link}"
+        return f"🏢 *{row.get('display_name')}*{preview}\n\n🔗 {link}"
 
     return (
-        f"🏢 Gathering intelligence on *{row.get('company_name', company_query)}*…\n\n"
+        f"🏢 Gathering intelligence on *{row.get('display_name', company_query)}*…\n\n"
         f"Your shareable page is ready now and will fill in over the next"
         f" ~30 seconds:\n🔗 {link}"
     )
