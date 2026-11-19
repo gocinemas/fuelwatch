@@ -209,10 +209,6 @@ register_company_intelligence_endpoints(app)
 from miru_auth import register_auth
 register_auth(app)
 
-# ── Personal intel test page: /me ──
-from personal_intel_routes import register_personal_intel_endpoints
-register_personal_intel_endpoints(app)
-
 # Register complete intelligence hub with chat & caching
 from company_api_complete import register_company_api_complete
 register_company_api_complete(app)
