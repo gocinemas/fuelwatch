@@ -41839,7 +41839,7 @@ def _real_schools_near(postcode: str, limit: int = 10) -> list:
     if not coords:
         return []
     lat, lon = coords
-    rows = (lib._sb().table("schools").select("name,type,address,postcode")
+    rows = (lib._sb().table("schools").select("urn,name,type,address,postcode")
             .ilike("postcode", f"{outward}%").limit(400).execute().data or [])
     rows = [r for r in rows if r.get("postcode")]
     if not rows:
