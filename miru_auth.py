@@ -122,10 +122,15 @@ def register_auth(app):
         except Exception as e:
             app.logger.warning(f"[me/messages] {e}")
             return jsonify({"error": "Could not load messages"}), 500
-        items = sorted(events, key=lambda e: e.get("event_date") or "9999-12-31")[:5]
+        # Newest first, up to 40, with the action and deadline when the email had one
+        items = sorted(events, key=lambda e: e.get("event_date") or e.get("created_at") or "", reverse=True)[:40]
         return jsonify({"messages": [{
-            "title": e.get("event_title"), "date": e.get("event_date"),
-            "child": e.get("child_name"), "school": e.get("school_name"),
+            "title": e.get("event_title"),
+            "date": e.get("event_date") or (e.get("created_at") or "")[:10],
+            "child": e.get("child_name") or "Other",
+            "school": e.get("school_name") or "",
+            "action": e.get("action_needed") or "",
+            "deadline": e.get("deadline") or "",
         } for e in items]})
 
     @app.route("/api/auth/request-code", methods=["POST"])
