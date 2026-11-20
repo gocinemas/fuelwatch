@@ -2130,8 +2130,7 @@ def intel_campaign(brand):
     # Default campaign template for other brands (future expansion)
     return render_template("intel_campaign_brand.html", brand=brand)
 
-@app.route("/brand")
-@app.route("/brand/")
+@app.route("/brand/search")
 def brand_search():
     """Brand search interface - Phase 1 brands (Intel) or brand page (Miru)"""
     search = request.args.get("search", "").strip()
