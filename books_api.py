@@ -93,6 +93,8 @@ def register_books_api(app):
                 change["theme"] = body["theme"]
             if body.get("avatar") and len(str(body["avatar"])) <= 8:
                 change["avatar"] = str(body["avatar"])
+            if body.get("name") and 1 <= len(str(body["name"]).strip()) <= 30:
+                change["name"] = str(body["name"]).strip()
             if not change:
                 return jsonify({"error": "Nothing to change."}), 400
             r = requests.patch(f"{SB}/book_readers", headers=_h("return=representation"), params={"id": f"eq.{reader_id}"}, json=change, timeout=15)
