@@ -208,6 +208,8 @@ from company_analysis import register_company_analysis
 register_company_analysis(app)
 from bins_lookup import register_bins_lookup
 register_bins_lookup(app)
+from books_api import register_books_api
+register_books_api(app)
 
 # Code-based sign-in (WhatsApp code, 30-day session)
 from miru_auth import register_auth
