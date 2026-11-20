@@ -8959,7 +8959,7 @@ _FACTORY_CORS_PATHS = {"/api/mp", "/api/councillor", "/api/myarea/place-search",
 
 @app.after_request
 def _factory_cors(resp):
-    if request.path in _FACTORY_CORS_PATHS or request.path in ("/api/companies/search", "/api/hiring-signals") or request.path.startswith("/api/company/"):
+    if request.path in _FACTORY_CORS_PATHS or request.path in ("/api/companies/search", "/api/hiring-signals", "/api/brand/intelligence") or request.path.startswith("/api/company/"):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Methods"] = "GET"
     return resp
