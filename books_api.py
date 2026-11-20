@@ -3,6 +3,7 @@ Books API for the Factory books page.
 
   GET    /api/books/readers?household=H              readers on this device
   POST   /api/books/readers        {household,name}  add a reader
+  PATCH  /api/books/readers/<id>   {household,theme,avatar}  change a reader's theme or avatar
   DELETE /api/books/readers/<id>?household=H         remove a reader and their books
   GET    /api/books/list?household=H&reader=ID       one reader's books
   POST   /api/books/list           {household,reader,...}  add or update a book
@@ -16,6 +17,7 @@ from flask import jsonify, request
 
 SB = "https://wagbceigsvctbdthfczf.supabase.co/rest/v1"
 SHELVES = {"reading", "read", "tb", "wish"}
+THEMES = {"sunny", "ocean", "jungle", "sunset", "space", "candy"}
 
 
 def _key():
@@ -61,7 +63,7 @@ def register_books_api(app):
         if not household:
             return jsonify({"error": "This device isn't set up for books yet."}), 400
         if request.method == "GET":
-            r = requests.get(f"{SB}/book_readers", headers=_h(), params={"select": "id,name", "household": f"eq.{household}", "order": "added.asc"}, timeout=15)
+            r = requests.get(f"{SB}/book_readers", headers=_h(), params={"select": "id,name,theme,avatar", "household": f"eq.{household}", "order": "added.asc"}, timeout=15)
             return jsonify(r.json() if r.ok else []), (200 if r.ok else 502)
         name = (body.get("name") or "").strip()[:30]
         if not name:
@@ -72,13 +74,24 @@ def register_books_api(app):
         row = r.json()[0]
         return jsonify({"id": row["id"], "name": row["name"]}), 201
 
-    @app.route("/api/books/readers/<reader_id>", methods=["DELETE", "OPTIONS"])
+    @app.route("/api/books/readers/<reader_id>", methods=["PATCH", "DELETE", "OPTIONS"])
     def books_reader_delete(reader_id):
         if request.method == "OPTIONS":
             return ("", 204)
-        household = _household(request.args.get("household"))
+        household = _household(request.args.get("household") or (request.get_json(silent=True) or {}).get("household"))
         if not household or not _owns_reader(household, reader_id):
             return jsonify({"error": "Not found."}), 404
+        if request.method == "PATCH":
+            body = request.get_json(silent=True) or {}
+            change = {}
+            if body.get("theme") in THEMES:
+                change["theme"] = body["theme"]
+            if body.get("avatar") and len(str(body["avatar"])) <= 8:
+                change["avatar"] = str(body["avatar"])
+            if not change:
+                return jsonify({"error": "Nothing to change."}), 400
+            r = requests.patch(f"{SB}/book_readers", headers=_h("return=representation"), params={"id": f"eq.{reader_id}"}, json=change, timeout=15)
+            return (jsonify(r.json()[0]), 200) if r.ok and r.json() else (jsonify({"error": "Could not save."}), 502)
         requests.delete(f"{SB}/book_readers", headers=_h(), params={"id": f"eq.{reader_id}"}, timeout=15)
         return jsonify({"ok": True})
 
