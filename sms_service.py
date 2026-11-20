@@ -206,6 +206,8 @@ from company_intelligence_routes import register_company_intelligence_endpoints
 register_company_intelligence_endpoints(app)
 from company_analysis import register_company_analysis
 register_company_analysis(app)
+from bins_lookup import register_bins_lookup
+register_bins_lookup(app)
 
 # Code-based sign-in (WhatsApp code, 30-day session)
 from miru_auth import register_auth
@@ -8959,7 +8961,7 @@ _FACTORY_CORS_PATHS = {"/api/mp", "/api/councillor", "/api/myarea/place-search",
 
 @app.after_request
 def _factory_cors(resp):
-    if request.path in _FACTORY_CORS_PATHS or request.path in ("/api/companies/search", "/api/hiring-signals", "/api/brand/intelligence") or request.path.startswith("/api/company/"):
+    if request.path in _FACTORY_CORS_PATHS or request.path in ("/api/companies/search", "/api/hiring-signals", "/api/brand/intelligence", "/api/bins/lookup", "/api/bins/dates") or request.path.startswith("/api/company/"):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Methods"] = "GET"
     return resp
