@@ -10,14 +10,20 @@ Steps:
   3. Otherwise return the council's own bin page link.
 Results are cached for 24 hours. Nothing about the person is stored.
 """
+import os
 import re
 import time
+import uuid
 from urllib.parse import quote
 
 import requests
 from flask import jsonify, request
 
 CACHE_SECONDS = 24 * 3600
+# Off by default. Only turned on after WhenIsBins agree to commercial use (see hello@whenisbins.com).
+WIB_ENABLED = os.environ.get("BINS_WHENISBINS_ENABLED", "") == "1"
+WIB_BASE = "https://whenisbins.com/v1"
+WIB_AGENT = "factory-humanagency"
 _cache = {}
 UA = "Factory-bin-lookup/1.0 (humanagency.co)"
 
@@ -80,6 +86,49 @@ def _runnymede_dates(uprn):
             "checked": datetime.now().date().isoformat()}
 
 
+def _wib_addresses(postcode):
+    r = requests.get(f"{WIB_BASE}/addresses", params={"postcode": postcode},
+                     headers={"X-Agent": WIB_AGENT, "User-Agent": UA}, timeout=20)
+    if r.status_code != 200:
+        return None, None
+    d = r.json()
+    council = (d.get("council") or {}).get("name")
+    addresses = [{"id": c["id"], "label": c["label"]} for c in (d.get("candidates") or [])]
+    return council, addresses
+
+
+def _wib_dates(postcode, property_id):
+    """Creates one lookup, waits for it to finish, and returns collections with the council's source link."""
+    from datetime import datetime
+    headers = {"X-Agent": WIB_AGENT, "User-Agent": UA, "Idempotency-Key": str(uuid.uuid4())}
+    r = requests.post(f"{WIB_BASE}/lookups", json={"postcode": postcode, "property_id": property_id},
+                      headers=headers, timeout=30)
+    if r.status_code not in (200, 201):
+        return None
+    lk = r.json()
+    lookup_id = lk.get("id")
+    deadline = time.time() + 120
+    while lk.get("status") in ("queued", "running", "partial") and time.time() < deadline:
+        time.sleep(5)
+        g = requests.get(f"{WIB_BASE}/lookups/{lookup_id}", headers=headers, timeout=20)
+        if g.status_code != 200:
+            break
+        lk = g.json()
+    res = lk.get("result") or {}
+    if lk.get("status") != "done" or not res:
+        return None
+    collections = []
+    for c in res.get("collections", []):
+        for d in c.get("dates", []):
+            collections.append({"bin": c.get("name"), "date": d})
+    collections.sort(key=lambda x: x["date"])
+    council = res.get("council") or {}
+    return {"collections": collections,
+            "source": (council.get("name") or "Council") + " (via WhenIsBins)",
+            "council_page": council.get("lookup_url") or "",  # fallback set in the route
+            "checked": datetime.now().date().isoformat()}
+
+
 CONNECTORS = {
     "E07000212": {  # Runnymede
         "name": "Runnymede",
@@ -95,6 +144,11 @@ def _gov_link(postcode):
 
 
 def lookup(postcode):
+    if WIB_ENABLED:
+        name, addresses = _cached("wib-addr:" + postcode, lambda: _wib_addresses(postcode))
+        if addresses:
+            return {"postcode": postcode, "council": name, "status": "addresses",
+                    "addresses": addresses, "council_page": _gov_link(postcode)}, 200
     council = resolve_council(postcode)
     if not council or not council.get("code"):
         return {"error": "We could not find that postcode."}, 404
@@ -122,6 +176,13 @@ def register_bins_lookup(app):
     def api_bins_dates():
         pc = (request.args.get("postcode") or "").strip()
         uprn = (request.args.get("uprn") or "").strip()
+        if WIB_ENABLED and uprn.startswith("p:") and pc:
+            out = _cached("wib-dates:" + uprn, lambda: _wib_dates(pc, uprn))
+            if out:
+                out["council_page"] = out.get("council_page") or _gov_link(pc)
+                return jsonify(out), 200
+            return jsonify({"error": "Collection days are not available for this address right now.",
+                            "council_page": _gov_link(pc)}), 501
         if not pc or not uprn.isdigit():
             return jsonify({"error": "Choose your address first."}), 400
         council = resolve_council(pc) or {}
