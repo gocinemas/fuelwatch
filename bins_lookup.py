@@ -57,11 +57,34 @@ def _runnymede_addresses(postcode):
     return [{"id": v, "label": re.sub(r"\s+", " ", l).strip()} for v, l in opts]
 
 
+def _runnymede_dates(uprn):
+    """Same request the council's page makes when an address is chosen."""
+    from datetime import datetime
+    url = "https://www.runnymede.gov.uk/homepage/150/check-your-bin-collection-day"
+    r = requests.get(url, params={"address": uprn, "submit": "Find"},
+                     headers={"User-Agent": UA}, timeout=20)
+    html = r.text
+    rows = re.findall(r"<tr>\s*<td>(?:<span[^>]*></span>)?\s*([^<]+?)\s*</td>\s*<td>\s*([^<]+?)\s*</td>", html, flags=re.S)
+    collections = []
+    for service, when in rows:
+        m = re.search(r"(\d{1,2} \w+ \d{4})", when)
+        if not m:
+            continue
+        try:
+            iso = datetime.strptime(m.group(1), "%d %B %Y").date().isoformat()
+        except ValueError:
+            continue
+        collections.append({"bin": service.strip(), "date": iso})
+    return {"collections": collections,
+            "source": "Runnymede Borough Council bin collection checker",
+            "checked": datetime.now().date().isoformat()}
+
+
 CONNECTORS = {
     "E07000212": {  # Runnymede
         "name": "Runnymede",
         "addresses": _runnymede_addresses,
-        "dates": None,  # not built yet: needs the council's dates step
+        "dates": _runnymede_dates,
         "page": "https://www.runnymede.gov.uk/homepage/150/check-your-bin-collection-day",
     },
 }
