@@ -68,6 +68,11 @@ def register_books_api(app):
         name = (body.get("name") or "").strip()[:30]
         if not name:
             return jsonify({"error": "Type a name."}), 400
+        # One name per device: if it's already there, return that reader instead of making a second one
+        existing = requests.get(f"{SB}/book_readers", headers=_h(), params={"select": "id,name", "household": f"eq.{household}", "name": f"ilike.{name}"}, timeout=15)
+        if existing.ok and existing.json():
+            row = existing.json()[0]
+            return jsonify({"id": row["id"], "name": row["name"]}), 200
         r = requests.post(f"{SB}/book_readers", headers=_h("return=representation"), json={"household": household, "name": name}, timeout=15)
         if not r.ok:
             return jsonify({"error": "Could not add that name."}), 502
