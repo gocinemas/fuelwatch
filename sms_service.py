@@ -24940,7 +24940,21 @@ def api_finder_trusted_trades():
 
 @app.route("/api/scan-barcode", methods=["POST"])
 def api_scan_barcode():
-    """Decode a barcode from an uploaded image using pyzbar (server-side, works on all devices)."""
+    """Decode a barcode from an uploaded image (server-side, works on all devices).
+    Tries zxing-cpp first (ships its own library), then pyzbar."""
+    try:
+        import zxingcpp
+        from PIL import Image as _Img, ImageOps as _Ops
+        import io as _io
+        _f = request.files.get("image")
+        if _f:
+            _im = _Ops.exif_transpose(_Img.open(_io.BytesIO(_f.read()))).convert("RGB")
+            _res = zxingcpp.read_barcodes(_im)
+            if _res:
+                return jsonify({"barcode": _res[0].text, "format": str(_res[0].format)})
+            _f.seek(0)
+    except ImportError:
+        pass
     try:
         from pyzbar import pyzbar as _pyzbar
         from PIL import Image
