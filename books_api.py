@@ -4,6 +4,8 @@ Books API for the Factory books page.
   GET    /api/books/readers?household=H              readers on this device
   POST   /api/books/readers        {household,name}  add a reader
   PATCH  /api/books/readers/<id>   {household,theme,avatar}  change a reader's theme or avatar
+  POST   /api/books/link-code      {household}      make a 6-digit code to join from another device
+  POST   /api/books/link           {code}           use a code: returns the shared household
   DELETE /api/books/readers/<id>?household=H         remove a reader and their books
   GET    /api/books/list?household=H&reader=ID       one reader's books
   POST   /api/books/list           {household,reader,...}  add or update a book
@@ -43,6 +45,45 @@ def _owns_reader(household, reader_id):
 
 
 def register_books_api(app):
+    import secrets
+    from datetime import datetime, timedelta, timezone
+
+    @app.route("/api/books/link-code", methods=["POST", "OPTIONS"])
+    def books_link_code():
+        """Make a 6-digit code (valid 10 minutes) that lets another device join this household."""
+        if request.method == "OPTIONS":
+            return ("", 204)
+        household = _household((request.get_json(silent=True) or {}).get("household"))
+        if not household:
+            return jsonify({"error": "This device isn't set up for books yet."}), 400
+        code = f"{secrets.randbelow(1000000):06d}"
+        expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+        requests.delete(f"{SB}/book_link_codes", headers=_h(), params={"household": f"eq.{household}"}, timeout=15)
+        r = requests.post(f"{SB}/book_link_codes", headers=_h(), json={"code": code, "household": household, "expires_at": expires}, timeout=15)
+        if not r.ok:
+            return jsonify({"error": "Could not make a code. Try again."}), 502
+        return jsonify({"code": code, "minutes": 10}), 201
+
+    @app.route("/api/books/link", methods=["POST", "OPTIONS"])
+    def books_link_use():
+        """Use a code on a second device: returns the shared household so this device sees the same lists."""
+        if request.method == "OPTIONS":
+            return ("", 204)
+        body = request.get_json(silent=True) or {}
+        code = re.sub(r"\D", "", str(body.get("code") or ""))
+        if len(code) != 6:
+            return jsonify({"error": "Type the 6-digit code."}), 400
+        r = requests.get(f"{SB}/book_link_codes", headers=_h(), params={"select": "code,household,expires_at", "code": f"eq.{code}"}, timeout=15)
+        rows = r.json() if r.ok else []
+        if not rows:
+            return jsonify({"error": "That code isn't right. Check it and try again."}), 404
+        row = rows[0]
+        if datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00")) < datetime.now(timezone.utc):
+            requests.delete(f"{SB}/book_link_codes", headers=_h(), params={"code": f"eq.{code}"}, timeout=15)
+            return jsonify({"error": "That code has run out. Make a new one on the other device."}), 410
+        requests.delete(f"{SB}/book_link_codes", headers=_h(), params={"code": f"eq.{code}"}, timeout=15)
+        return jsonify({"household": row["household"]}), 200
+
     @app.after_request
     def _books_cors(resp):
         if request.path.startswith("/api/books/"):
