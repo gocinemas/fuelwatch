@@ -4,6 +4,7 @@ Books API for the Factory books page.
   GET    /api/books/readers?household=H              readers on this device
   POST   /api/books/readers        {household,name}  add a reader
   PATCH  /api/books/readers/<id>   {household,theme,avatar}  change a reader's theme or avatar
+  POST   /api/books/read-slip      photo (image)    read a library slip: titles and due dates
   POST   /api/books/link-code      {household}      make a 6-digit code to join from another device
   POST   /api/books/link           {code}           use a code: returns the shared household
   DELETE /api/books/readers/<id>?household=H         remove a reader and their books
@@ -47,6 +48,42 @@ def _owns_reader(household, reader_id):
 def register_books_api(app):
     import secrets
     from datetime import datetime, timedelta, timezone
+
+    @app.route("/api/books/read-slip", methods=["POST", "OPTIONS"])
+    def books_read_slip():
+        """Read a photo of a library slip: returns the titles and due-back dates it lists (the page asks her to confirm)."""
+        if request.method == "OPTIONS":
+            return ("", 204)
+        f = request.files.get("image")
+        if not f:
+            return jsonify({"error": "Take a photo of the slip."}), 400
+        import base64, json
+        raw = f.read()
+        if len(raw) > 6 * 1024 * 1024:
+            return jsonify({"error": "That photo is too big. Try a closer one."}), 400
+        media = f.mimetype if f.mimetype in ("image/jpeg", "image/png", "image/webp", "image/gif") else "image/jpeg"
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+            resp = client.messages.create(
+                model="claude-sonnet-4-6", max_tokens=1200,
+                messages=[{"role": "user", "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media, "data": base64.b64encode(raw).decode()}},
+                    {"type": "text", "text": "This is a library receipt or loan slip. List every book it shows. Return only JSON: "
+                     '{"books":[{"title":"...","author":"...","due":"YYYY-MM-DD"}]}. Use null for anything you cannot read clearly. '
+                     "Do not guess titles or dates."}]}])
+            text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+            m = re.search(r"\{[\s\S]*\}", text)
+            data = json.loads(m.group(0)) if m else {"books": []}
+        except Exception as e:
+            print(f"[books] read-slip failed: {e}", flush=True)
+            return jsonify({"error": "Couldn't read that photo. Try a clearer one, or type the books in."}), 502
+        books = []
+        for b in (data.get("books") or [])[:60]:
+            t = (b.get("title") or "").strip()
+            if t:
+                books.append({"title": t[:300], "author": (b.get("author") or "")[:200], "due": b.get("due") if re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(b.get("due") or "")) else None})
+        return jsonify({"books": books}), 200
 
     @app.route("/api/books/link-code", methods=["POST", "OPTIONS"])
     def books_link_code():
