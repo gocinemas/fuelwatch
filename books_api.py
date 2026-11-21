@@ -156,7 +156,7 @@ def register_books_api(app):
             if not _owns_reader(household, reader):
                 return jsonify({"error": "Not found."}), 404
             r = requests.get(f"{SB}/book_list", headers=_h(), params={
-                "select": "id,book_id,title,author,cover,shelf,rating,finished,notes,added",
+                "select": "id,book_id,title,author,cover,shelf,rating,finished,notes,added,due",
                 "reader_id": f"eq.{reader}", "household": f"eq.{household}", "order": "added.desc"}, timeout=15)
             return jsonify(r.json() if r.ok else []), (200 if r.ok else 502)
         reader = (body.get("reader") or "").strip()
@@ -170,6 +170,7 @@ def register_books_api(app):
             "author": (body.get("author") or "")[:200], "cover": (body.get("cover") or "")[:500],
             "shelf": shelf, "rating": rating, "finished": (body.get("finished") or None),
             "notes": (body.get("notes") or "")[:2000],
+            "due": (body.get("due") or None),
         }
         if body.get("id"):   # update an existing book of this reader
             r = requests.patch(f"{SB}/book_list", headers=_h("return=representation"), params={"id": f"eq.{body['id']}", "reader_id": f"eq.{reader}", "household": f"eq.{household}"}, json=row, timeout=15)
