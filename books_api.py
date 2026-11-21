@@ -49,7 +49,7 @@ def register_books_api(app):
             origin = request.headers.get("Origin", "")
             if origin in ("https://humanagency.co", "https://www.humanagency.co"):
                 resp.headers["Access-Control-Allow-Origin"] = origin
-                resp.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+                resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
                 resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
                 resp.headers["Vary"] = "Origin"
         return resp
