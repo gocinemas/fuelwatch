@@ -141,7 +141,7 @@ def register_books_api(app):
         if not household:
             return jsonify({"error": "This device isn't set up for books yet."}), 400
         if request.method == "GET":
-            r = requests.get(f"{SB}/book_readers", headers=_h(), params={"select": "id,name", "household": f"eq.{household}", "order": "added.asc"}, timeout=15)
+            r = requests.get(f"{SB}/book_readers", headers=_h(), params={"select": "id,name,theme,avatar", "household": f"eq.{household}", "order": "added.asc"}, timeout=15)
             return jsonify(r.json() if r.ok else []), (200 if r.ok else 502)
         name = (body.get("name") or "").strip()[:30]
         if not name:
