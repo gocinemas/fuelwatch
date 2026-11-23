@@ -19030,22 +19030,38 @@ window._receiptsSummaryLoad = async function () {
   var body = document.getElementById('receipts-summary-body');
   if (!card || !body) return;
   var token = (typeof _miruPhone === 'function') ? _miruPhone() : '';
-  if (!token) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  body.innerHTML = '';
+  if (!token) {
+    body.appendChild(_rsEl('div', 'Sign in with your WhatsApp number to see your spending summary.', 'font-size:12px;color:var(--muted)'));
+    return;
+  }
   try {
     var results = await Promise.all(['week', 'month'].map(function (p) {
       return fetch('/api/v2/receipts/summary?token=' + encodeURIComponent(token) + '&period=' + p)
         .then(function (r) { return r.json(); });
     }));
-    body.innerHTML = '';
+    var shown = 0;
     results.forEach(function (d) {
-      if (d && d.status === 'ok' && d.count > 0) body.appendChild(_receiptsSummaryBlock(d));
+      if (d && d.status === 'ok' && d.count > 0) { body.appendChild(_receiptsSummaryBlock(d)); shown++; }
     });
-    card.style.display = body.childNodes.length ? 'block' : 'none';
+    if (!shown) {
+      body.appendChild(_rsEl('div', 'No receipts logged for this week or month yet.', 'font-size:12px;color:var(--muted)'));
+    }
   } catch (e) {
-    card.style.display = 'none';
+    console.error('receipts summary failed', e);
+    body.appendChild(_rsEl('div', 'Spending summary unavailable right now.', 'font-size:12px;color:var(--muted)'));
   }
 };
 
+// Load the summary whenever the Receipts screen is opened, and once on page load
+(function () {
+  var _prevShowScreenRs = window.showScreen;
+  window.showScreen = function (name) {
+    if (typeof _prevShowScreenRs === 'function') _prevShowScreenRs(name);
+    if (name === 'receipts' && window._receiptsSummaryLoad) window._receiptsSummaryLoad();
+  };
+})();
 document.addEventListener('DOMContentLoaded', function () {
   if (window._receiptsSummaryLoad) window._receiptsSummaryLoad();
 });
