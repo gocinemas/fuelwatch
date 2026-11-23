@@ -86,6 +86,94 @@ def _runnymede_dates(uprn):
             "checked": datetime.now().date().isoformat()}
 
 
+LEWISHAM_PAGE = "https://lewisham.gov.uk/myservices/recycling-and-rubbish/your-bins/collection"
+_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
+def _lewisham_addresses(postcode):
+    """The council page's own address finder (POST, no body)."""
+    r = requests.post("https://lewisham.gov.uk/api/AddressFinder",
+                      params={"postcodeOrStreet": postcode, "national": "False"},
+                      headers={"User-Agent": UA}, timeout=20)
+    if r.status_code != 200:
+        return []
+    try:
+        rows = r.json() or []
+    except ValueError:
+        return []
+    return [{"id": str(a["Uprn"]), "label": re.sub(r",\s*London$", "", a.get("Title") or "").strip()}
+            for a in rows if str(a.get("Uprn") or "").isdigit()]
+
+
+def _lewisham_rounds(text, today=None):
+    """Turns 'Food waste is collected WEEKLY on Thursday. Refuse is collected FORTNIGHTLY on
+    Thursday. Your next collection date is 26/11/2026.' into dated collections.
+    Weekly bins get the next 4 dates. Fortnightly bins are only dated when the council gives a
+    next date on the same weekday; otherwise we don't guess which week it is."""
+    from datetime import date, datetime, timedelta
+    today = today or date.today()
+    text = re.sub(r"\s+", " ", text or "")
+    rounds = re.findall(r"([A-Za-z][A-Za-z &/-]*?) (?:is|are) collected (WEEKLY|FORTNIGHTLY) on (\w+)day",
+                        text, flags=re.I)
+    m = re.search(r"next collection date is (\d{1,2}/\d{1,2}/\d{4})", text, flags=re.I)
+    nxt = None
+    if m:
+        try:
+            nxt = datetime.strptime(m.group(1), "%d/%m/%Y").date()
+        except ValueError:
+            nxt = None
+    out = []
+    for name, freq, day in rounds:
+        day = (day + "day").lower()
+        if day not in _DAYS:
+            continue
+        wd = _DAYS.index(day)
+        name = name.strip()
+        name = name[0].upper() + name[1:]
+        if freq.upper() == "WEEKLY":
+            first = today + timedelta(days=(wd - today.weekday()) % 7)
+            out += [{"bin": name, "date": (first + timedelta(weeks=i)).isoformat()} for i in range(4)]
+        elif nxt and nxt.weekday() == wd:
+            d = nxt
+            while d < today:
+                d += timedelta(days=14)
+            out += [{"bin": name, "date": (d + timedelta(days=14 * i)).isoformat()} for i in range(2)]
+    out.sort(key=lambda x: (x["date"], x["bin"]))
+    return out
+
+
+def _lewisham_dates(uprn):
+    """Same steps as the council page: load the form, put the UPRN in the address field, submit."""
+    from datetime import datetime
+    from urllib.parse import urljoin
+    from bs4 import BeautifulSoup
+    s = requests.Session()
+    s.headers["User-Agent"] = UA
+    page = s.get(LEWISHAM_PAGE, timeout=20)
+    soup = BeautifulSoup(page.text, "html.parser")
+    form = next((f for f in soup.find_all("form") if (f.get("action") or "").startswith("/formbuilder")), None)
+    if form is None:
+        return None
+    data = []
+    for el in form.find_all("input"):
+        name, kind = el.get("name"), (el.get("type") or "text").lower()
+        if not name:
+            continue
+        if kind == "submit":
+            if re.search(r"find your collection day", el.get("value") or "", re.I):
+                data.append((name, el.get("value")))
+        elif kind == "hidden":
+            data.append((name, uprn if re.search(r"Fields\[.*\]\.Value$", name) else el.get("value") or ""))
+    res = s.post(urljoin(LEWISHAM_PAGE, form["action"]), data=data, timeout=20)
+    rsoup = BeautifulSoup(res.text, "html.parser")
+    rt = rsoup.select_one(".RoundsTransform")
+    holder = rt.find_parent(["div", "section", "article"]) if rt else None
+    text = holder.get_text(" ") if holder else ""
+    return {"collections": _lewisham_rounds(text),
+            "source": "Lewisham Council bin collection checker",
+            "checked": datetime.now().date().isoformat()}
+
+
 def _wib_addresses(postcode):
     r = requests.get(f"{WIB_BASE}/addresses", params={"postcode": postcode},
                      headers={"X-Agent": WIB_AGENT, "User-Agent": UA}, timeout=20)
@@ -135,6 +223,12 @@ CONNECTORS = {
         "addresses": _runnymede_addresses,
         "dates": _runnymede_dates,
         "page": "https://www.runnymede.gov.uk/homepage/150/check-your-bin-collection-day",
+    },
+    "E09000023": {  # Lewisham
+        "name": "Lewisham",
+        "addresses": _lewisham_addresses,
+        "dates": _lewisham_dates,
+        "page": LEWISHAM_PAGE,
     },
 }
 
@@ -557,4 +651,12 @@ def dates_for(pc, uprn):
     if not conn or not conn.get("dates"):
         return {"error": "Dates for this council are not connected yet.",
                 "council_page": (conn or {}).get("page") or council_link(council.get("code"), pc)}, 501
-    return conn["dates"](uprn), 200
+    try:
+        out = _cached(f"dates:{council.get('code')}:{uprn}", lambda: conn["dates"](uprn))
+    except requests.RequestException:
+        out = None
+    if not out or not out.get("collections"):
+        _cache.pop(f"dates:{council.get('code')}:{uprn}", None)
+        return {"error": "The council's checker didn't give dates for this address. Check on their site.",
+                "council_page": conn.get("page")}, 502
+    return out, 200
