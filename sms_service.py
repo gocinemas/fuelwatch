@@ -45103,6 +45103,13 @@ def fuel_stations_delete():
         print(f"[fuel-stations] Delete error: {e}")
         return jsonify({"error": str(e)}), 500
 
+# ── Factory page: reminders (bins, fuel) and visitor stats ───────────────────
+# Must sit above the app.run() below: nothing after app.run() runs on the live server.
+from factory_reminders import register_factory_reminders
+register_factory_reminders(app, send_wa=_wa_send_proactive, cheapest_fuel=_get_cheapest_fuel)
+from factory_stats import register_factory_stats
+register_factory_stats(app)
+
 # ────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -45612,12 +45619,6 @@ def api_test_postcode_save():
         "fuel": fuel,
         "message": "Test data saved - check console logs"
     })
-
-# ── Factory page: reminders (bins, fuel) and visitor stats ───────────────────
-from factory_reminders import register_factory_reminders
-register_factory_reminders(app, send_wa=_wa_send_proactive, cheapest_fuel=_get_cheapest_fuel)
-from factory_stats import register_factory_stats
-register_factory_stats(app)
 
 if __name__ == "__main__":
     import os
