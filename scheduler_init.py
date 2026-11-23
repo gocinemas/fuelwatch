@@ -33,6 +33,20 @@ def init_scheduler(app):
             max_instances=1  # Only one instance at a time
         )
 
+        # Factory reminders (bins the evening before, fuel drops): check every 15 minutes
+        def _factory_reminders():
+            import factory_reminders
+            factory_reminders.run_scheduled()
+
+        scheduler.add_job(
+            _factory_reminders,
+            trigger=CronTrigger(minute='*/15', timezone='Europe/London'),
+            id='factory_reminders',
+            name='Factory reminders',
+            replace_existing=True,
+            max_instances=1
+        )
+
         # Start the scheduler
         if not scheduler.running:
             scheduler.start()
