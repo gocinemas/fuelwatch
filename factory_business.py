@@ -1,13 +1,16 @@
 """'Is your business easy to find?' for the Factory page (humanagency.co/factory).
 
-A local business owner gives their business name, postcode, website (optional) and a contact.
-We run a quick check of the website straight away, save the request, and tell the owner of
-Human Agency so they can send a fuller report by hand within 24 hours.
+Step 1, instant and anonymous: business name + postcode (+ website) -> Google Maps listing, rating,
+reviews, website checks, social links, a score and the top fixes.
+Step 2, only if they want help: they leave WhatsApp or email -> saved, and the owner is told.
 
-  POST /api/factory/business-check   {business, postcode, website, contact, name}
+  POST /api/factory/business-scan    {business, postcode, website}  -> {google, website, score, out_of, fixes}
+  POST /api/factory/business-check   {business, postcode, website, contact, name, scan}
   GET  /factory/requests?key=...     list of requests (key = CRON_SECRET); &done=<id> marks one done
 
 Saved in ma_details, type="factory_biz_check" (no new table).
+Google lookups use GOOGLE_PLACES_KEY (or GOOGLE_API_KEY), capped per day by FACTORY_GOOGLE_DAILY_CAP
+(default 100), so a busy day can't run up a bill.
 Notifications (optional, set on Railway):
   OWNER_WHATSAPP  e.g. +447700900123   new requests sent here on WhatsApp
   OWNER_EMAIL     new requests emailed here (uses RESEND_API_KEY)
@@ -95,6 +98,72 @@ def check_website(raw):
     return out
 
 
+_gcount = {"day": "", "n": 0}
+
+
+def google_listing(business, postcode):
+    """Find the business on Google Maps (Places API New, one call). None if not set up or over the daily cap."""
+    key = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+    if not key:
+        return None
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if _gcount["day"] != day:
+        _gcount.update(day=day, n=0)
+    if _gcount["n"] >= int(os.environ.get("FACTORY_GOOGLE_DAILY_CAP", "100") or 100):
+        return {"skipped": "daily limit"}
+    _gcount["n"] += 1
+    try:
+        r = requests.post("https://places.googleapis.com/v1/places:searchText",
+                          headers={"X-Goog-Api-Key": key, "Content-Type": "application/json",
+                                   "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.rating,"
+                                                       "places.userRatingCount,places.googleMapsUri,places.businessStatus,"
+                                                       "places.regularOpeningHours.weekdayDescriptions,places.nationalPhoneNumber"},
+                          json={"textQuery": f"{business} {postcode}".strip(), "regionCode": "GB", "maxResultCount": 1},
+                          timeout=8)
+        places = (r.json() or {}).get("places") or []
+    except Exception as e:
+        print(f"[biz-scan] google: {str(e)[:120]}")
+        return None
+    if not places:
+        return {"found": False}
+    p = places[0]
+    name = (p.get("displayName") or {}).get("text", "")
+    # Only count it if the name looks like theirs (Google returns the nearest match even when it isn't)
+    words = [w for w in re.findall(r"[a-z0-9]+", business.lower()) if len(w) > 2 and w not in ("the", "and", "ltd", "limited")]
+    if words and not any(w in name.lower() for w in words):
+        return {"found": False, "nearest": name}
+    return {"found": True, "name": name, "address": p.get("formattedAddress", ""),
+            "rating": p.get("rating"), "reviews": p.get("userRatingCount") or 0,
+            "website": p.get("websiteUri", ""), "maps_url": p.get("googleMapsUri", ""),
+            "phone": bool(p.get("nationalPhoneNumber")), "hours": bool((p.get("regularOpeningHours") or {}).get("weekdayDescriptions")),
+            "open": p.get("businessStatus", "") in ("", "OPERATIONAL")}
+
+
+def score_and_fixes(g, w):
+    """Plain-English score out of 8 and the fixes that matter most, most important first."""
+    checks, fixes = [], []
+    def add(ok, fix, weight):
+        checks.append(bool(ok))
+        if not ok:
+            fixes.append((weight, fix))
+    on_google = bool(g and g.get("found"))
+    if g is not None and not g.get("skipped"):
+        add(on_google, "Claim your free Google Business Profile. It's how most people find a local business, and it puts you on Google Maps.", 10)
+    if on_google:
+        add((g.get("reviews") or 0) >= 20, f"Get more Google reviews (you have {g.get('reviews') or 0}). A small QR code by the till asking happy customers works well.", 8)
+        add(g.get("hours"), "Add your opening hours to Google, so people don't turn up when you're closed.", 7)
+        add(g.get("website"), "Add your website to your Google listing.", 6)
+    has_site = bool(w and w.get("loads"))
+    add(has_site, "Get a simple one-page website: what you do, opening hours, a map and how to contact you.", 9)
+    if has_site:
+        add(w.get("phone_friendly"), "Make your website work on phones. Most people will look you up on one.", 7)
+        add(w.get("secure"), "Switch your website to https. Browsers warn people away from sites without it.", 5)
+        soc = w.get("social") or []
+        add(any(s in soc for s in ("instagram", "facebook", "tiktok")), "Link your Instagram, Facebook or TikTok from your website, so people can see what you're up to.", 4)
+    fixes.sort(key=lambda x: -x[0])
+    return sum(checks), len(checks), [f for _, f in fixes[:3]]
+
+
 def _notify(rec):
     pc = rec.get("postcode", "")
     w = rec.get("website_check") or {}
@@ -106,6 +175,14 @@ def _notify(rec):
                      f"social: {', '.join(w.get('social') or []) or 'none found'}")
     else:
         lines.append("No website given.")
+    g = (rec.get("scan") or {}).get("google") or {}
+    if g.get("found"):
+        lines.append(f"Google: {g.get('name')} · {g.get('rating') or '-'}★ from {g.get('reviews') or 0} reviews · {g.get('maps_url', '')}")
+    elif g:
+        lines.append("Google: not found on Google Maps")
+    sc = rec.get("scan") or {}
+    if sc.get("out_of"):
+        lines.append(f"Score: {sc.get('score')}/{sc.get('out_of')}. Fixes: " + " | ".join(sc.get("fixes") or []))
     text = "\n".join(lines)
     wa = os.environ.get("OWNER_WHATSAPP", "").strip()
     if wa and _send_wa:
@@ -129,8 +206,19 @@ def _notify(rec):
 _send_wa = None
 
 
+def _scan_line(sc):
+    if not sc:
+        return ""
+    e = html.escape
+    g = sc.get("google") or {}
+    gl = (f"Google: <a target=_blank href='{e(g.get('maps_url', ''))}'>{e(g.get('name', ''))}</a> · {e(str(g.get('rating') or '-'))}★ from {e(str(g.get('reviews') or 0))} reviews"
+          if g.get("found") else ("Google: not on Google Maps" if g else ""))
+    fx = "".join(f"<li>{e(f)}</li>" for f in sc.get("fixes") or [])
+    return f"{gl}<br>Score {e(str(sc.get('score')))}/{e(str(sc.get('out_of')))}<ol style='margin:4px 0 0'>{fx}</ol>"
+
+
 def _cors(resp):
-    if request.path == "/api/factory/business-check" and request.headers.get("Origin", "") == FACTORY_ORIGIN:
+    if request.path in ("/api/factory/business-check", "/api/factory/business-scan") and request.headers.get("Origin", "") == FACTORY_ORIGIN:
         resp.headers["Access-Control-Allow-Origin"] = FACTORY_ORIGIN
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
         resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
@@ -142,6 +230,41 @@ def register_factory_business(app, send_wa=None):
     global _send_wa
     _send_wa = send_wa
     app.after_request(_cors)
+
+    def _limited(bucket, n):
+        ip = (request.headers.get("X-Forwarded-For", request.remote_addr or "") or "").split(",")[0].strip()
+        now = time.time()
+        k = bucket + ":" + ip
+        _recent[k] = [t for t in _recent.get(k, []) if now - t < 3600]
+        if len(_recent[k]) >= n:
+            return True
+        _recent[k].append(now)
+        return False
+
+    @app.route("/api/factory/business-scan", methods=["POST"])
+    def factory_business_scan():
+        b = request.get_json(silent=True) or {}
+        business = str(b.get("business") or "").strip()[:100]
+        postcode = str(b.get("postcode") or "").strip().upper()[:10]
+        website = str(b.get("website") or "").strip()[:200]
+        if len(business) < 2:
+            return jsonify({"error": "Tell us the business name."}), 400
+        if _limited("scan", 10):
+            return jsonify({"error": "That's a lot of checks. Try again in an hour."}), 429
+        g = google_listing(business, postcode)
+        if not website and g and g.get("found") and g.get("website"):
+            website = g["website"]
+        w = check_website(website) if website else None
+        score, out_of, fixes = score_and_fixes(g, w)
+        try:
+            _sb().table("ma_details").insert({"device_id": "scan:" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:6],
+                                              "type": "factory_biz_scan", "label": business[:60],
+                                              "data": {"business": business, "postcode": postcode, "score": score, "out_of": out_of,
+                                                       "on_google": bool(g and g.get("found")), "has_site": bool(w and w.get("loads")),
+                                                       "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}}).execute()
+        except Exception as e:
+            print(f"[biz-scan] log failed: {e}")
+        return jsonify({"google": g, "website": w, "score": score, "out_of": out_of, "fixes": fixes})
 
     @app.route("/api/factory/business-check", methods=["POST"])
     def factory_business_check():
@@ -155,15 +278,15 @@ def register_factory_business(app, send_wa=None):
             return jsonify({"error": "Tell us the business name."}), 400
         if not (re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", contact) or len(re.sub(r"\D", "", contact)) >= 10):
             return jsonify({"error": "Add a mobile number or email so we can send your report."}), 400
-        ip = (request.headers.get("X-Forwarded-For", request.remote_addr or "") or "").split(",")[0].strip()
-        now = time.time()
-        _recent[ip] = [t for t in _recent.get(ip, []) if now - t < 3600]
-        if len(_recent[ip]) >= 5:
+        if _limited("check", 5):
             return jsonify({"error": "Thanks, we've got your requests. Try again in an hour."}), 429
-        _recent[ip].append(now)
-        check = check_website(website) if website else None
+        scan = b.get("scan") if isinstance(b.get("scan"), dict) else None
+        check = (scan or {}).get("website") or (check_website(website) if website else None)
+        if scan:
+            scan = {"google": scan.get("google"), "score": scan.get("score"), "out_of": scan.get("out_of"),
+                    "fixes": [str(f)[:240] for f in (scan.get("fixes") or [])[:3]]}
         rec = {"business": business, "postcode": postcode, "contact": contact, "name": name,
-               "website": website, "website_check": check, "status": "new",
+               "website": website, "website_check": check, "scan": scan, "status": "new",
                "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}
         rid = "biz:" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:6]
         try:
@@ -199,6 +322,7 @@ def register_factory_business(app, send_wa=None):
                    f"phone {yes(w.get('phone_friendly'))} · social: {e(', '.join(w.get('social') or []) or 'none found')}") if w else "No website given"
             items.append(f"""<div class="r {'done' if d.get('status') == 'done' else ''}"><b>{e(d.get('business', ''))}</b> <small>{e(d.get('postcode', ''))} · {e(d.get('created', '')[:16].replace('T', ' '))}</small>
 <div>Contact: {e(d.get('contact', ''))}{(' (' + e(d['name']) + ')') if d.get('name') else ''}</div><div>{web}</div>
+<div>{_scan_line(d.get('scan'))}</div>
 <div class="a"><a target=_blank href="https://www.google.com/search?q={e(requests.utils.quote(q))}">Google</a>
 <a target=_blank href="https://www.google.com/maps/search/{e(requests.utils.quote(q))}">Maps</a>
 <a target=_blank href="https://www.instagram.com/explore/search/keyword/?q={e(requests.utils.quote(d.get('business', '')))}">Instagram</a>
