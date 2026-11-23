@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Response, jsonify, request
 
-EVENTS = re.compile(r"^(view|open|pin|hide|share|code|place|install|installed|remind|fuel|bins|whatsapp|talk|today)(:[a-z0-9-]{1,24})?$")
+EVENTS = re.compile(r"^(view|open|pin|hide|share|code|place|install|installed|remind|fuel|bins|whatsapp|talk|today|how)(:[a-z0-9-]{1,24})?$")
 VISITOR = re.compile(r"^[a-z0-9]{8,40}$")
 FACTORY_ORIGIN = "https://humanagency.co"
 
