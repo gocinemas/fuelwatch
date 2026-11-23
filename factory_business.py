@@ -61,6 +61,57 @@ def _public_host(host):
     return True
 
 
+AI_BOTS = {"GPTBot": "ChatGPT", "OAI-SearchBot": "ChatGPT search", "ChatGPT-User": "ChatGPT",
+           "ClaudeBot": "Claude", "anthropic-ai": "Claude", "Claude-Web": "Claude",
+           "PerplexityBot": "Perplexity", "Google-Extended": "Google Gemini"}
+BUSINESS_TYPES = re.compile(r"LocalBusiness|Organization|Store|Restaurant|Cafe|Bakery|Shop|Salon|Service|Hotel|BarOrPub|Dentist|"
+                            r"Physician|Plumber|Electrician|Contractor|Professional|FoodEstablishment|Brewery|Winery|Florist|Gym|"
+                            r"HealthAndBeauty|AutoRepair|Library|School|Bookstore|Corporation", re.I)
+
+
+def _fetch(url, limit=600_000):
+    """GET a public URL, following up to 3 redirects by hand and checking every host. Returns (url, status, text)."""
+    for _ in range(4):
+        p = urlparse(url)
+        if p.scheme not in ("http", "https") or not p.hostname or not _public_host(p.hostname):
+            raise ValueError("not public")
+        r = requests.get(url, timeout=6, allow_redirects=False, stream=True,
+                         headers={"User-Agent": "Mozilla/5.0 (compatible; HumanAgencyCheck/1.0)"})
+        if r.is_redirect or r.status_code in (301, 302, 303, 307, 308):
+            url = urljoin(url, r.headers.get("Location", ""))
+            r.close()
+            continue
+        body = r.raw.read(limit, decode_content=True).decode(r.encoding or "utf-8", "ignore")
+        r.close()
+        return url, r.status_code, body
+    raise ValueError("too many redirects")
+
+
+def _ai_blocked(robots):
+    """Names of AI assistants a robots.txt shuts out of the whole site."""
+    blocked, agents, in_rules = set(), [], False
+    for raw in (robots or "").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if ":" not in line:
+            continue
+        k, v = [x.strip() for x in line.split(":", 1)]
+        k = k.lower()
+        if k == "user-agent":
+            if in_rules:
+                agents, in_rules = [], False
+            agents.append(v)
+        elif k in ("disallow", "allow"):
+            in_rules = True
+            if k == "disallow" and v == "/":
+                for a in agents:
+                    if a == "*":
+                        blocked.update(AI_BOTS.keys())
+                    for bot in AI_BOTS:
+                        if a.lower() == bot.lower():
+                            blocked.add(bot)
+    return sorted({AI_BOTS[b] for b in blocked})
+
+
 def check_website(raw):
     """Quick public checks of a website. Never follows redirects to non-public hosts."""
     url = (raw or "").strip()
@@ -68,30 +119,37 @@ def check_website(raw):
         return None
     if not re.match(r"^https?://", url, re.I):
         url = "https://" + url
-    out = {"url": url, "loads": False, "secure": False, "phone_friendly": False, "title": "", "social": []}
+    out = {"url": url, "loads": False, "secure": False, "phone_friendly": False, "title": "", "social": [],
+           "llms_txt": False, "ai_blocked": [], "schema": False}
     try:
-        for _ in range(4):   # follow up to 3 redirects by hand, checking each host
-            p = urlparse(url)
-            if p.scheme not in ("http", "https") or not p.hostname or not _public_host(p.hostname):
-                out["error"] = "That address can't be checked."
-                return out
-            r = requests.get(url, timeout=6, allow_redirects=False, stream=True,
-                             headers={"User-Agent": "Mozilla/5.0 (compatible; HumanAgencyCheck/1.0)"})
-            if r.is_redirect or r.status_code in (301, 302, 303, 307, 308):
-                url = urljoin(url, r.headers.get("Location", ""))
-                r.close()
-                continue
-            break
-        body = r.raw.read(600_000, decode_content=True).decode(r.encoding or "utf-8", "ignore")
-        r.close()
+        try:
+            url, status, body = _fetch(url)
+        except ValueError:
+            out["error"] = "That address can't be checked."
+            return out
         out["url"] = url
-        out["loads"] = r.status_code < 400
+        out["loads"] = status < 400
         out["secure"] = url.lower().startswith("https://")
         out["phone_friendly"] = bool(re.search(r'<meta[^>]+name=["\']viewport["\']', body, re.I))
         m = re.search(r"<title[^>]*>(.*?)</title>", body, re.I | re.S)
         out["title"] = html.unescape(re.sub(r"\s+", " ", m.group(1)).strip())[:120] if m else ""
         hrefs = " ".join(re.findall(r'href=["\']([^"\']+)["\']', body, re.I)).lower()
         out["social"] = [k for k, pat in SOCIAL.items() if re.search(pat, hrefs)]
+        # Can AI assistants read and understand this business?
+        out["schema"] = any(BUSINESS_TYPES.search(block) for block in
+                            re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', body, re.I | re.S))
+        base = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        try:
+            _, st, txt = _fetch(base + "/llms.txt", 40_000)
+            out["llms_txt"] = st == 200 and len(txt.strip()) > 20 and not txt.lstrip().startswith("<")
+        except Exception:
+            pass
+        try:
+            _, st, txt = _fetch(base + "/robots.txt", 60_000)
+            if st == 200 and not txt.lstrip().startswith("<"):
+                out["ai_blocked"] = _ai_blocked(txt)
+        except Exception:
+            pass
     except Exception as e:
         out["error"] = "The website didn't respond."
         print(f"[biz-check] {url}: {str(e)[:120]}")
@@ -160,6 +218,11 @@ def score_and_fixes(g, w):
         add(w.get("secure"), "Switch your website to https. Browsers warn people away from sites without it.", 5)
         soc = w.get("social") or []
         add(any(s in soc for s in ("instagram", "facebook", "tiktok")), "Link your Instagram, Facebook or TikTok from your website, so people can see what you're up to.", 4)
+        # Can AI assistants (ChatGPT, Claude, Copilot, Gemini) find and describe you?
+        blocked = w.get("ai_blocked") or []
+        add(not blocked, f"Your website tells AI assistants ({', '.join(blocked)}) not to read it. Unless that's on purpose, let them in so they can recommend you.", 8)
+        add(w.get("schema"), "Add your business details in a standard format (schema.org) so Google and AI assistants can read your name, address, hours and what you do.", 6)
+        add(w.get("llms_txt"), "Add an llms.txt file: a short plain-text summary of what you do, where and when. It helps AI assistants like ChatGPT and Claude describe you correctly.", 5)
     fixes.sort(key=lambda x: -x[0])
     return sum(checks), len(checks), [f for _, f in fixes[:3]]
 
@@ -167,7 +230,8 @@ def score_and_fixes(g, w):
 def _notify(rec):
     pc = rec.get("postcode", "")
     w = rec.get("website_check") or {}
-    lines = [f"🏪 New business check: {rec['business']} ({pc})",
+    wants = {"fix": "fixes from the business check", "ai-setup": "help setting up AI", "ai-visibility": "help getting found by AI assistants"}
+    lines = [f"🏪 New request: {rec['business']} ({pc}), wants {wants.get(rec.get('interest'), rec.get('interest') or 'help')}",
              f"Contact: {rec['contact']}" + (f" ({rec['name']})" if rec.get("name") else "")]
     if w:
         lines.append(f"Website: {w.get('url')} · loads {'yes' if w.get('loads') else 'no'} · "
@@ -285,7 +349,8 @@ def register_factory_business(app, send_wa=None):
         if scan:
             scan = {"google": scan.get("google"), "score": scan.get("score"), "out_of": scan.get("out_of"),
                     "fixes": [str(f)[:240] for f in (scan.get("fixes") or [])[:3]]}
-        rec = {"business": business, "postcode": postcode, "contact": contact, "name": name,
+        interest = str(b.get("interest") or "fix")[:20]
+        rec = {"business": business, "postcode": postcode, "contact": contact, "name": name, "interest": interest,
                "website": website, "website_check": check, "scan": scan, "status": "new",
                "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}
         rid = "biz:" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:6]
@@ -319,8 +384,10 @@ def register_factory_business(app, send_wa=None):
             w = d.get("website_check") or {}
             q = f"{d.get('business', '')} {d.get('postcode', '')}"
             web = (f"<a href='{e(w.get('url', ''))}' target=_blank>{e(w.get('url', ''))}</a> · loads {yes(w.get('loads'))} secure {yes(w.get('secure'))} "
-                   f"phone {yes(w.get('phone_friendly'))} · social: {e(', '.join(w.get('social') or []) or 'none found')}") if w else "No website given"
+                   f"phone {yes(w.get('phone_friendly'))} · social: {e(', '.join(w.get('social') or []) or 'none found')}"
+                   f"<br>AI: llms.txt {yes(w.get('llms_txt'))} schema {yes(w.get('schema'))} · blocks: {e(', '.join(w.get('ai_blocked') or []) or 'none')}") if w else "No website given"
             items.append(f"""<div class="r {'done' if d.get('status') == 'done' else ''}"><b>{e(d.get('business', ''))}</b> <small>{e(d.get('postcode', ''))} · {e(d.get('created', '')[:16].replace('T', ' '))}</small>
+<div>Wants: <b>{e({"fix": "fixes", "ai-setup": "AI setup help", "ai-visibility": "AI visibility"}.get(d.get('interest') or 'fix', d.get('interest') or ''))}</b></div>
 <div>Contact: {e(d.get('contact', ''))}{(' (' + e(d['name']) + ')') if d.get('name') else ''}</div><div>{web}</div>
 <div>{_scan_line(d.get('scan'))}</div>
 <div class="a"><a target=_blank href="https://www.google.com/search?q={e(requests.utils.quote(q))}">Google</a>
