@@ -18242,6 +18242,11 @@ _bkBadge();
       <button onclick="_receiptsAnalysisLoadNext()" style="padding:6px 10px;border:1px solid var(--receipt-border);background:var(--surface);border-radius:12px;cursor:pointer;font-weight:600;color:var(--muted)">›</button>
     </div>
 
+    <!-- Weekly and monthly summary (filled by _receiptsSummaryLoad) -->
+    <div id="receipts-summary-card" style="display:none;background:var(--surface);border:1px solid var(--receipt-border);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div id="receipts-summary-body"></div>
+    </div>
+
     <div id="receipts-loading" style="text-align:center;padding:40px 0;color:var(--muted)">⏳ Loading receipts...</div>
     <div id="receipts-empty" style="display:none;text-align:center;padding:40px 16px;color:var(--muted);font-size:14px">
       <div style="font-size:32px;margin-bottom:10px">🧾</div>
@@ -18980,7 +18985,72 @@ let _savesAll = [];
     }
   };
 
-  function _briefLoadLastReceipt() {
+  // Receipts summary card: weekly and monthly totals, categories and suggested actions.
+function _rsEl(tag, text, style) {
+  var el = document.createElement(tag);
+  el.textContent = text;
+  if (style) el.setAttribute('style', style);
+  return el;
+}
+
+function _receiptsSummaryBlock(d) {
+  var box = document.createElement('div');
+  box.setAttribute('style', 'margin-bottom:12px');
+  box.appendChild(_rsEl('div', d.label, 'font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px'));
+
+  var line = '£' + Number(d.total).toFixed(2) + ' across ' + d.count + ' receipt' + (d.count === 1 ? '' : 's');
+  if (d.change_pct !== null && d.change_pct !== undefined) {
+    line += ' · ' + (d.change_pct >= 0 ? 'up ' : 'down ') + Math.abs(d.change_pct) + '% on the previous ' + d.period;
+  }
+  box.appendChild(_rsEl('div', line, 'font-size:12px;color:var(--muted);margin-bottom:6px'));
+
+  var buckets = d.buckets || {};
+  Object.keys(buckets).forEach(function (name) {
+    var share = d.total ? Math.round(buckets[name] / d.total * 100) : 0;
+    box.appendChild(_rsEl('div', name + ': £' + Number(buckets[name]).toFixed(2) + ' (' + share + '%)',
+      'font-size:12px;color:var(--text);padding-left:4px'));
+  });
+
+  if (d.top_shops && d.top_shops.length) {
+    var shops = d.top_shops.map(function (s) { return s.shop + ' £' + Number(s.total).toFixed(2); }).join(', ');
+    box.appendChild(_rsEl('div', 'Top shops: ' + shops, 'font-size:12px;color:var(--muted);margin-top:4px'));
+  }
+
+  if (d.actions && d.actions.length) {
+    box.appendChild(_rsEl('div', 'Try this', 'font-size:12px;font-weight:700;color:var(--text);margin-top:8px'));
+    d.actions.forEach(function (a) {
+      box.appendChild(_rsEl('div', '• ' + a, 'font-size:12px;color:var(--text);padding-left:4px;margin-top:2px'));
+    });
+  }
+  return box;
+}
+
+window._receiptsSummaryLoad = async function () {
+  var card = document.getElementById('receipts-summary-card');
+  var body = document.getElementById('receipts-summary-body');
+  if (!card || !body) return;
+  var token = (typeof _miruPhone === 'function') ? _miruPhone() : '';
+  if (!token) { card.style.display = 'none'; return; }
+  try {
+    var results = await Promise.all(['week', 'month'].map(function (p) {
+      return fetch('/api/v2/receipts/summary?token=' + encodeURIComponent(token) + '&period=' + p)
+        .then(function (r) { return r.json(); });
+    }));
+    body.innerHTML = '';
+    results.forEach(function (d) {
+      if (d && d.status === 'ok' && d.count > 0) body.appendChild(_receiptsSummaryBlock(d));
+    });
+    card.style.display = body.childNodes.length ? 'block' : 'none';
+  } catch (e) {
+    card.style.display = 'none';
+  }
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (window._receiptsSummaryLoad) window._receiptsSummaryLoad();
+});
+
+function _briefLoadLastReceipt() {
     fetch("/api/home/last-receipt")
       .then(r => r.json())
       .then(d => {
