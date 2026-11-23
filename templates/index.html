@@ -2415,6 +2415,11 @@
         </div>
       </div>
 
+      <!-- Home receipts summary (filled by _homeReceiptsLoad; hidden if no receipts this week) -->
+      <div id="home-receipts-card" onclick="showScreen('receipts');_receiptsAnalysisLoad()" style="display:none;cursor:pointer;margin-bottom:12px">
+        <div id="home-receipts-body"></div>
+      </div>
+
       <!-- Personal event quick-add form — simplified with address autocomplete -->
       <div id="brief-event-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
         <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">＋ Add event</div>
@@ -2663,7 +2668,7 @@
             <div style="width:32px;height:32px;background:var(--warning-bg);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧾</div>
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:700;color:var(--text)">Receipts</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:1px">Breakdown by category & merchant</div>
+              <div id="tile-receipts-sub" style="font-size:11px;color:var(--muted);margin-top:1px">Breakdown by category & merchant</div>
             </div>
             <span style="font-size:16px;color:var(--muted);flex-shrink:0">›</span>
           </button>
@@ -18243,7 +18248,7 @@ _bkBadge();
     </div>
 
     <!-- Weekly and monthly summary (filled by _receiptsSummaryLoad) -->
-    <div id="receipts-summary-card" style="display:none;background:var(--surface);border:1px solid var(--receipt-border);border-radius:12px;padding:14px;margin-bottom:14px">
+    <div id="receipts-summary-card" style="display:none;margin-bottom:14px">
       <div id="receipts-summary-body"></div>
     </div>
 
@@ -18994,32 +18999,46 @@ function _rsEl(tag, text, style) {
 }
 
 function _receiptsSummaryBlock(d) {
+  var F = "font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;";
+  var INK = '#1d1630', MUTED = '#6c6485', PAPER = '#fff8f1';
+  var colours = ['#2fd1a4', '#ffb830', '#ff5d8f', '#5aa9ff', '#8b5cf6'];
   var box = document.createElement('div');
-  box.setAttribute('style', 'margin-bottom:12px');
-  box.appendChild(_rsEl('div', d.label, 'font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px'));
-
-  var line = '£' + Number(d.total).toFixed(2) + ' across ' + d.count + ' receipt' + (d.count === 1 ? '' : 's');
+  box.setAttribute('style', F + 'background:#fff;border:2px solid ' + INK + ';border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:4px 4px 0 ' + INK + ';');
+  box.appendChild(_rsEl('div', d.label, F + 'font-size:13px;font-weight:800;color:' + INK + ';margin-bottom:6px'));
+  box.appendChild(_rsEl('div', '£' + Number(d.total).toFixed(2), F + 'font-size:36px;font-weight:900;letter-spacing:-.02em;line-height:1.1;color:' + INK));
+  var sub = d.count + ' receipt' + (d.count === 1 ? '' : 's');
   if (d.change_pct !== null && d.change_pct !== undefined) {
-    line += ' · ' + (d.change_pct >= 0 ? 'up ' : 'down ') + Math.abs(d.change_pct) + '% on the previous ' + d.period;
+    sub += ' · ' + (d.change_pct >= 0 ? 'up ' : 'down ') + Math.abs(d.change_pct) + '% on the previous ' + d.period;
   }
-  box.appendChild(_rsEl('div', line, 'font-size:12px;color:var(--muted);margin-bottom:6px'));
+  box.appendChild(_rsEl('div', sub, F + 'font-size:13px;color:' + MUTED + ';margin-top:4px;margin-bottom:14px'));
 
-  var buckets = d.buckets || {};
-  Object.keys(buckets).forEach(function (name) {
-    var share = d.total ? Math.round(buckets[name] / d.total * 100) : 0;
-    box.appendChild(_rsEl('div', name + ': £' + Number(buckets[name]).toFixed(2) + ' (' + share + '%)',
-      'font-size:12px;color:var(--text);padding-left:4px'));
+  var keys = Object.keys(d.buckets || {});
+  keys.forEach(function (name, i) {
+    var amt = d.buckets[name];
+    var pct = d.total ? Math.round(amt / d.total * 100) : 0;
+    var row = document.createElement('div');
+    row.setAttribute('style', 'margin-bottom:10px');
+    var top = document.createElement('div');
+    top.setAttribute('style', F + 'display:flex;justify-content:space-between;align-items:baseline;font-size:14px;font-weight:800;color:' + INK);
+    top.appendChild(_rsEl('span', name, ''));
+    top.appendChild(_rsEl('span', '£' + Number(amt).toFixed(2) + ' · ' + pct + '%', F + 'font-size:13px;font-weight:700;color:' + MUTED));
+    var track = document.createElement('div');
+    track.setAttribute('style', 'height:10px;background:' + PAPER + ';border:2px solid ' + INK + ';border-radius:999px;overflow:hidden;margin-top:5px');
+    track.appendChild(_rsEl('div', '', 'height:100%;width:' + pct + '%;background:' + colours[i % colours.length]));
+    row.appendChild(top);
+    row.appendChild(track);
+    box.appendChild(row);
   });
 
   if (d.top_shops && d.top_shops.length) {
-    var shops = d.top_shops.map(function (s) { return s.shop + ' £' + Number(s.total).toFixed(2); }).join(', ');
-    box.appendChild(_rsEl('div', 'Top shops: ' + shops, 'font-size:12px;color:var(--muted);margin-top:4px'));
+    var shops = d.top_shops.map(function (s) { return s.shop + ' £' + Number(s.total).toFixed(2); }).join(' · ');
+    box.appendChild(_rsEl('div', 'Top shops: ' + shops, F + 'font-size:13px;color:' + MUTED + ';margin-top:6px'));
   }
 
   if (d.actions && d.actions.length) {
-    box.appendChild(_rsEl('div', 'Try this', 'font-size:12px;font-weight:700;color:var(--text);margin-top:8px'));
+    box.appendChild(_rsEl('div', 'Try this', F + 'font-size:14px;font-weight:900;color:' + INK + ';margin-top:14px;margin-bottom:6px'));
     d.actions.forEach(function (a) {
-      box.appendChild(_rsEl('div', '• ' + a, 'font-size:12px;color:var(--text);padding-left:4px;margin-top:2px'));
+      box.appendChild(_rsEl('div', a, F + 'font-size:13px;line-height:1.45;color:' + INK + ';background:' + PAPER + ';border:2px solid ' + INK + ';border-radius:12px;padding:8px 10px;margin-top:6px'));
     });
   }
   return box;
@@ -19037,10 +19056,7 @@ window._receiptsSummaryLoad = async function () {
     return;
   }
   try {
-    var results = await Promise.all(['week', 'month'].map(function (p) {
-      return fetch('/api/v2/receipts/summary?token=' + encodeURIComponent(token) + '&period=' + p)
-        .then(function (r) { return r.json(); });
-    }));
+    var results = await window._rsGetBoth(token);
     var shown = 0;
     results.forEach(function (d) {
       if (d && d.status === 'ok' && d.count > 0) { body.appendChild(_receiptsSummaryBlock(d)); shown++; }
@@ -19054,16 +19070,79 @@ window._receiptsSummaryLoad = async function () {
   }
 };
 
-// Load the summary whenever the Receipts screen is opened, and once on page load
+// One fetch of week + month, shared by the Home card and the Receipts card (cached for 60s)
+window._rsCache = null;
+window._rsGetBoth = function (token) {
+  var c = window._rsCache;
+  if (c && c.token === token && (Date.now() - c.at) < 60000) return Promise.resolve(c.results);
+  return Promise.all(['week', 'month'].map(function (p) {
+    return fetch('/api/v2/receipts/summary?token=' + encodeURIComponent(token) + '&period=' + p)
+      .then(function (r) { return r.json(); });
+  })).then(function (results) {
+    window._rsCache = { token: token, at: Date.now(), results: results };
+    return results;
+  });
+};
+
+// Home screen: short summary card above the quick-add form, and a live subtitle on the Receipts tile
+window._homeReceiptsLoad = async function () {
+  var card = document.getElementById('home-receipts-card');
+  var body = document.getElementById('home-receipts-body');
+  var sub = document.getElementById('tile-receipts-sub');
+  if (!card || !body) return;
+  var F = "font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;";
+  var INK = '#1d1630', MUTED = '#6c6485';
+  var token = (typeof _miruPhone === 'function') ? _miruPhone() : '';
+  if (!token) { card.style.display = 'none'; return; }
+  try {
+    var results = await window._rsGetBoth(token);
+    var week = results[0];
+    var has = week && week.status === 'ok' && week.count > 0;
+    var top = has ? Object.keys(week.buckets || {})[0] : null;
+
+    body.innerHTML = '';
+    if (has) {
+      body.appendChild(_rsEl('div', 'This week', F + 'font-size:13px;font-weight:800;color:' + INK + ';margin-bottom:4px'));
+      body.appendChild(_rsEl('div', '£' + Number(week.total).toFixed(2), F + 'font-size:36px;font-weight:900;letter-spacing:-.02em;line-height:1.1;color:' + INK));
+      var line = week.count + ' receipt' + (week.count === 1 ? '' : 's');
+      if (week.change_pct !== null && week.change_pct !== undefined) {
+        line += ' · ' + (week.change_pct >= 0 ? 'up ' : 'down ') + Math.abs(week.change_pct) + '% on last week';
+      }
+      body.appendChild(_rsEl('div', line, F + 'font-size:13px;color:' + MUTED + ';margin-top:4px'));
+      if (top) {
+        body.appendChild(_rsEl('div', 'Biggest: ' + top + ' £' + Number(week.buckets[top]).toFixed(2), F + 'font-size:13px;font-weight:700;color:' + INK + ';margin-top:8px'));
+      }
+      if (week.actions && week.actions.length) {
+        body.appendChild(_rsEl('div', week.actions[0], F + 'font-size:13px;line-height:1.45;color:' + INK + ';background:#fff8f1;border:2px solid ' + INK + ';border-radius:12px;padding:8px 10px;margin-top:10px'));
+      }
+      body.appendChild(_rsEl('div', 'See the full breakdown ›', F + 'font-size:13px;font-weight:800;color:' + INK + ';margin-top:10px'));
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+
+    if (sub) {
+      sub.textContent = has
+        ? '£' + Number(week.total).toFixed(2) + ' this week' + (top ? ' · ' + top + ' biggest' : '')
+        : 'Breakdown by category & merchant';
+    }
+  } catch (e) {
+    card.style.display = 'none';
+  }
+};
+
+// Load the summary whenever the Receipts screen is opened, and the Home card whenever Home is shown
 (function () {
   var _prevShowScreenRs = window.showScreen;
   window.showScreen = function (name) {
     if (typeof _prevShowScreenRs === 'function') _prevShowScreenRs(name);
     if (name === 'receipts' && window._receiptsSummaryLoad) window._receiptsSummaryLoad();
+    if ((name === 'brief' || name === 'home') && window._homeReceiptsLoad) window._homeReceiptsLoad();
   };
 })();
 document.addEventListener('DOMContentLoaded', function () {
   if (window._receiptsSummaryLoad) window._receiptsSummaryLoad();
+  if (window._homeReceiptsLoad) window._homeReceiptsLoad();
 });
 
 function _briefLoadLastReceipt() {
