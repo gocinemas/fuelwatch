@@ -1,13 +1,15 @@
 """Reminders for the Factory page (humanagency.co/factory).
 
-Two kinds of reminder, two ways to get them:
+Three kinds of reminder, two ways to get them:
   - Bins: the evening before collection (from 6pm UK time)
   - Fuel: when the cheapest price near a postcode drops by 1p or more (checked once a day, from 8am)
+  - Trains: your usual train out and back, if it's 5+ minutes late or cancelled (in the hour before it leaves)
   - Sent on WhatsApp (people signed in on the Factory page) or as phone/desktop notifications (web push)
 
 Endpoints
   GET  /api/factory/me/reminders      WhatsApp settings for the signed-in person
-  POST /api/factory/me/reminders      {bins:{on,postcode,uprn,label}, fuel:{on,postcode,fuel}}
+  POST /api/factory/me/reminders      {bins:{on,postcode,uprn,label}, fuel:{on,postcode,fuel},
+                                       trains:{on,from,from_name,to,to_name,out:"07:42",back:"17:48",weekends}}
   GET  /api/factory/push/key          public key the browser needs to subscribe (503 if not set up)
   POST /api/factory/push/reminders    {subscription, bins, fuel}  (both off = forget this device)
   POST /cron/factory-reminders        run now. Header X-Cron-Secret. ?dry=1 shows what would go out
@@ -39,7 +41,10 @@ FUEL_FROM_HOUR = 8
 FUEL_DROP_P = 1.0        # pence per litre
 FACTORY_URL = "https://humanagency.co/factory/"
 
-_hooks = {"send_wa": None, "cheapest_fuel": None}
+TRAIN_LATE_MIN = 5
+TRAIN_WINDOW_MIN = 60     # start watching a train an hour before it leaves
+
+_hooks = {"send_wa": None, "cheapest_fuel": None, "departures": None}
 
 
 # ── storage ──────────────────────────────────────────────────────────────────
@@ -100,14 +105,25 @@ def _clean(body, old):
         out["fuel"] = {"on": True, "postcode": _pc(f["postcode"]), "fuel": fuel,
                        "last_price": of.get("last_price") if same else None,
                        "last_check": of.get("last_check") if same else None}
+    t = body.get("trains") or {}
+    ot = old.get("trains") or {}
+    crs = lambda x: str(x or "").strip().upper()
+    hhmm = lambda x: str(x or "").strip() if len(str(x or "").strip()) == 5 and str(x)[2] == ":" and str(x).replace(":", "").isdigit() else ""
+    if t.get("on") and len(crs(t.get("from"))) == 3 and len(crs(t.get("to"))) == 3 and (hhmm(t.get("out")) or hhmm(t.get("back"))):
+        out["trains"] = {"on": True, "from": crs(t["from"]), "to": crs(t["to"]),
+                         "from_name": str(t.get("from_name") or crs(t["from"]))[:60],
+                         "to_name": str(t.get("to_name") or crs(t["to"]))[:60],
+                         "out": hhmm(t.get("out")), "back": hhmm(t.get("back")),
+                         "weekends": bool(t.get("weekends")), "sent": ot.get("sent") or {}}
     return out
 
 
 def _public(data):
     """What the page is allowed to see back."""
-    b, f = (data or {}).get("bins"), (data or {}).get("fuel")
+    b, f, t = (data or {}).get("bins"), (data or {}).get("fuel"), (data or {}).get("trains")
     return {"bins": {"on": True, "postcode": b["postcode"], "label": b.get("label", "")} if b else {"on": False},
-            "fuel": {"on": True, "postcode": f["postcode"], "fuel": f["fuel"]} if f else {"on": False}}
+            "fuel": {"on": True, "postcode": f["postcode"], "fuel": f["fuel"]} if f else {"on": False},
+            "trains": {k: t[k] for k in ("on", "from", "from_name", "to", "to_name", "out", "back", "weekends")} if t else {"on": False}}
 
 
 # ── sending ──────────────────────────────────────────────────────────────────
@@ -203,6 +219,55 @@ def _fuel_message(data, today, now):
             f"⛽ *{label} down {drop:.1f}p near {f['postcode']}*\n{price:.1f}p at {brand}.\n\nReply *STOP FUEL* to turn these off.")
 
 
+def _train_messages(data, today, now):
+    """Messages for the usual train out (from -> to) and back (to -> from), if late or cancelled."""
+    t = data.get("trains")
+    if not t or not t.get("on") or not _hooks["departures"]:
+        return []
+    if now.weekday() >= 5 and not t.get("weekends"):
+        return []
+    sent = {k: v for k, v in (t.get("sent") or {}).items() if k.startswith(today.isoformat())}
+    msgs = []
+    for leg, frm, to, frm_name, to_name in (("out", t["from"], t["to"], t["from_name"], t["to_name"]),
+                                             ("back", t["to"], t["from"], t["to_name"], t["from_name"])):
+        when = t.get(leg)
+        if not when:
+            continue
+        dep = now.replace(hour=int(when[:2]), minute=int(when[3:]), second=0, microsecond=0)
+        until = (dep - now).total_seconds() / 60
+        if not (-2 <= until <= TRAIN_WINDOW_MIN):
+            continue
+        trains = _hooks["departures"](frm, to)
+        if not trains:
+            continue
+        mine = next((x for x in trains if x.get("scheduled") == when), None)
+        if not mine:
+            continue
+        late = int(mine.get("late_min") or 0)
+        if mine.get("cancelled"):
+            status = "cancelled"
+        elif late >= TRAIN_LATE_MIN:
+            status = f"late:{late // 5 * 5}"      # only message again if it gets 5+ minutes worse
+        else:
+            continue
+        key = f"{today.isoformat()} {leg} {when}"
+        if sent.get(key) == status:
+            continue
+        sent[key] = status
+        route = f"{when} {frm_name} → {to_name}"
+        if status == "cancelled":
+            alt = next((x for x in trains if x.get("scheduled", "") > when and not x.get("cancelled")), None)
+            extra = f" Next: {alt['scheduled']} ({alt.get('expected', 'on time').lower()})." if alt else ""
+            text = f"Your {route} is cancelled.{extra}"
+            title = f"🚆 {when} cancelled"
+        else:
+            text = f"Your {route} is running {late} min late, expected {mine.get('expected_at', '')}."
+            title = f"🚆 {when} running {late} min late"
+        msgs.append((title, text, f"🚆 *{text}*\n\nReply *STOP TRAINS* to turn these off."))
+    t["sent"] = sent
+    return msgs
+
+
 def run_reminders(now=None, dry=False):
     now = now or datetime.now(UK)
     today = now.date()
@@ -211,9 +276,10 @@ def run_reminders(now=None, dry=False):
         device_id, data = row.get("device_id", ""), dict(row.get("data") or {})
         before = json.dumps(data, sort_keys=True)
         try:
-            for check in (_bins_message, _fuel_message):
-                msg = check(data, today, now)
-                if msg and _deliver(device_id, data, msg[0], msg[1], msg[2], dry, log):
+            msgs = [m for m in (_bins_message(data, today, now), _fuel_message(data, today, now)) if m]
+            msgs += _train_messages(data, today, now)
+            for msg in msgs:
+                if _deliver(device_id, data, msg[0], msg[1], msg[2], dry, log):
                     sent += 1
             if not dry and json.dumps(data, sort_keys=True) != before and _get(device_id):
                 _sb().table("ma_details").update({"data": data}).eq("id", row["id"]).execute()
@@ -235,17 +301,17 @@ def run_scheduled():
 
 
 def stop_whatsapp(from_number, what="all"):
-    """Turn off WhatsApp reminders. what = 'bins', 'fuel' or 'all'. Returns True if something was on."""
+    """Turn off WhatsApp reminders. what = 'bins', 'fuel', 'trains' or 'all'. Returns True if something was on."""
     phone = (from_number or "").replace("whatsapp:", "").strip()
     device_id = "wa:" + phone
     row = _get(device_id)
     if not row:
         return False
     data = dict(row.get("data") or {})
-    had = bool(data.get("bins") or data.get("fuel"))
-    for k in (("bins", "fuel") if what == "all" else (what,)):
+    had = bool(data.get(what)) if what != "all" else bool(data.get("bins") or data.get("fuel") or data.get("trains"))
+    for k in (("bins", "fuel", "trains") if what == "all" else (what,)):
         data.pop(k, None)
-    if data.get("bins") or data.get("fuel"):
+    if data.get("bins") or data.get("fuel") or data.get("trains"):
         _save(device_id, data)
     else:
         _delete(device_id)
@@ -266,6 +332,13 @@ def _cors_push(resp):
 def register_factory_reminders(app, send_wa, cheapest_fuel):
     _hooks["send_wa"] = send_wa
     _hooks["cheapest_fuel"] = cheapest_fuel
+
+    def _departures(frm, to):
+        """Trains from frm that go on to call at to, via Miru's own departures route (cached 30s)."""
+        with app.test_client() as c:
+            d = c.get(f"/api/train/departures?crs={frm}&calling_at={to}").get_json(silent=True) or {}
+        return d.get("trains") if d.get("filtered") else None
+    _hooks["departures"] = _departures
     app.after_request(_cors_push)
     from miru_auth import session_phone
 
@@ -284,12 +357,13 @@ def register_factory_reminders(app, send_wa, cheapest_fuel):
             _save(device_id, data)
         else:
             _delete(device_id)
-        turned_on = [k for k in ("bins", "fuel") if data.get(k) and not (row and (row.get("data") or {}).get(k))]
+        turned_on = [k for k in ("bins", "fuel", "trains") if data.get(k) and not (row and (row.get("data") or {}).get(k))]
         if turned_on:
-            what = " and ".join({"bins": "bin day reminders", "fuel": "fuel price drops"}[k] for k in turned_on)
+            names = {"bins": "bin day reminders", "fuel": "fuel price drops", "trains": "alerts when your trains are late"}
+            what = ", ".join(names[k] for k in turned_on[:-1]) + (" and " if len(turned_on) > 1 else "") + names[turned_on[-1]]
             send_wa("whatsapp:" + phone,
                     f"🔔 You're set up for {what} from the Factory.\n\n"
-                    "Reply *STOP BINS*, *STOP FUEL* or *STOP REMINDERS* any time.")
+                    "Reply *STOP BINS*, *STOP FUEL*, *STOP TRAINS* or *STOP REMINDERS* any time.")
         return jsonify(_public(data))
 
     @app.route("/api/factory/push/key", methods=["GET"])

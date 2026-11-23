@@ -8955,7 +8955,7 @@ def _get_cheapest_fuel(postcode: str, fuel: str, radius_miles: float = 5):
 
 # ── Public read-only data for the Factory page (humanagency.co/factory) ──────
 _FACTORY_CORS_PATHS = {"/api/mp", "/api/councillor", "/api/myarea/place-search", "/api/factory/fuel-near",
-                       "/api/train/nearest-by-postcode", "/api/train/departures",
+                       "/api/train/nearest-by-postcode", "/api/train/departures", "/api/train/search",
                        "/api/factory/schools-near", "/api/pubs-nearby", "/api/mot",
                        "/api/tube/nearest-by-postcode", "/api/area-summary", "/api/crime", "/api/house"}
 
@@ -30384,15 +30384,15 @@ def _whatsapp_reply_inner():
         return str(resp)
 
     # ── Factory reminders opt-out (bins, fuel) ───────────────────────────────────
-    if body_lower in ("stop bins", "stop bin", "stop fuel", "stop reminders", "stop reminder"):
-        _what = "bins" if "bin" in body_lower else "fuel" if "fuel" in body_lower else "all"
+    if body_lower in ("stop bins", "stop bin", "stop fuel", "stop trains", "stop train", "stop reminders", "stop reminder"):
+        _what = "bins" if "bin" in body_lower else "fuel" if "fuel" in body_lower else "trains" if "train" in body_lower else "all"
         try:
             import factory_reminders
             _had = factory_reminders.stop_whatsapp(from_number, _what)
         except Exception as _fe:
             print(f"[factory-reminders] stop: {_fe}")
             _had = False
-        _lbl = {"bins": "Bin reminders", "fuel": "Fuel alerts", "all": "Factory reminders"}[_what]
+        _lbl = {"bins": "Bin reminders", "fuel": "Fuel alerts", "trains": "Train alerts", "all": "Factory reminders"}[_what]
         resp.message(f"✅ {_lbl} are off." if _had else "You don't have any Factory reminders on.")
         return str(resp)
 
@@ -39128,31 +39128,52 @@ def api_train_departures():
     try:
         access = _get_rtt_token()
 
-        rtt_params = {"code": f"gb-nr:{crs}"}
+        services, filtered = None, False
         if calling_at:
-            rtt_params["calling_at"] = calling_at  # plain CRS, not gb-nr: prefixed
-        r = requests.get(
-            "https://data.rtt.io/rtt/location",
-            headers={"Authorization": f"Bearer {access}"},
-            params=rtt_params,
-            timeout=12,
-        )
-        if not r.text.strip():
-            return jsonify({"error": f"RTT location API returned empty response (HTTP {r.status_code})"}), 500
-        data = r.json()
-        if request.args.get("debug"):
-            svcs = data.get("services") or [{}]
-            return jsonify({
-                "rtt_params": rtt_params,
-                "service_count": len(svcs),
-                "raw_service_0": svcs[0] if svcs else None,
-                "raw_service_0_keys": list(svcs[0].keys()) if svcs else [],
-                "location": data.get("location"),
-            })
-        services = data.get("services") or []
+            # New RTT API (data.rtt.io): filterTo returns only services that go on to call at
+            # calling_at, matched on RTT's side. The old calling_at param is ignored by the new API.
+            rf = requests.get(
+                "https://data.rtt.io/gb-nr/location",
+                headers={"Authorization": f"Bearer {access}"},
+                params={"code": crs, "filterTo": calling_at},
+                timeout=12,
+            )
+            if rf.status_code == 204:
+                services, filtered = [], True
+            elif rf.status_code == 200 and rf.text.strip():
+                services, filtered = (rf.json().get("services") or []), True
+            else:
+                app.logger.warning(f"[train/filterTo] {crs}->{calling_at} HTTP {rf.status_code}")
+            if request.args.get("debug") and services is not None:
+                return jsonify({"filterTo": calling_at, "service_count": len(services),
+                                "raw_service_0": services[0] if services else None})
 
-        # Python-side calling_at filter via service detail API (RTT board calling_at is unreliable)
-        if calling_at and services:
+        rtt_params = {"code": f"gb-nr:{crs}"}
+        if services is None:
+            r = requests.get(
+                "https://data.rtt.io/rtt/location",
+                headers={"Authorization": f"Bearer {access}"},
+                params=rtt_params,
+                timeout=12,
+            )
+            if not r.text.strip():
+                return jsonify({"error": f"RTT location API returned empty response (HTTP {r.status_code})"}), 500
+            data = r.json()
+            if request.args.get("debug"):
+                svcs = data.get("services") or [{}]
+                return jsonify({
+                    "rtt_params": rtt_params,
+                    "service_count": len(svcs),
+                    "raw_service_0": svcs[0] if svcs else None,
+                    "raw_service_0_keys": list(svcs[0].keys()) if svcs else [],
+                    "location": data.get("location"),
+                })
+            services = data.get("services") or []
+
+        # Old Python-side calling_at filter (up to 20 per-service lookups). It can't find a service id
+        # in the new API's data, so it never filtered anything and only used up the rate limit.
+        # Off unless RTT_SERVICE_FILTER=1; filterTo above does the job.
+        if calling_at and services and not filtered and os.environ.get("RTT_SERVICE_FILTER") == "1":
             import concurrent.futures as _cf2, datetime as _dt2
             today_str = _dt2.date.today().strftime("%Y/%m/%d")
 
@@ -39244,15 +39265,16 @@ def api_train_departures():
             cancelled = dep.get("isCancelled", False) or dep.get("cancelled", False)
             platform_raw = (s.get("locationMetadata") or {}).get("platform")
             if isinstance(platform_raw, dict):
-                platform = str(platform_raw.get("display") or platform_raw.get("number") or "")
+                platform = str(platform_raw.get("display") or platform_raw.get("number") or
+                               platform_raw.get("forecast") or platform_raw.get("planned") or "")
             else:
                 platform = str(platform_raw) if platform_raw else ""
             sched = fmt_time(sched_dt)
             real  = fmt_time(real_dt)
+            late  = mins_late(sched, real) if (real and real != sched) else 0
             if cancelled:
                 status = "Cancelled"
             elif real and real != sched:
-                late = mins_late(sched, real)
                 status = f"Exp {real}" + (f" (+{late} min)" if late > 0 else "")
             else:
                 status = "On time"
@@ -39261,12 +39283,16 @@ def api_train_departures():
             trains.append({
                 "scheduled":   sched,
                 "expected":    status,
+                "expected_at": real or sched,
+                "late_min":    max(0, late),
                 "platform":    platform,
                 "destination": dest,
                 "cancelled":   bool(cancelled),
             })
-        station_name = (data.get("location") or {}).get("description", crs)
-        payload = {"station": station_name, "trains": trains}
+        station_name = crs
+        if not filtered:
+            station_name = (data.get("location") or {}).get("description", crs)
+        payload = {"station": station_name, "trains": trains, "filtered": filtered}
         _rtt_departures_cache[cache_key] = (payload, time.time())
         return jsonify(payload)
     except Exception as e:
