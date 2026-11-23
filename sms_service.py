@@ -30383,6 +30383,19 @@ def _whatsapp_reply_inner():
             resp.message("💡 Couldn't fetch ideas right now — try again in a moment.")
         return str(resp)
 
+    # ── Factory reminders opt-out (bins, fuel) ───────────────────────────────────
+    if body_lower in ("stop bins", "stop bin", "stop fuel", "stop reminders", "stop reminder"):
+        _what = "bins" if "bin" in body_lower else "fuel" if "fuel" in body_lower else "all"
+        try:
+            import factory_reminders
+            _had = factory_reminders.stop_whatsapp(from_number, _what)
+        except Exception as _fe:
+            print(f"[factory-reminders] stop: {_fe}")
+            _had = False
+        _lbl = {"bins": "Bin reminders", "fuel": "Fuel alerts", "all": "Factory reminders"}[_what]
+        resp.message(f"✅ {_lbl} are off." if _had else "You don't have any Factory reminders on.")
+        return str(resp)
+
     # ── Morning brief opt-out ────────────────────────────────────────────────────
     if body_lower in ("stop brief", "pause brief", "stop morning brief", "no brief"):
         try:
@@ -45599,6 +45612,12 @@ def api_test_postcode_save():
         "fuel": fuel,
         "message": "Test data saved - check console logs"
     })
+
+# ── Factory page: reminders (bins, fuel) and visitor stats ───────────────────
+from factory_reminders import register_factory_reminders
+register_factory_reminders(app, send_wa=_wa_send_proactive, cheapest_fuel=_get_cheapest_fuel)
+from factory_stats import register_factory_stats
+register_factory_stats(app)
 
 if __name__ == "__main__":
     import os

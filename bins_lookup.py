@@ -536,20 +536,25 @@ def register_bins_lookup(app):
 
     @app.route("/api/bins/dates")
     def api_bins_dates():
-        pc = (request.args.get("postcode") or "").strip()
-        uprn = (request.args.get("uprn") or "").strip()
-        if WIB_ENABLED and uprn.startswith("p:") and pc:
-            out = _cached("wib-dates:" + uprn, lambda: _wib_dates(pc, uprn))
-            if out:
-                out["council_page"] = out.get("council_page") or _gov_link(pc)
-                return jsonify(out), 200
-            return jsonify({"error": "Collection days are not available for this address right now.",
-                            "council_page": _gov_link(pc)}), 501
-        if not pc or not uprn.isdigit():
-            return jsonify({"error": "Choose your address first."}), 400
-        council = resolve_council(pc) or {}
-        conn = CONNECTORS.get(council.get("code"))
-        if not conn or not conn.get("dates"):
-            return jsonify({"error": "Dates for this council are not connected yet.",
-                            "council_page": (conn or {}).get("page") or council_link(council.get("code"), pc)}), 501
-        return jsonify(conn["dates"](uprn)), 200
+        body, code = dates_for((request.args.get("postcode") or "").strip(),
+                               (request.args.get("uprn") or "").strip())
+        return jsonify(body), code
+
+
+def dates_for(pc, uprn):
+    """Collection dates for one address. Returns (body, http_code). Used by the route and by reminders."""
+    if WIB_ENABLED and uprn.startswith("p:") and pc:
+        out = _cached("wib-dates:" + uprn, lambda: _wib_dates(pc, uprn))
+        if out:
+            out["council_page"] = out.get("council_page") or _gov_link(pc)
+            return out, 200
+        return {"error": "Collection days are not available for this address right now.",
+                "council_page": _gov_link(pc)}, 501
+    if not pc or not uprn.isdigit():
+        return {"error": "Choose your address first."}, 400
+    council = resolve_council(pc) or {}
+    conn = CONNECTORS.get(council.get("code"))
+    if not conn or not conn.get("dates"):
+        return {"error": "Dates for this council are not connected yet.",
+                "council_page": (conn or {}).get("page") or council_link(council.get("code"), pc)}, 501
+    return conn["dates"](uprn), 200
