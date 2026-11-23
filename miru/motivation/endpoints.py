@@ -24,6 +24,9 @@ def _wa_send_proactive(to: str, body: str):
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
     twilio_whatsapp = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+    # Twilio needs the whatsapp: channel on both From and To; the env var may hold the bare number
+    if not twilio_whatsapp.startswith("whatsapp:"):
+        twilio_whatsapp = f"whatsapp:{twilio_whatsapp}"
 
     if not account_sid or not auth_token:
         print(f"[_wa_send_proactive] Missing Twilio creds")
@@ -170,6 +173,15 @@ def register_motivation_endpoints(app):
                     savings = get_weekly_savings(wa)
 
                     if savings.get('status') != 'ok':
+                        # No savings data this week: still send the receipts summary, since the
+                        # user opted in to the weekly summary
+                        try:
+                            from miru.receipts_summary import digest_text
+                            receipts_only = digest_text(lib, wa, date.today())
+                            if receipts_only and _wa_send_proactive(wa, "🧾 Your weekly receipts summary\n\n" + receipts_only):
+                                sent += 1
+                        except Exception as e:
+                            print(f"[weekly-savings] receipts-only digest failed for {wa}: {e}")
                         continue
 
                     # Record this week's history row (streak, days-on-budget) —
@@ -183,6 +195,16 @@ def register_motivation_endpoints(app):
 
                     # Format + send the regular weekly summary message
                     msg = format_weekly_message(savings)
+
+                    # Receipt summary: last 7 days, plus last month in the first week of the month
+                    try:
+                        from miru.receipts_summary import digest_text
+                        receipts_text = digest_text(lib, wa, date.today())
+                        if receipts_text and msg:
+                            msg = f"{msg}\n\n{receipts_text}"
+                    except Exception as e:
+                        print(f"[weekly-savings] receipt summary failed for {wa}: {e}")
+
                     if msg:
                         if _wa_send_proactive(wa, msg):
                             sent += 1

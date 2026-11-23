@@ -185,6 +185,13 @@ try:
 except:
     pass
 
+# ── Receipts summary (weekly/monthly spend + actions) for the app ──
+try:
+    from miru.receipts_summary_endpoints import register_receipts_summary_endpoints
+    register_receipts_summary_endpoints(app)
+except Exception as e:
+    app.logger.error(f"[receipts-summary] Failed to register: {e}")
+
 # Alias so the documented cron URL name also works, without duplicating the
 # send-and-log logic in miru/motivation/endpoints.py::cron_weekly_savings.
 app.add_url_rule(
