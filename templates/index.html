@@ -19052,34 +19052,48 @@ window._receiptsSummaryLoad = async function () {
   card.style.display = 'block';
   body.innerHTML = '';
   if (!token) {
-    body.appendChild(_rsEl('div', 'Sign in with your WhatsApp number to see your spending summary.', 'font-size:12px;color:var(--muted)'));
+    body.appendChild(_rsEl('div', 'Sign in with your WhatsApp number to see your spending summary.', "font-family:'Nunito',sans-serif;font-size:13px;color:#6c6485"));
     return;
   }
+  var now = new Date();
+  var currentYm = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  var picked = window._rsPickedMonth;   // set by the month picker; null on first load
+  var ym = null;
+  if (picked) {
+    var parts = picked.split('-');
+    ym = parts[1] + '-' + String(parts[0]).padStart(2, '0');
+  }
+  var viewingPast = ym && ym !== currentYm;
   try {
-    var results = await window._rsGetBoth(token);
+    var results = await window._rsGetBoth(token, viewingPast ? ym : null);
     var shown = 0;
     results.forEach(function (d) {
       if (d && d.status === 'ok' && d.count > 0) { body.appendChild(_receiptsSummaryBlock(d)); shown++; }
     });
     if (!shown) {
-      body.appendChild(_rsEl('div', 'No receipts logged for this week or month yet.', 'font-size:12px;color:var(--muted)'));
+      body.appendChild(_rsEl('div', 'No receipts logged for this period yet.', "font-family:'Nunito',sans-serif;font-size:13px;color:#6c6485"));
     }
   } catch (e) {
     console.error('receipts summary failed', e);
-    body.appendChild(_rsEl('div', 'Spending summary unavailable right now.', 'font-size:12px;color:var(--muted)'));
+    body.appendChild(_rsEl('div', 'Spending summary unavailable right now.', "font-family:'Nunito',sans-serif;font-size:13px;color:#6c6485"));
   }
 };
 
+
 // One fetch of week + month, shared by the Home card and the Receipts card (cached for 60s)
 window._rsCache = null;
-window._rsGetBoth = function (token) {
+window._rsPickedMonth = null;   // "YYYY-MM" chosen in the Receipts month picker
+window._rsGetBoth = function (token, ym) {
   var c = window._rsCache;
-  if (c && c.token === token && (Date.now() - c.at) < 60000) return Promise.resolve(c.results);
-  return Promise.all(['week', 'month'].map(function (p) {
-    return fetch('/api/v2/receipts/summary?token=' + encodeURIComponent(token) + '&period=' + p)
+  var key = token + '|' + (ym || '');
+  if (c && c.key === key && (Date.now() - c.at) < 60000) return Promise.resolve(c.results);
+  var periods = ym ? ['month'] : ['week', 'month'];
+  var qs = ym ? '&month=' + ym : '';
+  return Promise.all(periods.map(function (p) {
+    return fetch('/api/v2/receipts/summary?token=' + encodeURIComponent(token) + '&period=' + p + (p === 'month' ? qs : ''))
       .then(function (r) { return r.json(); });
   })).then(function (results) {
-    window._rsCache = { token: token, at: Date.now(), results: results };
+    window._rsCache = { key: key, at: Date.now(), results: results };
     return results;
   });
 };
@@ -19132,6 +19146,12 @@ window._homeReceiptsLoad = async function () {
 };
 
 // Load the summary whenever the Receipts screen is opened, and the Home card whenever Home is shown
+document.addEventListener('change', function (e) {
+  if (e.target && e.target.id === 'receipts-month-select') {
+    window._rsPickedMonth = e.target.value;
+    if (window._receiptsSummaryLoad) window._receiptsSummaryLoad();
+  }
+}, true);
 (function () {
   var _prevShowScreenRs = window.showScreen;
   window.showScreen = function (name) {
