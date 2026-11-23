@@ -14647,13 +14647,22 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
 
 @app.route("/api/factory/me/spend", methods=["GET"])
 def factory_me_spend():
-    """Signed-in user's spend this period: total and label only (no merchants or receipts)."""
+    """Signed-in user's spend: this month and this week, totals only (no merchants or receipts).
+    Uses the same figures as the Miru receipts summary, so the numbers match the app."""
     from miru_auth import session_phone
     phone = session_phone()
     if not phone:
         return jsonify({"error": "Sign in first"}), 401
-    d = _v2_fetch_spend(f"whatsapp:{phone}")
-    return jsonify({"total": d.get("total", 0), "period": d.get("period", "")})
+    from miru.receipts_summary import build_summary
+    from_number = f"whatsapp:{phone}"
+    month = build_summary(lib, from_number, "month")
+    week = build_summary(lib, from_number, "week")
+    return jsonify({
+        "total": month["total"],
+        "period": datetime.now().strftime("%B %Y"),
+        "week_total": week["total"],
+        "week_change_pct": week["change_pct"],
+    })
 
 
 def _v2_fetch_spend_this_week(from_number: str) -> dict:
