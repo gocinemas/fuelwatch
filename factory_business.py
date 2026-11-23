@@ -206,23 +206,23 @@ def score_and_fixes(g, w):
             fixes.append((weight, fix))
     on_google = bool(g and g.get("found"))
     if g is not None and not g.get("skipped"):
-        add(on_google, "Claim your free Google Business Profile. It's how most people find a local business, and it puts you on Google Maps.", 10)
+        add(on_google, "Claim your free Google Business Profile. It's what puts you on Google Maps and in local Google search.", 10)
     if on_google:
-        add((g.get("reviews") or 0) >= 20, f"Get more Google reviews (you have {g.get('reviews') or 0}). A small QR code by the till asking happy customers works well.", 8)
+        add((g.get("reviews") or 0) >= 20, f"Get more Google reviews (you have {g.get('reviews') or 0}). A QR code by the till is an easy way to ask happy customers.", 8)
         add(g.get("hours"), "Add your opening hours to Google, so people don't turn up when you're closed.", 7)
         add(g.get("website"), "Add your website to your Google listing.", 6)
     has_site = bool(w and w.get("loads"))
     add(has_site, "Get a simple one-page website: what you do, opening hours, a map and how to contact you.", 9)
     if has_site:
-        add(w.get("phone_friendly"), "Make your website work on phones. Most people will look you up on one.", 7)
-        add(w.get("secure"), "Switch your website to https. Browsers warn people away from sites without it.", 5)
+        add(w.get("phone_friendly"), "Make your website work on phones. Many people will look you up on one.", 7)
+        add(w.get("secure"), "Switch your website to https. Browsers mark sites without it as \"Not secure\".", 5)
         soc = w.get("social") or []
         add(any(s in soc for s in ("instagram", "facebook", "tiktok")), "Link your Instagram, Facebook or TikTok from your website, so people can see what you're up to.", 4)
         # Can AI assistants (ChatGPT, Claude, Copilot, Gemini) find and describe you?
         blocked = w.get("ai_blocked") or []
-        add(not blocked, f"Your website tells AI assistants ({', '.join(blocked)}) not to read it. Unless that's on purpose, let them in so they can recommend you.", 8)
-        add(w.get("schema"), "Add your business details in a standard format (schema.org) so Google and AI assistants can read your name, address, hours and what you do.", 6)
-        add(w.get("llms_txt"), "Add an llms.txt file: a short plain-text summary of what you do, where and when. It helps AI assistants like ChatGPT and Claude describe you correctly.", 5)
+        add(not blocked, f"Your website tells AI assistants ({', '.join(blocked)}) not to read it. Unless that's on purpose, allow them, or they can't use your site when answering questions.", 8)
+        add(w.get("schema"), "Add your business details in a standard format (schema.org), so search engines and AI tools can read your name, address, hours and what you do.", 6)
+        # llms.txt is reported but not scored: AI tools don't reliably read it yet.
     fixes.sort(key=lambda x: -x[0])
     return sum(checks), len(checks), [f for _, f in fixes[:3]]
 
