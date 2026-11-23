@@ -45142,6 +45142,8 @@ from factory_reminders import register_factory_reminders
 register_factory_reminders(app, send_wa=_wa_send_proactive, cheapest_fuel=_get_cheapest_fuel)
 from factory_stats import register_factory_stats
 register_factory_stats(app)
+from factory_business import register_factory_business
+register_factory_business(app, send_wa=_wa_send_proactive)
 
 # ────────────────────────────────────────────────────────────────────────
 
