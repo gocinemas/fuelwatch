@@ -30036,6 +30036,19 @@ def _whatsapp_reply_inner():
 
     # ── SMART ROUTING: Personal Message Processor (if text-only, no images) ──
     num_media = int(request.form.get("NumMedia", 0))
+
+    # ── Spending questions, answered from saved receipts ──
+    if num_media == 0 and body and from_number != "unknown":
+        try:
+            from miru.receipts_qa import answer_spend_question
+            _spend_reply = answer_spend_question(lib, from_number, body)
+        except Exception as _sq_err:
+            print(f"[spend-qa] {_sq_err}", flush=True)
+            _spend_reply = None
+        if _spend_reply:
+            resp.message(_spend_reply)
+            return str(resp)
+
     if num_media == 0 and body and from_number != "unknown":
         # Text-only message → route to personal message processor
         try:
