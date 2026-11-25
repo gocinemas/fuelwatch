@@ -4,11 +4,15 @@
        {lead: {name, type, town, rating, reviews, site, gaps[]}, channel, me, offer, note, tweak, draft}
        -> {message, subject}
 
-channel: instagram | facebook | whatsapp | email
+channel: instagram | facebook | whatsapp | email | call | comment
 note:    something the sender noticed about them (an award, a post), used as the opener
 tweak:   "shorter" | "warmer" | "bolder" | "" to rework the previous draft
 Assisted, not automatic: it only drafts. The sender reads, edits and sends it themselves.
-Uses ANTHROPIC_API_KEY. 30 drafts an hour per visitor, LEAD_INTRO_DAILY_CAP a day (default 150).
+Uses ANTHROPIC_API_KEY.
+
+  GET /api/factory/company-type?name=&pc=  -> {status: company | not_found | unknown, ...}
+Sole traders and some partnerships count as individuals under PECR, so cold emails, texts and DMs to them
+need consent. Local leads uses this to suggest a call or a public comment instead. 30 drafts an hour per visitor, LEAD_INTRO_DAILY_CAP a day (default 150).
 """
 import json
 import os
@@ -29,6 +33,10 @@ CHANNELS = {
     "facebook": "a Facebook Messenger message to their business page. 40 to 70 words. No subject line. Friendly and casual",
     "whatsapp": "a WhatsApp message. 40 to 70 words. No subject line. Friendly, easy to reply to with one line",
     "email": "a short email. 80 to 120 words, plus a subject line under 8 words that's specific to them, not salesy",
+    "call": "notes for a short phone call, written as what to say out loud: a 2-sentence opener saying who you are and why you're calling, "
+            "the one thing you noticed, and a question. 60 to 90 words. No subject line. Natural spoken English",
+    "comment": "a public comment on one of their social media posts. 15 to 35 words. A genuine, specific compliment or observation about their work "
+               "or the post the sender noted. No pitch, no link, no mention of what the sender sells or of the free check. No subject line",
 }
 TWEAKS = {
     "shorter": "Make it noticeably shorter, keeping the specific detail and the ask.",
@@ -49,10 +57,54 @@ Write like a real person from the area, not a marketer:
 Reply with JSON only: {"subject": "...or empty", "message": "..."}"""
 
 _recent, _day = {}, {"date": "", "count": 0}
+CH_PATH = "/api/factory/company-type"
+_ch_cache = {}
+_SUFFIX = re.compile(r"\b(ltd|limited|llp|plc|the|and|co|uk)\b")
+
+
+def _norm(name):
+    return re.sub(r"\s+", " ", _SUFFIX.sub(" ", re.sub(r"[^a-z0-9 ]", " ", str(name or "").lower().replace("&", " and ")))).strip()
+
+
+def company_type(name, postcode=""):
+    """Is this business a registered company? Uses Companies House search (COMPANIES_HOUSE_API_KEY).
+    company: an active company with the same name (and, if we have both, the same postcode area)
+    not_found: no active company under this name, so it may well be a sole trader or partnership
+    unknown: no key, or Companies House couldn't be reached"""
+    key = os.getenv("COMPANIES_HOUSE_API_KEY", "")
+    if not key:
+        return {"status": "unknown"}
+    ck = (_norm(name), (postcode or "").upper().split(" ")[0])
+    hit = _ch_cache.get(ck)
+    if hit and time.time() - hit[0] < 7 * 86400:
+        return hit[1]
+    import requests
+    try:
+        r = requests.get("https://api.company-information.service.gov.uk/search/companies", params={"q": name, "items_per_page": 10},
+                         auth=(key, ""), timeout=8)
+        if r.status_code != 200:
+            return {"status": "unknown"}
+        items = r.json().get("items") or []
+    except Exception as e:
+        print(f"[company-type] {e}")
+        return {"status": "unknown"}
+    want, area = _norm(name), re.sub(r"\d.*$", "", ck[1])
+    out = {"status": "not_found"}
+    for it in items:
+        if it.get("company_status") != "active" or _norm(it.get("title")) != want:
+            continue
+        pc = str((it.get("address") or {}).get("postal_code") or "").upper()
+        if area and pc and not pc.startswith(area):
+            continue
+        out = {"status": "company", "name": it.get("title"), "number": it.get("company_number"), "type": it.get("company_type"),
+               "url": "https://find-and-update.company-information.service.gov.uk/company/" + str(it.get("company_number"))}
+        break
+    _ch_cache[ck] = (time.time(), out)
+    return out
 
 
 def _cors(resp):
-    if request.path == PATH and request.headers.get("Origin", "") == FACTORY_ORIGIN:
+    if request.path in (PATH, CH_PATH) and request.headers.get("Origin", "") == FACTORY_ORIGIN:
         resp.headers["Access-Control-Allow-Origin"] = FACTORY_ORIGIN
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
         resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
@@ -96,6 +148,13 @@ def draft_message(prompt):
 
 def register_factory_intro(app):
     app.after_request(_cors)
+
+    @app.route(CH_PATH, methods=["GET"])
+    def factory_company_type():
+        name = _clean(request.args.get("name"), 100)
+        if len(name) < 2:
+            return jsonify({"error": "Which business?"}), 400
+        return jsonify(company_type(name, _clean(request.args.get("pc"), 10)))
 
     @app.route(PATH, methods=["POST", "OPTIONS"])
     def factory_lead_intro():
