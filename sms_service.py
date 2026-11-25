@@ -1282,6 +1282,22 @@ def get_tube_journey(from_name: str, to_name: str) -> str:
     return "\n".join(parts)
 
 
+def _get_wa_train_from(from_number: str):
+    """Return the user's saved home station (v2_prefs train_from), or None."""
+    try:
+        plain = from_number.replace("whatsapp:", "").strip()
+        wa    = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+        for did in [plain, wa]:
+            rows = lib._sb().table("ma_details").select("device_id,data,type") \
+                .eq("type", "v2_prefs").execute().data or []
+            for r in rows:
+                if r.get("device_id") == did:
+                    return (r.get("data") or {}).get("train_from") or None
+    except Exception:
+        pass
+    return None
+
+
 def _get_wa_home_postcode(from_number: str):
     """Return the user's stored home postcode — checks my_area_places then v2_prefs."""
     try:
@@ -32293,13 +32309,13 @@ def _whatsapp_reply_inner():
         re.I
     )
     _tm = _TRAIN_RE.match(body_lower.strip())
-    if _tm or re.match(r'^(?:next\s+)?train\b', body_lower.strip()):
+    if _tm or re.match(r'^(?:next\s+)?trains?\b', body_lower.strip()):
         # Parse from/to station names
         if _tm:
             from_stn = (_tm.group(1) or _tm.group(3) or "").strip().lower()
             to_stn   = (_tm.group(2) or _tm.group(4) or "").strip().lower()
         else:
-            from_stn = re.sub(r'^(?:next\s+)?train\s+(?:from\s+)?', '', body_lower.strip()).strip()
+            from_stn = re.sub(r'^(?:next\s+)?trains?\s+(?:from\s+)?', '', body_lower.strip()).strip()
             to_stn = ""
         # "next train to Waterloo" → from_stn="to waterloo"; fix: strip leading "to "
         if not to_stn and from_stn.startswith("to "):
@@ -32308,6 +32324,12 @@ def _whatsapp_reply_inner():
         if not to_stn and " to " in from_stn:
             parts = from_stn.split(" to ", 1)
             from_stn, to_stn = parts[0].strip(), parts[1].strip()
+        # "next train to Waterloo" — no origin given, so use the saved home station
+        if not from_stn and to_stn:
+            from_stn = (_get_wa_train_from(from_number) or "").lower()
+            if not from_stn:
+                resp.message("🚆 Which station are you travelling from? e.g. *train Surbiton to Waterloo*")
+                return str(resp)
         if from_stn or to_stn:
             wa_train_reply = _wa_train_format(from_stn, to_stn)
             if wa_train_reply:
@@ -32377,6 +32399,7 @@ def _whatsapp_reply_inner():
             postcode = nlu_result["postcode"]
             fuel = nlu_result.get("fuel", "petrol")
             radius = nlu_result.get("radius", 5.0)
+            retailer = nlu_result.get("retailer") or retailer  # keep brand, e.g. Tesco
             # Continue to fuel handler below with extracted params
         else:
             # Fallback: "fuel near [me]" — use saved home postcode
@@ -32414,15 +32437,37 @@ def _whatsapp_reply_inner():
             resp.message(_wa_recipe_card(_dish, from_number))
             return str(resp)
 
+    # ── Weather — "weather", "weather KT15", "what's the weather like" ──────────
+    if re.search(r"\bweather\b|\bforecast\b", body_lower):
+        _wx_m = re.search(r'\b([A-Z]{1,2}\d{1,2}[A-Z]?)\s*(\d[A-Z]{2})?\b', body.upper())
+        _wx_pc = (_wx_m.group(0).replace(" ", "") if _wx_m else None) or _get_wa_home_postcode(from_number)
+        if not _wx_pc:
+            resp.message("🌤️ Send your postcode for the weather, e.g. *weather KT15*")
+            return str(resp)
+        _wx_lat, _wx_lon = _latlon_for_postcode(_wx_pc.replace(" ", ""))
+        _wx_txt = get_weather(_wx_lat, _wx_lon) if _wx_lat is not None else ""
+        if _wx_txt:
+            resp.message(f"🌤️ Weather near {_wx_pc.upper()}: {_wx_txt}")
+        else:
+            resp.message(f"⚠️ Couldn't get the weather for {_wx_pc.upper()} right now. Try again in a moment.")
+        return str(resp)
+
     # Decide: fuel query or product query
     # Product query if: no postcode at all, OR postcode present but there's
     # substantial non-fuel text alongside it
     is_product = False
     product_name = None
+    _looks_like_question = bool(re.search(
+        r"\?|^(what|how|when|where|why|who|is|are|do|does|can|could|will|should|"
+        r"remind|tell|show|send|set|add|stop|start|next|train|trains|tube|bus|bins|"
+        r"school|remember|note|book|call|text|message)\b", body_lower.strip())
+        or re.search(r"\b(fuel|petrol|diesel)\b", body_lower))
     if not postcode:
-        # No postcode found — treat whole message as product
-        is_product = True
-        product_name = body
+        # Product lookup only for short, non-question text (e.g. "oat milk").
+        # Anything else (questions, commands) falls through to the clarify reply.
+        if not _looks_like_question and len(body.split()) <= 5:
+            is_product = True
+            product_name = body
     else:
         # Postcode found — check how much text remains after removing postcode + fuel words
         remaining = re.sub(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', '', body.upper()).strip()
