@@ -175,7 +175,8 @@ def google_listing(business, postcode):
                           headers={"X-Goog-Api-Key": key, "Content-Type": "application/json",
                                    "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.rating,"
                                                        "places.userRatingCount,places.googleMapsUri,places.businessStatus,"
-                                                       "places.regularOpeningHours.weekdayDescriptions,places.nationalPhoneNumber"},
+                                                       "places.regularOpeningHours.weekdayDescriptions,places.nationalPhoneNumber,"
+                                                       "places.pureServiceAreaBusiness"},
                           json={"textQuery": f"{business} {postcode}".strip(), "regionCode": "GB", "maxResultCount": 1},
                           timeout=8)
         places = (r.json() or {}).get("places") or []
@@ -194,11 +195,22 @@ def google_listing(business, postcode):
             "rating": p.get("rating"), "reviews": p.get("userRatingCount") or 0,
             "website": p.get("websiteUri", ""), "maps_url": p.get("googleMapsUri", ""),
             "phone": bool(p.get("nationalPhoneNumber")), "hours": bool((p.get("regularOpeningHours") or {}).get("weekdayDescriptions")),
-            "open": p.get("businessStatus", "") in ("", "OPERATIONAL")}
+            "open": p.get("businessStatus", "") in ("", "OPERATIONAL"),
+            # No premises customers visit (mobile hairdresser, plumber, cleaner): Google lists the area served instead
+            "mobile": bool(p.get("pureServiceAreaBusiness"))}
 
 
-def score_and_fixes(g, w):
-    """Plain-English score out of 8 and the fixes that matter most, most important first."""
+MOBILE_WORDS = re.compile(r"\bmobile\b|\bat home\b|\bcomes? to you\b", re.I)
+
+
+def is_mobile(g, business=""):
+    """True for a business that goes to its customers rather than having premises they visit."""
+    return bool(g and g.get("mobile")) or bool(MOBILE_WORDS.search(business or ""))
+
+
+def score_and_fixes(g, w, mobile=False):
+    """Plain-English score out of 8 and the fixes that matter most, most important first.
+    mobile: the business goes to its customers, so no till, no shop hours, no map to a front door."""
     checks, fixes = [], []
     def add(ok, fix, weight):
         checks.append(bool(ok))
@@ -208,11 +220,15 @@ def score_and_fixes(g, w):
     if g is not None and not g.get("skipped"):
         add(on_google, "Claim your free Google Business Profile. It's what puts you on Google Maps and in local Google search.", 10)
     if on_google:
-        add((g.get("reviews") or 0) >= 20, f"Get more Google reviews (you have {g.get('reviews') or 0}). A QR code by the till is an easy way to ask happy customers.", 8)
-        add(g.get("hours"), "Add your opening hours to Google, so people don't turn up when you're closed.", 7)
+        n = g.get("reviews") or 0
+        add(n >= 20, f"Get more Google reviews (you have {n}). Send happy customers your review link by text or WhatsApp straight after each visit." if mobile
+            else f"Get more Google reviews (you have {n}). A QR code by the till is an easy way to ask happy customers.", 8)
+        add(g.get("hours"), "Add the days and hours you work to Google, and the areas you cover, so people know when you can come to them." if mobile
+            else "Add your opening hours to Google, so people don't turn up when you're closed.", 7)
         add(g.get("website"), "Add your website to your Google listing.", 6)
     has_site = bool(w and w.get("loads"))
-    add(has_site, "Get a simple one-page website: what you do, opening hours, a map and how to contact you.", 9)
+    add(has_site, "Get a simple one-page website: what you do, prices, the areas you cover and a link to book." if mobile
+        else "Get a simple one-page website: what you do, opening hours, a map and how to contact you.", 9)
     if has_site:
         add(w.get("phone_friendly"), "Make your website work on phones. Many people will look you up on one.", 7)
         add(w.get("secure"), "Switch your website to https. Browsers mark sites without it as \"Not secure\".", 5)
@@ -221,7 +237,8 @@ def score_and_fixes(g, w):
         # Can AI assistants (ChatGPT, Claude, Copilot, Gemini) find and describe you?
         blocked = w.get("ai_blocked") or []
         add(not blocked, f"Your website tells AI assistants ({', '.join(blocked)}) not to read it. Unless that's on purpose, allow them, or they can't use your site when answering questions.", 8)
-        add(w.get("schema"), "Add your business details in a standard format (schema.org), so search engines and AI tools can read your name, address, hours and what you do.", 6)
+        add(w.get("schema"), "Add your business details in a standard format (schema.org), so search engines and AI tools can read your name, the areas you cover, hours and what you do." if mobile
+            else "Add your business details in a standard format (schema.org), so search engines and AI tools can read your name, address, hours and what you do.", 6)
         # llms.txt is reported but not scored: AI tools don't reliably read it yet.
     fixes.sort(key=lambda x: -x[0])
     return sum(checks), len(checks), [f for _, f in fixes[:3]]
@@ -319,7 +336,8 @@ def register_factory_business(app, send_wa=None):
         if not website and g and g.get("found") and g.get("website"):
             website = g["website"]
         w = check_website(website) if website else None
-        score, out_of, fixes = score_and_fixes(g, w)
+        mobile = is_mobile(g, business)
+        score, out_of, fixes = score_and_fixes(g, w, mobile)
         try:
             _sb().table("ma_details").insert({"device_id": "scan:" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:6],
                                               "type": "factory_biz_scan", "label": business[:60],
@@ -328,7 +346,7 @@ def register_factory_business(app, send_wa=None):
                                                        "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}}).execute()
         except Exception as e:
             print(f"[biz-scan] log failed: {e}")
-        return jsonify({"google": g, "website": w, "score": score, "out_of": out_of, "fixes": fixes})
+        return jsonify({"google": g, "website": w, "score": score, "out_of": out_of, "fixes": fixes, "mobile": mobile})
 
     @app.route("/api/factory/business-check", methods=["POST"])
     def factory_business_check():
