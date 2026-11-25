@@ -45159,6 +45159,8 @@ from factory_business import register_factory_business
 register_factory_business(app, send_wa=_wa_send_proactive)
 from factory_answers import register_factory_answers
 register_factory_answers(app)
+from factory_intro import register_factory_intro
+register_factory_intro(app)
 
 # ────────────────────────────────────────────────────────────────────────
 
