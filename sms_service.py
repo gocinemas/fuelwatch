@@ -30093,9 +30093,9 @@ def _whatsapp_reply_inner():
                     thread = threading.Thread(target=process_async, daemon=True)
                     thread.start()
 
-                    # Send immediate ack
-                    resp.message("👍 Got it")
-                    return str(resp)
+                    # Background processing only (todos, school, events, pubs).
+                    # Do NOT return here: the processor never sends a reply, so
+                    # falling through lets the normal handlers answer the message.
         except Exception as e:
             print(f"[personal_processor] Setup error: {e}")
             # Fall through to existing handlers if error
