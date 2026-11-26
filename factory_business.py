@@ -4,7 +4,8 @@ Step 1, instant and anonymous: business name + postcode (+ website) -> Google Ma
 reviews, website checks, social links, a score and the top fixes.
 Step 2, only if they want help: they leave WhatsApp or email -> saved, and the owner is told.
 
-  POST /api/factory/business-scan    {business, postcode, website}  -> {google, website, score, out_of, fixes}
+  POST /api/factory/business-find    {business, postcode, lat?, lng?} -> {candidates: [{id, name, address}]}  (pick yours)
+  POST /api/factory/business-scan    {business, postcode, website, place_id?}  -> {google, website, score, out_of, fixes}
   POST /api/factory/business-check   {business, postcode, website, contact, name, scan}
   GET  /factory/requests?key=...     list of requests (key = CRON_SECRET); &done=<id> marks one done
 
@@ -159,26 +160,74 @@ def check_website(raw):
 _gcount = {"day": "", "n": 0}
 
 
-def google_listing(business, postcode):
-    """Find the business on Google Maps (Places API New, one call). None if not set up or over the daily cap."""
+PLACE_FIELDS = ["displayName", "formattedAddress", "websiteUri", "rating", "userRatingCount", "googleMapsUri", "businessStatus",
+                "regularOpeningHours.weekdayDescriptions", "nationalPhoneNumber", "pureServiceAreaBusiness"]
+PLACE_ID = re.compile(r"^[A-Za-z0-9_-]{10,300}$")
+
+
+def _gkey_ok():
+    """The Places key, or None when it isn't set or today's cap is used up (counts one call)."""
     key = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     if not key:
-        return None
+        return None, None
     day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if _gcount["day"] != day:
         _gcount.update(day=day, n=0)
     if _gcount["n"] >= int(os.environ.get("FACTORY_GOOGLE_DAILY_CAP", "100") or 100):
-        return {"skipped": "daily limit"}
+        return None, {"skipped": "daily limit"}
     _gcount["n"] += 1
+    return key, None
+
+
+def google_candidates(business, postcode="", lat=None, lng=None):
+    """Up to 5 Google Maps listings matching the name near the postcode (or the visitor's location),
+    so the owner can pick theirs instead of us guessing. Cheap fields only."""
+    key, skip = _gkey_ok()
+    if not key:
+        return skip or {"skipped": "not set up"}
+    body = {"textQuery": f"{business} {postcode}".strip(), "regionCode": "GB", "maxResultCount": 5}
+    if lat is not None and lng is not None:
+        body["locationBias"] = {"circle": {"center": {"latitude": lat, "longitude": lng}, "radius": 3000.0}}
     try:
-        r = requests.post("https://places.googleapis.com/v1/places:searchText",
+        r = requests.post("https://places.googleapis.com/v1/places:searchText", timeout=8, json=body,
                           headers={"X-Goog-Api-Key": key, "Content-Type": "application/json",
-                                   "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.rating,"
-                                                       "places.userRatingCount,places.googleMapsUri,places.businessStatus,"
-                                                       "places.regularOpeningHours.weekdayDescriptions,places.nationalPhoneNumber,"
-                                                       "places.pureServiceAreaBusiness"},
-                          json={"textQuery": f"{business} {postcode}".strip(), "regionCode": "GB", "maxResultCount": 1},
-                          timeout=8)
+                                   "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress"})
+        places = (r.json() or {}).get("places") or []
+    except Exception as e:
+        print(f"[biz-find] google: {str(e)[:120]}")
+        return {"skipped": "error"}
+    return [{"id": p.get("id"), "name": (p.get("displayName") or {}).get("text", ""), "address": p.get("formattedAddress", "")}
+            for p in places if p.get("id")]
+
+
+def _listing(p, name):
+    return {"found": True, "name": name, "address": p.get("formattedAddress", ""),
+            "rating": p.get("rating"), "reviews": p.get("userRatingCount") or 0,
+            "website": p.get("websiteUri", ""), "maps_url": p.get("googleMapsUri", ""),
+            "phone": bool(p.get("nationalPhoneNumber")), "hours": bool((p.get("regularOpeningHours") or {}).get("weekdayDescriptions")),
+            "open": p.get("businessStatus", "") in ("", "OPERATIONAL"),
+            # No premises customers visit (mobile hairdresser, plumber, cleaner): Google lists the area served instead
+            "mobile": bool(p.get("pureServiceAreaBusiness"))}
+
+
+def google_listing(business, postcode, place_id=""):
+    """The business's Google Maps listing. With place_id (picked by the owner) it's exact; otherwise one search
+    by name and postcode, counted only if the name looks like theirs. None if not set up."""
+    key, skip = _gkey_ok()
+    if not key:
+        return skip
+    try:
+        if place_id:
+            r = requests.get(f"https://places.googleapis.com/v1/places/{place_id}", timeout=8,
+                             headers={"X-Goog-Api-Key": key, "X-Goog-FieldMask": ",".join(PLACE_FIELDS)})
+            p = r.json() or {}
+            if r.status_code != 200 or not p.get("displayName"):
+                return {"found": False}
+            return dict(_listing(p, (p.get("displayName") or {}).get("text", "")), picked=True)
+        r = requests.post("https://places.googleapis.com/v1/places:searchText", timeout=8,
+                          headers={"X-Goog-Api-Key": key, "Content-Type": "application/json",
+                                   "X-Goog-FieldMask": ",".join("places." + f for f in PLACE_FIELDS)},
+                          json={"textQuery": f"{business} {postcode}".strip(), "regionCode": "GB", "maxResultCount": 1})
         places = (r.json() or {}).get("places") or []
     except Exception as e:
         print(f"[biz-scan] google: {str(e)[:120]}")
@@ -191,13 +240,7 @@ def google_listing(business, postcode):
     words = [w for w in re.findall(r"[a-z0-9]+", business.lower()) if len(w) > 2 and w not in ("the", "and", "ltd", "limited")]
     if words and not any(w in name.lower() for w in words):
         return {"found": False, "nearest": name}
-    return {"found": True, "name": name, "address": p.get("formattedAddress", ""),
-            "rating": p.get("rating"), "reviews": p.get("userRatingCount") or 0,
-            "website": p.get("websiteUri", ""), "maps_url": p.get("googleMapsUri", ""),
-            "phone": bool(p.get("nationalPhoneNumber")), "hours": bool((p.get("regularOpeningHours") or {}).get("weekdayDescriptions")),
-            "open": p.get("businessStatus", "") in ("", "OPERATIONAL"),
-            # No premises customers visit (mobile hairdresser, plumber, cleaner): Google lists the area served instead
-            "mobile": bool(p.get("pureServiceAreaBusiness"))}
+    return _listing(p, name)
 
 
 MOBILE_WORDS = re.compile(r"\bmobile\b|\bat home\b|\bcomes? to you\b", re.I)
@@ -299,7 +342,7 @@ def _scan_line(sc):
 
 
 def _cors(resp):
-    if request.path in ("/api/factory/business-check", "/api/factory/business-scan") and request.headers.get("Origin", "") == FACTORY_ORIGIN:
+    if request.path in ("/api/factory/business-check", "/api/factory/business-scan", "/api/factory/business-find") and request.headers.get("Origin", "") == FACTORY_ORIGIN:
         resp.headers["Access-Control-Allow-Origin"] = FACTORY_ORIGIN
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
         resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
@@ -322,17 +365,38 @@ def register_factory_business(app, send_wa=None):
         _recent[k].append(now)
         return False
 
+    @app.route("/api/factory/business-find", methods=["POST"])
+    def factory_business_find():
+        """Which listing is theirs? Up to 5 nearby matches to pick from before the check runs."""
+        b = request.get_json(silent=True) or {}
+        business = str(b.get("business") or "").strip()[:100]
+        postcode = str(b.get("postcode") or "").strip().upper()[:10]
+        try:
+            lat, lng = float(b["lat"]), float(b["lng"])
+            if not (49 < lat < 61 and -9 < lng < 3):
+                lat = lng = None
+        except (KeyError, TypeError, ValueError):
+            lat = lng = None
+        if len(business) < 2:
+            return jsonify({"error": "Tell us the business name."}), 400
+        if _limited("find", 30):
+            return jsonify({"error": "That's a lot of searches. Try again in an hour."}), 429
+        c = google_candidates(business, postcode, lat, lng)
+        return jsonify({"candidates": c if isinstance(c, list) else [], "skipped": None if isinstance(c, list) else c.get("skipped")})
+
     @app.route("/api/factory/business-scan", methods=["POST"])
     def factory_business_scan():
         b = request.get_json(silent=True) or {}
         business = str(b.get("business") or "").strip()[:100]
         postcode = str(b.get("postcode") or "").strip().upper()[:10]
         website = str(b.get("website") or "").strip()[:200]
+        place_id = str(b.get("place_id") or "").strip()
+        place_id = place_id if PLACE_ID.match(place_id) else ""
         if len(business) < 2:
             return jsonify({"error": "Tell us the business name."}), 400
         if _limited("scan", 10):
             return jsonify({"error": "That's a lot of checks. Try again in an hour."}), 429
-        g = google_listing(business, postcode)
+        g = google_listing(business, postcode, place_id)
         if not website and g and g.get("found") and g.get("website"):
             website = g["website"]
         w = check_website(website) if website else None
