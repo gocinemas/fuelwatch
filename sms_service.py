@@ -45206,6 +45206,8 @@ from factory_answers import register_factory_answers
 register_factory_answers(app)
 from factory_intro import register_factory_intro
 register_factory_intro(app)
+from factory_deep import register_factory_deep
+register_factory_deep(app)
 
 # ────────────────────────────────────────────────────────────────────────
 

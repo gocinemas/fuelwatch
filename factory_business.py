@@ -205,7 +205,7 @@ def _listing(p, name):
     return {"found": True, "name": name, "address": p.get("formattedAddress", ""),
             "rating": p.get("rating"), "reviews": p.get("userRatingCount") or 0,
             "website": p.get("websiteUri", ""), "maps_url": p.get("googleMapsUri", ""),
-            "phone": bool(p.get("nationalPhoneNumber")), "hours": bool((p.get("regularOpeningHours") or {}).get("weekdayDescriptions")),
+            "phone": bool(p.get("nationalPhoneNumber")), "phone_number": p.get("nationalPhoneNumber", ""), "hours": bool((p.get("regularOpeningHours") or {}).get("weekdayDescriptions")),
             "open": p.get("businessStatus", "") in ("", "OPERATIONAL"),
             # No premises customers visit (mobile hairdresser, plumber, cleaner): Google lists the area served instead
             "mobile": bool(p.get("pureServiceAreaBusiness")),
