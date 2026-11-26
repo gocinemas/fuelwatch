@@ -161,7 +161,8 @@ _gcount = {"day": "", "n": 0}
 
 
 PLACE_FIELDS = ["displayName", "formattedAddress", "websiteUri", "rating", "userRatingCount", "googleMapsUri", "businessStatus",
-                "regularOpeningHours.weekdayDescriptions", "nationalPhoneNumber", "pureServiceAreaBusiness"]
+                "regularOpeningHours.weekdayDescriptions", "nationalPhoneNumber", "pureServiceAreaBusiness",
+                "primaryType"]
 PLACE_ID = re.compile(r"^[A-Za-z0-9_-]{10,300}$")
 
 
@@ -207,7 +208,9 @@ def _listing(p, name):
             "phone": bool(p.get("nationalPhoneNumber")), "hours": bool((p.get("regularOpeningHours") or {}).get("weekdayDescriptions")),
             "open": p.get("businessStatus", "") in ("", "OPERATIONAL"),
             # No premises customers visit (mobile hairdresser, plumber, cleaner): Google lists the area served instead
-            "mobile": bool(p.get("pureServiceAreaBusiness"))}
+            "mobile": bool(p.get("pureServiceAreaBusiness")),
+            # Google's main category (bakery, hair_care, plumber...), so the page can talk about what matters to that kind of business
+            "kind": p.get("primaryType", "")}
 
 
 def google_listing(business, postcode, place_id=""):
