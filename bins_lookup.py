@@ -217,12 +217,68 @@ def _wib_dates(postcode, property_id):
             "checked": datetime.now().date().isoformat()}
 
 
+LICHFIELD_PAGE = "https://www.lichfielddc.gov.uk/bincalendar"
+
+
+def _lichfield_addresses(postcode):
+    """The council page's own address finder: POST /bartec_ajax/<postcode>, JSON back."""
+    r = requests.post("https://www.lichfielddc.gov.uk/bartec_ajax/" + quote(postcode.strip().upper()),
+                      headers={"User-Agent": UA, "Accept": "application/json", "Referer": LICHFIELD_PAGE}, timeout=20)
+    if r.status_code != 200:
+        return []
+    try:
+        d = r.json() or {}
+    except ValueError:
+        return []
+    return [{"id": str(a["uprn"]), "label": (a.get("label") or "").strip()}
+            for a in d.get("addresses") or [] if str(a.get("uprn") or "").isdigit()]
+
+
+def _lichfield_parse(html, today=None):
+    """'Your next Black Bin collection Thursday 3rd December' -> dated collections. The page gives no year,
+    so it's the next one on or after today."""
+    from datetime import date, datetime
+    today = today or date.today()
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))
+    out = []
+    for name, day, month in re.findall(r"Your next\s+(.+?)\s+collection\s+\w+day\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)", text):
+        for year in (today.year, today.year + 1):
+            try:
+                d = datetime.strptime(f"{day} {month[:3]} {year}", "%d %b %Y").date()
+            except ValueError:
+                d = None
+                break
+            if d >= today:
+                break
+        if d:
+            out.append({"bin": name.strip(), "date": d.isoformat()})
+    return sorted(out, key=lambda c: c["date"])
+
+
+def _lichfield_dates(uprn):
+    """Same page the council shows when an address is chosen: /bincalendar?uprn=..."""
+    from datetime import datetime
+    r = requests.get(LICHFIELD_PAGE, params={"uprn": uprn}, headers={"User-Agent": UA, "Referer": LICHFIELD_PAGE}, timeout=20)
+    if r.status_code != 200:
+        return None
+    return {"collections": _lichfield_parse(r.text),
+            "note": "Your food waste caddy is collected every week, with your normal bin.",
+            "source": "Lichfield District Council bin calendar",
+            "checked": datetime.now().date().isoformat()}
+
+
 CONNECTORS = {
     "E07000212": {  # Runnymede
         "name": "Runnymede",
         "addresses": _runnymede_addresses,
         "dates": _runnymede_dates,
         "page": "https://www.runnymede.gov.uk/homepage/150/check-your-bin-collection-day",
+    },
+    "E07000194": {  # Lichfield
+        "name": "Lichfield",
+        "addresses": _lichfield_addresses,
+        "dates": _lichfield_dates,
+        "page": LICHFIELD_PAGE,
     },
     "E09000023": {  # Lewisham
         "name": "Lewisham",
